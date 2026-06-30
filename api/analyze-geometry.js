@@ -12,6 +12,12 @@ import { BASE_PROMPT } from './_prompts/prompts/base.js';
 import { LEVEL_STATIC, LEVEL_CINEMATIC } from './_prompts/prompts/levels.js';
 import { STEP1_PARSE_PROMPT } from './_prompts/prompts/classifier.js';
 import { getDescriptionsForTags } from './_lib/tagDescriptions.js';
+import { createClient } from '@supabase/supabase-js';
+import crypto from 'crypto';
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+const supabase = supabaseUrl && supabaseKey ? createClient(supabaseUrl, supabaseKey) : null;
 
 const DETAILED_MODEL = process.env.DETAILED_MODEL || 'ant/claude-sonnet-4-6';
 const DETAILED_API_KEY = process.env.DETAILED_API_KEY || '';
@@ -69,9 +75,43 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: errMsg });
     }
 
+    const trimmedPrompt = prompt.trim();
+
+    // -- Bắt đầu Caching --
+    let promptHash = null;
+    let cachedResponse = null;
+
+    if (!imageBase64 && trimmedPrompt && supabase) {
+      promptHash = crypto.createHash('sha256').update(trimmedPrompt + '_' + mode + '_' + (aiModel || 'low')).digest('hex');
+      try {
+        const { data, error } = await supabase
+          .from('ai_cache')
+          .select('response')
+          .eq('prompt_hash', promptHash)
+          .maybeSingle();
+          
+        if (data && data.response) {
+          console.log('Cache hit for prompt:', trimmedPrompt.substring(0, 50));
+          cachedResponse = data.response;
+        }
+      } catch (err) {
+        console.warn('Cache read error:', err.message);
+      }
+    }
+
+    if (cachedResponse) {
+      sendEvent('Lấy kết quả từ bộ nhớ đệm (Cache)...', 100);
+      if (isStream) {
+        res.write(`data: ${JSON.stringify({ status: 'done', data: cachedResponse })}\n\n`);
+        return res.end();
+      } else {
+        return res.status(200).json(cachedResponse);
+      }
+    }
+    // -- Kết thúc Caching --
+
     const validModes = ['quick', 'detailed'];
     const drawMode = validModes.includes(mode) ? mode : 'quick';
-    let trimmedPrompt = prompt.trim();
     let detailLevel = 'static';
     
     let result;
@@ -253,6 +293,23 @@ KẾT QUẢ TRƯỚC BỊ PHẲNG (mọi điểm có z≈0). Hãy dựng lại h
       },
       mode: drawMode,
     };
+
+    // Lưu vào Cache
+    if (promptHash && supabase) {
+      // Xóa llmPrompt để tiết kiệm bộ nhớ khi cache
+      const cachePayload = JSON.parse(JSON.stringify(finalPayload));
+      if (cachePayload.step2 && cachePayload.step2.llmPrompt) {
+        delete cachePayload.step2.llmPrompt;
+      }
+      
+      supabase.from('ai_cache').insert([{
+        prompt_hash: promptHash,
+        prompt_text: trimmedPrompt,
+        response: cachePayload
+      }]).then(({error}) => {
+        if (error) console.warn('Lỗi lưu cache:', error.message);
+      });
+    }
 
     if (isStream) {
       res.write(`data: ${JSON.stringify({ status: 'done', data: finalPayload })}\n\n`);

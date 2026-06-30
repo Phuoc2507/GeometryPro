@@ -1,7 +1,8 @@
-import { useState, useCallback, useEffect } from 'react';
+﻿import { useState, useCallback, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/context/AuthContext';
 import { GeometryData } from '@/types/geometry';
+import { useToast } from '@/hooks/use-toast';
 
 export interface HistoryItem {
   id: string;
@@ -12,9 +13,22 @@ export interface HistoryItem {
 }
 
 export function useGeometryHistory() {
-  const { user } = useAuth();
+  const { user, signOut } = useAuth();
+  const { toast } = useToast();
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+
+  const handleSupabaseError = useCallback((err: any, context: string) => {
+    console.error(Error  + context + :, err);
+    if (err?.status === 401 || err?.code === '42501' || err?.message?.includes('JWT')) {
+      toast({
+        title: "Phiên đăng nhập đã hết hạn",
+        description: "Vui lòng đăng nhập lại để tiếp tục lưu lịch sử.",
+        variant: "destructive"
+      });
+      signOut();
+    }
+  }, [signOut, toast]);
 
   const fetchHistory = useCallback(async () => {
     setIsLoading(true);
@@ -43,17 +57,17 @@ export function useGeometryHistory() {
         geometry_data: item.geometry_data as unknown as GeometryData,
       })));
     } catch (err) {
-      console.error('Error fetching history:', err);
+      handleSupabaseError(err, 'fetching history');
     } finally {
       setIsLoading(false);
     }
-  }, [user]);
+  }, [user, handleSupabaseError]);
 
   const addToHistory = useCallback(async (geometry: GeometryData, prompt?: string) => {
     try {
       if (!user) {
         const newItem: HistoryItem = {
-          id: `local_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
+          id: local_ + Date.now() + _ + Math.random().toString(36).substring(2, 9),
           name: geometry.name || 'Hình không tên',
           prompt: prompt || null,
           geometry_data: JSON.parse(JSON.stringify(geometry)),
@@ -88,9 +102,9 @@ export function useGeometryHistory() {
         }, ...prev].slice(0, 20));
       }
     } catch (err) {
-      console.error('Error saving to history:', err);
+      handleSupabaseError(err, 'saving to history');
     }
-  }, [user]);
+  }, [user, handleSupabaseError]);
 
   const deleteHistoryItem = useCallback(async (id: string) => {
     try {
@@ -111,9 +125,9 @@ export function useGeometryHistory() {
       if (error) throw error;
       setHistory(prev => prev.filter(h => h.id !== id));
     } catch (err) {
-      console.error('Error deleting history item:', err);
+      handleSupabaseError(err, 'deleting history item');
     }
-  }, [user]);
+  }, [user, handleSupabaseError]);
 
   const clearHistory = useCallback(async () => {
     try {
@@ -131,9 +145,9 @@ export function useGeometryHistory() {
       if (error) throw error;
       setHistory([]);
     } catch (err) {
-      console.error('Error clearing history:', err);
+      handleSupabaseError(err, 'clearing history');
     }
-  }, [user]);
+  }, [user, handleSupabaseError]);
 
   useEffect(() => {
     fetchHistory();
