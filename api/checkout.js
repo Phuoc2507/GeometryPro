@@ -25,19 +25,19 @@ export default async function handler(req, res) {
       return res.status(500).json({ error: 'PayOS credentials are not configured on server' });
     }
 
-    const payos = new PayOS(clientId, apiKey, checksumKey);
+    const payos = new PayOS({ clientId, apiKey, checksumKey });
 
     const orderCode = Number(String(Date.now()).slice(-6)); // Tạo mã đơn hàng duy nhất 6 số
     
     const requestData = {
       orderCode: orderCode,
       amount: amount || 20000,
-      description: description || 'Nang cap Geo3D Pro',
+      description: description || 'Nâng cấp Geo3D Pro',
       returnUrl: returnUrl || 'https://geo3d.io.vn/success',
       cancelUrl: cancelUrl || 'https://geo3d.io.vn/cancel'
     };
 
-    const paymentLinkRes = await payos.createPaymentLink(requestData);
+    const paymentLinkRes = await payos.paymentRequests.create(requestData);
 
     return res.status(200).json({
       checkoutUrl: paymentLinkRes.checkoutUrl,

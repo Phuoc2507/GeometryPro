@@ -14,10 +14,10 @@ export default async function handler(req, res) {
       return res.status(500).json({ error: 'PayOS credentials missing' });
     }
 
-    const payos = new PayOS(clientId, apiKey, checksumKey);
+    const payos = new PayOS({ clientId, apiKey, checksumKey });
 
     // Xác thực webhook từ PayOS (kiểm tra chữ ký)
-    const webhookData = payos.verifyPaymentWebhookData(req.body);
+    const webhookData = await payos.webhooks.verify(req.body);
 
     console.log('Nhận được webhook từ PayOS:', webhookData);
 
