@@ -1,16 +1,13 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const PayOSModule = require("@payos/node");
-const PayOS = PayOSModule.default || PayOSModule;
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const PayOS = require("@payos/node");
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
-
-// @ts-ignore
-const payos = new PayOS(
+const payos = new (PayOS.default || PayOS)(
   process.env.PAYOS_CLIENT_ID || "",
   process.env.PAYOS_API_KEY || "",
   process.env.PAYOS_CHECKSUM_KEY || ""
