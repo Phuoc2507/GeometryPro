@@ -1,4 +1,4 @@
-import 'dotenv/config';
+
 
 const VILAO_BASE_URL = 'https://api.vilao.ai';
 const VILAO_MODEL = 'gx/gpt-5.5';

@@ -1,5 +1,5 @@
 // DeepSeek API wrapper — used by sympy mode in analyzeGeometry.js
-import 'dotenv/config';
+
 
 const DEEPSEEK_BASE_URL = process.env.DEEPSEEK_BASE_URL || 'https://api.deepseek.com/v1';
 

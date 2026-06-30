@@ -1,4 +1,4 @@
-import 'dotenv/config';
+
 
 const OLLAMA_BASE_URL = process.env.OLLAMA_BASE_URL || 'http://localhost:11434';
 const TEXT_MODEL = process.env.TEXT_MODEL || 'deepseek-r1:14b';
