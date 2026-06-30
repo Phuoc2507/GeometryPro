@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 // eslint-disable-next-line @typescript-eslint/no-var-requires
-const PayOS = require("@payos/node");
+const PayOSModule = require("@payos/node");
+const PayOS = PayOSModule.default || PayOSModule;
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
