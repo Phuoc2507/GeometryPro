@@ -33,8 +33,8 @@ export default async function handler(req, res) {
       orderCode: orderCode,
       amount: amount || 20000,
       description: description || 'Nâng cấp Geo3D Pro',
-      returnUrl: returnUrl || 'https://geo3d.io.vn/success',
-      cancelUrl: cancelUrl || 'https://geo3d.io.vn/cancel'
+      returnUrl: returnUrl || 'https://geo3d.io.vn/?payment=success',
+      cancelUrl: cancelUrl || 'https://geo3d.io.vn/'
     };
 
     const paymentLinkRes = await payos.paymentRequests.create(requestData);
