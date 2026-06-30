@@ -31,7 +31,36 @@ export function DropZone() {
     const reader = new FileReader();
     reader.onload = async (e) => {
       const base64 = e.target?.result as string;
-      context.queueAnalyzeImage(base64, drawMode);
+      
+      const img = new window.Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        let width = img.width;
+        let height = img.height;
+        const max_dim = 1200;
+        
+        if (width > max_dim || height > max_dim) {
+          if (width > height) {
+            height = Math.round((height * max_dim) / width);
+            width = max_dim;
+          } else {
+            width = Math.round((width * max_dim) / height);
+            height = max_dim;
+          }
+        }
+        
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.drawImage(img, 0, 0, width, height);
+          const compressedBase64 = canvas.toDataURL('image/jpeg', 0.8);
+          context.queueAnalyzeImage(compressedBase64, drawMode);
+        } else {
+          context.queueAnalyzeImage(base64, drawMode);
+        }
+      };
+      img.src = base64;
     };
     reader.readAsDataURL(file);
   }, [context, drawMode]);
