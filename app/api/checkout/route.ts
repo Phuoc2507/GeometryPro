@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import PayOS from "@payos/node";
 
+// @ts-ignore
 const payos = new PayOS(
   process.env.PAYOS_CLIENT_ID || "",
   process.env.PAYOS_API_KEY || "",
