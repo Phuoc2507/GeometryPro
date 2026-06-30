@@ -1,4 +1,4 @@
-﻿import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/context/AuthContext';
 import { GeometryData } from '@/types/geometry';
@@ -19,7 +19,7 @@ export function useGeometryHistory() {
   const [isLoading, setIsLoading] = useState(false);
 
   const handleSupabaseError = useCallback((err: any, context: string) => {
-    console.error(Error  + context + :, err);
+    console.error("Error " + context + ":", err);
     if (err?.status === 401 || err?.code === '42501' || err?.message?.includes('JWT')) {
       toast({
         title: "Phiên đăng nhập đã hết hạn",
@@ -67,7 +67,7 @@ export function useGeometryHistory() {
     try {
       if (!user) {
         const newItem: HistoryItem = {
-          id: local_ + Date.now() + _ + Math.random().toString(36).substring(2, 9),
+          id: "local_" + Date.now() + "_" + Math.random().toString(36).substring(2, 9),
           name: geometry.name || 'Hình không tên',
           prompt: prompt || null,
           geometry_data: JSON.parse(JSON.stringify(geometry)),
