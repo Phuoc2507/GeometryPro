@@ -16,6 +16,15 @@ import { getDescriptionsForTags } from './_lib/tagDescriptions.js';
 const DETAILED_MODEL = process.env.DETAILED_MODEL || 'ant/claude-sonnet-4-6';
 const DETAILED_API_KEY = process.env.DETAILED_API_KEY || '';
 
+export const config = {
+  maxDuration: 60,
+  api: {
+    bodyParser: {
+      sizeLimit: '10mb',
+    },
+  },
+};
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method Not Allowed' });
