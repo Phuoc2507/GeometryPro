@@ -57,6 +57,23 @@ export function UserMenu() {
           <p className="text-xs text-muted-foreground truncate">{user.email}</p>
         </div>
         <DropdownMenuSeparator />
+        <DropdownMenuItem onClick={async () => {
+          try {
+            const res = await fetch('/api/checkout', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ amount: 50000, description: 'Nang cap Pro' })
+            });
+            const data = await res.json();
+            if (data.checkoutUrl) window.location.href = data.checkoutUrl;
+            else alert('Lỗi tạo link thanh toán: ' + (data.error || 'Unknown'));
+          } catch (e: any) {
+            alert('Lỗi: ' + e.message);
+          }
+        }} className="text-primary font-medium focus:text-primary focus:bg-primary/10">
+          <Settings className="w-4 h-4 mr-2" />
+          Nâng cấp Pro
+        </DropdownMenuItem>
         <DropdownMenuItem onClick={() => navigate('/saved')}>
           <Save className="w-4 h-4 mr-2" />
           Hình đã lưu
