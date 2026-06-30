@@ -1,12 +1,13 @@
 import { NextResponse } from "next/server";
 import { PayOS } from "@payos/node";
-const payos = new PayOS(
-  process.env.PAYOS_CLIENT_ID || "",
-  process.env.PAYOS_API_KEY || "",
-  process.env.PAYOS_CHECKSUM_KEY || ""
-);
 
 export async function POST(request: Request) {
+  // Khởi tạo trong handler để tránh lỗi thiếu env var lúc build
+  const payos = new PayOS(
+    process.env.PAYOS_CLIENT_ID!,
+    process.env.PAYOS_API_KEY!,
+    process.env.PAYOS_CHECKSUM_KEY!
+  );
   try {
     const { price, userId } = await request.json();
 

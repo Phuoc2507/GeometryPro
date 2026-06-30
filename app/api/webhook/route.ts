@@ -6,13 +6,14 @@ const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
-const payos = new PayOS(
-  process.env.PAYOS_CLIENT_ID || "",
-  process.env.PAYOS_API_KEY || "",
-  process.env.PAYOS_CHECKSUM_KEY || ""
-);
 
 export async function POST(request: Request) {
+  // Khởi tạo trong handler để tránh lỗi thiếu env var lúc build
+  const payos = new PayOS(
+    process.env.PAYOS_CLIENT_ID!,
+    process.env.PAYOS_API_KEY!,
+    process.env.PAYOS_CHECKSUM_KEY!
+  );
   try {
     const payload = await request.json();
     
