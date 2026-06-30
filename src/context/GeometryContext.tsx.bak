@@ -1,0 +1,366 @@
+import React, { createContext, useContext, useReducer, useCallback } from 'react';
+import { GeometryState, GeometryAction, GeometryData } from '@/types/geometry';
+import { PYRAMID_MOCK_DATA, SCAN_STATUSES } from '@/data/mockData';
+import { toast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
+
+const initialState: GeometryState = {
+  geometry: null,
+  isScanning: false,
+  isBuilding: false,
+  scanProgress: 0,
+  scanStatus: '',
+};
+
+function geometryReducer(state: GeometryState, action: GeometryAction): GeometryState {
+  switch (action.type) {
+    case 'START_SCANNING':
+      return {
+        ...state,
+        isScanning: true,
+        scanProgress: 0,
+        scanStatus: SCAN_STATUSES[0],
+      };
+    case 'UPDATE_SCAN_PROGRESS':
+      return {
+        ...state,
+        scanProgress: action.progress,
+        scanStatus: action.status,
+      };
+    case 'SET_GEOMETRY':
+      return {
+        ...state,
+        geometry: action.geometry,
+        isScanning: false,
+      };
+    case 'START_BUILDING':
+      return {
+        ...state,
+        isBuilding: true,
+      };
+    case 'FINISH_BUILDING':
+      return {
+        ...state,
+        isBuilding: false,
+      };
+    case 'CLEAR_GEOMETRY':
+      return initialState;
+    default:
+      return state;
+  }
+}
+
+interface GeometryContextType {
+  state: GeometryState;
+  startDemo: () => void;
+  analyzeImage: (imageBase64: string) => Promise<void>;
+  analyzeText: (prompt: string) => Promise<void>;
+  modifyGeometry: (prompt: string) => Promise<void>;
+  loadGeometry: (geometry: GeometryData) => void;
+  clearGeometry: () => void;
+}
+
+const GeometryContext = createContext<GeometryContextType | undefined>(undefined);
+
+export function GeometryProvider({ children }: { children: React.ReactNode }) {
+  const [state, dispatch] = useReducer(geometryReducer, initialState);
+
+  const simulateScanProgress = useCallback((callback: () => void) => {
+    let progress = 0;
+    const interval = setInterval(() => {
+      progress += 25;
+      const statusIndex = Math.min(Math.floor(progress / 25), SCAN_STATUSES.length - 1);
+      dispatch({
+        type: 'UPDATE_SCAN_PROGRESS',
+        progress: Math.min(progress, 90), // Cap at 90% until complete
+        status: SCAN_STATUSES[statusIndex],
+      });
+
+      if (progress >= 100) {
+        clearInterval(interval);
+        callback();
+      }
+    }, 750);
+    
+    return () => clearInterval(interval);
+  }, []);
+
+  const finishWithGeometry = useCallback((geometry: GeometryData) => {
+    dispatch({ type: 'UPDATE_SCAN_PROGRESS', progress: 100, status: 'Constructing geometry...' });
+    
+    setTimeout(() => {
+      dispatch({ type: 'SET_GEOMETRY', geometry });
+      dispatch({ type: 'START_BUILDING' });
+      
+      setTimeout(() => {
+        dispatch({ type: 'FINISH_BUILDING' });
+        toast({
+          title: "Geometry constructed successfully!",
+          description: `Created ${geometry.name} with ${geometry.points.length} vertices`,
+        });
+      }, 2000);
+    }, 500);
+  }, []);
+
+  const startDemo = useCallback(() => {
+    dispatch({ type: 'START_SCANNING' });
+    simulateScanProgress(() => {
+      finishWithGeometry(PYRAMID_MOCK_DATA);
+    });
+  }, [simulateScanProgress, finishWithGeometry]);
+
+  const analyzeImage = useCallback(async (imageBase64: string) => {
+    dispatch({ type: 'START_SCANNING' });
+    
+    try {
+      // Slower progress animation that continues until API returns
+      let progress = 0;
+      let statusIndex = 0;
+      const totalStatuses = SCAN_STATUSES.length;
+      
+      const progressInterval = setInterval(() => {
+        const increment = progress < 30 ? 5 : progress < 60 ? 3 : progress < 85 ? 1 : 0.5;
+        progress = Math.min(progress + increment, 95);
+        
+        if (progress < 15) {
+          statusIndex = 0;
+        } else if (progress < 30) {
+          statusIndex = 1;
+        } else if (progress < 50) {
+          statusIndex = 2;
+        } else if (progress < 75) {
+          statusIndex = 3;
+        } else if (progress < 90) {
+          statusIndex = 4;
+        } else {
+          statusIndex = 5;
+        }
+        
+        dispatch({
+          type: 'UPDATE_SCAN_PROGRESS',
+          progress,
+          status: SCAN_STATUSES[Math.min(statusIndex, totalStatuses - 1)],
+        });
+      }, 500);
+
+      // Call AI to analyze the image
+      const { data, error } = await supabase.functions.invoke('analyze-geometry', {
+        body: { imageBase64 }
+      });
+
+      clearInterval(progressInterval);
+
+      if (error) {
+        console.error('Error analyzing image:', error);
+        // Parse error message from response body if available
+        let errorMessage = "Không thể phân tích hình ảnh";
+        if (error.message) {
+          errorMessage = error.message;
+        }
+        toast({
+          title: "Lỗi",
+          description: errorMessage,
+          variant: "destructive",
+        });
+        dispatch({ type: 'CLEAR_GEOMETRY' });
+        return;
+      }
+
+      // Check for error in data (edge function returns error in body with non-200 status)
+      if (data?.error) {
+        console.error('Edge function error:', data.error);
+        toast({
+          title: "Lỗi",
+          description: data.error,
+          variant: "destructive",
+        });
+        dispatch({ type: 'CLEAR_GEOMETRY' });
+        return;
+      }
+
+      if (data?.geometry) {
+        finishWithGeometry(data.geometry);
+      } else {
+        // Fallback to demo data
+        finishWithGeometry(PYRAMID_MOCK_DATA);
+      }
+    } catch (error) {
+      console.error('Error:', error);
+      toast({
+        title: "Lỗi",
+        description: "Không thể xử lý hình ảnh",
+        variant: "destructive",
+      });
+      dispatch({ type: 'CLEAR_GEOMETRY' });
+    }
+  }, [finishWithGeometry]);
+
+  const analyzeText = useCallback(async (prompt: string) => {
+    dispatch({ type: 'START_SCANNING' });
+    
+    try {
+      // Slower progress animation that continues until API returns
+      let progress = 0;
+      let statusIndex = 0;
+      const totalStatuses = SCAN_STATUSES.length;
+      
+      // Progress goes slowly through statuses, spending more time on "calculating"
+      const progressInterval = setInterval(() => {
+        // Slow down as we approach higher percentages
+        const increment = progress < 30 ? 5 : progress < 60 ? 3 : progress < 85 ? 1 : 0.5;
+        progress = Math.min(progress + increment, 95);
+        
+        // Cycle through statuses based on progress
+        if (progress < 15) {
+          statusIndex = 0; // Đang gửi yêu cầu
+        } else if (progress < 30) {
+          statusIndex = 1; // Đang phân tích đề bài
+        } else if (progress < 50) {
+          statusIndex = 2; // Đang xác định loại hình
+        } else if (progress < 75) {
+          statusIndex = 3; // Đang tính toán tọa độ (longest phase)
+        } else if (progress < 90) {
+          statusIndex = 4; // Đang xác định nét khuất
+        } else {
+          statusIndex = 5; // Đang xây dựng mô hình
+        }
+        
+        dispatch({
+          type: 'UPDATE_SCAN_PROGRESS',
+          progress,
+          status: SCAN_STATUSES[Math.min(statusIndex, totalStatuses - 1)],
+        });
+      }, 500); // Slower interval
+
+      // Call AI to analyze text description
+      const { data, error } = await supabase.functions.invoke('analyze-geometry-text', {
+        body: { prompt }
+      });
+
+      clearInterval(progressInterval);
+
+      if (error) {
+        console.error('Error analyzing text:', error);
+        let errorMessage = "Không thể phân tích đề bài";
+        if (error.message) {
+          errorMessage = error.message;
+        }
+        toast({
+          title: "Lỗi",
+          description: errorMessage,
+          variant: "destructive",
+        });
+        dispatch({ type: 'CLEAR_GEOMETRY' });
+        return;
+      }
+
+      // Check for error in data (edge function returns error in body with non-200 status)
+      if (data?.error) {
+        console.error('Edge function error:', data.error);
+        toast({
+          title: "Lỗi",
+          description: data.error,
+          variant: "destructive",
+        });
+        dispatch({ type: 'CLEAR_GEOMETRY' });
+        return;
+      }
+
+      if (data?.geometry) {
+        finishWithGeometry(data.geometry);
+      } else {
+        // Fallback to demo data
+        finishWithGeometry(PYRAMID_MOCK_DATA);
+      }
+    } catch (error) {
+      console.error('Error:', error);
+      toast({
+        title: "Lỗi",
+        description: "Không thể xử lý đề bài",
+        variant: "destructive",
+      });
+      dispatch({ type: 'CLEAR_GEOMETRY' });
+    }
+  }, [finishWithGeometry]);
+
+  const modifyGeometry = useCallback(async (prompt: string) => {
+    if (!state.geometry) return;
+
+    try {
+      const { data, error } = await supabase.functions.invoke('modify-geometry', {
+        body: { 
+          prompt,
+          currentGeometry: state.geometry 
+        }
+      });
+
+      if (error) {
+        console.error('Error modifying geometry:', error);
+        toast({
+          title: "Lỗi",
+          description: error.message || "Không thể chỉnh sửa hình học",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      if (data?.geometry) {
+        dispatch({ type: 'SET_GEOMETRY', geometry: data.geometry });
+        dispatch({ type: 'START_BUILDING' });
+        
+        const addedPoints = data.addedElements?.points?.length || 0;
+        const addedLines = data.addedElements?.lines?.length || 0;
+        
+        setTimeout(() => {
+          dispatch({ type: 'FINISH_BUILDING' });
+          toast({
+            title: "Đã cập nhật hình học!",
+            description: `Thêm ${addedPoints} điểm và ${addedLines} đường`,
+          });
+        }, 1500);
+      }
+    } catch (error) {
+      console.error('Error:', error);
+      toast({
+        title: "Lỗi",
+        description: "Không thể xử lý yêu cầu",
+        variant: "destructive",
+      });
+    }
+  }, [state.geometry]);
+
+  const clearGeometry = useCallback(() => {
+    dispatch({ type: 'CLEAR_GEOMETRY' });
+  }, []);
+
+  const loadGeometry = useCallback((geometry: GeometryData) => {
+    dispatch({ type: 'SET_GEOMETRY', geometry });
+    dispatch({ type: 'START_BUILDING' });
+    setTimeout(() => {
+      dispatch({ type: 'FINISH_BUILDING' });
+      toast({
+        title: "Đã tải hình!",
+        description: `${geometry.name} với ${geometry.points.length} điểm`,
+      });
+    }, 1000);
+  }, []);
+
+  return (
+    <GeometryContext.Provider value={{ state, startDemo, analyzeImage, analyzeText, modifyGeometry, loadGeometry, clearGeometry }}>
+      {children}
+    </GeometryContext.Provider>
+  );
+}
+
+export function useGeometry() {
+  const context = useContext(GeometryContext);
+  if (context === undefined) {
+    throw new Error('useGeometry must be used within a GeometryProvider');
+  }
+  return context;
+}
+
+// Optional hook for components that might render outside provider during HMR
+export function useGeometryOptional() {
+  return useContext(GeometryContext);
+}

@@ -1,0 +1,2494 @@
+[
+  {
+    "id": 1,
+    "name": "Demo Câu 1",
+    "geometry": {
+      "name": "Mặt cắt parabol của đống rơm và thang tiếp tuyến",
+      "points": [
+        {
+          "id": "O",
+          "label": "O",
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        {
+          "id": "A",
+          "label": "A",
+          "x": 8,
+          "y": 0,
+          "z": 0
+        },
+        {
+          "id": "B",
+          "label": "B",
+          "x": 6,
+          "y": 4,
+          "z": 0
+        },
+        {
+          "id": "C",
+          "label": "C",
+          "x": 9,
+          "y": 0,
+          "z": 0
+        },
+        {
+          "id": "V",
+          "label": "V - điểm cao nhất",
+          "x": 4,
+          "y": 5.3333333333,
+          "z": 0
+        },
+        {
+          "id": "D",
+          "label": "D",
+          "x": 4,
+          "y": 0,
+          "z": 0
+        }
+      ],
+      "lines": [
+        {
+          "id": "ground_OA",
+          "from": "O",
+          "to": "A",
+          "style": "solid"
+        },
+        {
+          "id": "ladder_BC",
+          "from": "B",
+          "to": "C",
+          "style": "solid"
+        },
+        {
+          "id": "height_VD",
+          "from": "V",
+          "to": "D",
+          "style": "dashed"
+        }
+      ],
+      "curves": [
+        {
+          "id": "H",
+          "type": "parabola",
+          "params": {
+            "a": -0.3333333333,
+            "b": 2.6666666667,
+            "c": 0,
+            "xMin": 0,
+            "xMax": 8
+          }
+        }
+      ],
+      "confidence": 1
+    }
+  },
+  {
+    "id": 2,
+    "name": "Demo Câu 2",
+    "geometry": {
+      "name": "Tam giác đều cắt gập thành chóp cụt và mô hình trụ-nón",
+      "points": [
+        {
+          "id": "A",
+          "label": "A",
+          "x": 0,
+          "y": 3.464102,
+          "z": 0
+        },
+        {
+          "id": "B",
+          "label": "B",
+          "x": -3,
+          "y": -1.732051,
+          "z": 0
+        },
+        {
+          "id": "C",
+          "label": "C",
+          "x": 3,
+          "y": -1.732051,
+          "z": 0
+        },
+        {
+          "id": "O",
+          "label": "O",
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        {
+          "id": "H",
+          "label": "H",
+          "x": 0,
+          "y": -1.732051,
+          "z": 0
+        },
+        {
+          "id": "D",
+          "label": "D",
+          "x": 0,
+          "y": 2.068963,
+          "z": 0
+        },
+        {
+          "id": "E",
+          "label": "E",
+          "x": -1.791867,
+          "y": -1.034482,
+          "z": 0
+        },
+        {
+          "id": "F",
+          "label": "F",
+          "x": 1.791867,
+          "y": -1.034482,
+          "z": 0
+        },
+        {
+          "id": "M",
+          "label": "M",
+          "x": 0.402711,
+          "y": 2.766532,
+          "z": 0
+        },
+        {
+          "id": "N",
+          "label": "N",
+          "x": -0.402711,
+          "y": 2.766532,
+          "z": 0
+        },
+        {
+          "id": "P",
+          "label": "P",
+          "x": -2.597289,
+          "y": -1.034482,
+          "z": 0
+        },
+        {
+          "id": "Q",
+          "label": "Q",
+          "x": -2.194578,
+          "y": -1.732051,
+          "z": 0
+        },
+        {
+          "id": "S",
+          "label": "S",
+          "x": 2.597289,
+          "y": -1.034482,
+          "z": 0
+        },
+        {
+          "id": "R",
+          "label": "R",
+          "x": 2.194578,
+          "y": -1.732051,
+          "z": 0
+        },
+        {
+          "id": "FD",
+          "label": "D' đáy nhỏ chậu",
+          "x": 0,
+          "y": 9.068963,
+          "z": 0
+        },
+        {
+          "id": "FE",
+          "label": "E' đáy nhỏ chậu",
+          "x": -1.791867,
+          "y": 5.965518,
+          "z": 0
+        },
+        {
+          "id": "FF",
+          "label": "F' đáy nhỏ chậu",
+          "x": 1.791867,
+          "y": 5.965518,
+          "z": 0
+        },
+        {
+          "id": "UA",
+          "label": "A' miệng chậu",
+          "x": 0,
+          "y": 9.533018,
+          "z": 0.657672
+        },
+        {
+          "id": "UB",
+          "label": "B' miệng chậu",
+          "x": -2.194578,
+          "y": 5.732991,
+          "z": 0.657672
+        },
+        {
+          "id": "UC",
+          "label": "C' miệng chậu",
+          "x": 2.194578,
+          "y": 5.732991,
+          "z": 0.657672
+        },
+        {
+          "id": "K1",
+          "label": "Điểm sinh nón 1",
+          "x": 14,
+          "y": 0,
+          "z": 0
+        },
+        {
+          "id": "K2",
+          "label": "Điểm sinh nón 2",
+          "x": 12,
+          "y": 2,
+          "z": 0
+        },
+        {
+          "id": "K3",
+          "label": "Điểm sinh nón 3",
+          "x": 10,
+          "y": 0,
+          "z": 0
+        },
+        {
+          "id": "K4",
+          "label": "Điểm sinh nón 4",
+          "x": 12,
+          "y": -2,
+          "z": 0
+        },
+        {
+          "id": "Vn",
+          "label": "Đỉnh nón",
+          "x": 12,
+          "y": 0,
+          "z": 4
+        }
+      ],
+      "lines": [
+        {
+          "id": "AB",
+          "from": "A",
+          "to": "B",
+          "style": "solid"
+        },
+        {
+          "id": "BC",
+          "from": "B",
+          "to": "C",
+          "style": "solid"
+        },
+        {
+          "id": "CA",
+          "from": "C",
+          "to": "A",
+          "style": "solid"
+        },
+        {
+          "id": "AH",
+          "from": "A",
+          "to": "H",
+          "style": "dashed"
+        },
+        {
+          "id": "OD",
+          "from": "O",
+          "to": "D",
+          "style": "dotted"
+        },
+        {
+          "id": "DE",
+          "from": "D",
+          "to": "E",
+          "style": "solid"
+        },
+        {
+          "id": "EF",
+          "from": "E",
+          "to": "F",
+          "style": "solid"
+        },
+        {
+          "id": "FD",
+          "from": "F",
+          "to": "D",
+          "style": "solid"
+        },
+        {
+          "id": "AM",
+          "from": "A",
+          "to": "M",
+          "style": "dashed"
+        },
+        {
+          "id": "MD",
+          "from": "M",
+          "to": "D",
+          "style": "dashed"
+        },
+        {
+          "id": "DN",
+          "from": "D",
+          "to": "N",
+          "style": "dashed"
+        },
+        {
+          "id": "NA",
+          "from": "N",
+          "to": "A",
+          "style": "dashed"
+        },
+        {
+          "id": "BP",
+          "from": "B",
+          "to": "P",
+          "style": "dashed"
+        },
+        {
+          "id": "PE",
+          "from": "P",
+          "to": "E",
+          "style": "dashed"
+        },
+        {
+          "id": "EQ",
+          "from": "E",
+          "to": "Q",
+          "style": "dashed"
+        },
+        {
+          "id": "QB",
+          "from": "Q",
+          "to": "B",
+          "style": "dashed"
+        },
+        {
+          "id": "CS",
+          "from": "C",
+          "to": "S",
+          "style": "dashed"
+        },
+        {
+          "id": "SF",
+          "from": "S",
+          "to": "F",
+          "style": "dashed"
+        },
+        {
+          "id": "FR",
+          "from": "F",
+          "to": "R",
+          "style": "dashed"
+        },
+        {
+          "id": "RC",
+          "from": "R",
+          "to": "C",
+          "style": "dashed"
+        },
+        {
+          "id": "NP",
+          "from": "N",
+          "to": "P",
+          "style": "bold"
+        },
+        {
+          "id": "QR",
+          "from": "Q",
+          "to": "R",
+          "style": "bold"
+        },
+        {
+          "id": "SM",
+          "from": "S",
+          "to": "M",
+          "style": "bold"
+        },
+        {
+          "id": "frustum_bottom_1",
+          "from": "FD",
+          "to": "FE",
+          "style": "solid"
+        },
+        {
+          "id": "frustum_bottom_2",
+          "from": "FE",
+          "to": "FF",
+          "style": "solid"
+        },
+        {
+          "id": "frustum_bottom_3",
+          "from": "FF",
+          "to": "FD",
+          "style": "solid"
+        },
+        {
+          "id": "frustum_top_1",
+          "from": "UA",
+          "to": "UB",
+          "style": "solid"
+        },
+        {
+          "id": "frustum_top_2",
+          "from": "UB",
+          "to": "UC",
+          "style": "solid"
+        },
+        {
+          "id": "frustum_top_3",
+          "from": "UC",
+          "to": "UA",
+          "style": "solid"
+        },
+        {
+          "id": "frustum_side_1",
+          "from": "FD",
+          "to": "UA",
+          "style": "solid"
+        },
+        {
+          "id": "frustum_side_2",
+          "from": "FE",
+          "to": "UB",
+          "style": "solid"
+        },
+        {
+          "id": "frustum_side_3",
+          "from": "FF",
+          "to": "UC",
+          "style": "solid"
+        },
+        {
+          "id": "cone_gen_1",
+          "from": "Vn",
+          "to": "K1",
+          "style": "solid"
+        },
+        {
+          "id": "cone_gen_2",
+          "from": "Vn",
+          "to": "K2",
+          "style": "solid"
+        },
+        {
+          "id": "cone_gen_3",
+          "from": "Vn",
+          "to": "K3",
+          "style": "solid"
+        },
+        {
+          "id": "cone_gen_4",
+          "from": "Vn",
+          "to": "K4",
+          "style": "solid"
+        }
+      ],
+      "circles": [
+        {
+          "id": "cylinder_bottom_base_circle",
+          "center": {
+            "x": 10,
+            "y": 0,
+            "z": 0
+          },
+          "radius": 2,
+          "normal": {
+            "x": 0,
+            "y": 0,
+            "z": 1
+          }
+        },
+        {
+          "id": "cylinder_top_base_circle",
+          "center": {
+            "x": 10,
+            "y": 0,
+            "z": 4
+          },
+          "radius": 2,
+          "normal": {
+            "x": 0,
+            "y": 0,
+            "z": 1
+          }
+        },
+        {
+          "id": "cone_base_circle",
+          "center": {
+            "x": 12,
+            "y": 0,
+            "z": 0
+          },
+          "radius": 2,
+          "normal": {
+            "x": 0,
+            "y": 0,
+            "z": 1
+          }
+        }
+      ],
+      "cylinders": [
+        {
+          "id": "T",
+          "center1": {
+            "x": 10,
+            "y": 0,
+            "z": 0
+          },
+          "center2": {
+            "x": 10,
+            "y": 0,
+            "z": 4
+          },
+          "radius": 2
+        }
+      ],
+      "cones": [
+        {
+          "id": "N",
+          "apex": {
+            "x": 12,
+            "y": 0,
+            "z": 4
+          },
+          "baseCenter": {
+            "x": 12,
+            "y": 0,
+            "z": 0
+          },
+          "radius": 2
+        }
+      ],
+      "confidence": 1
+    }
+  },
+  {
+    "id": 3,
+    "name": "Demo Câu 3",
+    "geometry": {
+      "name": "Đường bay DE và vùng radar",
+      "points": [
+        {
+          "id": "O",
+          "label": "O",
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        {
+          "id": "C",
+          "label": "C",
+          "x": 20,
+          "y": 0,
+          "z": 0
+        },
+        {
+          "id": "B",
+          "label": "B",
+          "x": 0,
+          "y": 16,
+          "z": 0
+        },
+        {
+          "id": "D",
+          "label": "D",
+          "x": 20,
+          "y": 0,
+          "z": 9
+        },
+        {
+          "id": "E",
+          "label": "E \\equiv R_2",
+          "x": 0,
+          "y": 16,
+          "z": 12
+        },
+        {
+          "id": "P",
+          "label": "P",
+          "x": 16,
+          "y": 3.2,
+          "z": 9.6
+        },
+        {
+          "id": "M",
+          "label": "M",
+          "x": 10,
+          "y": 8,
+          "z": 10.5
+        },
+        {
+          "id": "R1",
+          "label": "R_1",
+          "x": 17.5639097744,
+          "y": 1.9488721805,
+          "z": 9.3654135338
+        }
+      ],
+      "lines": [
+        {
+          "id": "l_ground_CB",
+          "from": "C",
+          "to": "B",
+          "style": "solid"
+        },
+        {
+          "id": "l_vertical_CD",
+          "from": "C",
+          "to": "D",
+          "style": "dashed"
+        },
+        {
+          "id": "l_vertical_BE",
+          "from": "B",
+          "to": "E",
+          "style": "dashed"
+        },
+        {
+          "id": "l_flight_DE",
+          "from": "D",
+          "to": "E",
+          "style": "solid"
+        },
+        {
+          "id": "l_radar_inside",
+          "from": "R1",
+          "to": "E",
+          "style": "bold"
+        },
+        {
+          "id": "l_OC",
+          "from": "O",
+          "to": "C",
+          "style": "solid"
+        },
+        {
+          "id": "l_OB",
+          "from": "O",
+          "to": "B",
+          "style": "solid"
+        },
+        {
+          "id": "l_OD",
+          "from": "O",
+          "to": "D",
+          "style": "dashed"
+        },
+        {
+          "id": "l_OP",
+          "from": "O",
+          "to": "P",
+          "style": "dashed"
+        }
+      ],
+      "spheres": [
+        {
+          "id": "radar_sphere",
+          "label": "Phạm vi radar",
+          "center": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "radius": 20
+        }
+      ],
+      "confidence": 1
+    }
+  },
+  {
+    "id": 4,
+    "name": "Demo Câu 4",
+    "geometry": {
+      "name": "Đèn lồng mặt cắt vuông biên parabol",
+      "points": [
+        {
+          "id": "O",
+          "label": "O",
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        {
+          "id": "C10",
+          "label": "C_{10}",
+          "x": 0,
+          "y": 0,
+          "z": 10
+        },
+        {
+          "id": "C20",
+          "label": "C_{20}",
+          "x": 0,
+          "y": 0,
+          "z": 20
+        },
+        {
+          "id": "I",
+          "label": "I",
+          "x": 0,
+          "y": 0,
+          "z": 22
+        },
+        {
+          "id": "C30",
+          "label": "C_{30}",
+          "x": 0,
+          "y": 0,
+          "z": 30
+        },
+        {
+          "id": "C40",
+          "label": "C_{40}",
+          "x": 0,
+          "y": 0,
+          "z": 40
+        },
+        {
+          "id": "X0p",
+          "label": "X_0^+",
+          "x": 10,
+          "y": 0,
+          "z": 0
+        },
+        {
+          "id": "Y0p",
+          "label": "Y_0^+",
+          "x": 0,
+          "y": 10,
+          "z": 0
+        },
+        {
+          "id": "X0m",
+          "label": "X_0^-",
+          "x": -10,
+          "y": 0,
+          "z": 0
+        },
+        {
+          "id": "Y0m",
+          "label": "Y_0^-",
+          "x": 0,
+          "y": -10,
+          "z": 0
+        },
+        {
+          "id": "X10p",
+          "label": "X_{10}^+",
+          "x": 13,
+          "y": 0,
+          "z": 10
+        },
+        {
+          "id": "Y10p",
+          "label": "Y_{10}^+",
+          "x": 0,
+          "y": 13,
+          "z": 10
+        },
+        {
+          "id": "X10m",
+          "label": "X_{10}^-",
+          "x": -13,
+          "y": 0,
+          "z": 10
+        },
+        {
+          "id": "Y10m",
+          "label": "Y_{10}^-",
+          "x": 0,
+          "y": -13,
+          "z": 10
+        },
+        {
+          "id": "X20p",
+          "label": "X_{20}^+",
+          "x": 14,
+          "y": 0,
+          "z": 20
+        },
+        {
+          "id": "Y20p",
+          "label": "Y_{20}^+",
+          "x": 0,
+          "y": 14,
+          "z": 20
+        },
+        {
+          "id": "X20m",
+          "label": "X_{20}^-",
+          "x": -14,
+          "y": 0,
+          "z": 20
+        },
+        {
+          "id": "Y20m",
+          "label": "Y_{20}^-",
+          "x": 0,
+          "y": -14,
+          "z": 20
+        },
+        {
+          "id": "X30p",
+          "label": "X_{30}^+",
+          "x": 13,
+          "y": 0,
+          "z": 30
+        },
+        {
+          "id": "Y30p",
+          "label": "Y_{30}^+",
+          "x": 0,
+          "y": 13,
+          "z": 30
+        },
+        {
+          "id": "X30m",
+          "label": "X_{30}^-",
+          "x": -13,
+          "y": 0,
+          "z": 30
+        },
+        {
+          "id": "Y30m",
+          "label": "Y_{30}^-",
+          "x": 0,
+          "y": -13,
+          "z": 30
+        },
+        {
+          "id": "X40p",
+          "label": "X_{40}^+",
+          "x": 10,
+          "y": 0,
+          "z": 40
+        },
+        {
+          "id": "Y40p",
+          "label": "Y_{40}^+",
+          "x": 0,
+          "y": 10,
+          "z": 40
+        },
+        {
+          "id": "X40m",
+          "label": "X_{40}^-",
+          "x": -10,
+          "y": 0,
+          "z": 40
+        },
+        {
+          "id": "Y40m",
+          "label": "Y_{40}^-",
+          "x": 0,
+          "y": -10,
+          "z": 40
+        }
+      ],
+      "lines": [
+        {
+          "id": "axis_1",
+          "from": "O",
+          "to": "C10",
+          "style": "dashed"
+        },
+        {
+          "id": "axis_2",
+          "from": "C10",
+          "to": "C20",
+          "style": "dashed"
+        },
+        {
+          "id": "axis_3",
+          "from": "C20",
+          "to": "I",
+          "style": "dashed"
+        },
+        {
+          "id": "axis_4",
+          "from": "I",
+          "to": "C30",
+          "style": "dashed"
+        },
+        {
+          "id": "axis_5",
+          "from": "C30",
+          "to": "C40",
+          "style": "dashed"
+        },
+        {
+          "id": "base_1",
+          "from": "X0p",
+          "to": "Y0p",
+          "style": "solid"
+        },
+        {
+          "id": "base_2",
+          "from": "Y0p",
+          "to": "X0m",
+          "style": "solid"
+        },
+        {
+          "id": "base_3",
+          "from": "X0m",
+          "to": "Y0m",
+          "style": "solid"
+        },
+        {
+          "id": "base_4",
+          "from": "Y0m",
+          "to": "X0p",
+          "style": "solid"
+        },
+        {
+          "id": "ring10_1",
+          "from": "X10p",
+          "to": "Y10p",
+          "style": "solid"
+        },
+        {
+          "id": "ring10_2",
+          "from": "Y10p",
+          "to": "X10m",
+          "style": "solid"
+        },
+        {
+          "id": "ring10_3",
+          "from": "X10m",
+          "to": "Y10m",
+          "style": "solid"
+        },
+        {
+          "id": "ring10_4",
+          "from": "Y10m",
+          "to": "X10p",
+          "style": "solid"
+        },
+        {
+          "id": "max_1",
+          "from": "X20p",
+          "to": "Y20p",
+          "style": "solid"
+        },
+        {
+          "id": "max_2",
+          "from": "Y20p",
+          "to": "X20m",
+          "style": "solid"
+        },
+        {
+          "id": "max_3",
+          "from": "X20m",
+          "to": "Y20m",
+          "style": "solid"
+        },
+        {
+          "id": "max_4",
+          "from": "Y20m",
+          "to": "X20p",
+          "style": "solid"
+        },
+        {
+          "id": "ring30_1",
+          "from": "X30p",
+          "to": "Y30p",
+          "style": "solid"
+        },
+        {
+          "id": "ring30_2",
+          "from": "Y30p",
+          "to": "X30m",
+          "style": "solid"
+        },
+        {
+          "id": "ring30_3",
+          "from": "X30m",
+          "to": "Y30m",
+          "style": "solid"
+        },
+        {
+          "id": "ring30_4",
+          "from": "Y30m",
+          "to": "X30p",
+          "style": "solid"
+        },
+        {
+          "id": "top_1",
+          "from": "X40p",
+          "to": "Y40p",
+          "style": "solid"
+        },
+        {
+          "id": "top_2",
+          "from": "Y40p",
+          "to": "X40m",
+          "style": "solid"
+        },
+        {
+          "id": "top_3",
+          "from": "X40m",
+          "to": "Y40m",
+          "style": "solid"
+        },
+        {
+          "id": "top_4",
+          "from": "Y40m",
+          "to": "X40p",
+          "style": "solid"
+        },
+        {
+          "id": "rib_xp_1",
+          "from": "X0p",
+          "to": "X10p",
+          "style": "solid"
+        },
+        {
+          "id": "rib_xp_2",
+          "from": "X10p",
+          "to": "X20p",
+          "style": "solid"
+        },
+        {
+          "id": "rib_xp_3",
+          "from": "X20p",
+          "to": "X30p",
+          "style": "solid"
+        },
+        {
+          "id": "rib_xp_4",
+          "from": "X30p",
+          "to": "X40p",
+          "style": "solid"
+        },
+        {
+          "id": "rib_yp_1",
+          "from": "Y0p",
+          "to": "Y10p",
+          "style": "solid"
+        },
+        {
+          "id": "rib_yp_2",
+          "from": "Y10p",
+          "to": "Y20p",
+          "style": "solid"
+        },
+        {
+          "id": "rib_yp_3",
+          "from": "Y20p",
+          "to": "Y30p",
+          "style": "solid"
+        },
+        {
+          "id": "rib_yp_4",
+          "from": "Y30p",
+          "to": "Y40p",
+          "style": "solid"
+        },
+        {
+          "id": "rib_xm_1",
+          "from": "X0m",
+          "to": "X10m",
+          "style": "solid"
+        },
+        {
+          "id": "rib_xm_2",
+          "from": "X10m",
+          "to": "X20m",
+          "style": "solid"
+        },
+        {
+          "id": "rib_xm_3",
+          "from": "X20m",
+          "to": "X30m",
+          "style": "solid"
+        },
+        {
+          "id": "rib_xm_4",
+          "from": "X30m",
+          "to": "X40m",
+          "style": "solid"
+        },
+        {
+          "id": "rib_ym_1",
+          "from": "Y0m",
+          "to": "Y10m",
+          "style": "solid"
+        },
+        {
+          "id": "rib_ym_2",
+          "from": "Y10m",
+          "to": "Y20m",
+          "style": "solid"
+        },
+        {
+          "id": "rib_ym_3",
+          "from": "Y20m",
+          "to": "Y30m",
+          "style": "solid"
+        },
+        {
+          "id": "rib_ym_4",
+          "from": "Y30m",
+          "to": "Y40m",
+          "style": "solid"
+        }
+      ],
+      "spheres": [
+        {
+          "id": "bulb_sphere",
+          "center": {
+            "x": 0,
+            "y": 0,
+            "z": 22
+          },
+          "radius": 2.866,
+          "color": "#FFD36A",
+          "opacity": 0.65
+        }
+      ],
+      "surfaces": [
+        {
+          "id": "lantern_surface",
+          "type": "square_cross_section_parabolic_lantern",
+          "center": {
+            "x": 0,
+            "y": 0,
+            "z": 20
+          },
+          "params": {
+            "height": 40,
+            "zMin": 0,
+            "zMax": 40,
+            "halfDiagonalFunction": "r(z)=14-(z-20)^2/100",
+            "crossSection": "square",
+            "verticesAtHeight": [
+              "(r(z),0,z)",
+              "(0,r(z),z)",
+              "(-r(z),0,z)",
+              "(0,-r(z),z)"
+            ],
+            "bottomSideLength": "10√2",
+            "maxSideLength": "14√2",
+            "topSideLength": "10√2"
+          },
+          "opacity": 0.25,
+          "color": "#FF8A3D"
+        }
+      ],
+      "curves": [
+        {
+          "id": "profile_right",
+          "type": "parabola",
+          "params": {
+            "a": -0.01,
+            "b": 0.4,
+            "c": 10,
+            "xMin": 0,
+            "xMax": 40,
+            "interpretation": "Trong mặt phẳng đứng qua đường chéo: y=r(x), x là chiều cao z"
+          }
+        },
+        {
+          "id": "profile_left",
+          "type": "parabola",
+          "params": {
+            "a": 0.01,
+            "b": -0.4,
+            "c": -10,
+            "xMin": 0,
+            "xMax": 40,
+            "interpretation": "Đường đối xứng: y=-r(x)"
+          }
+        }
+      ],
+      "confidence": 1
+    }
+  },
+  {
+    "id": 5,
+    "name": "Demo Câu 5",
+    "geometry": {
+      "name": "Mô hình minh họa hình thang cong OABC và đường nhựa g(x)",
+      "points": [
+        {
+          "id": "O",
+          "label": "O",
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        {
+          "id": "A",
+          "label": "A",
+          "x": 0,
+          "y": 4,
+          "z": 0
+        },
+        {
+          "id": "B",
+          "label": "B - cực đại minh họa của f(x)",
+          "x": 2,
+          "y": 4,
+          "z": 0
+        },
+        {
+          "id": "C",
+          "label": "C",
+          "x": 3,
+          "y": 0,
+          "z": 0
+        },
+        {
+          "id": "F1",
+          "label": "f_1",
+          "x": 0.5,
+          "y": 0.625,
+          "z": 0
+        },
+        {
+          "id": "F2",
+          "label": "f_2",
+          "x": 1,
+          "y": 2,
+          "z": 0
+        },
+        {
+          "id": "F3",
+          "label": "f_3",
+          "x": 1.5,
+          "y": 3.375,
+          "z": 0
+        },
+        {
+          "id": "F4",
+          "label": "f_4",
+          "x": 2.5,
+          "y": 3.125,
+          "z": 0
+        },
+        {
+          "id": "M",
+          "label": "M minh họa",
+          "x": 3,
+          "y": 0,
+          "z": 0
+        },
+        {
+          "id": "N",
+          "label": "N minh họa trên g(x)",
+          "x": 4.304,
+          "y": 2.302,
+          "z": 0
+        },
+        {
+          "id": "G1",
+          "label": "g_1",
+          "x": 2.5,
+          "y": 7,
+          "z": 0
+        },
+        {
+          "id": "G2",
+          "label": "g_2",
+          "x": 3,
+          "y": 4,
+          "z": 0
+        },
+        {
+          "id": "G3",
+          "label": "g_3",
+          "x": 3.5,
+          "y": 3,
+          "z": 0
+        },
+        {
+          "id": "G4",
+          "label": "g_4",
+          "x": 4,
+          "y": 2.5,
+          "z": 0
+        },
+        {
+          "id": "G5",
+          "label": "g_5",
+          "x": 5,
+          "y": 2,
+          "z": 0
+        },
+        {
+          "id": "G6",
+          "label": "g_6",
+          "x": 6,
+          "y": 1.75,
+          "z": 0
+        },
+        {
+          "id": "G7",
+          "label": "g_7",
+          "x": 8,
+          "y": 1.5,
+          "z": 0
+        }
+      ],
+      "lines": [
+        {
+          "id": "OA",
+          "from": "O",
+          "to": "A",
+          "style": "solid"
+        },
+        {
+          "id": "AB",
+          "from": "A",
+          "to": "B",
+          "style": "solid"
+        },
+        {
+          "id": "BC",
+          "from": "B",
+          "to": "C",
+          "style": "solid"
+        },
+        {
+          "id": "CO",
+          "from": "C",
+          "to": "O",
+          "style": "solid"
+        },
+        {
+          "id": "fseg1",
+          "from": "O",
+          "to": "F1",
+          "style": "dashed"
+        },
+        {
+          "id": "fseg2",
+          "from": "F1",
+          "to": "F2",
+          "style": "dashed"
+        },
+        {
+          "id": "fseg3",
+          "from": "F2",
+          "to": "F3",
+          "style": "dashed"
+        },
+        {
+          "id": "fseg4",
+          "from": "F3",
+          "to": "B",
+          "style": "dashed"
+        },
+        {
+          "id": "fseg5",
+          "from": "B",
+          "to": "F4",
+          "style": "dashed"
+        },
+        {
+          "id": "fseg6",
+          "from": "F4",
+          "to": "C",
+          "style": "dashed"
+        },
+        {
+          "id": "gseg1",
+          "from": "G1",
+          "to": "G2",
+          "style": "solid"
+        },
+        {
+          "id": "gseg2",
+          "from": "G2",
+          "to": "G3",
+          "style": "solid"
+        },
+        {
+          "id": "gseg3",
+          "from": "G3",
+          "to": "G4",
+          "style": "solid"
+        },
+        {
+          "id": "gseg4",
+          "from": "G4",
+          "to": "N",
+          "style": "solid"
+        },
+        {
+          "id": "gseg5",
+          "from": "N",
+          "to": "G5",
+          "style": "solid"
+        },
+        {
+          "id": "gseg6",
+          "from": "G5",
+          "to": "G6",
+          "style": "solid"
+        },
+        {
+          "id": "gseg7",
+          "from": "G6",
+          "to": "G7",
+          "style": "solid"
+        },
+        {
+          "id": "MN",
+          "from": "M",
+          "to": "N",
+          "style": "bold"
+        }
+      ],
+      "confidence": 1
+    }
+  },
+  {
+    "id": 6,
+    "name": "Demo Câu 6",
+    "geometry": {
+      "name": "Khối chóp tứ giác đều cạnh 20 và phần rỗng bên trong",
+      "points": [
+        {
+          "id": "A",
+          "label": "A",
+          "x": -10,
+          "y": -10,
+          "z": 0
+        },
+        {
+          "id": "B",
+          "label": "B",
+          "x": 10,
+          "y": -10,
+          "z": 0
+        },
+        {
+          "id": "C",
+          "label": "C",
+          "x": 10,
+          "y": 10,
+          "z": 0
+        },
+        {
+          "id": "D",
+          "label": "D",
+          "x": -10,
+          "y": 10,
+          "z": 0
+        },
+        {
+          "id": "O",
+          "label": "O",
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        {
+          "id": "S",
+          "label": "S",
+          "x": 0,
+          "y": 0,
+          "z": 14.1421356237
+        },
+        {
+          "id": "G1",
+          "label": "G1",
+          "x": 0,
+          "y": -6.6666666667,
+          "z": 4.7140452079
+        },
+        {
+          "id": "G2",
+          "label": "G2",
+          "x": 6.6666666667,
+          "y": 0,
+          "z": 4.7140452079
+        },
+        {
+          "id": "G3",
+          "label": "G3",
+          "x": 0,
+          "y": 6.6666666667,
+          "z": 4.7140452079
+        },
+        {
+          "id": "G4",
+          "label": "G4",
+          "x": -6.6666666667,
+          "y": 0,
+          "z": 4.7140452079
+        }
+      ],
+      "lines": [
+        {
+          "id": "AB",
+          "from": "A",
+          "to": "B",
+          "style": "solid"
+        },
+        {
+          "id": "BC",
+          "from": "B",
+          "to": "C",
+          "style": "solid"
+        },
+        {
+          "id": "CD",
+          "from": "C",
+          "to": "D",
+          "style": "solid"
+        },
+        {
+          "id": "DA",
+          "from": "D",
+          "to": "A",
+          "style": "solid"
+        },
+        {
+          "id": "SA",
+          "from": "S",
+          "to": "A",
+          "style": "solid"
+        },
+        {
+          "id": "SB",
+          "from": "S",
+          "to": "B",
+          "style": "solid"
+        },
+        {
+          "id": "SC",
+          "from": "S",
+          "to": "C",
+          "style": "solid"
+        },
+        {
+          "id": "SD",
+          "from": "S",
+          "to": "D",
+          "style": "solid"
+        },
+        {
+          "id": "SO",
+          "from": "S",
+          "to": "O",
+          "style": "dashed"
+        },
+        {
+          "id": "G1G2",
+          "from": "G1",
+          "to": "G2",
+          "style": "solid"
+        },
+        {
+          "id": "G2G3",
+          "from": "G2",
+          "to": "G3",
+          "style": "solid"
+        },
+        {
+          "id": "G3G4",
+          "from": "G3",
+          "to": "G4",
+          "style": "solid"
+        },
+        {
+          "id": "G4G1",
+          "from": "G4",
+          "to": "G1",
+          "style": "solid"
+        },
+        {
+          "id": "SG1",
+          "from": "S",
+          "to": "G1",
+          "style": "solid"
+        },
+        {
+          "id": "SG2",
+          "from": "S",
+          "to": "G2",
+          "style": "solid"
+        },
+        {
+          "id": "SG3",
+          "from": "S",
+          "to": "G3",
+          "style": "solid"
+        },
+        {
+          "id": "SG4",
+          "from": "S",
+          "to": "G4",
+          "style": "solid"
+        },
+        {
+          "id": "OG1",
+          "from": "O",
+          "to": "G1",
+          "style": "solid"
+        },
+        {
+          "id": "OG2",
+          "from": "O",
+          "to": "G2",
+          "style": "solid"
+        },
+        {
+          "id": "OG3",
+          "from": "O",
+          "to": "G3",
+          "style": "solid"
+        },
+        {
+          "id": "OG4",
+          "from": "O",
+          "to": "G4",
+          "style": "solid"
+        }
+      ],
+      "confidence": 1
+    }
+  },
+  {
+    "id": 7,
+    "name": "Demo Câu 7",
+    "geometry": {
+      "name": "Mo hinh san nha va duong day dien ngan nhat",
+      "points": [
+        {
+          "id": "M",
+          "label": "M",
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        {
+          "id": "N",
+          "label": "N",
+          "x": 8,
+          "y": 0,
+          "z": 0
+        },
+        {
+          "id": "P",
+          "label": "P",
+          "x": 8,
+          "y": 12,
+          "z": 0
+        },
+        {
+          "id": "Q",
+          "label": "Q",
+          "x": 0,
+          "y": 12,
+          "z": 0
+        },
+        {
+          "id": "A0",
+          "label": "A0",
+          "x": 0,
+          "y": 3,
+          "z": 0
+        },
+        {
+          "id": "A",
+          "label": "A",
+          "x": 0,
+          "y": 3,
+          "z": 3
+        },
+        {
+          "id": "I",
+          "label": "I",
+          "x": 0,
+          "y": 12,
+          "z": 4
+        },
+        {
+          "id": "J",
+          "label": "J",
+          "x": 8,
+          "y": 12,
+          "z": 4
+        },
+        {
+          "id": "U",
+          "label": "U",
+          "x": 8,
+          "y": 2,
+          "z": 4
+        },
+        {
+          "id": "V",
+          "label": "V",
+          "x": 0,
+          "y": 2,
+          "z": 4
+        },
+        {
+          "id": "B",
+          "label": "B",
+          "x": 2.1428571429,
+          "y": 12,
+          "z": 3.8571428571
+        },
+        {
+          "id": "C",
+          "label": "C",
+          "x": 5.1428571429,
+          "y": 12,
+          "z": 3.8571428571
+        },
+        {
+          "id": "O",
+          "label": "O",
+          "x": 5.5,
+          "y": 10.5,
+          "z": 4
+        },
+        {
+          "id": "D",
+          "label": "D",
+          "x": 8,
+          "y": 0,
+          "z": 3
+        },
+        {
+          "id": "G",
+          "label": "G",
+          "x": 0,
+          "y": 0,
+          "z": 10
+        },
+        {
+          "id": "E",
+          "label": "E",
+          "x": 0,
+          "y": 0,
+          "z": 7.7058823529
+        },
+        {
+          "id": "F",
+          "label": "F",
+          "x": 0,
+          "y": 0,
+          "z": 9.7058823529
+        },
+        {
+          "id": "H",
+          "label": "H",
+          "x": 0.5,
+          "y": 0,
+          "z": 10
+        }
+      ],
+      "lines": [
+        {
+          "id": "ground_MN",
+          "from": "M",
+          "to": "N",
+          "style": "solid"
+        },
+        {
+          "id": "ground_NP",
+          "from": "N",
+          "to": "P",
+          "style": "solid"
+        },
+        {
+          "id": "ground_PQ",
+          "from": "P",
+          "to": "Q",
+          "style": "solid"
+        },
+        {
+          "id": "ground_QM",
+          "from": "Q",
+          "to": "M",
+          "style": "solid"
+        },
+        {
+          "id": "gate_pole",
+          "from": "A0",
+          "to": "A",
+          "style": "solid"
+        },
+        {
+          "id": "tree_MG",
+          "from": "M",
+          "to": "G",
+          "style": "solid"
+        },
+        {
+          "id": "lamp_ND",
+          "from": "N",
+          "to": "D",
+          "style": "solid"
+        },
+        {
+          "id": "wall_QI",
+          "from": "Q",
+          "to": "I",
+          "style": "solid"
+        },
+        {
+          "id": "wall_PJ",
+          "from": "P",
+          "to": "J",
+          "style": "solid"
+        },
+        {
+          "id": "wall_IJ",
+          "from": "I",
+          "to": "J",
+          "style": "solid"
+        },
+        {
+          "id": "roof_JU",
+          "from": "J",
+          "to": "U",
+          "style": "solid"
+        },
+        {
+          "id": "roof_UV",
+          "from": "U",
+          "to": "V",
+          "style": "solid"
+        },
+        {
+          "id": "roof_VI",
+          "from": "V",
+          "to": "I",
+          "style": "solid"
+        },
+        {
+          "id": "wire_AB",
+          "from": "A",
+          "to": "B",
+          "style": "wire"
+        },
+        {
+          "id": "wire_BC",
+          "from": "B",
+          "to": "C",
+          "style": "wire"
+        },
+        {
+          "id": "wire_CO",
+          "from": "C",
+          "to": "O",
+          "style": "wire"
+        },
+        {
+          "id": "wire_OD",
+          "from": "O",
+          "to": "D",
+          "style": "wire"
+        },
+        {
+          "id": "wire_DE",
+          "from": "D",
+          "to": "E",
+          "style": "wire"
+        },
+        {
+          "id": "wire_EF",
+          "from": "E",
+          "to": "F",
+          "style": "wire"
+        },
+        {
+          "id": "wire_FH",
+          "from": "F",
+          "to": "H",
+          "style": "wire"
+        },
+        {
+          "id": "offset_GH",
+          "from": "G",
+          "to": "H",
+          "style": "dashed"
+        }
+      ],
+      "confidence": 1
+    }
+  },
+  {
+    "id": 8,
+    "name": "Demo Câu 8",
+    "geometry": {
+      "name": "Khối trụ và khối nón giao nhau",
+      "points": [
+        {
+          "id": "O",
+          "label": "O",
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        {
+          "id": "Op",
+          "label": "O'",
+          "x": 0,
+          "y": 0,
+          "z": 4
+        },
+        {
+          "id": "I",
+          "label": "I",
+          "x": 2,
+          "y": 0,
+          "z": 0
+        },
+        {
+          "id": "S",
+          "label": "S",
+          "x": 2,
+          "y": 0,
+          "z": 4
+        },
+        {
+          "id": "A",
+          "label": "A",
+          "x": 4,
+          "y": 0,
+          "z": 0
+        },
+        {
+          "id": "B",
+          "label": "B",
+          "x": 2,
+          "y": 2,
+          "z": 0
+        },
+        {
+          "id": "C",
+          "label": "C",
+          "x": 2,
+          "y": -2,
+          "z": 0
+        },
+        {
+          "id": "D",
+          "label": "D",
+          "x": -2,
+          "y": 0,
+          "z": 0
+        },
+        {
+          "id": "E",
+          "label": "E",
+          "x": 0,
+          "y": 2,
+          "z": 0
+        },
+        {
+          "id": "F",
+          "label": "F",
+          "x": 0,
+          "y": -2,
+          "z": 0
+        },
+        {
+          "id": "Dp",
+          "label": "D'",
+          "x": -2,
+          "y": 0,
+          "z": 4
+        },
+        {
+          "id": "Ep",
+          "label": "E'",
+          "x": 0,
+          "y": 2,
+          "z": 4
+        },
+        {
+          "id": "Fp",
+          "label": "F'",
+          "x": 0,
+          "y": -2,
+          "z": 4
+        },
+        {
+          "id": "Ip",
+          "label": "I'",
+          "x": 2,
+          "y": 0,
+          "z": 4
+        }
+      ],
+      "lines": [
+        {
+          "id": "axis_cylinder",
+          "from": "O",
+          "to": "Op",
+          "style": "dashed"
+        },
+        {
+          "id": "axis_cone",
+          "from": "I",
+          "to": "S",
+          "style": "dashed"
+        },
+        {
+          "id": "gen_cone_1",
+          "from": "S",
+          "to": "A",
+          "style": "solid"
+        },
+        {
+          "id": "gen_cone_2",
+          "from": "S",
+          "to": "B",
+          "style": "solid"
+        },
+        {
+          "id": "gen_cone_3",
+          "from": "S",
+          "to": "C",
+          "style": "solid"
+        },
+        {
+          "id": "gen_cone_4",
+          "from": "S",
+          "to": "O",
+          "style": "solid"
+        },
+        {
+          "id": "cyl_side_1",
+          "from": "D",
+          "to": "Dp",
+          "style": "solid"
+        },
+        {
+          "id": "cyl_side_2",
+          "from": "E",
+          "to": "Ep",
+          "style": "solid"
+        },
+        {
+          "id": "cyl_side_3",
+          "from": "F",
+          "to": "Fp",
+          "style": "solid"
+        },
+        {
+          "id": "cyl_side_4",
+          "from": "I",
+          "to": "Ip",
+          "style": "solid"
+        }
+      ],
+      "circles": [
+        {
+          "id": "C1",
+          "label": "Đáy dưới khối trụ",
+          "center": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "radius": 2,
+          "normal": {
+            "x": 0,
+            "y": 0,
+            "z": 1
+          }
+        },
+        {
+          "id": "C2",
+          "label": "Đáy trên khối trụ",
+          "center": {
+            "x": 0,
+            "y": 0,
+            "z": 4
+          },
+          "radius": 2,
+          "normal": {
+            "x": 0,
+            "y": 0,
+            "z": 1
+          }
+        },
+        {
+          "id": "C3",
+          "label": "Đáy khối nón",
+          "center": {
+            "x": 2,
+            "y": 0,
+            "z": 0
+          },
+          "radius": 2,
+          "normal": {
+            "x": 0,
+            "y": 0,
+            "z": 1
+          }
+        }
+      ],
+      "cylinders": [
+        {
+          "id": "T",
+          "label": "Khối trụ T",
+          "center1": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "center2": {
+            "x": 0,
+            "y": 0,
+            "z": 4
+          },
+          "radius": 2
+        }
+      ],
+      "cones": [
+        {
+          "id": "N",
+          "label": "Khối nón N",
+          "apex": {
+            "x": 2,
+            "y": 0,
+            "z": 4
+          },
+          "baseCenter": {
+            "x": 2,
+            "y": 0,
+            "z": 0
+          },
+          "radius": 2
+        }
+      ],
+      "confidence": 1
+    }
+  },
+  {
+    "id": 9,
+    "name": "Demo Câu 9",
+    "geometry": {
+      "name": "Ba cột đỡ quả cầu",
+      "points": [
+        {
+          "id": "A",
+          "label": "A \\equiv O",
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        {
+          "id": "B",
+          "label": "B",
+          "x": 4,
+          "y": 0,
+          "z": 0
+        },
+        {
+          "id": "C",
+          "label": "C",
+          "x": 0,
+          "y": 4,
+          "z": 0
+        },
+        {
+          "id": "A1",
+          "label": "A1",
+          "x": 0,
+          "y": 0,
+          "z": 10
+        },
+        {
+          "id": "B1",
+          "label": "B1",
+          "x": 4,
+          "y": 0,
+          "z": 6
+        },
+        {
+          "id": "C1",
+          "label": "C1",
+          "x": 0,
+          "y": 4,
+          "z": 6
+        },
+        {
+          "id": "I",
+          "label": "I",
+          "x": 3.2915,
+          "y": 3.2915,
+          "z": 9.2915
+        },
+        {
+          "id": "T",
+          "label": "T",
+          "x": 3.2915,
+          "y": 3.2915,
+          "z": 14
+        }
+      ],
+      "lines": [
+        {
+          "id": "l_AB",
+          "from": "A",
+          "to": "B",
+          "style": "solid"
+        },
+        {
+          "id": "l_AC",
+          "from": "A",
+          "to": "C",
+          "style": "solid"
+        },
+        {
+          "id": "l_BC",
+          "from": "B",
+          "to": "C",
+          "style": "solid"
+        },
+        {
+          "id": "post_A",
+          "from": "A",
+          "to": "A1",
+          "style": "solid"
+        },
+        {
+          "id": "post_B",
+          "from": "B",
+          "to": "B1",
+          "style": "solid"
+        },
+        {
+          "id": "post_C",
+          "from": "C",
+          "to": "C1",
+          "style": "solid"
+        },
+        {
+          "id": "radius_IA1",
+          "from": "I",
+          "to": "A1",
+          "style": "dashed"
+        },
+        {
+          "id": "radius_IB1",
+          "from": "I",
+          "to": "B1",
+          "style": "dashed"
+        },
+        {
+          "id": "radius_IC1",
+          "from": "I",
+          "to": "C1",
+          "style": "dashed"
+        },
+        {
+          "id": "radius_IT",
+          "from": "I",
+          "to": "T",
+          "style": "dashed"
+        }
+      ],
+      "spheres": [
+        {
+          "id": "sphere",
+          "label": "R = 10 - 2√7 ≈ 4.71 m",
+          "center": {
+            "x": 3.2915,
+            "y": 3.2915,
+            "z": 9.2915
+          },
+          "radius": 4.7085
+        }
+      ],
+      "cylinders": [
+        {
+          "id": "col_A",
+          "center1": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "center2": {
+            "x": 0,
+            "y": 0,
+            "z": 10
+          },
+          "radius": 0.08
+        },
+        {
+          "id": "col_B",
+          "center1": {
+            "x": 4,
+            "y": 0,
+            "z": 0
+          },
+          "center2": {
+            "x": 4,
+            "y": 0,
+            "z": 6
+          },
+          "radius": 0.08
+        },
+        {
+          "id": "col_C",
+          "center1": {
+            "x": 0,
+            "y": 4,
+            "z": 0
+          },
+          "center2": {
+            "x": 0,
+            "y": 4,
+            "z": 6
+          },
+          "radius": 0.08
+        }
+      ],
+      "confidence": 1
+    }
+  },
+  {
+    "id": 10,
+    "name": "Demo Câu 10",
+    "geometry": {
+      "name": "Bóng tấm pin hình chữ nhật - diện tích lớn nhất 15.8 m^2",
+      "points": [
+        {
+          "id": "I",
+          "label": "I",
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        {
+          "id": "A",
+          "label": "A",
+          "x": -1,
+          "y": 0,
+          "z": 0
+        },
+        {
+          "id": "B",
+          "label": "B",
+          "x": 1,
+          "y": 0,
+          "z": 0
+        },
+        {
+          "id": "S",
+          "label": "S",
+          "x": 0,
+          "y": 0,
+          "z": 4
+        },
+        {
+          "id": "D",
+          "label": "D",
+          "x": -1,
+          "y": 1.8,
+          "z": 2.4
+        },
+        {
+          "id": "C",
+          "label": "C",
+          "x": 1,
+          "y": 1.8,
+          "z": 2.4
+        },
+        {
+          "id": "Dp",
+          "label": "D'",
+          "x": -2.5,
+          "y": 4.5,
+          "z": 0
+        },
+        {
+          "id": "Cp",
+          "label": "C'",
+          "x": 2.5,
+          "y": 4.5,
+          "z": 0
+        }
+      ],
+      "lines": [
+        {
+          "id": "l_AB",
+          "from": "A",
+          "to": "B",
+          "style": "solid"
+        },
+        {
+          "id": "l_BC",
+          "from": "B",
+          "to": "C",
+          "style": "solid"
+        },
+        {
+          "id": "l_CD",
+          "from": "C",
+          "to": "D",
+          "style": "solid"
+        },
+        {
+          "id": "l_DA",
+          "from": "D",
+          "to": "A",
+          "style": "solid"
+        },
+        {
+          "id": "l_BCp",
+          "from": "B",
+          "to": "Cp",
+          "style": "solid"
+        },
+        {
+          "id": "l_CpDp",
+          "from": "Cp",
+          "to": "Dp",
+          "style": "solid"
+        },
+        {
+          "id": "l_DpA",
+          "from": "Dp",
+          "to": "A",
+          "style": "solid"
+        },
+        {
+          "id": "l_SC",
+          "from": "S",
+          "to": "C",
+          "style": "dashed"
+        },
+        {
+          "id": "l_CCp",
+          "from": "C",
+          "to": "Cp",
+          "style": "dashed"
+        },
+        {
+          "id": "l_SD",
+          "from": "S",
+          "to": "D",
+          "style": "dashed"
+        },
+        {
+          "id": "l_DDp",
+          "from": "D",
+          "to": "Dp",
+          "style": "dashed"
+        },
+        {
+          "id": "l_SI",
+          "from": "S",
+          "to": "I",
+          "style": "dotted"
+        }
+      ],
+      "confidence": 1
+    }
+  }
+]
