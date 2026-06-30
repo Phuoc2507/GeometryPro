@@ -1,4 +1,4 @@
-import PayOS from '@payos/node';
+import { PayOS } from '@payos/node';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
