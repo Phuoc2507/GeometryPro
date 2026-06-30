@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '@/context/AuthContext';
 import { Hexagon, GraduationCap, Presentation, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
@@ -7,6 +8,7 @@ const LAST_MODE_KEY = 'geo3d:last-mode';
 type Mode = 'student' | 'teacher';
 
 const Landing = () => {
+  const { user } = useAuth();
   const navigate = useNavigate();
 
   const lastMode = localStorage.getItem(LAST_MODE_KEY) as Mode | null;
@@ -83,17 +85,19 @@ const Landing = () => {
       )}
 
       {/* Auth link */}
-      <div className="mt-8 text-center">
-        <p className="text-sm text-muted-foreground">
-          Lưu hình và xem lịch sử?{' '}
-          <button
-            onClick={() => navigate('/auth')}
-            className="text-primary hover:underline font-medium"
-          >
-            Đăng nhập
-          </button>
-        </p>
-      </div>
+      {!user && (
+        <div className="mt-8 text-center">
+          <p className="text-sm text-muted-foreground">
+            Lưu hình và xem lịch sử?{' '}
+            <button
+              onClick={() => navigate('/auth')}
+              className="text-primary hover:underline font-medium"
+            >
+              Đăng nhập
+            </button>
+          </p>
+        </div>
+      )}
     </div>
   );
 };
