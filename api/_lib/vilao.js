@@ -1,168 +1,168 @@
-
+import https from 'https';
 
 const VILAO_BASE_URL = 'https://api.vilao.ai';
 const VILAO_MODEL = 'gx/gpt-5.5';
 const VILAO_API_KEY = 'sk-2806ea932a5fdf89ba0bde1c5f5b3239a7d4c831fb1e1f052a9d6a6d720dfd40';
 
-function isRetriableNetworkError(error) {
-  const msg = String(error?.message || '').toLowerCase();
-  return msg.includes('broken pipe')
-    || msg.includes('stream closed')
-    || msg.includes('connection error')
+function httpsRequest(url, options, bodyData, timeoutMs) {
+  return new Promise((resolve, reject) => {
+    const req = https.request(url, options, (res) => {
+      resolve(res);
+    });
+    
+    req.on('error', (err) => {
+      reject(err);
+    });
+
+    if (timeoutMs) {
+      req.setTimeout(timeoutMs, () => {
+        req.destroy(new Error('Request timed out'));
+      });
+    }
+
+    if (bodyData) {
+      req.write(bodyData);
+    }
+    req.end();
+  });
+}
+
+function isNetworkError(error) {
+  if (!error) return false;
+  const msg = (error.message || '').toLowerCase();
+  return msg.includes('timeout')
+    || msg.includes('econnreset')
     || msg.includes('connection reset')
     || msg.includes('network')
     || msg.includes('econnrefused')
     || msg.includes('fetch failed');
 }
 
-function isAbortError(error) {
-  return error?.name === 'AbortError' || String(error?.message || '').toLowerCase().includes('aborted');
-}
-
 async function sleepMs(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-/**
- * Call Vilao API.
- */
-export async function callVilao(systemPrompt, userMessage, options = {}) {
+export async function callVilao(systemPrompt, userPrompt, options = {}) {
   const {
     maxTokens = 4096,
     timeoutMs = 180000,
-    useJsonMode = false,
-    imageBase64,
+    imageBase64 = null,
+    aiModel = 'low',
+    useReasoning = false,
+    onStream = null,
   } = options;
 
+  let modelToUse = VILAO_MODEL;
+  if (aiModel === 'high') {
+    modelToUse = 'ant/claude-sonnet-4-6';
+  }
+  
+  if (useReasoning) {
+    modelToUse = 'ox/o1-mini';
+  }
+
+  const currentApiKey = process.env.VILAO_API_KEY || VILAO_API_KEY;
+
+  const messages = [];
+  if (systemPrompt) {
+    messages.push({ role: 'system', content: systemPrompt });
+  }
+
+  if (imageBase64) {
+    const dataUrl = imageBase64.startsWith('data:') 
+      ? imageBase64 
+      : "data:image/jpeg;base64," + imageBase64;
+    messages.push({
+      role: 'user',
+      content: [
+        { type: 'text', text: userPrompt },
+        { type: 'image_url', image_url: { url: dataUrl } }
+      ]
+    });
+  } else {
+    messages.push({ role: 'user', content: userPrompt });
+  }
+
+  const bodyObj = {
+    model: modelToUse,
+    messages: messages,
+    max_tokens: maxTokens,
+  };
+
+  if (!useReasoning && modelToUse !== 'ox/o1-mini') {
+    bodyObj.response_format = { type: 'json_object' };
+  }
+
   const maxAttempts = 2;
+  let attempt = 0;
 
-  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), timeoutMs);
-
+  while (attempt < maxAttempts) {
     try {
-      const userMessageContent = imageBase64
-        ? [
-            { type: 'text', text: userMessage },
-            {
-              type: 'image_url',
-              image_url: {
-                url: imageBase64.startsWith('data:')
-                  ? imageBase64
-                  : `data:image/jpeg;base64,${imageBase64}`
-              }
-            }
-          ]
-        : userMessage;
-
-      // Default to gx/gpt-5.5
-      let resolvedModel = 'gx/gpt-5.5';
-      let currentApiKey = 'sk-2806ea932a5fdf89ba0bde1c5f5b3239a7d4c831fb1e1f052a9d6a6d720dfd40';
-
-      if (options.aiModel === 'low') {
-        resolvedModel = 'occ/claude-haiku-4-5-20251001';
-        currentApiKey = 'sk-4280cfba5e7aa2cfe9dd5b3715ca9987ec70037be0094b8e129c6c750ce90af5';
-      } else if (options.aiModel === 'high' || options.aiModel === 'high-medium') {
-        resolvedModel = 'ant/claude-sonnet-4-6';
-        currentApiKey = 'sk-4280cfba5e7aa2cfe9dd5b3715ca9987ec70037be0094b8e129c6c750ce90af5';
-      }
-
-      const bodyObj = {
-        model: resolvedModel,
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: userMessageContent },
-        ],
-        max_tokens: maxTokens,
-        temperature: 0,
-        stream: !!options.onStream,
-      };
-
-      // Handle reasoning effort for models that support it (Vilao translates it)
-      if (options.useReasoning) {
-        bodyObj.reasoning_effort = "high";
-      } else if (options.aiModel === 'medium' || options.aiModel === 'high-medium') {
-        bodyObj.reasoning_effort = "medium";
-      } else {
-        bodyObj.reasoning_effort = "low";
-      }
-
-      if (useJsonMode) {
-        bodyObj.response_format = { type: 'json_object' };
-      }
-
-      const headers = { 
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${currentApiKey}`
-      };
-
-      const response = await fetch(`${VILAO_BASE_URL}/v1/chat/completions`, {
+      const bodyData = JSON.stringify(bodyObj);
+      const requestOptions = {
         method: 'POST',
-        headers,
-        signal: controller.signal,
-        body: JSON.stringify(bodyObj),
-      });
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': "Bearer " + currentApiKey,
+          'Content-Length': Buffer.byteLength(bodyData)
+        }
+      };
 
-      if (!response.ok) {
+      const response = await httpsRequest(VILAO_BASE_URL + "/v1/chat/completions", requestOptions, bodyData, timeoutMs);
+
+      if (response.statusCode < 200 || response.statusCode >= 300) {
         let errorText = '';
-        try { errorText = await response.text(); } catch {}
+        response.on('data', chunk => errorText += chunk);
+        await new Promise(r => response.on('end', r));
 
-        console.error('Vilao error:', response.status, errorText);
+        console.error('Vilao error:', response.statusCode, errorText);
 
-        if ([502, 503, 504].includes(response.status) && attempt < maxAttempts) {
-          console.warn(`Vilao ${response.status}, retry attempt ${attempt + 1}/${maxAttempts}`);
-          await sleepMs(250 * attempt);
+        if ([502, 503, 504].includes(response.statusCode) && attempt < maxAttempts - 1) {
+          console.warn("Vilao " + response.statusCode + ", retry attempt " + attempt);
+          await sleepMs(500 * attempt);
+          attempt++;
           continue;
         }
 
-        throw new Error(`Vilao API error: ${response.status} — ${errorText.slice(0, 200)}`);
+        throw new Error("Vilao API error: " + response.statusCode + " " + errorText);
       }
 
-      if (bodyObj.stream) {
-        const reader = response.body.getReader();
-        const decoder = new TextDecoder("utf-8");
-        let fullContent = "";
-        let buffer = "";
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          buffer += decoder.decode(value, { stream: true });
-          const lines = buffer.split('\n');
-          buffer = lines.pop(); // keep the last incomplete line in buffer
-          for (const line of lines) {
-            if (line.startsWith('data: ')) {
-              const dataStr = line.slice(6).trim();
-              if (dataStr === '[DONE]') break;
-              try {
-                const data = JSON.parse(dataStr);
-                const text = data.choices?.[0]?.delta?.content || "";
-                if (text) {
-                  fullContent += text;
-                  if (options.onStream) options.onStream(text);
-                }
-              } catch (e) {}
-            }
-          }
+      let dataText = '';
+      for await (const chunk of response) {
+        const text = chunk.toString();
+        dataText += text;
+        if (onStream) {
+          onStream(text);
         }
-        return fullContent.trim();
       }
 
-      const aiResponse = await response.json();
-      const content = aiResponse.choices?.[0]?.message?.content?.trim();
-      if (!content) throw new Error('Vilao trả về rỗng');
-      return content;
+      let data;
+      try {
+        data = JSON.parse(dataText);
+      } catch (e) {
+        throw new Error("Failed to parse Vilao response: " + dataText.substring(0, 100));
+      }
 
-    } catch (error) {
-      if (attempt < maxAttempts && !isAbortError(error) && isRetriableNetworkError(error)) {
-        console.warn(`Transient Vilao network error, retry ${attempt + 1}/${maxAttempts}:`, error?.message);
-        await sleepMs(250 * attempt);
+      if (data.choices && data.choices.length > 0) {
+        const content = data.choices[0].message?.content || '';
+        if (content.trim() === '') {
+          throw new Error('Vilao returned empty content');
+        }
+        return content;
+      } else {
+        throw new Error('Invalid response structure from Vilao');
+      }
+
+    } catch (err) {
+      if (isNetworkError(err) && attempt < maxAttempts - 1) {
+        console.warn("Vilao network error: " + err.message + ", retry attempt " + attempt);
+        await sleepMs(1000 * attempt);
+        attempt++;
         continue;
       }
-      throw error;
-    } finally {
-      clearTimeout(timeout);
+      throw err;
     }
   }
 
-  throw new Error('Vilao request failed after retries');
+  throw new Error('Vilao failed after maximum retries');
 }
