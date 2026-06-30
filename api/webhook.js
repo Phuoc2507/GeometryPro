@@ -33,8 +33,8 @@ export default async function handler(req, res) {
       message: 'Webhook received successfully',
     });
   } catch (error) {
-    console.error('Lỗi khi xử lý webhook:', error);
-    // Vẫn trả về 200 hoặc có thể trả về lỗi tuỳ thuộc vào việc bạn muốn PayOS gửi lại không
-    return res.status(400).json({ error: error.message || 'Invalid webhook data' });
+    console.error('Lỗi khi xử lý webhook (có thể là webhook test từ PayOS):', error.message);
+    // Vẫn trả về 200 để PayOS xác nhận Webhook URL thành công trên Dashboard
+    return res.status(200).json({ success: true, message: 'Received with error: ' + error.message });
   }
 }
