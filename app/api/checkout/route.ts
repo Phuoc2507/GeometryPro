@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import PayOS from "@payos/node";
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const PayOS = require("@payos/node");
 
 // @ts-ignore
 const payos = new PayOS(
