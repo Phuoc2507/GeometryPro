@@ -1,17 +1,17 @@
-import { callOllama } from './lib/ollama.js';
-import { callVilao } from './lib/vilao.js';
+import { callOllama } from './_lib/ollama.js';
+import { callVilao } from './_lib/vilao.js';
 import {
   parseJsonResponseWithAiRepair,
   formatSpecialPoints,
-} from './lib/jsonHelpers.js';
-import { normalizeGeometryData } from './lib/normalizeGeometry.js';
-import { isLikely3DPrompt, isLikelyFlatGeometry, applyApexLiftFallback } from './lib/flatGuard.js';
-import { buildGeometryFromPoints } from './lib/geometryBuilder.js';
-import { verifyConstraints, pointsToMap } from './lib/constraintVerify.js';
-import { BASE_PROMPT } from './prompts/prompts/base.js';
-import { LEVEL_STATIC, LEVEL_CINEMATIC } from './prompts/prompts/levels.js';
-import { STEP1_PARSE_PROMPT } from './prompts/prompts/classifier.js';
-import { getDescriptionsForTags } from './lib/tagDescriptions.js';
+} from './_lib/jsonHelpers.js';
+import { normalizeGeometryData } from './_lib/normalizeGeometry.js';
+import { isLikely3DPrompt, isLikelyFlatGeometry, applyApexLiftFallback } from './_lib/flatGuard.js';
+import { buildGeometryFromPoints } from './_lib/geometryBuilder.js';
+import { verifyConstraints, pointsToMap } from './_lib/constraintVerify.js';
+import { BASE_PROMPT } from './_prompts/prompts/base.js';
+import { LEVEL_STATIC, LEVEL_CINEMATIC } from './_prompts/prompts/levels.js';
+import { STEP1_PARSE_PROMPT } from './_prompts/prompts/classifier.js';
+import { getDescriptionsForTags } from './_lib/tagDescriptions.js';
 
 const DETAILED_MODEL = process.env.DETAILED_MODEL || 'ant/claude-sonnet-4-6';
 const DETAILED_API_KEY = process.env.DETAILED_API_KEY || '';

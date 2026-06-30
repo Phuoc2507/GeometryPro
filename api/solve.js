@@ -1,6 +1,6 @@
-import { callDeepSeek } from './lib/deepseek.js';
-import { parseJsonResponse, repairTruncatedJson } from './lib/jsonHelpers.js';
-import { SOLVE_SYSTEM_PROMPT, buildSolveUserMessage, buildCoordPreamble } from './lib/solvePrompts.js';
+import { callDeepSeek } from './_lib/deepseek.js';
+import { parseJsonResponse, repairTruncatedJson } from './_lib/jsonHelpers.js';
+import { SOLVE_SYSTEM_PROMPT, buildSolveUserMessage, buildCoordPreamble } from './_lib/solvePrompts.js';
 
 function parseSolveResponse(raw) {
   let text = raw

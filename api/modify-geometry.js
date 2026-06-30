@@ -1,6 +1,6 @@
-import { callOllama } from './lib/ollama.js';
-import { validateAndFixProjections } from './lib/postProcess.js';
-import { generateLatexCode } from './lib/generateLatex.js';
+import { callOllama } from './_lib/ollama.js';
+import { validateAndFixProjections } from './_lib/postProcess.js';
+import { generateLatexCode } from './_lib/generateLatex.js';
 
 const MODIFY_SYSTEM_PROMPT = `Bạn là chuyên gia chỉnh sửa hình học 3D cho học sinh Việt Nam (lớp 11-12). Nhận hình học hiện tại + yêu cầu chỉnh sửa → trả về hình học đã cập nhật.
 
