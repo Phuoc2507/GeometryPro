@@ -516,9 +516,14 @@ export function GeometryProvider({ children }: { children: React.ReactNode }) {
           },
         });
 
-        addToHistory(geometry, prompt);
+          const id = await addToHistory(geometry, prompt);
+          if (id) {
+            const url = new URL(window.location.href);
+            url.searchParams.set('id', id);
+            window.history.replaceState({}, '', url.toString());
+          }
 
-        toast({
+          toast({
           title: "✅ Vẽ xong!",
           description: `${geometry.name} (${modeLabels[mode] || mode}) — Nhấn để xem`,
           duration: 8000,
@@ -613,7 +618,12 @@ export function GeometryProvider({ children }: { children: React.ReactNode }) {
           },
         });
 
-        addToHistory(geometry, promptText);
+        const historyId = await addToHistory(geometry, promptText);
+        if (historyId) {
+          const url = new URL(window.location.href);
+          url.searchParams.set('id', historyId);
+          window.history.replaceState({}, '', url.toString());
+        }
 
         toast({ title: "✅ Vẽ xong!", description: `${geometry.name} (${modeLabels[mode] || mode}) — Nhấn để xem`, duration: 8000 });
 

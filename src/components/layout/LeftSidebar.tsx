@@ -129,6 +129,9 @@ function SidebarContent() {
   const handleLoadHistory = (item: typeof history[0]) => {
     if (context) {
       context.loadGeometry(item.geometry_data);
+      const url = new URL(window.location.href);
+      url.searchParams.set('id', item.id);
+      window.history.replaceState({}, '', url.toString());
     }
   };
 

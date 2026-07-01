@@ -138,6 +138,9 @@ export function AnimatedPlane3D({ plane, delay, isBuilding }: AnimatedPlane3DPro
           opacity={finalOpacity}
           side={THREE.DoubleSide}
           depthWrite={false}
+          polygonOffset={true}
+          polygonOffsetFactor={1}
+          polygonOffsetUnits={1}
         />
       </mesh>
 

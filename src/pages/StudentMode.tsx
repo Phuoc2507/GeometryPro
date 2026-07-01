@@ -5,8 +5,9 @@
  * Users paste problem → geometry drawn → click "Giải bài" → step-by-step solution.
  */
 import { useEffect, useRef } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { Home } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 import { GeometryProvider, useGeometryOptional } from '@/context/GeometryContext';
 import { CameraProvider } from '@/context/CameraContext';
 import { LeftSidebar, MobileSidebar } from '@/components/layout/LeftSidebar';
@@ -25,18 +26,40 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 function GeometryLoader() {
   const location = useLocation();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const context = useGeometryOptional();
   const hasLoaded = useRef(false);
 
   useEffect(() => {
-    if (!context) return;
+    if (!context || hasLoaded.current) return;
+    
     const state = location.state as { loadGeometry?: GeometryData } | null;
-    if (state?.loadGeometry && !hasLoaded.current) {
+    const urlId = searchParams.get('id');
+
+    const loadFromId = async (id: string) => {
+      try {
+        const { data, error } = await supabase
+          .from('saved_geometries')
+          .select('geometry_data')
+          .eq('id', id)
+          .single();
+        if (!error && data) {
+          hasLoaded.current = true;
+          context.loadGeometry(data.geometry_data as unknown as GeometryData);
+        }
+      } catch (err) {
+        console.error("Failed to load geometry from URL:", err);
+      }
+    };
+
+    if (state?.loadGeometry) {
       hasLoaded.current = true;
       context.loadGeometry(state.loadGeometry);
       navigate('/student', { replace: true, state: {} });
+    } else if (urlId) {
+      loadFromId(urlId);
     }
-  }, [location.state, context, navigate]);
+  }, [location.state, searchParams, context, navigate]);
 
   return null;
 }

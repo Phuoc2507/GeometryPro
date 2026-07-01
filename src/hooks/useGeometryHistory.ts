@@ -63,7 +63,7 @@ export function useGeometryHistory() {
     }
   }, [user, handleSupabaseError]);
 
-  const addToHistory = useCallback(async (geometry: GeometryData, prompt?: string) => {
+  const addToHistory = useCallback(async (geometry: GeometryData, prompt?: string): Promise<string | null> => {
     try {
       if (!user) {
         const newItem: HistoryItem = {
@@ -78,7 +78,7 @@ export function useGeometryHistory() {
           localStorage.setItem('geo3d_anonymous_history', JSON.stringify(newHistory));
           return newHistory;
         });
-        return;
+        return newItem.id;
       }
 
       const { data, error } = await supabase
@@ -100,9 +100,12 @@ export function useGeometryHistory() {
           ...data,
           geometry_data: data.geometry_data as unknown as GeometryData,
         }, ...prev].slice(0, 20));
+        return data.id;
       }
+      return null;
     } catch (err) {
-      handleSupabaseError(err, 'saving to history');
+      handleSupabaseError(err, 'adding to history');
+      return null;
     }
   }, [user, handleSupabaseError]);
 

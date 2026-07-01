@@ -125,6 +125,10 @@ export function AnimatedSurface({ surface, delay, isBuilding }: Props) {
           side={THREE.DoubleSide}
           clearcoat={1.0}
           clearcoatRoughness={0.1}
+          depthWrite={false}
+          polygonOffset={true}
+          polygonOffsetFactor={1}
+          polygonOffsetUnits={1}
         />
       </mesh>
     </group>
