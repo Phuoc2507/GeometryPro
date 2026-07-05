@@ -15,6 +15,7 @@ const StudentMode = React.lazy(() => import('./pages/StudentMode'));
 const TeacherMode = React.lazy(() => import('./pages/TeacherMode'));
 const Auth = React.lazy(() => import('./pages/Auth'));
 const SavedGeometries = React.lazy(() => import('./pages/SavedGeometries'));
+const Settings = React.lazy(() => import('./pages/Settings'));
 const NotFound = React.lazy(() => import('./pages/NotFound'));
 
 function PageLoader() {
@@ -44,6 +45,7 @@ const App = () => (
                   <Route path="/teacher" element={<TeacherMode />} />
                   <Route path="/auth" element={<Auth />} />
                   <Route path="/saved" element={<SavedGeometries />} />
+                  <Route path="/settings" element={<Settings />} />
                   {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                   <Route path="*" element={<NotFound />} />
                 </Routes>
