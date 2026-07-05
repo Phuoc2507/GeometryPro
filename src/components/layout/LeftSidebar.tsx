@@ -23,6 +23,7 @@ import { useProjects } from '@/hooks/useProjects';
 import { useAuth } from '@/context/AuthContext';
 import { QueueItem } from '@/types/geometry';
 import { Project } from '@/types/project';
+import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { formatDistanceToNow } from 'date-fns';
 import { vi } from 'date-fns/locale';
@@ -126,6 +127,7 @@ function QueueItemCard({ item, isActive, onView, onRemove }: {
 function SidebarContent() {
   const context = useGeometryOptional();
   const { user } = useAuth();
+  const { toast } = useToast();
   const { history, deleteHistoryItem, renameHistoryItem, moveToProject } = useGeometryHistory();
   const { projects, createProject, deleteProject } = useProjects();
   
@@ -182,6 +184,13 @@ function SidebarContent() {
   };
 
   const openNewProject = (itemIdToMove: string | null = null) => {
+    if (!user) {
+      toast({
+        title: "Chưa đăng nhập",
+        description: "Vui lòng đăng nhập để tạo và quản lý Dự án.",
+      });
+      return;
+    }
     setPendingMoveItemId(itemIdToMove);
     setNewProjectInput("");
     setNewProjectDialogOpen(true);
@@ -205,11 +214,8 @@ function SidebarContent() {
         <div className="flex items-center pl-2 shrink-0" onClick={e => e.stopPropagation()}>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <button 
-                className="flex items-center justify-center h-7 w-7 rounded-md bg-red-500 border border-transparent text-white shrink-0 shadow-sm font-bold"
-                style={{ display: 'flex', minWidth: '28px', minHeight: '28px', opacity: 1, visibility: 'visible', padding: '4px', zIndex: 50 }}
-              >
-                ...
+              <button className="flex items-center justify-center h-7 w-7 rounded-md bg-background hover:bg-secondary border border-transparent hover:border-border text-foreground shrink-0 shadow-sm">
+                <MoreHorizontal className="w-4 h-4" />
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-48">
@@ -307,11 +313,10 @@ function SidebarContent() {
           <div className="flex items-center justify-between px-3 mb-1 group">
             <span className="text-sm font-semibold text-muted-foreground">Dự án</span>
             <button 
-              className="flex items-center justify-center h-6 w-6 rounded-md hover:bg-secondary text-muted-foreground shrink-0 bg-red-500 text-white font-bold"
-              style={{ display: 'flex', minWidth: '24px', minHeight: '24px', opacity: 1, visibility: 'visible' }}
+              className="flex items-center justify-center h-6 w-6 rounded-md hover:bg-secondary text-muted-foreground shrink-0"
               onClick={(e) => { e.stopPropagation(); openNewProject(); }}
             >
-              +
+              <Plus className="w-4 h-4" />
             </button>
           </div>
           
