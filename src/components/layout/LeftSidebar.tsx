@@ -205,8 +205,11 @@ function SidebarContent() {
         <div className="flex items-center pl-2 shrink-0" onClick={e => e.stopPropagation()}>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <button className="flex items-center justify-center h-7 w-7 rounded-md bg-background hover:bg-secondary border border-transparent hover:border-border text-foreground shrink-0 shadow-sm">
-                <MoreHorizontal className="w-4 h-4" />
+              <button 
+                className="flex items-center justify-center h-7 w-7 rounded-md bg-red-500 border border-transparent text-white shrink-0 shadow-sm font-bold"
+                style={{ display: 'flex', minWidth: '28px', minHeight: '28px', opacity: 1, visibility: 'visible', padding: '4px', zIndex: 50 }}
+              >
+                ...
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-48">
@@ -304,10 +307,11 @@ function SidebarContent() {
           <div className="flex items-center justify-between px-3 mb-1 group">
             <span className="text-sm font-semibold text-muted-foreground">Dự án</span>
             <button 
-              className="flex items-center justify-center h-6 w-6 rounded-md hover:bg-secondary text-muted-foreground shrink-0"
+              className="flex items-center justify-center h-6 w-6 rounded-md hover:bg-secondary text-muted-foreground shrink-0 bg-red-500 text-white font-bold"
+              style={{ display: 'flex', minWidth: '24px', minHeight: '24px', opacity: 1, visibility: 'visible' }}
               onClick={(e) => { e.stopPropagation(); openNewProject(); }}
             >
-              <Plus className="w-4 h-4" />
+              +
             </button>
           </div>
           
