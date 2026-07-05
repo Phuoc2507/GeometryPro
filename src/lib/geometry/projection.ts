@@ -415,6 +415,25 @@ export const generateProjectedLatex = (
 
     latex += `\n  % Nhãn các đỉnh\n`;
 
+    const getTikzAnchor = (p: any) => {
+        const bestAngle = getBestLabelAngle(p.id, p.projected, geometry.lines, projected, cameraPos, target);
+        let angleDeg = (bestAngle * 180) / Math.PI;
+        
+        while (angleDeg <= -180) angleDeg += 360;
+        while (angleDeg > 180) angleDeg -= 360;
+        
+        if (angleDeg >= -22.5 && angleDeg < 22.5) return 'right';
+        if (angleDeg >= 22.5 && angleDeg < 67.5) return 'above right';
+        if (angleDeg >= 67.5 && angleDeg < 112.5) return 'above';
+        if (angleDeg >= 112.5 && angleDeg < 157.5) return 'above left';
+        if (angleDeg >= 157.5 || angleDeg < -157.5) return 'left';
+        if (angleDeg >= -157.5 && angleDeg < -112.5) return 'below left';
+        if (angleDeg >= -112.5 && angleDeg < -67.5) return 'below';
+        if (angleDeg >= -67.5 && angleDeg < -22.5) return 'below right';
+        
+        return 'above right';
+    };
+
     if (showPoints) {
         projected.forEach(p => {
             const safeId = sanitizeLatexLabel(p.id);
@@ -425,7 +444,8 @@ export const generateProjectedLatex = (
                 // LaTeX labels should be wrapped in $ $ for math mode if they contain math, or just directly.
                 // We'll wrap in $ $ to be safe and match the web UI which uses math-like italicization.
                 const cleanLabel = sanitizeLatexLabel(p.label).replace(/\$/g, '');
-                latex += `  \\fill (${safeId}) circle (1.5pt) node[above right] {$${cleanLabel}$};\n`;
+                const anchor = getTikzAnchor(p);
+                latex += `  \\fill (${safeId}) circle (1.5pt) node[${anchor}] {$${cleanLabel}$};\n`;
             } else {
                 latex += `  \\fill (${safeId}) circle (1.5pt);\n`;
             }

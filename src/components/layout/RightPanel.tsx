@@ -1,11 +1,11 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useDeferredValue } from 'react';
 import { ChevronRight, ChevronLeft, Copy, Check, Box, MapPin, Ruler, Triangle, Cuboid, Code } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { useGeometryOptional } from '@/context/GeometryContext';
-import { useCameraOptional } from '@/context/CameraContext';
+import { useCameraOptional, useCameraStateOptional } from '@/context/CameraContext';
 import { project3DTo2D, generateProjectedLatex } from '@/lib/geometry/projection';
 import { computeProperties, fmt } from '@/lib/geometry/calculations';
 import { DynamicPointControls } from '@/components/DynamicPointControls';
@@ -15,8 +15,10 @@ import { scaleGeometry } from '@/lib/geometry/scaleGeometry';
 function PanelContent() {
   const [copied, setCopied] = useState(false);
   const [tikzScale, setTikzScale] = useState(1.2);
+  const [activeTab, setActiveTab] = useState('properties');
   const context = useGeometryOptional();
   const camera = useCameraOptional();
+  const cameraStateContext = useCameraStateOptional();
 
   const scaledGeometry = useMemo(() => {
     if (!context?.state.geometry) return null;
@@ -39,7 +41,7 @@ function PanelContent() {
     // Luôn khóa mục tiêu vào gốc tọa độ O(0,0,0) để tọa độ trong TikZ luôn chuẩn xác
     const target: [number, number, number] = [0, 0, 0];
     
-    const st = camera.cameraState;
+    const st = cameraStateContext?.cameraState;
     const viewDir = [
       st.position[0] - st.target[0],
       st.position[1] - st.target[1],
@@ -50,18 +52,21 @@ function PanelContent() {
       target[1] + viewDir[1],
       target[2] + viewDir[2]
     ];
-    return { cameraPos, target };
-  }, [state.geometry, camera?.cameraState]);
+    return { cameraPos, target, zoom: st.zoom || 1 };
+  }, [state.geometry, cameraStateContext?.cameraState]);
+
+  // Defer the camera used for LaTeX string generation to keep the SVG 60fps smooth
+  const deferredCamera = useDeferredValue(fixedCamera);
 
   const getDynamicLatex = () => {
-    if (!state.geometry || !fixedCamera) return state.geometry?.latexCode || '';
+    if (!state.geometry || !deferredCamera) return state.geometry?.latexCode || '';
     return generateProjectedLatex(
       scaledGeometry || state.geometry,
-      fixedCamera.cameraPos,
-      fixedCamera.target,
+      deferredCamera.cameraPos,
+      deferredCamera.target,
       camera?.hiddenLines,
       state.showPoints,
-      tikzScale
+      tikzScale * (deferredCamera.zoom || 1)
     );
   };
 
@@ -95,7 +100,7 @@ function PanelContent() {
       </div>
 
       {/* Tabs */}
-      <Tabs defaultValue="properties" className="flex-1 flex flex-col min-h-0">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col min-h-0">
         <TabsList className="mx-4 mt-4 grid w-auto grid-cols-4">
           <TabsTrigger value="properties" className="gap-2 text-xs">
             <Box className="w-3 h-3" />
@@ -116,7 +121,7 @@ function PanelContent() {
 
         <TabsContent value="prompt" className="flex-1 p-0 m-0 min-h-0 data-[state=active]:flex flex-col">
           <div className="flex items-center justify-between p-2 border-b border-border/50 bg-muted/20">
-            <span className="text-xs text-muted-foreground ml-2">LLM Prompt</span>
+            <span className="text-xs text-muted-foreground ml-2">Đề bài đã gửi (Prompt)</span>
           </div>
           <ScrollArea className="flex-1">
             <div className="p-4">
@@ -285,33 +290,12 @@ function PanelContent() {
                   </radialGradient>
                 </defs>
                 {(() => {
-                  let maxProj = 0.1;
-                  scaledGeometry.points.forEach(p => {
-                    const proj = project3DTo2D(p, fixedCamera.cameraPos, fixedCamera.target);
-                    maxProj = Math.max(maxProj, Math.abs(proj.x), Math.abs(proj.y));
-                  });
-                  // Adjust scale target from 90 to 75 to keep points away from boundary and prevent text clipping
-                  // Then apply the user's tikzScale relative to the default 1.2
-                  const baseScale = Math.min(25, 75 / maxProj);
-                  const scale = baseScale * (tikzScale / 1.2);
+                  if (activeTab !== 'latex') return null;
+                  // Use a fixed scale factor (30.4) that precisely matches the 3D canvas perspective 
+                  // to viewport height ratio (viewport=300px, 3D FOV=50deg, dist=10.59)
+                  const scale = 30.4 * (tikzScale / 1.2) * (fixedCamera.zoom || 1);
 
-                  // 0. Vẽ lưới (Grid) trên mặt phẳng z=0
-                  const gridSvg = [];
-                  const gridSize = 15;
-                  for (let i = -gridSize; i <= gridSize; i++) {
-                      // Trục dọc (x = i, z = 0)
-                      const p1_y = project3DTo2D({id:'', label:'', x: i, y: -gridSize, z: 0}, fixedCamera.cameraPos, fixedCamera.target);
-                      const p2_y = project3DTo2D({id:'', label:'', x: i, y: gridSize, z: 0}, fixedCamera.cameraPos, fixedCamera.target);
-                      gridSvg.push(
-                        <line key={`v${i}`} x1={p1_y.x * scale} y1={-p1_y.y * scale} x2={p2_y.x * scale} y2={-p2_y.y * scale} stroke={i === 0 ? "#9ca3af" : "#e5e7eb"} strokeWidth={i === 0 ? 1.5 : 1} strokeDasharray={i === 0 ? "" : "4,4"} />
-                      );
-                      // Trục ngang (y = i, z = 0)
-                      const p1_x = project3DTo2D({id:'', label:'', x: -gridSize, y: i, z: 0}, fixedCamera.cameraPos, fixedCamera.target);
-                      const p2_x = project3DTo2D({id:'', label:'', x: gridSize, y: i, z: 0}, fixedCamera.cameraPos, fixedCamera.target);
-                      gridSvg.push(
-                        <line key={`h${i}`} x1={p1_x.x * scale} y1={-p1_x.y * scale} x2={p2_x.x * scale} y2={-p2_x.y * scale} stroke={i === 0 ? "#9ca3af" : "#e5e7eb"} strokeWidth={i === 0 ? 1.5 : 1} strokeDasharray={i === 0 ? "" : "4,4"} />
-                      );
-                  }
+                  // Removed grid (mặt phẳng z=0) to improve performance and clean up the view
 
                   // 1. Vẽ các mặt cầu
                   const spheresSvg = (scaledGeometry.spheres || []).map(s => {
@@ -739,7 +723,6 @@ function PanelContent() {
 
                   return (
                     <>
-                      {gridSvg}
                       {spheresSvg}
                       {surfacesSvg}
                       {conesSvg}
@@ -763,7 +746,7 @@ function PanelContent() {
               <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1.5 ml-1">TikZ Source</span>
               <div className="bg-secondary/20 rounded-md border border-border/30">
                 <pre className="p-3 text-[10px] font-mono text-muted-foreground whitespace-pre-wrap break-all">
-                  {getDynamicLatex()}
+                  {activeTab === 'latex' ? getDynamicLatex() : '% Chuyển sang tab LaTeX để tạo mã (để tiết kiệm hiệu năng)'}
                 </pre>
               </div>
             </div>
@@ -839,7 +822,6 @@ export function MobileRightPanel() {
   );
 }
 
-// Desktop Right Panel
 export function RightPanel() {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const context = useGeometryOptional();
@@ -849,28 +831,34 @@ export function RightPanel() {
   const { state } = context;
 
   return (
-    <aside
-      className={cn(
-        "h-screen hidden lg:block sticky right-0 top-0 z-40 shrink-0 transition-all duration-300",
-        isCollapsed ? "w-12" : "w-80"
-      )}
-    >
-      <div className="h-full glass border-l border-border/50 flex flex-col relative">
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={() => setIsCollapsed(!isCollapsed)}
-          className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-1/2 rounded-full glass border border-border/50 z-10"
-        >
-          {isCollapsed ? (
-            <ChevronLeft className="w-4 h-4" />
-          ) : (
-            <ChevronRight className="w-4 h-4" />
-          )}
-        </Button>
+    <div className="relative h-screen hidden lg:flex z-40 shrink-0">
+      {/* Toggle Button */}
+      <Button
+        variant="ghost"
+        size="icon"
+        onClick={() => setIsCollapsed(!isCollapsed)}
+        className={cn(
+          "absolute top-1/2 -translate-y-1/2 rounded-full glass border border-border/50 z-50 h-6 w-6 bg-background shadow-sm hover:bg-secondary flex items-center justify-center transition-all duration-300",
+          isCollapsed ? "right-0 -translate-x-1/2" : "right-[320px] -translate-x-1/2"
+        )}
+      >
+        {isCollapsed ? (
+          <ChevronLeft className="w-3.5 h-3.5 text-muted-foreground" />
+        ) : (
+          <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" />
+        )}
+      </Button>
 
-        {!isCollapsed && <PanelContent />}
-      </div>
-    </aside>
+      <aside
+        className={cn(
+          "h-full flex flex-col glass border-l border-border/50 sticky right-0 top-0 transition-all duration-300 bg-background/95 overflow-hidden",
+          isCollapsed ? "w-0 border-none" : "w-[320px]"
+        )}
+      >
+        <div className="h-full w-[320px] flex flex-col relative">
+          <PanelContent />
+        </div>
+      </aside>
+    </div>
   );
 }

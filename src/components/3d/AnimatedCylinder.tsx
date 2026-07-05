@@ -70,25 +70,54 @@ export function AnimatedCylinder({ cylinder, delay, isBuilding }: AnimatedCylind
     return { position: mid, quaternion: quat, height: h };
   }, [cylinder]);
 
+  const [hovered, setHovered] = useState(false);
+
   if (!visible) return null;
 
   const currentRadius = cylinder.radius * scale;
   const currentHeight = height * scale;
 
+  const handleClick = (e: any) => {
+    if (e.delta > 2) return;
+    if (!isManualMode || !geometryCtx) return;
+    if (geometryCtx.state.manualTool === 'deleteLine') {
+      e.stopPropagation();
+      geometryCtx.toggleSelection(cylinder.id);
+    }
+  };
+
+  const handlePointerOver = (e: any) => {
+    if (!isManualMode || geometryCtx?.state.manualTool !== 'deleteLine') return;
+    e.stopPropagation();
+    setHovered(true);
+    document.body.style.cursor = 'crosshair';
+  };
+
+  const handlePointerOut = () => {
+    setHovered(false);
+    document.body.style.cursor = 'auto';
+  };
+
   return (
-    <group position={position} quaternion={quaternion}>
+    <group 
+      position={position} 
+      quaternion={quaternion}
+      onClick={handleClick}
+      onPointerOver={handlePointerOver}
+      onPointerOut={handlePointerOut}
+    >
       {/* Removed wireframe cylinder to reduce visual clutter */}
 
       {/* Semi-transparent fill (Frosted Glass) */}
       <mesh>
         <cylinderGeometry args={[currentRadius, currentRadius, currentHeight, 32, 1, true]} />
-        <meshPhysicalMaterial color={color} transparent opacity={0.3} roughness={0.2} transmission={0.8} thickness={0.5} clearcoat={1.0} side={THREE.DoubleSide} depthWrite={false} />
+        <meshStandardMaterial color={color} transparent opacity={0.3} roughness={0.2} side={THREE.DoubleSide} depthWrite={false} />
       </mesh>
 
       {/* Top cap */}
       <mesh position={[0, currentHeight / 2 - 0.001, 0]} rotation={[-Math.PI / 2, 0, 0]}>
         <circleGeometry args={[currentRadius, 32]} />
-        <meshPhysicalMaterial color={color} transparent opacity={0.3} roughness={0.2} transmission={0.8} thickness={0.5} clearcoat={1.0} side={THREE.DoubleSide} depthWrite={false} />
+        <meshStandardMaterial color={color} transparent opacity={0.3} roughness={0.2} side={THREE.DoubleSide} depthWrite={false} />
       </mesh>
       <mesh position={[0, currentHeight / 2 + 0.005, 0]} rotation={[-Math.PI / 2, 0, 0]}>
         <ringGeometry args={[currentRadius * 0.98, currentRadius, 32]} />
@@ -98,7 +127,7 @@ export function AnimatedCylinder({ cylinder, delay, isBuilding }: AnimatedCylind
       {/* Bottom cap */}
       <mesh position={[0, -currentHeight / 2 + 0.001, 0]} rotation={[Math.PI / 2, 0, 0]}>
         <circleGeometry args={[currentRadius, 32]} />
-        <meshPhysicalMaterial color={color} transparent opacity={0.3} roughness={0.2} transmission={0.8} thickness={0.5} clearcoat={1.0} side={THREE.DoubleSide} depthWrite={false} />
+        <meshStandardMaterial color={color} transparent opacity={0.3} roughness={0.2} side={THREE.DoubleSide} depthWrite={false} />
       </mesh>
       <mesh position={[0, -currentHeight / 2 - 0.005, 0]} rotation={[Math.PI / 2, 0, 0]}>
         <ringGeometry args={[currentRadius * 0.98, currentRadius, 32]} />

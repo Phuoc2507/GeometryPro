@@ -69,13 +69,41 @@ export function AnimatedSphere({ sphere, delay, isBuilding }: AnimatedSphereProp
     }
   });
 
+  const [hovered, setHovered] = useState(false);
+
   if (!visible) return null;
 
   const { center, radius, label } = sphere;
   const currentRadius = radius * scale;
 
+  const handleClick = (e: any) => {
+    if (e.delta > 2) return;
+    if (!isManualMode || !geometryCtx) return;
+    if (geometryCtx.state.manualTool === 'deleteLine') {
+      e.stopPropagation();
+      geometryCtx.toggleSelection(sphere.id);
+    }
+  };
+
+  const handlePointerOver = (e: any) => {
+    if (!isManualMode || geometryCtx?.state.manualTool !== 'deleteLine') return;
+    e.stopPropagation();
+    setHovered(true);
+    document.body.style.cursor = 'crosshair';
+  };
+
+  const handlePointerOut = () => {
+    setHovered(false);
+    document.body.style.cursor = 'auto';
+  };
+
   return (
-    <group position={[center.x, center.z, center.y]}>
+    <group 
+      position={[center.x, center.z, center.y]}
+      onClick={handleClick}
+      onPointerOver={handlePointerOver}
+      onPointerOut={handlePointerOut}
+    >
       {/* Wireframe sphere — sparse for visibility */}
       <Sphere args={[currentRadius, 16, 10]}>
         <meshBasicMaterial
@@ -89,14 +117,11 @@ export function AnimatedSphere({ sphere, delay, isBuilding }: AnimatedSphereProp
 
       {/* Semi-transparent fill (Frosted Glass) */}
       <Sphere args={[currentRadius * 0.99, 32, 32]}>
-        <meshPhysicalMaterial
+        <meshStandardMaterial
           color={sphereColor}
           transparent
           opacity={0.3}
           roughness={0.2}
-          transmission={0.8}
-          thickness={0.5}
-          clearcoat={1.0}
           depthWrite={false}
           polygonOffset
           polygonOffsetFactor={1}
@@ -105,7 +130,7 @@ export function AnimatedSphere({ sphere, delay, isBuilding }: AnimatedSphereProp
 
       {/* Label at center */}
       {label && (
-        <Html position={[0, 0, 0]} center distanceFactor={12} zIndexRange={[100, 0]}>
+        <Html position={[0, 0, 0]} center distanceFactor={12} zIndexRange={[100, 0]} style={{ pointerEvents: 'none' }}>
           <span className="math-label" style={{
             color: labelColor,
             fontSize: '16px',

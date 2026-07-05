@@ -91,7 +91,7 @@ export function AnimatedAngleArc({ angle, points, delay, isBuilding }: Props) {
   return (
     <group ref={ref}>
       <Line points={arcPoints} color={color} lineWidth={2} />
-      <Html position={labelPos} center distanceFactor={12}>
+      <Html position={labelPos} center distanceFactor={12} style={{ pointerEvents: 'none' }}>
         <span className="math-label" style={{
           color, fontSize: '14px',
           background: 'rgba(0,0,0,0.6)', padding: '1px 4px', borderRadius: 3,

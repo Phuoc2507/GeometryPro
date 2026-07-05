@@ -63,15 +63,15 @@ export function AnimatedDynamicPoint({ dp, points, delay, isBuilding }: Props) {
   return (
     <group position={position}>
       <mesh ref={meshRef}>
-        <sphereGeometry args={[0.1, 16, 16]} />
+        <sphereGeometry args={[0.06, 16, 16]} />
         <meshStandardMaterial color={color} emissive={color} emissiveIntensity={0.5} />
       </mesh>
       {/* Pulsing ring to indicate it's dynamic */}
       <mesh rotation={[Math.PI / 2, 0, 0]}>
-        <ringGeometry args={[0.12, 0.16, 32]} />
+        <ringGeometry args={[0.08, 0.1, 32]} />
         <meshBasicMaterial color={color} transparent opacity={0.6} side={THREE.DoubleSide} />
       </mesh>
-      <Html center distanceFactor={10}>
+      <Html center distanceFactor={10} style={{ pointerEvents: 'none' }}>
         <span className="math-label" style={{
           color,
           fontSize: '16px',

@@ -14,6 +14,30 @@ export type Database = {
   }
   public: {
     Tables: {
+      projects: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -49,6 +73,7 @@ export type Database = {
           is_history: boolean
           is_public: boolean
           name: string
+          project_id: string | null
           prompt: string | null
           updated_at: string
           user_id: string
@@ -60,6 +85,7 @@ export type Database = {
           is_history?: boolean
           is_public?: boolean
           name: string
+          project_id?: string | null
           prompt?: string | null
           updated_at?: string
           user_id: string
@@ -71,11 +97,20 @@ export type Database = {
           is_history?: boolean
           is_public?: boolean
           name?: string
+          project_id?: string | null
           prompt?: string | null
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "saved_geometries_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          }
+        ]
       }
     }
     Views: {

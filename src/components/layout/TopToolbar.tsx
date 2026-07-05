@@ -1,8 +1,17 @@
 import { useState } from 'react';
-import { RotateCcw, Maximize2, Grid3X3, Camera, Save, PenTool, Youtube, Scissors, Box, Eye, EyeOff, BrainCircuit, Cpu } from 'lucide-react';
+import { RotateCcw, Maximize2, Grid3X3, Camera, Download, Save, PenTool, Youtube, Scissors, Box, Eye, EyeOff, Cpu, Menu, Home, Navigation, Undo2, Redo2 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Toggle } from '@/components/ui/toggle';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator,
+  DropdownMenuLabel,
+} from "@/components/ui/dropdown-menu";
 import { cn } from '@/lib/utils';
 import { useGeometryOptional } from '@/context/GeometryContext';
 import { useCameraOptional } from '@/context/CameraContext';
@@ -11,22 +20,23 @@ import { CaptureModal } from '@/components/CaptureModal';
 import { SaveGeometryDialog } from '@/components/SaveGeometryDialog';
 import { UserMenu } from '@/components/UserMenu';
 import { ManualDrawToolbar } from '@/components/ManualDrawToolbar';
+import { useAuth } from '@/context/AuthContext';
+import { UpgradeModal } from '@/components/UpgradeModal';
 
 export function TopToolbar() {
   const [isCaptureOpen, setIsCaptureOpen] = useState(false);
+  const [isUpgradeOpen, setIsUpgradeOpen] = useState(false);
   const context = useGeometryOptional();
   const cameraContext = useCameraOptional();
+  const { isPro } = useAuth();
   
-  // Note: we can use ToolMode even if GeometryContext is missing, but it makes more sense if it exists.
-  // Using try-catch or safe hook for ToolMode since it might be rendered without it in some Edge cases.
-  // We added ToolModeProvider in App so it should be fine.
   const { mode, setMode } = useToolMode();
   
   if (!context) return null;
   
-  const { state, clearGeometry, setManualMode, setVideoMode, setAiModel, setUseReasoning } = context;
+  const navigate = useNavigate();
+  const { state, clearGeometry, setManualMode, setVideoMode, undo, redo, canUndo, canRedo } = context;
   const isManualMode = state.manualMode;
-  const { aiModel, useReasoning } = state;
 
   const handleModeToggle = (newMode: 'cut' | 'unfold') => {
     if (mode === newMode) setMode('none');
@@ -36,29 +46,77 @@ export function TopToolbar() {
   return (
     <>
       <div className="fixed top-4 left-1/2 -translate-x-1/2 z-40 flex items-center gap-1 sm:gap-2 glass rounded-xl px-1.5 sm:px-2 py-1.5 border border-border/50">
+        
+        {/* VIEW DROPDOWN */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="icon" className="h-8 w-8">
+              {state.showPoints ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4 text-blue-500" />}
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start">
+            <DropdownMenuLabel className="text-xs">Góc nhìn & Hiển thị</DropdownMenuLabel>
+            <DropdownMenuItem onClick={() => {}}>
+              <Grid3X3 className="w-4 h-4 mr-2 text-muted-foreground" />
+              Lưới tọa độ
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => {}}>
+              <Maximize2 className="w-4 h-4 mr-2 text-muted-foreground" />
+              Vừa màn hình
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => context.togglePoints()}>
+              {state.showPoints ? <EyeOff className="w-4 h-4 mr-2 text-muted-foreground" /> : <Eye className="w-4 h-4 mr-2 text-blue-500" />}
+              {state.showPoints ? 'Ẩn các điểm' : 'Hiện các điểm'}
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={() => context.toggleAutoColor()}>
+              <Box className="w-4 h-4 mr-2 text-muted-foreground" />
+              {state.autoColor ? 'Tắt tô màu mặt phẳng' : 'Bật tô màu mặt phẳng'}
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={() => cameraContext?.resetCamera()}>
+              <RotateCcw className="w-4 h-4 mr-2 text-muted-foreground" />
+              Đặt lại góc nhìn (R)
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+
+        <div className="w-px h-6 bg-border/50 mx-1" />
+
+        {/* UNDO / REDO */}
         <Tooltip>
           <TooltipTrigger asChild>
-            <Button variant="ghost" size="icon" className="h-8 w-8">
-              <Grid3X3 className="w-4 h-4" />
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8"
+              onClick={undo}
+              disabled={!canUndo}
+            >
+              <Undo2 className="w-4 h-4" />
             </Button>
           </TooltipTrigger>
-          <TooltipContent>Toggle Grid</TooltipContent>
+          <TooltipContent>Hoàn tác</TooltipContent>
+        </Tooltip>
+
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8"
+              onClick={redo}
+              disabled={!canRedo}
+            >
+              <Redo2 className="w-4 h-4" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>Làm lại</TooltipContent>
         </Tooltip>
 
         <div className="w-px h-6 bg-border/50 mx-1" />
 
-
-
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button variant="ghost" size="icon" className="h-8 w-8">
-              <Maximize2 className="w-4 h-4" />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>Fit to View</TooltipContent>
-        </Tooltip>
-
-        {/* Manual Draw Mode Toggle */}
+        {/* CORE TOOLS */}
         <Tooltip>
           <TooltipTrigger asChild>
             <Button
@@ -67,7 +125,7 @@ export function TopToolbar() {
               className="h-8 w-8"
               onClick={() => {
                 setManualMode(!isManualMode);
-                if (!isManualMode) setMode('none'); // disable other modes
+                if (!isManualMode) setMode('none'); 
               }}
               disabled={mode !== 'none'}
             >
@@ -79,8 +137,6 @@ export function TopToolbar() {
 
         {state.geometry && (
           <>
-            <div className="w-px h-6 bg-border/50 mx-1" />
-            
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button
@@ -110,70 +166,6 @@ export function TopToolbar() {
               </TooltipTrigger>
               <TooltipContent>Trải Phẳng Hình (Unfold)</TooltipContent>
             </Tooltip>
-
-            <div className="w-px h-6 bg-border/50 mx-1" />
-
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant={state.showPoints ? 'ghost' : 'default'}
-                  size="icon"
-                  className={`h-8 w-8 ${!state.showPoints ? 'text-blue-500 hover:text-blue-600 hover:bg-blue-500/10' : ''}`}
-                  onClick={() => context.togglePoints()}
-                >
-                  {state.showPoints ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>{state.showPoints ? 'Ẩn các điểm' : 'Hiện các điểm'}</TooltipContent>
-            </Tooltip>
-
-            <SaveGeometryDialog
-              geometry={state.geometry}
-              trigger={
-                <Button variant="ghost" size="icon" className="h-8 w-8">
-                  <Save className="w-4 h-4" />
-                </Button>
-              }
-            />
-            
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8 text-primary hover:text-primary"
-                  onClick={() => setIsCaptureOpen(true)}
-                >
-                  <Camera className="w-4 h-4" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>Chụp hình</TooltipContent>
-            </Tooltip>
-
-            <Toggle
-              size="sm"
-              variant="outline"
-              pressed={useReasoning}
-              onPressedChange={setUseReasoning}
-              className={cn("gap-1.5 border-dashed", useReasoning && "bg-primary/10 text-primary border-primary/30")}
-            >
-              <BrainCircuit className={cn("w-3.5 h-3.5", useReasoning && "animate-pulse")} />
-              Reasoning
-            </Toggle>
-
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8 text-destructive hover:text-destructive"
-                  onClick={clearGeometry}
-                >
-                  <RotateCcw className="w-4 h-4" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>Reset</TooltipContent>
-            </Tooltip>
           </>
         )}
         
@@ -193,6 +185,45 @@ export function TopToolbar() {
           <TooltipContent>Tạo Video (Animation)</TooltipContent>
         </Tooltip>
 
+        {/* ACTIONS MENU */}
+        {state.geometry && (
+          <>
+            <div className="w-px h-6 bg-border/50 mx-1" />
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-8 w-8">
+                  <Menu className="w-4 h-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuLabel className="text-xs">Tệp & Hệ thống</DropdownMenuLabel>
+                
+                <SaveGeometryDialog
+                  geometry={state.geometry}
+                  trigger={
+                    <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+                      <Save className="w-4 h-4 mr-2 text-muted-foreground" />
+                      Lưu hình học
+                    </DropdownMenuItem>
+                  }
+                />
+                
+                <DropdownMenuItem onClick={() => setIsCaptureOpen(true)}>
+                  <Download className="w-4 h-4 mr-2 text-muted-foreground" />
+                  Xuất ảnh / LaTeX
+                </DropdownMenuItem>
+
+                <DropdownMenuSeparator />
+
+                <DropdownMenuItem onClick={clearGeometry} className="text-primary focus:text-primary focus:bg-primary/10">
+                  <Home className="w-4 h-4 mr-2" />
+                  Về trang nhập đề
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </>
+        )}
+
         <div className="w-px h-6 bg-border/50 mx-1" />
         <UserMenu />
       </div>
@@ -203,10 +234,10 @@ export function TopToolbar() {
         isOpen={isCaptureOpen}
         onClose={() => setIsCaptureOpen(false)}
         geometry={state.geometry}
-        cameraState={cameraContext?.cameraState || null}
-        canvasRef={cameraContext?.canvasRef || { current: null }}
+        canvasRef={cameraContext?.canvasRef!}
         hiddenLines={cameraContext?.hiddenLines}
       />
+      <UpgradeModal open={isUpgradeOpen} onOpenChange={setIsUpgradeOpen} />
     </>
   );
 }

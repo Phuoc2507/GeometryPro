@@ -49,7 +49,7 @@ export function AnimatedPoint({ point, delay, isBuilding, highlighted = false }:
   // Hide logic
   // Hide if global showPoints is false, OR if it's an intermediate point (no label and id starts with P or curve)
   const isIntermediate = !point.label && (point.id.startsWith('P') || point.id.startsWith('curve_'));
-  const shouldHide = !showPoints || isIntermediate;
+  const shouldHide = point.hidden || !showPoints || isIntermediate;
 
   useFrame((_, delta) => {
     if (animCtx && !isManualMode && isBuilding) {
@@ -66,12 +66,6 @@ export function AnimatedPoint({ point, delay, isBuilding, highlighted = false }:
       if (currentScale !== 1) setCurrentScale(1);
       if (textProgress !== 1) setTextProgress(1);
       if (!visible) setVisible(true);
-    } else {
-      // Fallback
-      if (visible) {
-        if (currentScale < targetScale) setCurrentScale((s) => Math.min(targetScale, s + delta * 3));
-        if (currentScale > 0.8 && textProgress < 1) setTextProgress((p) => Math.min(1, p + delta * 3));
-      }
     }
     
     if (meshRef.current) {
@@ -79,46 +73,44 @@ export function AnimatedPoint({ point, delay, isBuilding, highlighted = false }:
     }
   });
 
-  // Swap Y and Z: Math uses Z as height (Oxyz), Three.js uses Y as height
-  const pointColor  = highlighted ? '#f97316' : '#60a5fa'; // orange when highlighted
-  const pointRadius = highlighted ? 0.22 : 0.15;
+  const pointColor = highlighted ? '#f97316' : '#60a5fa';
+  const pointRadius = highlighted ? 0.12 : 0.08;
 
   if (shouldHide) return null;
 
   return (
     <group position={[point.x, point.z, point.y]}>
-      {/* Highlight glow ring */}
+      {/* Halo effect for highlighted/selected points */}
       {highlighted && (
         <mesh>
-          <sphereGeometry args={[0.35, 16, 16]} />
-          <meshBasicMaterial color="#f97316" transparent opacity={0.2} />
+          <sphereGeometry args={[0.2, 16, 16]} />
+          <meshBasicMaterial color="#3b82f6" transparent opacity={0.3} depthWrite={false} />
         </mesh>
       )}
-      {/* Point Sphere */}
+
+      {/* Main point sphere */}
       <mesh ref={meshRef}>
         <sphereGeometry args={[pointRadius, 16, 16]} />
         <meshBasicMaterial color={pointColor} />
       </mesh>
 
-      {/* Label - HTML overlay to always render on top of glass/translucent materials */}
-      {point.label && textProgress > 0 && (
-        <Html position={[0, 0, 0]} center distanceFactor={12} zIndexRange={[100, 0]}>
+        <Html position={[0, 0, 0]} center distanceFactor={12} zIndexRange={[100, 0]} style={{ pointerEvents: 'none' }}>
           <div style={{
             transform: `translate(15px, -20px)`, // offset to top-right
             opacity: textProgress,
             pointerEvents: 'none',
           }}>
             <span className="math-label" style={{
-              color: '#ffffff',
+              color: 'hsl(var(--foreground))',
               fontSize: '18px',
-              textShadow: '0px 0px 4px rgba(0,0,0,0.8), 0px 0px 2px rgba(0,0,0,1)', // Strong shadow to pop against bright lines
+              WebkitTextStroke: '3px hsl(var(--background))',
+              paintOrder: 'stroke fill',
               whiteSpace: 'nowrap'
             }}>
               {sanitizeLabel(point.label)}
             </span>
           </div>
         </Html>
-      )}
     </group>
   );
 }

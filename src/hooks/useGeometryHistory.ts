@@ -10,6 +10,7 @@ export interface HistoryItem {
   prompt: string | null;
   geometry_data: GeometryData;
   created_at: string;
+  project_id?: string | null;
 }
 
 export function useGeometryHistory() {
@@ -19,7 +20,7 @@ export function useGeometryHistory() {
   const [isLoading, setIsLoading] = useState(false);
 
   const handleSupabaseError = useCallback((err: any, context: string) => {
-    console.error("Error " + context + ":", err);
+    console.error(`Error ${context}:`, err);
     if (err?.status === 401 || err?.code === '42501' || err?.message?.includes('JWT')) {
       toast({
         title: "Phiên đăng nhập đã hết hạn",
@@ -45,17 +46,14 @@ export function useGeometryHistory() {
 
       const { data, error } = await supabase
         .from('saved_geometries')
-        .select('id, name, prompt, geometry_data, created_at')
+        .select('id, name, prompt, geometry_data, created_at, project_id')
         .eq('user_id', user.id)
         .eq('is_history', true)
         .order('created_at', { ascending: false })
-        .limit(20);
+        .limit(50);
 
       if (error) throw error;
-      setHistory((data || []).map(item => ({
-        ...item,
-        geometry_data: item.geometry_data as unknown as GeometryData,
-      })));
+      setHistory(data as HistoryItem[] || []);
     } catch (err) {
       handleSupabaseError(err, 'fetching history');
     } finally {
@@ -63,60 +61,74 @@ export function useGeometryHistory() {
     }
   }, [user, handleSupabaseError]);
 
-  const addToHistory = useCallback(async (geometry: GeometryData, prompt?: string): Promise<string | null> => {
+  useEffect(() => {
+    fetchHistory();
+    
+    // Listen for custom event to sync state across hook instances
+    const handleHistorySync = () => {
+      fetchHistory();
+    };
+    window.addEventListener('geo3d_history_sync', handleHistorySync);
+    return () => window.removeEventListener('geo3d_history_sync', handleHistorySync);
+  }, [fetchHistory]);
+
+  const triggerSync = () => {
+    window.dispatchEvent(new Event('geo3d_history_sync'));
+  };
+
+  const addToHistory = useCallback(async (geometry: GeometryData, prompt: string | null = null, project_id: string | null = null) => {
     try {
       if (!user) {
         const newItem: HistoryItem = {
-          id: "local_" + Date.now() + "_" + Math.random().toString(36).substring(2, 9),
-          name: geometry.name || 'Hình không tên',
-          prompt: prompt || null,
-          geometry_data: JSON.parse(JSON.stringify(geometry)),
+          id: crypto.randomUUID(),
+          name: prompt ? `Dựng hình từ: ${prompt.substring(0, 30)}...` : 'Bản vẽ thủ công',
+          prompt,
+          geometry_data: geometry,
           created_at: new Date().toISOString(),
+          project_id
         };
-        setHistory(prev => {
-          const newHistory = [newItem, ...prev].slice(0, 20);
-          localStorage.setItem('geo3d_anonymous_history', JSON.stringify(newHistory));
-          return newHistory;
-        });
+        const local = localStorage.getItem('geo3d_anonymous_history');
+        const prev = local ? JSON.parse(local) : [];
+        const newHistory = [newItem, ...prev].slice(0, 50);
+        localStorage.setItem('geo3d_anonymous_history', JSON.stringify(newHistory));
+        triggerSync();
         return newItem.id;
       }
 
       const { data, error } = await supabase
         .from('saved_geometries')
-        .insert([{
+        .insert({
           user_id: user.id,
-          name: geometry.name || 'Hình không tên',
-          prompt: prompt || null,
-          geometry_data: JSON.parse(JSON.stringify(geometry)),
+          name: prompt ? `Dựng hình từ: ${prompt.substring(0, 30)}...` : 'Bản vẽ thủ công',
+          prompt,
+          geometry_data: geometry as any,
           is_history: true,
-          is_public: false,
-        }])
-        .select('id, name, prompt, geometry_data, created_at')
+          project_id
+        })
+        .select()
         .single();
-
+        
       if (error) throw error;
       if (data) {
-        setHistory(prev => [{
-          ...data,
-          geometry_data: data.geometry_data as unknown as GeometryData,
-        }, ...prev].slice(0, 20));
+        triggerSync();
         return data.id;
       }
-      return null;
     } catch (err) {
-      handleSupabaseError(err, 'adding to history');
-      return null;
+      handleSupabaseError(err, 'saving history');
     }
+    return null;
   }, [user, handleSupabaseError]);
 
   const deleteHistoryItem = useCallback(async (id: string) => {
     try {
       if (!user) {
-        setHistory(prev => {
-          const newHistory = prev.filter(h => h.id !== id);
+        const local = localStorage.getItem('geo3d_anonymous_history');
+        if (local) {
+          const prev = JSON.parse(local);
+          const newHistory = prev.filter((h: any) => h.id !== id);
           localStorage.setItem('geo3d_anonymous_history', JSON.stringify(newHistory));
-          return newHistory;
-        });
+          triggerSync();
+        }
         return;
       }
 
@@ -126,7 +138,7 @@ export function useGeometryHistory() {
         .eq('id', id)
         .eq('user_id', user.id);
       if (error) throw error;
-      setHistory(prev => prev.filter(h => h.id !== id));
+      triggerSync();
     } catch (err) {
       handleSupabaseError(err, 'deleting history item');
     }
@@ -136,7 +148,7 @@ export function useGeometryHistory() {
     try {
       if (!user) {
         localStorage.removeItem('geo3d_anonymous_history');
-        setHistory([]);
+        triggerSync();
         return;
       }
 
@@ -146,15 +158,66 @@ export function useGeometryHistory() {
         .eq('user_id', user.id)
         .eq('is_history', true);
       if (error) throw error;
-      setHistory([]);
+      triggerSync();
     } catch (err) {
       handleSupabaseError(err, 'clearing history');
     }
   }, [user, handleSupabaseError]);
 
-  useEffect(() => {
-    fetchHistory();
-  }, [user, fetchHistory]);
+  const renameHistoryItem = useCallback(async (id: string, newName: string) => {
+    try {
+      if (!user) {
+        const local = localStorage.getItem('geo3d_anonymous_history');
+        if (local) {
+          const prev = JSON.parse(local);
+          const newHistory = prev.map((h: any) => h.id === id ? { ...h, name: newName } : h);
+          localStorage.setItem('geo3d_anonymous_history', JSON.stringify(newHistory));
+          triggerSync();
+        }
+        return;
+      }
+      
+      const { error } = await supabase
+        .from('saved_geometries')
+        .update({ name: newName })
+        .eq('id', id)
+        .eq('user_id', user.id);
+        
+      if (error) throw error;
+      triggerSync();
+    } catch (err) {
+      handleSupabaseError(err, 'renaming history item');
+    }
+  }, [user, handleSupabaseError]);
 
-  return { history, isLoading, addToHistory, deleteHistoryItem, clearHistory, fetchHistory };
+  const moveToProject = useCallback(async (id: string, project_id: string | null) => {
+    try {
+      if (!user) {
+        const local = localStorage.getItem('geo3d_anonymous_history');
+        if (local) {
+          const prev = JSON.parse(local);
+          const newHistory = prev.map((h: any) => h.id === id ? { ...h, project_id } : h);
+          localStorage.setItem('geo3d_anonymous_history', JSON.stringify(newHistory));
+          triggerSync();
+        }
+        return;
+      }
+      
+      const { error } = await supabase
+        .from('saved_geometries')
+        .update({ project_id })
+        .eq('id', id)
+        .eq('user_id', user.id);
+        
+      if (error) throw error;
+      triggerSync();
+    } catch (err) {
+      handleSupabaseError(err, 'moving history item to project');
+    }
+  }, [user, handleSupabaseError]);
+
+  return { 
+    history, isLoading, fetchHistory, addToHistory, 
+    deleteHistoryItem, clearHistory, renameHistoryItem, moveToProject 
+  };
 }

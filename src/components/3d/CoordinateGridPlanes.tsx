@@ -13,7 +13,7 @@ interface CoordinateGridPlanesProps {
 
 function AxisLabel({ position, label, color }: { position: [number, number, number]; label: string; color: string }) {
   return (
-    <Html position={position} center distanceFactor={20} zIndexRange={[10, 0]}>
+    <Html position={position} center distanceFactor={20} zIndexRange={[10, 0]} style={{ pointerEvents: 'none' }}>
       <span style={{
         color,
         fontWeight: 800,

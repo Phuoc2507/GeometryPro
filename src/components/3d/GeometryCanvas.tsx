@@ -1,13 +1,17 @@
 import { useRef, useEffect, useMemo } from 'react';
+import { CameraFitter } from './CameraFitter';
+import { Hexagon } from 'lucide-react';
 import { Canvas, useThree, useFrame } from '@react-three/fiber';
 import { OrbitControls, Grid, Environment, Html } from '@react-three/drei';
 import * as THREE from 'three';
 import { GeometryRenderer } from './GeometryRenderer';
 import { CoordinateGridPlanes } from './CoordinateGridPlanes';
 import { ClickToPlacePoint } from './ClickToPlacePoint';
+import { ToolPreviewRenderer } from './ToolPreviewRenderer';
 import { useGeometryOptional } from '@/context/GeometryContext';
-import { useCameraOptional } from '@/context/CameraContext';
+import { useCameraOptional, useCameraStateOptional } from '@/context/CameraContext';
 import { scaleGeometry } from '@/lib/geometry/scaleGeometry';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
 
 function CameraFitter({ geometry, is2D }: { geometry: any; is2D?: boolean }) {
   const { camera, size: canvasSize } = useThree();
@@ -62,26 +66,56 @@ function CameraFitter({ geometry, is2D }: { geometry: any; is2D?: boolean }) {
 
 function CameraTracker({ target }: { target: [number, number, number] }) {
   const { camera } = useThree();
-  const cameraContext = useCameraOptional();
+  const cameraStateContext = useCameraStateOptional();
 
   const lastPos = useRef(new THREE.Vector3());
   const lastTarget = useRef(new THREE.Vector3());
+  const lastZoom = useRef(1);
 
+  // Sync FROM CameraState TO WebGL Camera (e.g. when modified by CaptureModal)
+  useEffect(() => {
+    if (!cameraStateContext) return;
+    const { position, target: stTarget, zoom } = cameraStateContext.cameraState;
+    const currentPos = new THREE.Vector3(...position);
+    
+    // If the state is different from the WebGL camera, it means it was updated externally
+    if (camera.position.distanceTo(currentPos) > 0.05 || Math.abs(camera.zoom - zoom) > 0.05) {
+      camera.position.copy(currentPos);
+      camera.lookAt(new THREE.Vector3(...stTarget));
+      
+      if ((camera as any).isOrthographicCamera) {
+         camera.zoom = zoom;
+         camera.updateProjectionMatrix();
+      }
+      
+      lastPos.current.copy(currentPos);
+      lastZoom.current = zoom;
+    }
+  }, [cameraStateContext?.cameraState, camera]);
+
+  // Sync FROM WebGL Camera TO CameraState (e.g. when user orbits with OrbitControls)
   useFrame(() => {
-    if (cameraContext) {
+    if (cameraStateContext) {
       const pos = camera.position;
       const targetVec = new THREE.Vector3(...target);
 
+      const currentZoom = (camera as any).isOrthographicCamera 
+        ? camera.zoom 
+        : (10.59 / Math.max(0.1, pos.distanceTo(targetVec)));
+
       const distPos = pos.distanceTo(lastPos.current);
       const distTarget = targetVec.distanceTo(lastTarget.current);
+      const distZoom = Math.abs(currentZoom - lastZoom.current);
 
-      if (distPos > 0.01 || distTarget > 0.01) {
-        cameraContext.setCameraState({
+      if (distPos > 0.01 || distTarget > 0.01 || distZoom > 0.01) {
+        cameraStateContext.setCameraState({
           position: [pos.x, pos.y, pos.z],
-          target: target
+          target: target,
+          zoom: currentZoom
         });
         lastPos.current.copy(pos);
         lastTarget.current.copy(targetVec);
+        lastZoom.current = currentZoom;
       }
     }
   });
@@ -90,6 +124,7 @@ function CameraTracker({ target }: { target: [number, number, number] }) {
 }
 
 interface SceneProps {
+  geometries: any[];
   geometry: any;
   isBuilding: boolean;
   autoRotate?: boolean;
@@ -97,12 +132,20 @@ interface SceneProps {
 }
 
 function Scene({ geometry, isBuilding, autoRotate = false, is2D = false }: SceneProps) {
-  const cameraContext = useCameraOptional();
+  const geometryContext = useGeometryOptional();
 
   // Calculate the centroid (center of mass) of the geometry
   // and convert math coords (z=up) to Three.js (y=up)
+  const lastCentroidRef = useRef<[number, number, number]>([0, 1.5, 0]);
+  const manualMode = geometryContext?.state.manualMode || false;
+
   const centroid = useMemo(() => {
-    if (!geometry || !geometry.points || geometry.points.length === 0) return [0, 1.5, 0] as [number, number, number];
+    if (manualMode) return lastCentroidRef.current;
+
+    if (!geometry || !geometry.points || geometry.points.length === 0) {
+      lastCentroidRef.current = [0, 1.5, 0];
+      return lastCentroidRef.current;
+    }
 
     let sx = 0, sy = 0, sz = 0;
     let validCount = 0;
@@ -120,10 +163,14 @@ function Scene({ geometry, isBuilding, autoRotate = false, is2D = false }: Scene
       }
     });
 
-    if (validCount === 0) return [0, 1.5, 0] as [number, number, number];
-
-    return [sx / validCount, sy / validCount, sz / validCount] as [number, number, number];
-  }, [geometry]);
+    if (validCount > 0) {
+      lastCentroidRef.current = [sx / validCount, sy / validCount, sz / validCount] as [number, number, number];
+      return lastCentroidRef.current;
+    }
+    
+    lastCentroidRef.current = [0, 1.5, 0];
+    return lastCentroidRef.current;
+  }, [geometry, manualMode]);
 
   // Calculate the maximum extent of the geometry to size the grid appropriately
   const gridSize = useMemo(() => {
@@ -186,8 +233,11 @@ function Scene({ geometry, isBuilding, autoRotate = false, is2D = false }: Scene
       {/* Coordinate Grid with axis labels */}
       <CoordinateGridPlanes showXY showXZ={false} showYZ={false} size={gridSize} is2D={is2D} unit={geometry?.axisUnit} />
 
-      {/* Geometry */}
-      <GeometryRenderer geometry={geometry} isBuilding={isBuilding} />
+      {/* Geometries */}
+      <group>
+        <ToolPreviewRenderer />
+        <GeometryRenderer geometry={geometry} isBuilding={isBuilding} />
+      </group>
 
       {/* Click to place point in manual mode */}
       <ClickToPlacePoint />
@@ -217,15 +267,31 @@ function Scene({ geometry, isBuilding, autoRotate = false, is2D = false }: Scene
 export function GeometryCanvas() {
   const cameraContext = useCameraOptional();
   const geometryContext = useGeometryOptional();
+  const state = geometryContext?.state;
+  
+  const geometry = state?.geometry;
   const canvasContainerRef = useRef<HTMLDivElement>(null);
 
-  const geometry = geometryContext?.state.geometry;
-  const isBuilding = geometryContext?.state.isBuilding ?? false;
-  const autoRotate = geometryContext?.state.autoRotate ?? false;
+  const isBuilding = state?.isBuilding ?? false;
+  const autoRotate = state?.autoRotate ?? false;
 
   const is2D = useMemo(() => {
     return geometry?.tags?.some((t: string) => t.includes('2D')) || false;
   }, [geometry]);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        if (geometryContext && geometryContext.state.selectedIds.length > 0) {
+          geometryContext.clearSelection();
+        } else if (geometryContext && geometryContext.state.manualTool) {
+          geometryContext.setManualTool(null);
+        }
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [geometryContext]);
 
   // Auto-scale large geometry coordinates to fit within standard [-8, 8] bounds
   const scaledGeometry = useMemo(() => {
@@ -242,20 +308,37 @@ export function GeometryCanvas() {
     }
   }, [cameraContext]);
 
+  if (!state?.geometry && !state?.isScanning) {
+    return null;
+  }
+
   return (
     <div ref={canvasContainerRef} className="absolute inset-0">
-      <Canvas
-        orthographic={is2D}
-        camera={{ position: is2D ? [0, 10, 0] : [6, 5, 8], fov: 50, zoom: is2D ? 50 : 1 }}
-        shadows
-        gl={{ antialias: true, alpha: true, preserveDrawingBuffer: true, localClippingEnabled: true }}
-        onCreated={({ gl }) => {
-          gl.localClippingEnabled = true;
-        }}
-        style={{ background: 'transparent' }}
-      >
-        <Scene geometry={scaledGeometry} isBuilding={isBuilding} autoRotate={autoRotate} is2D={is2D} />
-      </Canvas>
+      {/* Empty State */}
+      {!geometry && !isBuilding && (
+        <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none z-10 animate-fade-in opacity-50">
+          <Hexagon className="w-24 h-24 text-primary/20 mb-4 stroke-[1]" />
+          <p className="text-muted-foreground text-sm font-medium tracking-wide">
+            Khu vực hiển thị Không gian 3D
+          </p>
+        </div>
+      )}
+
+      <ErrorBoundary>
+        <Canvas
+          orthographic={is2D}
+          camera={{ position: is2D ? [0, 10, 0] : [6, 5, 8], fov: 50, zoom: is2D ? 50 : 1 }}
+          shadows
+          dpr={[1, 2]}
+          gl={{ antialias: true, alpha: true, preserveDrawingBuffer: true, localClippingEnabled: true }}
+          onCreated={({ gl }) => {
+            gl.localClippingEnabled = true;
+          }}
+          style={{ background: 'transparent' }}
+        >
+          <Scene geometry={scaledGeometry} isBuilding={isBuilding} autoRotate={autoRotate} is2D={is2D} />
+        </Canvas>
+      </ErrorBoundary>
     </div>
   );
 }

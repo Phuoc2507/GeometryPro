@@ -1,66 +1,49 @@
-import { useState } from 'react';
-import { Button } from '@/components/ui/button';
-import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Minus } from 'lucide-react';
-import { Point3D } from '@/types/geometry';
+import { useEffect, useState } from 'react';
+import { useGeometry } from '@/context/GeometryContext';
 
-interface AddLineToolProps {
-  points: Point3D[];
-  onAdd: (fromId: string, toId: string, style: 'solid' | 'dashed') => void;
-}
-
-export function AddLineTool({ points, onAdd }: AddLineToolProps) {
-  const [from, setFrom] = useState('');
-  const [to, setTo] = useState('');
+export function AddLineTool() {
+  const { state, addLine, clearSelection } = useGeometry();
   const [style, setStyle] = useState<'solid' | 'dashed'>('solid');
 
-  const handleAdd = () => {
-    if (!from || !to || from === to) return;
-    onAdd(from, to, style);
-    setFrom('');
-    setTo('');
-  };
+  const selectedPoints = state.selectedIds.filter(id => !id.startsWith('line_') && !id.startsWith('plane_'));
 
-  if (points.length < 2) {
-    return <p className="text-xs text-muted-foreground">Cần ít nhất 2 điểm để nối đường.</p>;
-  }
+  useEffect(() => {
+    if (selectedPoints.length === 2) {
+      addLine(selectedPoints[0], selectedPoints[1], style);
+      clearSelection();
+    }
+  }, [selectedPoints, addLine, clearSelection, style]);
 
   return (
-    <div className="space-y-2">
-      <div className="grid grid-cols-2 gap-1.5">
-        <div>
-          <Label className="text-[10px] text-muted-foreground">Từ</Label>
-          <Select value={from} onValueChange={setFrom}>
-            <SelectTrigger className="h-7 text-xs"><SelectValue placeholder="Chọn" /></SelectTrigger>
-            <SelectContent>
-              {points.map(p => <SelectItem key={p.id} value={p.id}>{p.label}</SelectItem>)}
-            </SelectContent>
-          </Select>
-        </div>
-        <div>
-          <Label className="text-[10px] text-muted-foreground">Đến</Label>
-          <Select value={to} onValueChange={setTo}>
-            <SelectTrigger className="h-7 text-xs"><SelectValue placeholder="Chọn" /></SelectTrigger>
-            <SelectContent>
-              {points.filter(p => p.id !== from).map(p => <SelectItem key={p.id} value={p.id}>{p.label}</SelectItem>)}
-            </SelectContent>
-          </Select>
-        </div>
+    <div className="space-y-2 text-center text-xs text-muted-foreground pb-1">
+      <p>💡 Click vào 2 điểm trên hình để nối đường.</p>
+      
+      <div className="flex justify-center items-center gap-2 mt-2 bg-secondary/50 p-1 rounded-md">
+        <label className="text-[10px] cursor-pointer flex items-center gap-1">
+          <input 
+            type="radio" 
+            checked={style === 'solid'} 
+            onChange={() => setStyle('solid')} 
+            className="w-3 h-3 accent-primary" 
+          />
+          Nét liền
+        </label>
+        <label className="text-[10px] cursor-pointer flex items-center gap-1">
+          <input 
+            type="radio" 
+            checked={style === 'dashed'} 
+            onChange={() => setStyle('dashed')} 
+            className="w-3 h-3 accent-primary"
+          />
+          Nét đứt
+        </label>
       </div>
-      <div>
-        <Label className="text-[10px] text-muted-foreground">Kiểu</Label>
-        <Select value={style} onValueChange={v => setStyle(v as 'solid' | 'dashed')}>
-          <SelectTrigger className="h-7 text-xs"><SelectValue /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="solid">Nét liền</SelectItem>
-            <SelectItem value="dashed">Nét đứt</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-      <Button size="sm" className="w-full h-7 text-xs" onClick={handleAdd} disabled={!from || !to || from === to}>
-        <Minus className="w-3 h-3 mr-1" /> Nối đường
-      </Button>
+
+      {selectedPoints.length > 0 && (
+        <p className="text-primary font-medium text-[10px] animate-pulse">
+          Đã chọn: {selectedPoints.join(', ')} (Cần 1 điểm nữa)
+        </p>
+      )}
     </div>
   );
 }

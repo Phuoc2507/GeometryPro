@@ -12,9 +12,10 @@ const passwordSchema = z.string().min(6, 'Mật khẩu phải có ít nhất 6 k
 
 const Auth = () => {
   const navigate = useNavigate();
-  const { user, isLoading, signIn, signUp, signInWithGoogle } = useAuth();
+  const { user, isLoading, signIn, signUp, signInWithGoogle, resetPassword } = useAuth();
   
   const [isSignUp, setIsSignUp] = useState(false);
+  const [isReset, setIsReset] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [displayName, setDisplayName] = useState('');
@@ -37,9 +38,11 @@ const Auth = () => {
       newErrors.email = emailResult.error.errors[0].message;
     }
     
-    const passwordResult = passwordSchema.safeParse(password);
-    if (!passwordResult.success) {
-      newErrors.password = passwordResult.error.errors[0].message;
+    if (!isReset) {
+      const passwordResult = passwordSchema.safeParse(password);
+      if (!passwordResult.success) {
+        newErrors.password = passwordResult.error.errors[0].message;
+      }
     }
     
     setErrors(newErrors);
@@ -57,7 +60,14 @@ const Auth = () => {
     try {
       let result;
       
-      if (isSignUp) {
+      if (isReset) {
+        result = await resetPassword(email);
+        if (!result.error) {
+          setErrors({ general: 'Vui lòng kiểm tra email để đặt lại mật khẩu.' });
+          setIsSubmitting(false);
+          return;
+        }
+      } else if (isSignUp) {
         result = await signUp(email, password, displayName || undefined);
       } else {
         result = await signIn(email, password);
@@ -108,7 +118,7 @@ const Auth = () => {
             <h1 className="text-2xl font-bold gradient-text">GeoMagic Pro</h1>
           </div>
           <p className="text-muted-foreground">
-            {isSignUp ? 'Tạo tài khoản mới' : 'Đăng nhập để tiếp tục'}
+            {isReset ? 'Nhập email để đặt lại mật khẩu' : (isSignUp ? 'Tạo tài khoản mới' : 'Đăng nhập để tiếp tục')}
           </p>
         </div>
 
@@ -154,31 +164,44 @@ const Auth = () => {
             </div>
 
             {/* Password */}
-            <div className="space-y-2">
-              <Label htmlFor="password">Mật khẩu</Label>
-              <div className="relative">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                <Input
-                  id="password"
-                  type={showPassword ? 'text' : 'password'}
-                  placeholder="••••••••"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="pl-10 pr-10"
-                  required
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                >
-                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                </button>
+            {!isReset && (
+              <div className="space-y-2">
+                <div className="flex justify-between items-center">
+                  <Label htmlFor="password">Mật khẩu</Label>
+                  {!isSignUp && (
+                    <button 
+                      type="button" 
+                      onClick={() => { setIsReset(true); setErrors({}); }}
+                      className="text-xs text-primary hover:underline"
+                    >
+                      Quên mật khẩu?
+                    </button>
+                  )}
+                </div>
+                <div className="relative">
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <Input
+                    id="password"
+                    type={showPassword ? 'text' : 'password'}
+                    placeholder="••••••••"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="pl-10 pr-10"
+                    required
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  >
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+                {errors.password && (
+                  <p className="text-sm text-destructive">{errors.password}</p>
+                )}
               </div>
-              {errors.password && (
-                <p className="text-sm text-destructive">{errors.password}</p>
-              )}
-            </div>
+            )}
 
             {/* Error Message */}
             {errors.general && (
@@ -200,10 +223,10 @@ const Auth = () => {
               {isSubmitting ? (
                 <div className="flex items-center gap-2">
                   <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  {isSignUp ? 'Đang đăng ký...' : 'Đang đăng nhập...'}
+                  {isReset ? 'Đang gửi...' : (isSignUp ? 'Đang đăng ký...' : 'Đang đăng nhập...')}
                 </div>
               ) : (
-                isSignUp ? 'Đăng ký' : 'Đăng nhập'
+                isReset ? 'Gửi link khôi phục' : (isSignUp ? 'Đăng ký' : 'Đăng nhập')
               )}
             </Button>
           </form>
@@ -236,19 +259,29 @@ const Auth = () => {
 
           {/* Toggle Sign In / Sign Up */}
           <div className="mt-6 text-center">
-            <p className="text-muted-foreground">
-              {isSignUp ? 'Đã có tài khoản?' : 'Chưa có tài khoản?'}
+            {isReset ? (
               <button
                 type="button"
-                onClick={() => {
-                  setIsSignUp(!isSignUp);
-                  setErrors({});
-                }}
-                className="ml-1 text-primary hover:underline font-medium"
+                onClick={() => { setIsReset(false); setErrors({}); }}
+                className="text-primary hover:underline font-medium"
               >
-                {isSignUp ? 'Đăng nhập' : 'Đăng ký ngay'}
+                Quay lại đăng nhập
               </button>
-            </p>
+            ) : (
+              <p className="text-muted-foreground">
+                {isSignUp ? 'Đã có tài khoản?' : 'Chưa có tài khoản?'}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsSignUp(!isSignUp);
+                    setErrors({});
+                  }}
+                  className="ml-1 text-primary hover:underline font-medium"
+                >
+                  {isSignUp ? 'Đăng nhập' : 'Đăng ký ngay'}
+                </button>
+              </p>
+            )}
           </div>
         </div>
 

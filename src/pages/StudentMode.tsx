@@ -38,6 +38,19 @@ function GeometryLoader() {
 
     const loadFromId = async (id: string) => {
       try {
+        if (id.startsWith('local_')) {
+          const localStr = localStorage.getItem('geo3d_anonymous_history');
+          if (localStr) {
+            const history = JSON.parse(localStr);
+            const item = history.find((h: any) => h.id === id);
+            if (item) {
+              hasLoaded.current = true;
+              context.loadGeometry(item.geometry_data as unknown as GeometryData);
+              return;
+            }
+          }
+        }
+
         const { data, error } = await supabase
           .from('saved_geometries')
           .select('geometry_data')
@@ -65,7 +78,7 @@ function GeometryLoader() {
 }
 
 function BackButton() {
-  const navigate = useNavigate();
+  const context = useGeometryOptional();
   return (
     <Tooltip>
       <TooltipTrigger asChild>
@@ -73,7 +86,11 @@ function BackButton() {
           variant="ghost"
           size="icon"
           className="fixed top-4 left-[272px] z-50 glass border border-border/50 h-9 w-9 hidden lg:flex"
-          onClick={() => navigate('/')}
+          onClick={() => {
+            if (context?.state.geometry) {
+              context.clearGeometry();
+            }
+          }}
         >
           <Home className="w-4 h-4" />
         </Button>
@@ -112,7 +129,7 @@ const StudentModeContent = () => {
         <LeftSidebar />
         <MobileSidebar />
 
-        <main className="flex-1 lg:ml-64 lg:mr-80 relative radial-gradient-bg min-h-screen">
+        <main className="flex-1 lg:mr-80 relative radial-gradient-bg min-h-screen">
           <BackButton />
           <TopToolbar />
           <GeometryCanvas />

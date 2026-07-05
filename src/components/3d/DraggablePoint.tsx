@@ -85,6 +85,13 @@ export function DraggablePoint({ point, allPoints, allLines, delay, isBuilding }
   const onPointerDown = useCallback((e: any) => {
     if (!isManualMode || !context) return;
     e.stopPropagation();
+
+    // If a tool (other than addPoint) is active, click selects instead of dragging
+    if (context.state.manualTool !== null && context.state.manualTool !== 'addPoint' && context.state.manualTool !== 'equation') {
+      context.toggleSelection(point.id);
+      return;
+    }
+
     setIsDragging(true);
 
     // Create a plane facing the camera at the point's position
@@ -184,9 +191,12 @@ export function DraggablePoint({ point, allPoints, allLines, delay, isBuilding }
 
   const showPoints = context?.state.showPoints ?? true;
   const isIntermediate = !point.label && (point.id.startsWith('P') || point.id.startsWith('curve_'));
-  const shouldHide = !showPoints || isIntermediate;
+  const shouldHide = point.hidden || !showPoints || isIntermediate;
 
   if (shouldHide) return null;
+
+  const isSelected = context?.state.selectedIds.includes(point.id);
+  const displayColor = isSelected ? '#f97316' : isDragging ? '#fbbf24' : hovered && isManualMode && (context?.state.manualTool === null || context?.state.manualTool === 'addPoint') ? '#34d399' : '#60a5fa';
 
   // Swap Y and Z: Math uses Z as height (Oxyz), Three.js uses Y as height
   return (
@@ -194,16 +204,23 @@ export function DraggablePoint({ point, allPoints, allLines, delay, isBuilding }
       ref={groupRef}
       position={[point.x, point.z, point.y]}
       onPointerDown={onPointerDown}
+      onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
       onPointerOver={() => setHovered(true)}
       onPointerOut={() => { setHovered(false); if (!isDragging) gl.domElement.style.cursor = ''; }}
     >
+      {/* Highlight glow if selected */}
+      {isSelected && (
+        <mesh>
+          <sphereGeometry args={[0.2, 16, 16]} />
+          <meshBasicMaterial color="#f97316" transparent opacity={0.3} />
+        </mesh>
+      )}
+
       {/* Point Sphere - larger hit area in manual mode */}
       <mesh ref={meshRef}>
-        <sphereGeometry args={[isManualMode ? 0.2 : 0.15, 16, 16]} />
-        <meshBasicMaterial
-          color={isDragging ? '#fbbf24' : hovered && isManualMode ? '#34d399' : '#60a5fa'}
-        />
+        <sphereGeometry args={[isManualMode ? 0.12 : 0.08, 16, 16]} />
+        <meshBasicMaterial color={displayColor} />
       </mesh>
 
       {/* Snap indicator ring */}
@@ -216,13 +233,23 @@ export function DraggablePoint({ point, allPoints, allLines, delay, isBuilding }
 
       {/* Label */}
       {point.label && (
-        <Html position={[0, 0.4, 0]} center distanceFactor={12} zIndexRange={[100, 0]}>
-          <span className="math-label" style={{
-            color: '#ffffff',
-            fontSize: '18px',
-          }}>
-            {sanitizeLabel(point.label)}
-          </span>
+        <Html position={[0, 0, 0]} center distanceFactor={12} zIndexRange={[100, 0]} style={{ pointerEvents: 'none' }}>
+          <div 
+            style={{
+              transform: `translate(15px, -20px)`,
+              pointerEvents: 'none',
+            }}
+          >
+            <span className="math-label" style={{
+              color: 'hsl(var(--foreground))',
+              fontSize: '18px',
+              WebkitTextStroke: '3px hsl(var(--background))',
+              paintOrder: 'stroke fill',
+              whiteSpace: 'nowrap'
+            }}>
+              {sanitizeLabel(point.label)}
+            </span>
+          </div>
         </Html>
       )}
     </group>

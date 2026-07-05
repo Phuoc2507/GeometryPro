@@ -82,6 +82,8 @@ export function AnimatedCircle({ circle, delay, isBuilding }: AnimatedCircleProp
     return points;
   }, [circle]);
 
+  const [hovered, setHovered] = useState(false);
+
   if (!visible) return null;
 
   const scaledPoints = circlePoints.map(([x, y, z]) => {
@@ -95,11 +97,43 @@ export function AnimatedCircle({ circle, delay, isBuilding }: AnimatedCircleProp
     ] as [number, number, number];
   });
 
+  const handleClick = (e: any) => {
+    if (e.delta > 2) return;
+    if (!isManualMode || !geometryCtx) return;
+    if (geometryCtx.state.manualTool === 'deleteLine') {
+      e.stopPropagation();
+      geometryCtx.toggleSelection(circle.id);
+    }
+  };
+
+  const handlePointerOver = (e: any) => {
+    if (!isManualMode || geometryCtx?.state.manualTool !== 'deleteLine') return;
+    e.stopPropagation();
+    setHovered(true);
+    document.body.style.cursor = 'crosshair';
+  };
+
+  const handlePointerOut = () => {
+    setHovered(false);
+    document.body.style.cursor = 'auto';
+  };
+
   return (
-    <Line
-      points={scaledPoints}
-      color={color}
-      lineWidth={2}
-    />
+    <group
+      onClick={handleClick}
+      onPointerOver={handlePointerOver}
+      onPointerOut={handlePointerOut}
+    >
+      <Line
+        points={scaledPoints}
+        color={color}
+        lineWidth={hovered ? 4 : 2}
+      />
+      {/* Invisible hitbox for the outline */}
+      <mesh position={[circle.center.x, circle.center.z, circle.center.y]} rotation={[-Math.PI / 2, 0, 0]}>
+        <ringGeometry args={[circle.radius * scale - 0.2, circle.radius * scale + 0.2, 32]} />
+        <meshBasicMaterial transparent opacity={0} depthWrite={false} side={THREE.DoubleSide} />
+      </mesh>
+    </group>
   );
 }

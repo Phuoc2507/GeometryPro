@@ -11,8 +11,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { demoQuestions } from '@/data/demoQuestions';
-import benchmarkDemos from '@/data/benchmarkDemos.json';
-// import { demoResults } from '@/data/demoResults';
+import { demoResults } from '@/data/demoResults';
 
 export function DropZone() {
   const context = useGeometryOptional();
@@ -273,19 +272,21 @@ export function DropZone() {
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent className="w-64 pointer-events-auto max-h-[60vh] overflow-y-auto">
-                    {benchmarkDemos.map((demo, idx) => (
+                    {demoResults.map((demo, idx) => (
                       <DropdownMenuItem 
                         key={idx} 
                         className="cursor-pointer" 
                         onClick={() => {
                           if (demo.geometry && demo.geometry.points && demo.geometry.points.length > 0) {
-                            context.loadGeometry({ ...demo.geometry, name: demo.name });
+                            if (context.startDemo) {
+                              context.startDemo({ ...demo.geometry, name: demo.title });
+                            }
                           } else {
                             setShowTextInput(true);
                           }
                         }}
                       >
-                        <span className="truncate">{demo.name}</span>
+                        <span className="truncate">{demo.title}</span>
                       </DropdownMenuItem>
                     ))}
                     <div className="border-t my-1"></div>

@@ -1,13 +1,28 @@
 import { useState } from 'react';
-import { Hexagon, Menu, Loader2, CheckCircle2, XCircle, Eye, Trash2, Clock, Zap, Layers, Target, ListPlus, History, ChevronDown, ChevronUp } from 'lucide-react';
+import { 
+  Hexagon, Menu, Loader2, CheckCircle2, XCircle, Eye, Trash2, Clock, Zap, Layers, Target, 
+  ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Edit3, Folder, MoreHorizontal, Plus, 
+  FolderPlus, Edit2 
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { Progress } from '@/components/ui/progress';
+import { 
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, 
+  DropdownMenuSeparator, DropdownMenuSub, DropdownMenuSubTrigger, 
+  DropdownMenuSubContent, DropdownMenuPortal 
+} from '@/components/ui/dropdown-menu';
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
 import { useGeometryOptional } from '@/context/GeometryContext';
-import { useGeometryHistory } from '@/hooks/useGeometryHistory';
+import { useGeometryHistory, HistoryItem } from '@/hooks/useGeometryHistory';
+import { useProjects } from '@/hooks/useProjects';
 import { useAuth } from '@/context/AuthContext';
 import { QueueItem } from '@/types/geometry';
+import { Project } from '@/types/project';
 import { cn } from '@/lib/utils';
 import { formatDistanceToNow } from 'date-fns';
 import { vi } from 'date-fns/locale';
@@ -39,7 +54,7 @@ function QueueItemCard({ item, isActive, onView, onRemove }: {
   return (
     <div
       className={cn(
-        "group relative p-3 rounded-xl transition-all duration-200 border cursor-pointer",
+        "group relative p-3 rounded-xl transition-all duration-200 border cursor-pointer mx-3 mb-2",
         isActive
           ? "bg-primary/10 border-primary/30"
           : isDone
@@ -50,7 +65,6 @@ function QueueItemCard({ item, isActive, onView, onRemove }: {
       )}
       onClick={(isDone || isProcessing || isPending) ? onView : undefined}
     >
-      {/* Remove button */}
       {(isDone || isError) && (
         <button
           onClick={(e) => { e.stopPropagation(); onRemove(); }}
@@ -61,7 +75,6 @@ function QueueItemCard({ item, isActive, onView, onRemove }: {
       )}
 
       <div className="flex items-start gap-2.5">
-        {/* Status icon */}
         <div className={cn(
           "p-1.5 rounded-lg shrink-0 mt-0.5",
           isProcessing ? "bg-primary/20" : isDone ? "bg-green-500/15" : isError ? "bg-destructive/15" : "bg-secondary/40"
@@ -77,18 +90,16 @@ function QueueItemCard({ item, isActive, onView, onRemove }: {
           )}
         </div>
 
-        {/* Content */}
         <div className="flex-1 min-w-0">
           <p className="text-xs font-medium text-foreground line-clamp-2 leading-relaxed">
             {item.prompt}
           </p>
-
           <div className="flex items-center gap-1.5 mt-1.5">
             <ModeIcon className="w-3 h-3 text-muted-foreground" />
             <span className="text-[10px] text-muted-foreground">{modeLabels[item.mode] || item.mode}</span>
             {isDone && (
               <>
-                <span className="text-[10px] text-muted-foreground">·</span>
+                <span className="text-[10px] text-muted-foreground">•</span>
                 <span className="text-[10px] text-green-500 font-medium flex items-center gap-0.5">
                   <Eye className="w-2.5 h-2.5" /> Xem
                 </span>
@@ -98,7 +109,6 @@ function QueueItemCard({ item, isActive, onView, onRemove }: {
         </div>
       </div>
 
-      {/* Progress bar for processing items */}
       {isProcessing && (
         <div className="mt-2 space-y-1">
           <Progress value={item.progress} className="h-1" />
@@ -106,7 +116,6 @@ function QueueItemCard({ item, isActive, onView, onRemove }: {
         </div>
       )}
 
-      {/* Error message */}
       {isError && (
         <p className="mt-1.5 text-[10px] text-destructive/80 line-clamp-1">{item.error}</p>
       )}
@@ -117,16 +126,27 @@ function QueueItemCard({ item, isActive, onView, onRemove }: {
 function SidebarContent() {
   const context = useGeometryOptional();
   const { user } = useAuth();
-  const { history, deleteHistoryItem, clearHistory } = useGeometryHistory();
-  const [showHistory, setShowHistory] = useState(false);
+  const { history, deleteHistoryItem, renameHistoryItem, moveToProject } = useGeometryHistory();
+  const { projects, createProject, deleteProject } = useProjects();
+  
+  const [expandedProjects, setExpandedProjects] = useState<Record<string, boolean>>({});
+  const [showRecents, setShowRecents] = useState(true);
+  
+  // Dialogs State
+  const [renameDialogOpen, setRenameDialogOpen] = useState(false);
+  const [renameTargetId, setRenameTargetId] = useState<string | null>(null);
+  const [renameInput, setRenameInput] = useState("");
+  
+  const [newProjectDialogOpen, setNewProjectDialogOpen] = useState(false);
+  const [newProjectInput, setNewProjectInput] = useState("");
+  const [pendingMoveItemId, setPendingMoveItemId] = useState<string | null>(null);
+
   const queue = context?.state.queue || [];
   const activeId = context?.state.activeQueueId;
 
-  const processingItems = queue.filter(q => q.status === 'processing' || q.status === 'pending');
-  const completedItems = queue.filter(q => q.status === 'done');
-  const errorItems = queue.filter(q => q.status === 'error');
-
-  const handleLoadHistory = (item: typeof history[0]) => {
+  const activeQueueItems = queue.filter(q => q.status !== 'error' && q.status !== 'done');
+  
+  const handleLoadHistory = (item: HistoryItem) => {
     if (context) {
       context.loadGeometry(item.geometry_data);
       const url = new URL(window.location.href);
@@ -135,162 +155,290 @@ function SidebarContent() {
     }
   };
 
-  return (
-    <>
-      {/* Logo */}
-      <div className="p-5 border-b border-border/50">
-        <div className="flex items-center gap-3">
-          <div className="p-2 rounded-xl bg-primary/10 glow-primary">
-            <Hexagon className="w-6 h-6 text-primary" />
-          </div>
-          <h1 className="text-xl font-bold gradient-text">GeoMagic Pro</h1>
+  const openRename = (item: HistoryItem) => {
+    setRenameTargetId(item.id);
+    setRenameInput(item.name || "Hình không tên");
+    setRenameDialogOpen(true);
+  };
+
+  const handleRename = () => {
+    if (renameTargetId && renameInput.trim()) {
+      renameHistoryItem(renameTargetId, renameInput.trim());
+    }
+    setRenameDialogOpen(false);
+  };
+
+  const handleCreateProject = async () => {
+    if (newProjectInput.trim()) {
+      const proj = await createProject(newProjectInput.trim());
+      if (proj && pendingMoveItemId) {
+        await moveToProject(pendingMoveItemId, proj.id);
+        setExpandedProjects(prev => ({ ...prev, [proj.id]: true }));
+      }
+    }
+    setNewProjectDialogOpen(false);
+    setNewProjectInput("");
+    setPendingMoveItemId(null);
+  };
+
+  const openNewProject = (itemIdToMove: string | null = null) => {
+    setPendingMoveItemId(itemIdToMove);
+    setNewProjectInput("");
+    setNewProjectDialogOpen(true);
+  };
+
+  const toggleProject = (projectId: string) => {
+    setExpandedProjects(prev => ({ ...prev, [projectId]: !prev[projectId] }));
+  };
+
+  const renderHistoryItem = (item: HistoryItem) => {
+    return (
+      <div 
+        key={item.id}
+        onClick={() => handleLoadHistory(item)}
+        className="group relative flex items-center justify-between px-3 py-2 rounded-lg hover:bg-secondary/40 cursor-pointer transition-colors"
+      >
+        <div className="flex-1 min-w-0 pr-2">
+          <p className="text-[15px] font-medium text-foreground truncate">{item.name || "Hình không tên"}</p>
+        </div>
+        
+        <div className="flex items-center pl-2 shrink-0" onClick={e => e.stopPropagation()}>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-7 w-7 bg-background hover:bg-secondary border border-transparent hover:border-border shadow-sm">
+                <MoreHorizontal className="w-4 h-4 text-foreground" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-48">
+              <DropdownMenuItem onClick={(e) => { e.stopPropagation(); openRename(item); }}>
+                <Edit2 className="w-4 h-4 mr-2" /> Đổi tên
+              </DropdownMenuItem>
+              
+              <DropdownMenuSub>
+                <DropdownMenuSubTrigger>
+                  <FolderPlus className="w-4 h-4 mr-2" /> Thêm vào dự án
+                </DropdownMenuSubTrigger>
+                <DropdownMenuPortal>
+                  <DropdownMenuSubContent>
+                    {projects.map(p => (
+                      <DropdownMenuItem 
+                        key={p.id}
+                        onClick={(e) => { e.stopPropagation(); moveToProject(item.id, p.id); }}
+                      >
+                        {p.name}
+                      </DropdownMenuItem>
+                    ))}
+                    {projects.length > 0 && <DropdownMenuSeparator />}
+                    <DropdownMenuItem onClick={(e) => { e.stopPropagation(); openNewProject(item.id); }}>
+                      <Plus className="w-4 h-4 mr-2" /> Tạo dự án mới...
+                    </DropdownMenuItem>
+                  </DropdownMenuSubContent>
+                </DropdownMenuPortal>
+              </DropdownMenuSub>
+
+              {item.project_id && (
+                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); moveToProject(item.id, null); }}>
+                  <Folder className="w-4 h-4 mr-2 text-muted-foreground" /> Gỡ khỏi dự án
+                </DropdownMenuItem>
+              )}
+              
+              <DropdownMenuSeparator />
+              <DropdownMenuItem 
+                onClick={(e) => { e.stopPropagation(); deleteHistoryItem(item.id); }}
+                className="text-destructive focus:text-destructive"
+              >
+                <Trash2 className="w-4 h-4 mr-2" /> Xóa
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
+    );
+  };
 
-      {/* Queue + History Section */}
-      <div className="flex-1 flex flex-col overflow-hidden">
-        <ScrollArea className="flex-1">
-          {/* Queue */}
-          {queue.length === 0 && history.length === 0 ? (
-            <div className="flex-1 flex items-center justify-center p-6 min-h-[200px]">
-              <div className="text-center space-y-3">
-                <div className="p-3 rounded-2xl bg-secondary/20 inline-block">
-                  <ListPlus className="w-8 h-8 text-muted-foreground/40" />
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground">Hàng chờ trống</p>
-                  <p className="text-xs text-muted-foreground/60 mt-1">
-                    Thêm nhiều đề bài để vẽ song song
-                  </p>
-                </div>
-              </div>
+  const recents = history.filter(h => !h.project_id);
+
+  return (
+    <>
+      {/* New Chat Button */}
+      <div className="p-3 pb-0">
+        <Button 
+          variant="outline" 
+          className="w-full justify-start text-[15px] font-medium h-12 rounded-xl bg-background/50 hover:bg-secondary/40 border-border/50"
+          onClick={() => {
+            const url = new URL(window.location.href);
+            url.searchParams.delete('id');
+            window.history.replaceState({}, '', url.toString());
+            context?.clearGeometry();
+          }}
+        >
+          <div className="flex items-center justify-between w-full">
+            <span>Bài mới</span>
+            <Edit3 className="w-5 h-5 text-muted-foreground" />
+          </div>
+        </Button>
+      </div>
+
+      <ScrollArea className="flex-1 mt-4 px-2">
+        {/* Active Queue */}
+        {activeQueueItems.length > 0 && (
+          <div className="mb-4">
+            <div className="px-3 mb-2 flex items-center gap-2">
+              <Loader2 className="w-3.5 h-3.5 text-primary animate-spin" />
+              <span className="text-xs font-semibold text-primary">Đang xử lý</span>
             </div>
-          ) : (
-            <div className="p-3 space-y-4">
-              {/* Processing / Pending */}
-              {processingItems.length > 0 && (
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2 px-1">
-                    <Loader2 className="w-3.5 h-3.5 text-primary animate-spin" />
-                    <span className="text-xs font-medium text-primary">
-                      Đang xử lý ({processingItems.length})
-                    </span>
-                  </div>
-                  {processingItems.map(item => (
-                    <QueueItemCard
-                      key={item.id}
-                      item={item}
-                      isActive={activeId === item.id}
-                      onView={() => context?.viewQueueItem(item.id)}
-                      onRemove={() => context?.removeQueueItem(item.id)}
-                    />
-                  ))}
-                </div>
-              )}
+            {activeQueueItems.map(item => (
+              <QueueItemCard
+                key={item.id}
+                item={item}
+                isActive={activeId === item.id}
+                onView={() => context?.viewQueueItem(item.id)}
+                onRemove={() => context?.removeQueueItem(item.id)}
+              />
+            ))}
+          </div>
+        )}
 
-              {/* Completed */}
-              {completedItems.length > 0 && (
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2 px-1">
-                    <CheckCircle2 className="w-3.5 h-3.5 text-green-500" />
-                    <span className="text-xs font-medium text-green-500/80">
-                      Hoàn thành ({completedItems.length})
-                    </span>
-                  </div>
-                  {completedItems.map(item => (
-                    <QueueItemCard
-                      key={item.id}
-                      item={item}
-                      isActive={activeId === item.id}
-                      onView={() => context?.viewQueueItem(item.id)}
-                      onRemove={() => context?.removeQueueItem(item.id)}
-                    />
-                  ))}
-                </div>
-              )}
-
-              {/* Errors */}
-              {errorItems.length > 0 && (
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2 px-1">
-                    <XCircle className="w-3.5 h-3.5 text-destructive" />
-                    <span className="text-xs font-medium text-destructive/80">
-                      Lỗi ({errorItems.length})
-                    </span>
-                  </div>
-                  {errorItems.map(item => (
-                    <QueueItemCard
-                      key={item.id}
-                      item={item}
-                      isActive={false}
-                      onView={() => {}}
-                      onRemove={() => context?.removeQueueItem(item.id)}
-                    />
-                  ))}
-                </div>
-              )}
-
-              {/* History */}
-              {history.length > 0 && (
-                <div className="space-y-2 border-t border-border/30 pt-3">
-                  <button
-                    onClick={() => setShowHistory(!showHistory)}
-                    className="flex items-center justify-between w-full px-1"
+        {/* Projects Section */}
+        <div className="mb-4">
+          <div className="flex items-center justify-between px-3 mb-1 group">
+            <span className="text-sm font-semibold text-muted-foreground">Dự án</span>
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className="h-6 w-6 transition-opacity"
+              onClick={(e) => { e.stopPropagation(); openNewProject(); }}
+            >
+              <Plus className="w-4 h-4 text-muted-foreground" />
+            </Button>
+          </div>
+          
+          <div className="space-y-0.5">
+            {projects.map(project => {
+              const isExpanded = expandedProjects[project.id];
+              const projectItems = history.filter(h => h.project_id === project.id);
+              return (
+                <div key={project.id}>
+                  <div 
+                    onClick={() => toggleProject(project.id)}
+                    className="group flex items-center justify-between px-3 py-2 rounded-lg hover:bg-secondary/30 cursor-pointer transition-colors"
                   >
-                    <div className="flex items-center gap-2">
-                      <History className="w-3.5 h-3.5 text-muted-foreground" />
-                      <span className="text-xs font-medium text-muted-foreground">
-                        Lịch sử ({history.length})
-                      </span>
+                    <div className="flex items-center gap-2 flex-1 min-w-0">
+                      <Folder className="w-4 h-4 text-muted-foreground shrink-0" />
+                      <span className="text-[15px] font-medium truncate">{project.name}</span>
                     </div>
-                    {showHistory ? (
-                      <ChevronUp className="w-3.5 h-3.5 text-muted-foreground" />
-                    ) : (
-                      <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" />
-                    )}
-                  </button>
-
-                  {showHistory && (
-                    <div className="space-y-1.5">
-                      {history.map((item) => (
-                        <div
-                          key={item.id}
-                          onClick={() => handleLoadHistory(item)}
-                          className="group relative p-2.5 rounded-lg bg-secondary/10 border border-border/20 hover:bg-secondary/30 transition-colors cursor-pointer"
-                        >
-                          <button
-                            onClick={(e) => { e.stopPropagation(); deleteHistoryItem(item.id); }}
-                            className="absolute top-1.5 right-1.5 p-1 rounded-md opacity-0 group-hover:opacity-100 hover:bg-destructive/20 transition-all"
-                          >
-                            <Trash2 className="w-3 h-3 text-muted-foreground" />
-                          </button>
-                          <p className="text-xs font-medium text-foreground line-clamp-1">{item.name}</p>
-                          {item.prompt && (
-                            <p className="text-[10px] text-muted-foreground line-clamp-1 mt-0.5">{item.prompt}</p>
-                          )}
-                          <p className="text-[10px] text-muted-foreground/60 mt-1 flex items-center gap-1">
-                            <Clock className="w-2.5 h-2.5" />
-                            {formatDistanceToNow(new Date(item.created_at), { addSuffix: true, locale: vi })}
-                          </p>
+                    <div className="flex items-center">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger className="p-1.5 rounded-md hover:bg-secondary/80 text-muted-foreground hover:text-foreground outline-none transition-colors" onClick={e => e.stopPropagation()}>
+                          <MoreHorizontal className="w-4 h-4" />
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-40">
+                          <DropdownMenuItem onClick={(e) => { e.stopPropagation(); deleteProject(project.id); }} className="text-destructive focus:text-destructive">
+                            <Trash2 className="w-4 h-4 mr-2" /> Xóa dự án
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+                  </div>
+                  {isExpanded && (
+                    <div className="pl-6 pr-2 space-y-0.5 mt-0.5 border-l-2 border-border/20 ml-5 relative before:absolute before:inset-0 before:-left-[2px] before:w-[2px] before:bg-gradient-to-b before:from-border/40 before:to-transparent">
+                      {projectItems.length === 0 ? (
+                        <div className="px-3 py-2 text-xs text-muted-foreground/60 italic">
+                          Trống
                         </div>
-                      ))}
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="w-full text-xs text-muted-foreground hover:text-destructive"
-                        onClick={clearHistory}
-                      >
-                        <Trash2 className="w-3 h-3 mr-1" />
-                        Xóa lịch sử
-                      </Button>
+                      ) : (
+                        projectItems.map(renderHistoryItem)
+                      )}
                     </div>
                   )}
                 </div>
-              )}
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Recents Section */}
+        {recents.length > 0 && (
+          <div className="mb-4">
+            <div 
+              className="flex items-center justify-between px-3 mb-1 cursor-pointer group"
+              onClick={() => setShowRecents(!showRecents)}
+            >
+              <span className="text-sm font-semibold text-muted-foreground">Gần đây</span>
+              <Button variant="ghost" size="icon" className="h-6 w-6 transition-opacity">
+                {showRecents ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
+              </Button>
             </div>
-          )}
-        </ScrollArea>
-      </div>
+            
+            {showRecents && (
+              <div className="space-y-0.5">
+                {recents.map(renderHistoryItem)}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Empty State */}
+        {history.length === 0 && projects.length === 0 && (
+          <div className="flex flex-col items-center justify-center p-6 text-center mt-10">
+            <div className="p-4 rounded-full bg-secondary/30 mb-3">
+              <Layers className="w-6 h-6 text-muted-foreground/50" />
+            </div>
+            <p className="text-sm font-medium text-muted-foreground">Chưa có bài nào</p>
+            <p className="text-xs text-muted-foreground/60 mt-1">
+              Bắt đầu tạo hình mới để lưu lại
+            </p>
+          </div>
+        )}
+      </ScrollArea>
+
+      {/* Rename Dialog */}
+      <Dialog open={renameDialogOpen} onOpenChange={setRenameDialogOpen}>
+        <DialogContent className="sm:max-w-[400px]">
+          <DialogHeader>
+            <DialogTitle>Đổi tên bài</DialogTitle>
+          </DialogHeader>
+          <div className="py-4">
+            <Input 
+              value={renameInput}
+              onChange={e => setRenameInput(e.target.value)}
+              placeholder="Nhập tên mới..."
+              autoFocus
+              onKeyDown={e => {
+                if (e.key === 'Enter') handleRename();
+              }}
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRenameDialogOpen(false)}>Hủy</Button>
+            <Button onClick={handleRename}>Lưu</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* New Project Dialog */}
+      <Dialog open={newProjectDialogOpen} onOpenChange={setNewProjectDialogOpen}>
+        <DialogContent className="sm:max-w-[400px]">
+          <DialogHeader>
+            <DialogTitle>Tạo dự án mới</DialogTitle>
+          </DialogHeader>
+          <div className="py-4">
+            <Input 
+              value={newProjectInput}
+              onChange={e => setNewProjectInput(e.target.value)}
+              placeholder="Tên dự án..."
+              autoFocus
+              onKeyDown={e => {
+                if (e.key === 'Enter') handleCreateProject();
+              }}
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setNewProjectDialogOpen(false)}>Hủy</Button>
+            <Button onClick={handleCreateProject}>Tạo mới</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Footer */}
       <div className="p-4 border-t border-border/50">
@@ -324,8 +472,8 @@ export function MobileSidebar() {
           )}
         </Button>
       </SheetTrigger>
-      <SheetContent side="left" className="w-72 p-0 glass border-r border-border/50">
-        <div className="h-full flex flex-col">
+      <SheetContent side="left" className="w-[300px] p-0 glass border-r border-border/50">
+        <div className="h-full flex flex-col bg-background/95">
           <SidebarContent />
         </div>
       </SheetContent>
@@ -335,9 +483,37 @@ export function MobileSidebar() {
 
 // Desktop Sidebar
 export function LeftSidebar() {
+  const [isCollapsed, setIsCollapsed] = useState(false);
+
   return (
-    <aside className="w-64 h-screen hidden lg:flex flex-col glass border-r border-border/50 sticky left-0 top-0 z-40 shrink-0">
-      <SidebarContent />
-    </aside>
+    <div className="relative h-screen hidden lg:flex z-40 shrink-0">
+      <aside 
+        className={cn(
+          "h-full flex flex-col glass border-r border-border/50 sticky left-0 top-0 transition-all duration-300 bg-background/95 overflow-hidden",
+          isCollapsed ? "w-0 border-none" : "w-[260px]"
+        )}
+      >
+        <div className="h-full w-[260px] flex flex-col relative">
+          <SidebarContent />
+        </div>
+      </aside>
+
+      {/* Toggle Button */}
+      <Button
+        variant="ghost"
+        size="icon"
+        onClick={() => setIsCollapsed(!isCollapsed)}
+        className={cn(
+          "absolute top-1/2 -translate-y-1/2 rounded-full glass border border-border/50 z-50 h-6 w-6 bg-background shadow-sm hover:bg-secondary flex items-center justify-center transition-all duration-300",
+          isCollapsed ? "left-0 translate-x-1/2" : "left-[260px] -translate-x-1/2"
+        )}
+      >
+        {isCollapsed ? (
+          <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" />
+        ) : (
+          <ChevronLeft className="w-3.5 h-3.5 text-muted-foreground" />
+        )}
+      </Button>
+    </div>
   );
 }

@@ -100,7 +100,9 @@ export const demoResults = [
                         "xMin": 0,
                         "xMax": 8
                   },
-                  "color": "#eab308"
+                  "color": "#eab308",
+                  "fill": true,
+                  "fillOpacity": 0.25
             }
       ],
       "circles": [],

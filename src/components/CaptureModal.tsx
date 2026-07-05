@@ -1,52 +1,68 @@
-import { useState } from 'react';
-import { Camera, Image, Code, X, Download, Copy } from 'lucide-react';
+import { useState, useMemo } from 'react';
+import { Camera, Image as ImageIcon, Code, Download, Copy, Settings2, Sparkles } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Switch } from '@/components/ui/switch';
 import { toast } from '@/hooks/use-toast';
-import { GeometryData, Point3D } from '@/types/geometry';
-import { convertToHighContrastBW } from '@/lib/capture/convertToHighContrastBW';
+import { GeometryData } from '@/types/geometry';
 import { sanitizeLatexLabel, sanitizeLatexName } from '@/lib/sanitizeLatex';
 
 import { project3DTo2D, generateProjectedLatex } from '@/lib/geometry/projection';
 import { useGeometryOptional } from '@/context/GeometryContext';
+import { useCameraStateOptional } from '@/context/CameraContext';
+import { scaleGeometry } from '@/lib/geometry/scaleGeometry';
 
 interface CaptureModalProps {
   isOpen: boolean;
   onClose: () => void;
   geometry: GeometryData | null;
-  cameraState: {
-    position: [number, number, number];
-    target: [number, number, number];
-  } | null;
   canvasRef: React.RefObject<HTMLCanvasElement>;
   hiddenLines?: Map<string, boolean>;
 }
 
-export function CaptureModal({ isOpen, onClose, geometry, cameraState, canvasRef, hiddenLines }: CaptureModalProps) {
+export function CaptureModal({ isOpen, onClose, geometry, canvasRef, hiddenLines }: CaptureModalProps) {
   const [isExporting, setIsExporting] = useState(false);
-  const [activeTab, setActiveTab] = useState<'image' | 'latex'>('image');
+  const [exportScale, setExportScale] = useState(1.2);
+  const [transparentBg, setTransparentBg] = useState(false);
+  const [isCustomLabelMode, setIsCustomLabelMode] = useState(false);
+  const [labelOffsets, setLabelOffsets] = useState<Record<string, {offsetX: number, offsetY: number}>>({});
+  const [draggingLabelId, setDraggingLabelId] = useState<string | null>(null);
+  const [labelDragLastPos, setLabelDragLastPos] = useState<{x: number, y: number} | null>(null);
+
   const geometryContext = useGeometryOptional();
+  const cameraStateContext = useCameraStateOptional();
   const showPoints = geometryContext?.state.showPoints ?? true;
 
-  const getDynamicLatex = () => {
-    if (!geometry || !cameraState) return '';
-    
-    // Luôn khóa mục tiêu vào gốc tọa độ O(0,0,0) để tọa độ trong TikZ luôn chuẩn xác
-    const fixedTarget: [number, number, number] = [0, 0, 0];
+  const cameraState = cameraStateContext?.cameraState;
+
+  const fixedCamera = useMemo(() => {
+    if (!cameraState) return { cameraPos: [0, 0, 0] as [number, number, number], target: [0, 0, 0] as [number, number, number], zoom: 1 };
     
     const viewDir = [
       cameraState.position[0] - cameraState.target[0],
       cameraState.position[1] - cameraState.target[1],
       cameraState.position[2] - cameraState.target[2]
     ];
-    const fixedCameraPos: [number, number, number] = [
-      fixedTarget[0] + viewDir[0],
-      fixedTarget[1] + viewDir[1],
-      fixedTarget[2] + viewDir[2]
-    ];
+    
+    return {
+      cameraPos: [
+        viewDir[0],
+        viewDir[1],
+        viewDir[2]
+      ] as [number, number, number],
+      target: [0, 0, 0] as [number, number, 0],
+      zoom: cameraState.zoom || 1
+    };
+  }, [cameraState]);
 
-    return generateProjectedLatex(geometry, fixedCameraPos, fixedTarget, hiddenLines, showPoints);
+  const scaledGeometry = useMemo(() => {
+    if (!geometry) return null;
+    return scaleGeometry(geometry);
+  }, [geometry]);
+
+  const getDynamicLatex = () => {
+    if (!scaledGeometry || !cameraState) return '';
+    return generateProjectedLatex(scaledGeometry, fixedCamera.cameraPos, fixedCamera.target, hiddenLines, showPoints, exportScale);
   };
 
   const captureImage = async (mode: 'color' | 'bw') => {
@@ -63,33 +79,110 @@ export function CaptureModal({ isOpen, onClose, geometry, cameraState, canvasRef
 
     try {
       const canvas = canvasRef.current;
-
-      // Create a new canvas for export
       const exportCanvas = document.createElement('canvas');
       const ctx = exportCanvas.getContext('2d');
       if (!ctx) throw new Error('Cannot get canvas context');
 
-      exportCanvas.width = canvas.width;
-      exportCanvas.height = canvas.height;
+      const scaleFactor = exportScale / 1.2;
 
       if (mode === 'bw') {
-        // White background for B&W
-        ctx.fillStyle = '#ffffff';
-        ctx.fillRect(0, 0, exportCanvas.width, exportCanvas.height);
+        const svgEl = document.getElementById('math-svg-export');
+        if (!svgEl) {
+          throw new Error('Cannot find SVG element for export');
+        }
 
-        // Draw the original canvas
-        ctx.drawImage(canvas, 0, 0);
+        let svgString = new XMLSerializer().serializeToString(svgEl);
+        if (!svgString.includes('background-color')) {
+           svgString = svgString.replace('<svg ', `<svg style="background-color: ${transparentBg ? 'transparent' : 'white'};" `);
+        } else {
+           svgString = svgString.replace(/background-color:\s*[^;]+;?/, `background-color: ${transparentBg ? 'transparent' : 'white'};`);
+        }
+        
+        const svgBlob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' });
+        const URL = window.URL || window.webkitURL;
+        const blobURL = URL.createObjectURL(svgBlob);
+        
+        const img = new window.Image();
+        img.onload = () => {
+          const targetSize = 1024 * scaleFactor;
+          exportCanvas.width = targetSize;
+          exportCanvas.height = targetSize;
 
-        // Convert to high contrast B&W (edge-aware so bright lines still show)
-        const imageData = ctx.getImageData(0, 0, exportCanvas.width, exportCanvas.height);
-        const bw = convertToHighContrastBW(imageData);
-        ctx.putImageData(bw, 0, 0);
+          if (!transparentBg) {
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, exportCanvas.width, exportCanvas.height);
+          }
+          
+          ctx.drawImage(img, 0, 0, exportCanvas.width, exportCanvas.height);
+          URL.revokeObjectURL(blobURL);
+          
+          const link = document.createElement('a');
+          link.download = `${geometry?.name || 'geometry'}_bw.png`;
+          link.href = exportCanvas.toDataURL('image/png');
+          link.click();
+          
+          setIsExporting(false);
+          toast({ title: "Thành công!", description: "Đã xuất ảnh trắng đen" });
+        };
+        img.onerror = () => {
+           URL.revokeObjectURL(blobURL);
+           setIsExporting(false);
+           toast({ title: "Lỗi", description: "Không thể render ảnh SVG", variant: "destructive" });
+        };
+        img.src = blobURL;
+        return; 
       } else {
-        // Keep original colors
+        exportCanvas.width = canvas.width * scaleFactor;
+        exportCanvas.height = canvas.height * scaleFactor;
+
+        if (!transparentBg) {
+          ctx.fillStyle = '#09090b'; 
+          ctx.fillRect(0, 0, exportCanvas.width, exportCanvas.height);
+        }
+
+        ctx.save();
+        ctx.scale(scaleFactor, scaleFactor);
         ctx.drawImage(canvas, 0, 0);
+        ctx.restore();
       }
 
-      // Download the image
+      if (showPoints && mode === 'color') {
+        const labels = document.querySelectorAll('.math-label');
+        const canvasRect = canvas.getBoundingClientRect();
+        
+        const scaleX = exportCanvas.width / canvasRect.width;
+        const scaleY = exportCanvas.height / canvasRect.height;
+        
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        
+        labels.forEach((labelEl) => {
+          const text = labelEl.textContent || '';
+          if (!text.trim()) return;
+          
+          const rect = labelEl.getBoundingClientRect();
+          const x = rect.left - canvasRect.left + rect.width / 2;
+          const y = rect.top - canvasRect.top + rect.height / 2;
+          
+          const scaledX = x * scaleX;
+          const scaledY = y * scaleY;
+          
+          const fontSize = 18 * scaleX;
+          ctx.font = `italic ${fontSize}px serif`;
+          
+          ctx.fillStyle = transparentBg ? '#000000' : '#ffffff';
+          if (!transparentBg) {
+            ctx.shadowColor = 'rgba(0,0,0,0.8)';
+            ctx.shadowBlur = 4 * scaleX;
+          }
+          ctx.fillText(text, scaledX, scaledY);
+          if (!transparentBg) {
+            ctx.shadowBlur = 2 * scaleX;
+            ctx.fillText(text, scaledX, scaledY);
+          }
+        });
+      }
+
       const link = document.createElement('a');
       link.download = `${geometry?.name || 'geometry'}_${mode}.png`;
       link.href = exportCanvas.toDataURL('image/png');
@@ -97,8 +190,9 @@ export function CaptureModal({ isOpen, onClose, geometry, cameraState, canvasRef
 
       toast({
         title: "Thành công!",
-        description: `Đã xuất ảnh ${mode === 'bw' ? 'trắng đen' : 'màu'}`,
+        description: `Đã xuất ảnh màu ${transparentBg ? '(Xóa nền)' : ''}`,
       });
+      setIsExporting(false);
     } catch (error) {
       console.error('Export error:', error);
       toast({
@@ -106,7 +200,6 @@ export function CaptureModal({ isOpen, onClose, geometry, cameraState, canvasRef
         description: "Không thể xuất ảnh",
         variant: "destructive"
       });
-    } finally {
       setIsExporting(false);
     }
   };
@@ -134,421 +227,322 @@ export function CaptureModal({ isOpen, onClose, geometry, cameraState, canvasRef
     });
   };
 
+  // --- INTERACTIVE ROTATION (SAFE MATH DRIVEN) ---
+  const [isDragging, setIsDragging] = useState(false);
+  const [lastMousePos, setLastMousePos] = useState<{ x: number; y: number } | null>(null);
+
+  const interactiveHandlers = {
+    onPointerDown: (e: React.PointerEvent) => {
+      e.currentTarget.setPointerCapture(e.pointerId);
+      setIsDragging(true);
+      setLastMousePos({ x: e.clientX, y: e.clientY });
+    },
+    onPointerMove: (e: React.PointerEvent) => {
+      if (!isDragging || !lastMousePos || !cameraState || !cameraStateContext) return;
+      
+      const dx = e.clientX - lastMousePos.x;
+      const dy = e.clientY - lastMousePos.y;
+      setLastMousePos({ x: e.clientX, y: e.clientY });
+
+      if (Math.abs(dx) < 0.1 && Math.abs(dy) < 0.1) return;
+
+      const { position, target, zoom } = cameraState;
+      
+      // Calculate spherical coordinates relative to target (Y is up in ThreeJS)
+      const vx = position[0] - target[0];
+      const vy = position[1] - target[1];
+      const vz = position[2] - target[2];
+
+      const r = Math.sqrt(vx*vx + vy*vy + vz*vz) || 1;
+      let theta = Math.atan2(vx, vz); // Azimuthal angle
+      let phi = Math.acos(Math.max(-1, Math.min(1, vy / r))); // Polar angle
+
+      // Adjust sensitivity
+      theta -= dx * 0.01;
+      phi -= dy * 0.01;
+      
+      // Clamp polar angle (phi) to avoid flipping over the poles
+      phi = Math.max(0.001, Math.min(Math.PI - 0.001, phi));
+
+      // Convert back to cartesian coordinates
+      const newVx = r * Math.sin(phi) * Math.sin(theta);
+      const newVy = r * Math.cos(phi);
+      const newVz = r * Math.sin(phi) * Math.cos(theta);
+
+      cameraStateContext.setCameraState({
+        position: [target[0] + newVx, target[1] + newVy, target[2] + newVz],
+        target,
+        zoom
+      });
+    },
+    onPointerUp: (e: React.PointerEvent) => {
+      e.currentTarget.releasePointerCapture(e.pointerId);
+      setIsDragging(false);
+      setLastMousePos(null);
+    },
+    onPointerCancel: (e: React.PointerEvent) => {
+      setIsDragging(false);
+      setLastMousePos(null);
+    },
+    onWheel: (e: React.WheelEvent) => {
+      const step = e.deltaY > 0 ? -0.1 : 0.1;
+      setExportScale(prev => {
+        const newVal = prev + step;
+        return Math.max(0.5, Math.min(3.0, Number(newVal.toFixed(1))));
+      });
+    },
+    onContextMenu: (e: React.MouseEvent) => {
+      e.preventDefault();
+    }
+  };
+
+  const svgContent = useMemo(() => {
+    if (!scaledGeometry || !cameraState) return null;
+    const scale = 30.4 * fixedCamera.zoom;
+    const scaleFactor = exportScale / 1.2;
+    return (
+      <>
+        <defs>
+          <marker id="dot" markerWidth="4" markerHeight="4" refX="2" refY="2">
+            <circle cx="2" cy="2" r="1.5" fill="black" />
+          </marker>
+        </defs>
+        {scaledGeometry.lines.map(line => {
+          const from = scaledGeometry.points.find(p => p.id === line.from);
+          const to = scaledGeometry.points.find(p => p.id === line.to);
+          if (!from || !to) return null;
+          const p1 = project3DTo2D(from, fixedCamera.cameraPos, fixedCamera.target);
+          const p2 = project3DTo2D(to, fixedCamera.cameraPos, fixedCamera.target);
+          const isHidden = hiddenLines?.get(line.id) ?? line.style === 'dashed';
+          return (
+            <line key={line.id} x1={p1.x * scale} y1={-p1.y * scale} x2={p2.x * scale} y2={-p2.y * scale} stroke="black" strokeWidth={isHidden ? 1.5 : 2} strokeDasharray={isHidden ? "6,4" : "0"} strokeLinecap="round" />
+          );
+        })}
+        {scaledGeometry.points.map(p => {
+            const proj = project3DTo2D(p, fixedCamera.cameraPos, fixedCamera.target);
+            
+            let offsetX = 8;
+            let offsetY = -12; // Default offset (top-right)
+            
+            if (isCustomLabelMode && labelOffsets[p.id]) {
+                offsetX = labelOffsets[p.id].offsetX;
+                offsetY = labelOffsets[p.id].offsetY;
+            }
+            
+            // Apply SVG coordinates (SVG y goes down, Math y goes up)
+            // So subtract offsetY to move it UP visually
+            const labelX = proj.x * scale + offsetX;
+            const labelY = -proj.y * scale + offsetY;
+            
+            return (
+              <g key={p.id}>
+                {showPoints && <circle cx={proj.x * scale} cy={-proj.y * scale} r={2.5} fill="black" />}
+                {showPoints && p.label && (
+                  <text 
+                    x={labelX} 
+                    y={labelY} 
+                    textAnchor="middle" 
+                    alignmentBaseline="middle"
+                    style={{ 
+                      fontSize: '16px', 
+                      fontFamily: 'serif', 
+                      fontStyle: 'italic', 
+                      fill: 'black',
+                      cursor: isCustomLabelMode ? (draggingLabelId === p.id ? 'grabbing' : 'grab') : 'default',
+                      pointerEvents: isCustomLabelMode ? 'auto' : 'none'
+                    }}
+                    onPointerDown={(e) => {
+                      if (!isCustomLabelMode) return;
+                      e.stopPropagation();
+                      e.currentTarget.setPointerCapture(e.pointerId);
+                      setDraggingLabelId(p.id);
+                      setLabelDragLastPos({ x: e.clientX, y: e.clientY });
+                    }}
+                    onPointerMove={(e) => {
+                      if (draggingLabelId === p.id && labelDragLastPos) {
+                        e.stopPropagation();
+                        const dx = e.clientX - labelDragLastPos.x;
+                        const dy = e.clientY - labelDragLastPos.y;
+                        
+                        setLabelOffsets(prev => {
+                          const currentOffset = prev[p.id] || { offsetX: 8, offsetY: -12 };
+                          return {
+                            ...prev,
+                            [p.id]: {
+                              offsetX: currentOffset.offsetX + (dx * 0.8) / scaleFactor,
+                              offsetY: currentOffset.offsetY + (dy * 0.8) / scaleFactor
+                            }
+                          };
+                        });
+                        setLabelDragLastPos({ x: e.clientX, y: e.clientY });
+                      }
+                    }}
+                    onPointerUp={(e) => {
+                      if (draggingLabelId === p.id) {
+                        e.stopPropagation();
+                        e.currentTarget.releasePointerCapture(e.pointerId);
+                        setDraggingLabelId(null);
+                        setLabelDragLastPos(null);
+                      }
+                    }}
+                  >
+                    {p.label}
+                  </text>
+                )}
+              </g>
+            );
+        })}
+      </>
+    );
+  }, [scaledGeometry, cameraState, fixedCamera, hiddenLines, showPoints, isCustomLabelMode, labelOffsets, draggingLabelId, labelDragLastPos, exportScale]);
+
+  const scaleFactor = exportScale / 1.2;
+  const vbSize = 300 / scaleFactor;
+  const vbOffset = -vbSize / 2;
+  const viewBoxStr = `${vbOffset} ${vbOffset} ${vbSize} ${vbSize}`;
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-lg">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Camera className="w-5 h-5 text-primary" />
-            Xuất hình ảnh
+      <DialogContent className="sm:max-w-4xl p-0 overflow-hidden bg-background border-border shadow-2xl">
+        <DialogHeader className="p-6 pb-2">
+          <DialogTitle className="flex items-center gap-2 text-xl font-bold">
+            <Camera className="w-6 h-6 text-primary" />
+            Xuất hình ảnh & LaTeX
           </DialogTitle>
         </DialogHeader>
 
-        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'image' | 'latex')}>
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="image" className="flex items-center gap-2">
-              <Image className="w-4 h-4" />
-              Ảnh
-            </TabsTrigger>
-            <TabsTrigger value="latex" className="flex items-center gap-2">
-              <Code className="w-4 h-4" />
-              LaTeX
-            </TabsTrigger>
-          </TabsList>
+        <div style={{ display: 'none' }}>
+          <svg
+            id="math-svg-export"
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox={viewBoxStr}
+            width="1024"
+            height="1024"
+            style={{ backgroundColor: transparentBg ? 'transparent' : 'white' }}
+          >
+            {svgContent}
+          </svg>
+        </div>
 
-          <TabsContent value="image" className="space-y-4 mt-4">
-            <p className="text-sm text-muted-foreground">
-              Xuất hình ảnh theo góc nhìn hiện tại
-            </p>
-
-            <div className="grid grid-cols-2 gap-3">
-              <Button
-                variant="outline"
-                className="h-24 flex-col gap-2 border-2 hover:border-primary"
-                onClick={() => captureImage('bw')}
-                disabled={isExporting}
-              >
-                <div className="w-12 h-12 bg-white border-2 border-black rounded flex items-center justify-center">
-                  <div className="w-6 h-6 border-2 border-black transform rotate-45" />
-                </div>
-                <span className="text-sm font-medium">Trắng đen</span>
-              </Button>
-
-              <Button
-                variant="outline"
-                className="h-24 flex-col gap-2 border-2 hover:border-primary"
-                onClick={() => captureImage('color')}
-                disabled={isExporting}
-              >
-                <div className="w-12 h-12 bg-gradient-to-br from-primary/20 to-accent/20 border-2 border-primary/50 rounded flex items-center justify-center">
-                  <div className="w-6 h-6 border-2 border-primary transform rotate-45" />
-                </div>
-                <span className="text-sm font-medium">Theo giao diện</span>
-              </Button>
-            </div>
-          </TabsContent>
-
-          <TabsContent value="latex" className="space-y-4 mt-4">
-            <div className="flex items-center justify-between">
-              <p className="text-sm text-muted-foreground">
-                Bản vẽ TikZ theo góc nhìn hiện tại (nét khuất tự động xử lý)
-              </p>
-              <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={copyLatex}
-                  className="h-8 gap-1"
+        <div className="grid md:grid-cols-[1fr,360px] gap-6 p-6 pt-2">
+          <div className="flex flex-col gap-4">
+            <div 
+              className="relative aspect-square sm:aspect-auto sm:h-[400px] w-full bg-white rounded-xl border-2 border-dashed border-primary/20 flex items-center justify-center p-4 shadow-inner overflow-hidden bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] [background-size:16px_16px] cursor-grab active:cursor-grabbing touch-none select-none"
+              {...interactiveHandlers}
+            >
+              {scaledGeometry && cameraState && (
+                <svg
+                  viewBox={viewBoxStr}
+                  className="w-full h-full drop-shadow-sm pointer-events-none select-none"
+                  style={{ userSelect: 'none' }}
+                  preserveAspectRatio="xMidYMid meet"
                 >
-                  <Copy className="w-3 h-3" />
-                  Sao chép
+                  {svgContent}
+                </svg>
+              )}
+              
+              <div className="absolute top-3 left-3 flex gap-2 pointer-events-none">
+                 <div className="bg-black/80 text-white text-[10px] px-2 py-1 rounded shadow-sm font-medium uppercase tracking-wider backdrop-blur-sm">
+                   Bản xem trước
+                 </div>
+              </div>
+              <div className="absolute bottom-3 right-3 flex gap-2 pointer-events-none">
+                 <div className="bg-primary/10 text-primary text-[10px] px-2 py-1 rounded shadow-sm font-medium uppercase tracking-wider backdrop-blur-sm flex items-center gap-1">
+                   Dùng chuột để xoay hình
+                 </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-6">
+            <div className="bg-secondary/30 rounded-xl p-4 border border-border/50 flex flex-col gap-5">
+               <div>
+                 <div className="flex justify-between items-center mb-2">
+                   <label className="text-sm font-medium flex items-center gap-1.5">
+                      <Settings2 className="w-4 h-4 text-primary" />
+                      Kích thước (Scale)
+                   </label>
+                   <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded font-mono">
+                     {exportScale.toFixed(1)}x
+                   </span>
+                 </div>
+                 <input
+                    type="range"
+                    min="0.5"
+                    max="3.0"
+                    step="0.1"
+                    value={exportScale}
+                    onChange={(e) => setExportScale(parseFloat(e.target.value))}
+                    className="w-full h-2 bg-secondary rounded-lg appearance-none cursor-pointer accent-primary"
+                 />
+               </div>
+
+               <div className="flex justify-between items-center">
+                 <label className="text-sm font-medium flex items-center gap-1.5 cursor-pointer" htmlFor="transparent-toggle">
+                    <Sparkles className="w-4 h-4 text-primary" />
+                    Xóa nền (Trong suốt)
+                 </label>
+                 <div className="relative inline-block w-10 h-5 align-middle select-none transition duration-200 ease-in">
+                    <input 
+                      type="checkbox" 
+                      id="transparent-toggle" 
+                      checked={transparentBg}
+                      onChange={(e) => setTransparentBg(e.target.checked)}
+                      className="toggle-checkbox absolute block w-5 h-5 rounded-full bg-white border-4 appearance-none cursor-pointer border-secondary transition-transform duration-200 checked:translate-x-5 checked:border-primary"
+                      style={{ right: 'unset' }}
+                    />
+                    <label 
+                      htmlFor="transparent-toggle" 
+                      className={`toggle-label block overflow-hidden h-5 rounded-full cursor-pointer transition-colors duration-200 ${transparentBg ? 'bg-primary' : 'bg-secondary'}`}
+                    ></label>
+                 </div>
+               </div>
+
+               <div className="flex justify-between items-center">
+                 <label className="text-sm font-medium flex items-center gap-1.5 cursor-pointer" htmlFor="custom-label-toggle">
+                    <Settings2 className="w-4 h-4 text-primary" />
+                    Cho phép kéo thả chữ
+                 </label>
+                 <Switch 
+                   id="custom-label-toggle" 
+                   checked={isCustomLabelMode}
+                   onCheckedChange={(c) => {
+                     setIsCustomLabelMode(c);
+                     if (!c) setLabelOffsets({});
+                   }}
+                 />
+               </div>
+            </div>
+
+            <div className="flex flex-col gap-3">
+              <h4 className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest">Tải xuống hình ảnh (PNG)</h4>
+              <div className="grid grid-cols-2 gap-2">
+                <Button variant="outline" className="h-auto py-3 flex-col gap-1.5 hover:border-primary/50 hover:bg-primary/5" onClick={() => captureImage('bw')} disabled={isExporting}>
+                  <ImageIcon className="w-5 h-5" />
+                  <span className="text-xs font-medium">Trắng Đen</span>
                 </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={downloadLatex}
-                  className="h-8 gap-1"
-                >
-                  <Download className="w-3 h-3" />
-                  Tải .tex
+                <Button variant="outline" className="h-auto py-3 flex-col gap-1.5 hover:border-primary/50 hover:bg-primary/5" onClick={() => captureImage('color')} disabled={isExporting}>
+                  <ImageIcon className="w-5 h-5 text-primary" />
+                  <span className="text-xs font-medium">Màu 3D</span>
                 </Button>
               </div>
             </div>
 
-            {/* Visual TikZ Preview Card */}
-            <div className="relative group">
-              <div className="aspect-square sm:aspect-video bg-white rounded-xl border-2 border-dashed border-primary/20 flex items-center justify-center p-8 shadow-sm overflow-hidden bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] [background-size:16px_16px]">
-                {geometry && cameraState && (() => {
-                  const fixedTarget: [number, number, number] = [0, 0, 0];
-                  
-                  const viewDir = [
-                    cameraState.position[0] - cameraState.target[0],
-                    cameraState.position[1] - cameraState.target[1],
-                    cameraState.position[2] - cameraState.target[2]
-                  ];
-                  const fixedCameraPos: [number, number, number] = [
-                    fixedTarget[0] + viewDir[0],
-                    fixedTarget[1] + viewDir[1],
-                    fixedTarget[2] + viewDir[2]
-                  ];
-
-                  return (
-                  <svg
-                    viewBox="-150 -150 300 300"
-                    className="w-full h-full drop-shadow-md"
-                    preserveAspectRatio="xMidYMid meet"
-                  >
-                    <defs>
-                      <marker id="dot" markerWidth="4" markerHeight="4" refX="2" refY="2">
-                        <circle cx="2" cy="2" r="1.5" fill="black" />
-                      </marker>
-                    </defs>
-
-                    {/* Render Grid */}
-                    {(() => {
-                      const gridSvg = [];
-                      const gridSize = 15;
-                      const scale = 35;
-                      for (let i = -gridSize; i <= gridSize; i++) {
-                          const p1_y = project3DTo2D({id:'', label:'', x: i, y: -gridSize, z: 0}, fixedCameraPos, fixedTarget);
-                          const p2_y = project3DTo2D({id:'', label:'', x: i, y: gridSize, z: 0}, fixedCameraPos, fixedTarget);
-                          gridSvg.push(
-                            <line key={`v${i}`} x1={p1_y.x * scale} y1={-p1_y.y * scale} x2={p2_y.x * scale} y2={-p2_y.y * scale} stroke={i === 0 ? "#9ca3af" : "#e5e7eb"} strokeWidth={i === 0 ? 1.5 : 1} strokeDasharray={i === 0 ? "" : "4,4"} />
-                          );
-                          const p1_x = project3DTo2D({id:'', label:'', x: -gridSize, y: i, z: 0}, fixedCameraPos, fixedTarget);
-                          const p2_x = project3DTo2D({id:'', label:'', x: gridSize, y: i, z: 0}, fixedCameraPos, fixedTarget);
-                          gridSvg.push(
-                            <line key={`h${i}`} x1={p1_x.x * scale} y1={-p1_x.y * scale} x2={p2_x.x * scale} y2={-p2_x.y * scale} stroke={i === 0 ? "#9ca3af" : "#e5e7eb"} strokeWidth={i === 0 ? 1.5 : 1} strokeDasharray={i === 0 ? "" : "4,4"} />
-                          );
-                      }
-                      return gridSvg;
-                    })()}
-
-                    {/* Render Curves */}
-                    {geometry.curves && geometry.curves.map(curve => {
-                      const pts = [];
-                      const numPoints = 50;
-                      if (curve.type === 'parabola') {
-                        const { a, b, c, xMin, xMax } = curve.params;
-                        for (let i = 0; i <= numPoints; i++) {
-                          const x = xMin + (xMax - xMin) * (i / numPoints);
-                          const y = a * x * x + b * x + c;
-                          pts.push({ id: '', label: '', x, y: 0, z: y });
-                        }
-                      } else if (curve.type === 'cubic') {
-                        const { a, b, c, d, xMin, xMax } = curve.params;
-                        for (let i = 0; i <= numPoints; i++) {
-                          const x = xMin + (xMax - xMin) * (i / numPoints);
-                          const y = a * x * x * x + b * x * x + c * x + d;
-                          pts.push({ id: '', label: '', x, y: 0, z: y });
-                        }
-                      } else if (curve.type === 'rational') {
-                        const { numA, numB, denA, denB, xMin, xMax } = curve.params;
-                        for (let i = 0; i <= numPoints; i++) {
-                          const x = xMin + (xMax - xMin) * (i / numPoints);
-                          const y = (numA * x + numB) / (denA * x + denB);
-                          pts.push({ id: '', label: '', x, y: 0, z: y });
-                        }
-                      }
-                      
-                      if (pts.length === 0) return null;
-                      
-                      const projectedPts = pts.map(p => project3DTo2D(p, fixedCameraPos, fixedTarget));
-                      const pathData = projectedPts.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x * 35} ${-p.y * 35}`).join(' ');
-                      return (
-                        <path 
-                          key={curve.id} 
-                          d={pathData} 
-                          fill="none" 
-                          stroke={curve.color || "#3b82f6"} 
-                          strokeWidth={curve.style === 'dashed' ? 1.5 : 2} 
-                          strokeDasharray={curve.style === 'dashed' ? "4,4" : ""} 
-                        />
-                      );
-                    })}
-
-                    {/* Render Lines */}
-                    {geometry.lines.map(line => {
-                      const from = geometry.points.find(p => p.id === line.from);
-                      const to = geometry.points.find(p => p.id === line.to);
-                      if (!from || !to) return null;
-
-                      const p1 = project3DTo2D(from, fixedCameraPos, fixedTarget);
-                      const p2 = project3DTo2D(to, fixedCameraPos, fixedTarget);
-
-                      const isHidden = hiddenLines?.get(line.id) ?? line.style === 'dashed';
-
-                      // Scale projected coords for SVG viewing (projected values are around -5 to 5)
-                      const scale = 35;
-                      return (
-                        <line
-                          key={line.id}
-                          x1={p1.x * scale}
-                          y1={-p1.y * scale}
-                          x2={p2.x * scale}
-                          y2={-p2.y * scale}
-                          stroke="black"
-                          strokeWidth={isHidden ? 1 : 2}
-                          strokeDasharray={isHidden ? "4,3" : "0"}
-                          strokeLinecap="round"
-                        />
-                      );
-                    })}
-
-                    {/* Render Points & Labels */}
-                    {(() => {
-                      const projectedPoints = geometry.points.map(p => ({
-                        ...p,
-                        proj: project3DTo2D(p, fixedCameraPos, fixedTarget)
-                      }));
-
-                      const avgX = projectedPoints.reduce((sum, p) => sum + p.proj.x, 0) / projectedPoints.length;
-                      const avgY = projectedPoints.reduce((sum, p) => sum + p.proj.y, 0) / projectedPoints.length;
-                      const scale = 35;
-
-                      return projectedPoints.map(p => {
-                        const x = p.proj.x * scale;
-                        const y = -p.proj.y * scale;
-
-                        const dx = p.proj.x - avgX;
-                        const dy = p.proj.y - avgY;
-
-                        let offX = 0, offY = 0, anchor: "start" | "end" | "middle" = "middle";
-
-                        if (Math.abs(dx) > Math.abs(dy)) {
-                          offX = dx > 0 ? 8 : -8;
-                          offY = 4;
-                          anchor = dx > 0 ? "start" : "end";
-                        } else {
-                          offY = dy > 0 ? -12 : 15;
-                          offX = 0;
-                          anchor = "middle";
-                        }
-
-                        return (
-                          <g key={p.id}>
-                            <circle cx={x} cy={y} r={3} fill="black" />
-                            {showPoints && p.label && (
-                              <g style={{ pointerEvents: 'none' }}>
-                                {/* Halo effect */}
-                                <text
-                                  x={x + offX}
-                                  y={y + offY}
-                                  textAnchor={anchor}
-                                  className="text-[14px] font-serif italic stroke-white stroke-[4px] fill-transparent select-none opacity-90"
-                                  strokeLinejoin="round"
-                                >
-                                  {p.label}
-                                </text>
-                                {/* Actual text */}
-                                <text
-                                  x={x + offX}
-                                  y={y + offY}
-                                  textAnchor={anchor}
-                                  className="text-[14px] font-serif italic fill-black select-none"
-                                >
-                                  {p.label}
-                                </text>
-                              </g>
-                            )}
-                          </g>
-                        );
-                      });
-                    })()}
-
-                    {/* Render Cones in Preview */}
-                    {geometry.cones && geometry.cones.map(c => {
-                       const scale = 35;
-                       const apexProj = project3DTo2D(c.apex, fixedCameraPos, fixedTarget);
-                       const ax = apexProj.x * scale;
-                       const ay = -apexProj.y * scale;
-
-                       const dx = c.apex.x - c.baseCenter.x;
-                       const dy = c.apex.y - c.baseCenter.y;
-                       const dz = c.apex.z - c.baseCenter.z;
-                       const dLen = Math.sqrt(dx*dx + dy*dy + dz*dz) || 1;
-                       const n = { x: dx/dLen, y: dy/dLen, z: dz/dLen };
-
-                       let temp = { x: 1, y: 0, z: 0 };
-                       if (Math.abs(n.x) > 0.9) temp = { x: 0, y: 1, z: 0 };
-                       const ux = temp.y * n.z - temp.z * n.y;
-                       const uy = temp.z * n.x - temp.x * n.z;
-                       const uz = temp.x * n.y - temp.y * n.x;
-                       const uLen = Math.sqrt(ux*ux + uy*uy + uz*uz) || 1;
-                       const u = { x: ux / uLen, y: uy / uLen, z: uz / uLen };
-                       const vx = n.y * u.z - n.z * u.y;
-                       const vy = n.z * u.x - n.x * u.z;
-                       const vz = n.x * u.y - n.y * u.x;
-                       const v = { x: vx, y: vy, z: vz };
-
-                       const segments = 32;
-                       let d = '';
-                       const ringPoints2D = [];
-                       for (let j = 0; j <= segments; j++) {
-                           const angle = (j / segments) * Math.PI * 2;
-                           const p3d = {
-                               id: '', label: '',
-                               x: c.baseCenter.x + c.radius * Math.cos(angle) * u.x + c.radius * Math.sin(angle) * v.x,
-                               y: c.baseCenter.y + c.radius * Math.cos(angle) * u.y + c.radius * Math.sin(angle) * v.y,
-                               z: c.baseCenter.z + c.radius * Math.cos(angle) * u.z + c.radius * Math.sin(angle) * v.z
-                           };
-                           const p2d = project3DTo2D(p3d, fixedCameraPos, fixedTarget);
-                           ringPoints2D.push(p2d);
-                           const x = p2d.x * scale;
-                           const y = -p2d.y * scale;
-                           if (j === 0) d += `M ${x} ${y} `;
-                           else d += `L ${x} ${y} `;
-                       }
-
-                       let minXIdx = 0, maxXIdx = 0;
-                       for (let j = 1; j < segments; j++) {
-                           if (ringPoints2D[j].x < ringPoints2D[minXIdx].x) minXIdx = j;
-                           if (ringPoints2D[j].x > ringPoints2D[maxXIdx].x) maxXIdx = j;
-                       }
-
-                       return (
-                         <g key={c.apex.x + "_" + c.baseCenter.x}>
-                           <path d={d} stroke="gray" fill="rgba(150,150,150,0.1)" strokeWidth="1.5" />
-                           <line x1={ax} y1={ay} x2={ringPoints2D[minXIdx].x * scale} y2={-ringPoints2D[minXIdx].y * scale} stroke="gray" strokeWidth="1.5" />
-                           <line x1={ax} y1={ay} x2={ringPoints2D[maxXIdx].x * scale} y2={-ringPoints2D[maxXIdx].y * scale} stroke="gray" strokeWidth="1.5" />
-                         </g>
-                       );
-                    })}
-
-                    {/* Render Surfaces in Preview */}
-                    {geometry.surfaces && geometry.surfaces.map(s => {
-                      if (s.type === 'hyperboloid') {
-                        const a = s.params.a || 2;
-                        const b = s.params.b || 2;
-                        const c = s.params.c || 1.5;
-                        const vMin = s.params.vMin || -0.327;
-                        const vMax = s.params.vMax || 1.098;
-                        const cx = s.center.x;
-                        const cy = s.center.y;
-                        const cz = s.center.z;
-                        
-                        const getP = (u: number, v: number) => {
-                          const p3d = { id: '', label: '', x: a * Math.cosh(v) * Math.cos(u) + cx, y: b * Math.cosh(v) * Math.sin(u) + cy, z: c * Math.sinh(v) + cz };
-                          return project3DTo2D(p3d, fixedCameraPos, fixedTarget);
-                        };
-
-                        const elements = [];
-                        const scale = 35;
-
-                        // rings
-                        const vs = [vMin, 0, vMax];
-                        vs.forEach((v, idx) => {
-                           let d = '';
-                           for (let i = 0; i <= 32; i++) {
-                              const u = (i / 32) * Math.PI * 2;
-                              const p2d = getP(u, v);
-                              const x = p2d.x * scale;
-                              const y = -p2d.y * scale;
-                              if (i === 0) d += `M ${x} ${y} `;
-                              else d += `L ${x} ${y} `;
-                           }
-                           elements.push(<path key={`r${idx}`} d={d} stroke="#c084fc" fill="none" strokeWidth="1.5" />);
-                        });
-
-                        // meridians
-                        for (let i = 0; i < 8; i++) {
-                           const u = (i / 8) * Math.PI * 2;
-                           let d = '';
-                           for (let j = 0; j <= 10; j++) {
-                              const v = vMin + (j / 10) * (vMax - vMin);
-                              const p2d = getP(u, v);
-                              const x = p2d.x * scale;
-                              const y = -p2d.y * scale;
-                              if (j === 0) d += `M ${x} ${y} `;
-                              else d += `L ${x} ${y} `;
-                           }
-                           elements.push(<path key={`m${i}`} d={d} stroke="#d8b4fe" fill="none" strokeWidth="1" strokeDasharray="3,3" />);
-                        }
-                        
-                        return <g key={s.id}>{elements}</g>;
-                      }
-                      return null;
-                    })}
-
-                    {/* Render Agents in Preview */}
-                    {geometry.agents && geometry.agents.map(a => {
-                      const p3d = { id: a.id, label: a.label, x: a.initialPosition[0], y: a.initialPosition[1], z: a.initialPosition[2] };
-                      const p2d = project3DTo2D(p3d, fixedCameraPos, fixedTarget);
-                      const scale = 35;
-                      const cx = p2d.x * scale;
-                      const cy = -p2d.y * scale;
-                      const fill = a.id === 'rescuer' ? '#eab308' : '#ef4444';
-                      return (
-                        <g key={a.id}>
-                          <circle cx={cx} cy={cy} r={4} fill={fill} />
-                          {showPoints && (
-                            <text x={cx} y={cy - 8} textAnchor="middle" fontSize="10" fontWeight="bold" fill={fill}>{a.label}</text>
-                          )}
-                        </g>
-                      );
-                    })}
-                  </svg>
-                  );
-                })()}
-
-                <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <div className="bg-primary/10 text-primary text-[10px] px-2 py-1 rounded-full font-medium uppercase tracking-wider">
-                    Live Preview
-                  </div>
-                </div>
+            <div className="flex flex-col gap-3">
+              <h4 className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest">Tải xuống mã nguồn (TikZ)</h4>
+              <div className="grid grid-cols-2 gap-2">
+                <Button variant="outline" className="h-auto py-3 flex-col gap-1.5 hover:border-primary/50 hover:bg-primary/5" onClick={copyLatex}>
+                  <Copy className="w-5 h-5" />
+                  <span className="text-xs font-medium">Sao chép Code</span>
+                </Button>
+                <Button variant="outline" className="h-auto py-3 flex-col gap-1.5 hover:border-primary/50 hover:bg-primary/5" onClick={downloadLatex}>
+                  <Code className="w-5 h-5" />
+                  <span className="text-xs font-medium">Tải file .tex</span>
+                </Button>
               </div>
             </div>
-
-            <div className="space-y-2">
-              <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest ml-1">TikZ Source Code</label>
-              <div className="bg-secondary/20 rounded-md border border-border/30">
-                <pre className="p-3 text-[10px] font-mono text-muted-foreground whitespace-pre-wrap break-all">
-                  {getDynamicLatex()}
-                </pre>
-              </div>
-            </div>
-          </TabsContent>
-        </Tabs>
+          </div>
+        </div>
       </DialogContent>
     </Dialog>
   );

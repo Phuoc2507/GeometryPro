@@ -65,7 +65,7 @@ export function DynamicUnfolding({ points }: DynamicUnfoldingProps) {
             matrix={matrix}
             matrixAutoUpdate={false}
           >
-            <meshPhysicalMaterial 
+            <meshStandardMaterial 
               color="#3b82f6" 
               transparent 
               opacity={0.6} 

@@ -3,13 +3,20 @@ import { GeometryState, GeometryAction, GeometryData, QueueItem, Point3D, Line3D
 import { PYRAMID_MOCK_DATA, SATELLITE_DEMO_DATA, SCAN_STATUSES } from '@/data/mockData';
 import { lod4DemoData } from '@/lib/lod4DemoData';
 import { toast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 const LOCAL_API = import.meta.env.VITE_LOCAL_API_URL ?? '';
 
 async function invokeLocalApi(endpoint: string, body: Record<string, unknown>): Promise<{ data: any; error: any }> {
   try {
+    const { data: sessionData } = await supabase.auth.getSession();
+    const token = sessionData.session?.access_token;
+    
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+
     const res = await fetch(`${LOCAL_API}${endpoint}`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers,
       body: JSON.stringify(body),
     });
     const data = await res.json();
@@ -26,9 +33,15 @@ async function invokeLocalApiStream(
   onProgress: (statusText: string, progress: number, chunk?: string) => void
 ): Promise<{ data: any; error: any }> {
   try {
+    const { data: sessionData } = await supabase.auth.getSession();
+    const token = sessionData.session?.access_token;
+    
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+
     const res = await fetch(`${LOCAL_API}${endpoint}?stream=true`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers,
       body: JSON.stringify(body),
     });
 
@@ -84,6 +97,8 @@ import { useGeometryHistory } from '@/hooks/useGeometryHistory';
 
 const initialState: GeometryState = {
   geometry: null,
+  undoStack: [],
+  redoStack: [],
   isScanning: false,
   isBuilding: false,
   scanProgress: 0,
@@ -94,34 +109,78 @@ const initialState: GeometryState = {
   manualTool: null,
   videoMode: false,
   autoRotate: false,
+  freeCameraMode: false,
   showPoints: true,
+  autoColor: false,
   aiModel: 'high',
   useReasoning: false,
   streamingText: '',
+  selectedIds: [],
 };
 
 function ensureGeometry(state: GeometryState): GeometryData {
   return state.geometry || { name: 'Manual', points: [], lines: [] };
 }
 
-function geometryReducer(state: GeometryState, action: GeometryAction): GeometryState {
+function saveHistory(state: GeometryState): GeometryState {
+  if (!state.geometry) return state;
+  return {
+    ...state,
+    undoStack: [...state.undoStack, JSON.parse(JSON.stringify(state.geometry))],
+    redoStack: []
+  };
+}
+
+function rawGeometryReducer(state: GeometryState, action: GeometryAction): GeometryState {
   switch (action.type) {
+    case 'UNDO': {
+      if (state.undoStack.length === 0 || !state.geometry) return state;
+      const newUndoStack = [...state.undoStack];
+      const prevGeometry = newUndoStack.pop()!;
+      return {
+        ...state,
+        undoStack: newUndoStack,
+        redoStack: [...state.redoStack, JSON.parse(JSON.stringify(state.geometry))],
+        geometry: prevGeometry,
+        selectedIds: [],
+      };
+    }
+    case 'REDO': {
+      if (state.redoStack.length === 0 || !state.geometry) return state;
+      const newRedoStack = [...state.redoStack];
+      const nextGeometry = newRedoStack.pop()!;
+      return {
+        ...state,
+        undoStack: [...state.undoStack, JSON.parse(JSON.stringify(state.geometry))],
+        redoStack: newRedoStack,
+        geometry: nextGeometry,
+        selectedIds: [],
+      };
+    }
     case 'START_SCANNING':
       return { ...state, isScanning: true, scanProgress: 0, scanStatus: SCAN_STATUSES[0], streamingText: '' };
     case 'STOP_SCANNING':
       return { ...state, isScanning: false, scanProgress: 0, scanStatus: '', streamingText: '' };
     case 'TOGGLE_POINTS':
       return { ...state, showPoints: !state.showPoints };
+    case 'TOGGLE_AUTO_COLOR':
+      return { ...state, autoColor: !state.autoColor };
     case 'UPDATE_SCAN_PROGRESS':
       return { ...state, scanProgress: action.progress, scanStatus: action.status };
     case 'SET_GEOMETRY':
-      return { ...state, geometry: action.geometry, isScanning: false };
+      return { 
+        ...state, 
+        geometry: action.geometry, 
+        undoStack: [],
+        redoStack: [],
+        isScanning: false,
+      };
     case 'START_BUILDING':
       return { ...state, isBuilding: true };
     case 'FINISH_BUILDING':
       return { ...state, isBuilding: false };
     case 'CLEAR_GEOMETRY':
-      return { ...state, geometry: null, isScanning: false, isBuilding: false, scanProgress: 0, scanStatus: '', activeQueueId: null, manualMode: false, manualTool: null, videoMode: false };
+      return { ...state, geometry: null, undoStack: [], redoStack: [], isScanning: false, isBuilding: false, scanProgress: 0, scanStatus: '', activeQueueId: null, manualMode: false, manualTool: null, videoMode: false, selectedIds: [] };
     case 'QUEUE_ADD':
       return {
         ...state,
@@ -148,48 +207,102 @@ function geometryReducer(state: GeometryState, action: GeometryAction): Geometry
     case 'QUEUE_SET_ACTIVE':
       return { ...state, activeQueueId: action.id };
     case 'ADD_POINT': {
-      const geo = ensureGeometry(state);
-      return { ...state, geometry: { ...geo, points: [...geo.points, action.point] } };
+      const stateWithHistory = saveHistory(state);
+      const geo = ensureGeometry(stateWithHistory);
+      return { ...stateWithHistory, geometry: { ...geo, points: [...geo.points, action.point] } };
     }
     case 'ADD_LINE': {
-      const geo = ensureGeometry(state);
-      return { ...state, geometry: { ...geo, lines: [...geo.lines, action.line] } };
+      const stateWithHistory = saveHistory(state);
+      const geo = ensureGeometry(stateWithHistory);
+      return { ...stateWithHistory, geometry: { ...geo, lines: [...geo.lines, action.line] } };
     }
     case 'ADD_PLANE': {
-      const geo = ensureGeometry(state);
-      return { ...state, geometry: { ...geo, planes: [...(geo.planes || []), action.plane] } };
+      const stateWithHistory = saveHistory(state);
+      const geo = ensureGeometry(stateWithHistory);
+      return { ...stateWithHistory, geometry: { ...geo, planes: [...(geo.planes || []), action.plane] } };
     }
     case 'REMOVE_ELEMENT': {
       if (!state.geometry) return state;
-      const g = { ...state.geometry };
+      const stateWithHistory = saveHistory(state);
+      const g = { ...stateWithHistory.geometry! };
+      
       if (action.elementType === 'point') {
+        // Fully delete the point
         g.points = g.points.filter(p => p.id !== action.elementId);
+        
+        // Fully delete any lines connected to it
         g.lines = g.lines.filter(l => l.from !== action.elementId && l.to !== action.elementId);
+        
+        // Fully delete any planes containing it
+        g.planes = (g.planes || []).filter(p => !p.points.includes(action.elementId));
       } else if (action.elementType === 'line') {
+        const lineToRemove = g.lines.find(l => l.id === action.elementId);
         g.lines = g.lines.filter(l => l.id !== action.elementId);
+        
+        // Garbage collection for hidden points
+        if (lineToRemove) {
+          [lineToRemove.from, lineToRemove.to].forEach(ptId => {
+            const pt = g.points.find(p => p.id === ptId);
+            if (pt && pt.hidden) {
+              const stillUsedByLine = g.lines.some(l => l.from === ptId || l.to === ptId);
+              const stillUsedByPlane = (g.planes || []).some(p => p.points.includes(ptId));
+              if (!stillUsedByLine && !stillUsedByPlane) {
+                g.points = g.points.filter(p => p.id !== ptId);
+              }
+            }
+          });
+        }
       } else if (action.elementType === 'plane') {
+        const planeToRemove = (g.planes || []).find(p => p.id === action.elementId);
         g.planes = (g.planes || []).filter(p => p.id !== action.elementId);
+
+        // Garbage collection for hidden points
+        if (planeToRemove) {
+          planeToRemove.points.forEach(ptId => {
+            const pt = g.points.find(p => p.id === ptId);
+            if (pt && pt.hidden) {
+              const stillUsedByLine = g.lines.some(l => l.from === ptId || l.to === ptId);
+              const stillUsedByPlane = (g.planes || []).some(p => p.points.includes(ptId));
+              if (!stillUsedByLine && !stillUsedByPlane) {
+                g.points = g.points.filter(p => p.id !== ptId);
+              }
+            }
+          });
+        }
+      } else if (action.elementType === 'curve') {
+        g.curves = (g.curves || []).filter(c => c.id !== action.elementId);
+      } else if (action.elementType === 'sphere') {
+        g.spheres = (g.spheres || []).filter(s => s.id !== action.elementId);
+      } else if (action.elementType === 'cylinder') {
+        g.cylinders = (g.cylinders || []).filter(c => c.id !== action.elementId);
+      } else if (action.elementType === 'circle') {
+        g.circles = (g.circles || []).filter(c => c.id !== action.elementId);
+      } else if (action.elementType === 'cone') {
+        g.cones = (g.cones || []).filter(c => c.id !== action.elementId);
       }
-      return { ...state, geometry: g };
+      return { ...stateWithHistory, geometry: g };
     }
     case 'UPDATE_POINT': {
       if (!state.geometry) return state;
+      const stateWithHistory = saveHistory(state);
       return {
-        ...state,
+        ...stateWithHistory,
         geometry: {
-          ...state.geometry,
-          points: state.geometry.points.map(p =>
+          ...stateWithHistory.geometry!,
+          points: stateWithHistory.geometry!.points.map(p =>
             p.id === action.pointId ? { ...p, x: action.x, y: action.y, z: action.z } : p
           ),
         },
       };
     }
     case 'SET_MANUAL_MODE':
-      return { ...state, manualMode: action.enabled, manualTool: action.enabled ? state.manualTool : null };
+      return { ...state, manualMode: action.enabled, manualTool: action.enabled ? state.manualTool : null, selectedIds: [] };
     case 'SET_MANUAL_TOOL':
-      return { ...state, manualTool: action.tool };
-    case 'SET_VIDEO_MODE':
-      return { ...state, videoMode: action.enabled };
+      return { ...state, manualTool: action.tool, selectedIds: [] };
+    case 'TOGGLE_VIDEO_MODE':
+      return { ...state, videoMode: !state.videoMode };
+    case 'SET_SELECTED_IDS':
+      return { ...state, selectedIds: action.ids };
     case 'SET_AUTO_ROTATE':
       return { ...state, autoRotate: action.enabled };
     case 'SET_AI_MODEL':
@@ -200,17 +313,28 @@ function geometryReducer(state: GeometryState, action: GeometryAction): Geometry
       return { ...state, streamingText: (state.streamingText || '') + action.text };
     case 'CLEAR_STREAMING_TEXT':
       return { ...state, streamingText: '' };
+    case 'TOGGLE_SELECTION': {
+      const isSelected = state.selectedIds.includes(action.id);
+      return {
+        ...state,
+        selectedIds: isSelected 
+          ? state.selectedIds.filter(id => id !== action.id)
+          : [...state.selectedIds, action.id]
+      };
+    }
+    case 'CLEAR_SELECTION':
+      return { ...state, selectedIds: [] };
     default:
       return state;
   }
 }
 
-interface GeometryContextType {
+export interface GeometryContextType {
   state: GeometryState;
   startDemo: (type?: 'pyramid' | 'satellite') => void;
   analyzeImage: (imageBase64: string) => Promise<void>;
   analyzeText: (prompt: string, mode?: DrawMode) => Promise<void>;
-  queueAnalyzeText: (prompt: string, mode?: DrawMode, tags?: string[], detailLevel?: import('@/types/geometry').DetailLevel) => void;
+  queueAnalyzeText: (prompt: string, mode?: DrawMode, tags?: string[], detailLevel?: import('@/types/geometry').DetailLevel, offset?: [number, number, number]) => void;
   queueAnalyzeImage: (imageBase64: string, mode?: DrawMode, tags?: string[], detailLevel?: import('@/types/geometry').DetailLevel) => void;
   modifyGeometry: (prompt: string) => Promise<void>;
   loadGeometry: (geometry: GeometryData) => void;
@@ -225,15 +349,24 @@ interface GeometryContextType {
   addMidpoint: (p1Id: string, p2Id: string) => void;
   addPlane: (pointIds: string[]) => void;
   addPlaneFromEquation: (a: number, b: number, c: number, d: number) => void;
-  removeElement: (type: 'point' | 'line' | 'plane', id: string) => void;
+  removeElement: (type: 'point' | 'line' | 'plane' | 'curve' | 'sphere' | 'cylinder' | 'circle' | 'cone', id: string) => void;
   updatePoint: (id: string, x: number, y: number, z: number) => void;
   setManualMode: (enabled: boolean) => void;
   setManualTool: (tool: ManualTool) => void;
   setVideoMode: (enabled: boolean) => void;
+  toggleVideoMode: () => void;
+  setSelectedIds: (ids: string[]) => void;
   setAutoRotate: (enabled: boolean) => void;
   togglePoints: () => void;
+  toggleAutoColor: () => void;
   setAiModel: (model: 'max' | 'high' | 'medium' | 'low') => void;
   setUseReasoning: (enabled: boolean) => void;
+  toggleSelection: (id: string) => void;
+  clearSelection: () => void;
+  undo: () => void;
+  redo: () => void;
+  canUndo: boolean;
+  canRedo: boolean;
 }
 
 const GeometryContext = createContext<GeometryContextType | undefined>(undefined);
@@ -241,11 +374,22 @@ const GeometryContext = createContext<GeometryContextType | undefined>(undefined
 let queueIdCounter = 0;
 
 export function GeometryProvider({ children }: { children: React.ReactNode }) {
-  const [state, dispatch] = useReducer(geometryReducer, initialState);
+  const [state, dispatch] = useReducer(rawGeometryReducer, initialState);
   const stateRef = useRef(state);
   const scanSessionRef = useRef(0);
   const { addToHistory } = useGeometryHistory();
   stateRef.current = state;
+
+  const undo = useCallback(() => {
+    dispatch({ type: 'UNDO' });
+  }, []);
+
+  const redo = useCallback(() => {
+    dispatch({ type: 'REDO' });
+  }, []);
+
+  const canUndo = state.undoStack.length > 0;
+  const canRedo = state.redoStack.length > 0;
 
   const simulateScanProgress = useCallback((callback: () => void) => {
     let progress = 0;
@@ -346,8 +490,13 @@ export function GeometryProvider({ children }: { children: React.ReactNode }) {
 
       if (geminiError || geminiData?.error) {
         clearInterval(progressInterval);
-        const errorMessage = geminiData?.error || geminiError?.message || "Không thể đọc đề bài từ ảnh";
-        toast({ title: "Lỗi", description: errorMessage, variant: "destructive" });
+        let errorMessage = geminiData?.error || geminiError?.message || "Không thể đọc đề bài từ ảnh";
+        
+        if (errorMessage.includes('Missing or invalid token')) {
+          errorMessage = "Vui lòng đăng nhập để sử dụng tính năng AI phân tích ảnh.";
+        }
+        
+        toast({ title: "❌ Lỗi", description: errorMessage, variant: "destructive" });
         dispatch({ type: 'CLEAR_GEOMETRY' });
         return;
       }
@@ -418,8 +567,13 @@ export function GeometryProvider({ children }: { children: React.ReactNode }) {
       if (scanSessionRef.current !== sessionId) return;
 
       if (geminiError || geminiData?.error) {
-        const errorMessage = geminiData?.error || geminiError?.message || "Không thể phân tích đề bài";
-        toast({ title: "Lỗi", description: errorMessage, variant: "destructive" });
+        let errorMessage = geminiData?.error || geminiError?.message || "Không thể phân tích đề bài";
+        
+        if (errorMessage.includes('Missing or invalid token')) {
+          errorMessage = "Vui lòng đăng nhập để sử dụng tính năng AI vẽ hình.";
+        }
+        
+        toast({ title: "❌ Lỗi", description: errorMessage, variant: "destructive" });
         dispatch({ type: 'CLEAR_GEOMETRY' });
         return;
       }
@@ -473,7 +627,12 @@ export function GeometryProvider({ children }: { children: React.ReactNode }) {
         });
 
         if (error || data?.error) {
-          const errorMessage = data?.error || error?.message || "Không thể phân tích đề bài";
+          let errorMessage = data?.error || error?.message || "Không thể phân tích đề bài";
+          
+          if (errorMessage.includes('Missing or invalid token')) {
+            errorMessage = "Vui lòng đăng nhập để sử dụng tính năng AI vẽ hình.";
+          }
+          
           dispatch({
             type: 'QUEUE_UPDATE',
             id,
@@ -488,9 +647,10 @@ export function GeometryProvider({ children }: { children: React.ReactNode }) {
 
         if (step2?.geometry && step2.geometry.points?.length > 0) {
           geometry = { ...step2.geometry };
-          if (step2.llmPrompt) geometry.llmPrompt = step2.llmPrompt;
+          geometry.llmPrompt = step2.llmPrompt || prompt;
         } else {
           geometry = PYRAMID_MOCK_DATA;
+          geometry.llmPrompt = prompt;
         }
 
         if (!geometry.latexCode) {
@@ -578,7 +738,12 @@ export function GeometryProvider({ children }: { children: React.ReactNode }) {
         });
 
         if (error || data?.error) {
-          const errorMessage = data?.error || error?.message || "Không thể phân tích đề bài từ ảnh";
+          let errorMessage = data?.error || error?.message || "Không thể phân tích đề bài từ ảnh";
+          
+          if (errorMessage.includes('Missing or invalid token')) {
+            errorMessage = "Vui lòng đăng nhập để sử dụng tính năng AI phân tích ảnh.";
+          }
+          
           dispatch({ type: 'QUEUE_UPDATE', id, updates: { status: 'error', progress: 0, statusText: errorMessage, error: errorMessage } });
           toast({ title: "❌ Lỗi vẽ hình", description: errorMessage, variant: "destructive" });
           return;
@@ -588,9 +753,11 @@ export function GeometryProvider({ children }: { children: React.ReactNode }) {
         let geometry: GeometryData;
 
         if (step2?.geometry && step2.geometry.points?.length > 0) {
-          geometry = step2.geometry;
+          geometry = { ...step2.geometry };
+          geometry.llmPrompt = data?.step1?.text || step2.llmPrompt || "Đề bài từ ảnh";
         } else {
           geometry = PYRAMID_MOCK_DATA;
+          geometry.llmPrompt = data?.step1?.text || "Đề bài từ ảnh";
         }
 
         if (!geometry.latexCode) {
@@ -751,9 +918,33 @@ export function GeometryProvider({ children }: { children: React.ReactNode }) {
     const p1 = geo.points.find(p => p.id === p1Id);
     const p2 = geo.points.find(p => p.id === p2Id);
     if (!p1 || !p2) return;
-    const label = `M_{${p1.label}${p2.label}}`;
+    
+    // Find an available letter
+    const usedLabels = new Set(geo.points.map(p => p.label));
+    let label = 'M';
+    if (usedLabels.has(label)) {
+      const fallbacks = ['N', 'P', 'Q', 'I', 'J', 'K', 'E', 'F', 'H', 'G', 'R', 'T', 'U', 'V', 'W', 'A', 'B', 'C', 'D'];
+      const found = fallbacks.find(l => !usedLabels.has(l));
+      if (found) {
+        label = found;
+      } else {
+        let counter = 1;
+        while (usedLabels.has(`M_{${counter}}`)) counter++;
+        label = `M_{${counter}}`;
+      }
+    }
+    
     const id = label;
     dispatch({ type: 'ADD_POINT', point: { id, label, x: (p1.x + p2.x) / 2, y: (p1.y + p2.y) / 2, z: (p1.z + p2.z) / 2 } });
+    
+    // Automatically draw a line if it doesn't exist
+    const lineExists = geo.lines.some(l => 
+      (l.from === p1Id && l.to === p2Id) || (l.from === p2Id && l.to === p1Id)
+    );
+    if (!lineExists) {
+      const lineId = `line_${p1Id}_${p2Id}`;
+      dispatch({ type: 'ADD_LINE', line: { id: lineId, from: p1Id, to: p2Id, style: 'solid' } });
+    }
   }, []);
 
   const addPlane = useCallback((pointIds: string[]) => {
@@ -791,7 +982,7 @@ export function GeometryProvider({ children }: { children: React.ReactNode }) {
     dispatch({ type: 'ADD_PLANE', plane: { id, label, points: corners, opacity: 0.15 } });
   }, []);
 
-  const removeElement = useCallback((type: 'point' | 'line' | 'plane', id: string) => {
+  const removeElement = useCallback((type: 'point' | 'line' | 'plane' | 'curve' | 'sphere' | 'cylinder' | 'circle' | 'cone', id: string) => {
     dispatch({ type: 'REMOVE_ELEMENT', elementType: type, elementId: id });
   }, []);
 
@@ -808,8 +999,12 @@ export function GeometryProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const setVideoMode = useCallback((enabled: boolean) => {
-    dispatch({ type: 'SET_VIDEO_MODE', enabled });
+    dispatch({ type: 'TOGGLE_VIDEO_MODE' });
   }, []);
+
+  const toggleVideoMode = useCallback(() => dispatch({ type: 'TOGGLE_VIDEO_MODE' }), []);
+
+  const setSelectedIds = useCallback((ids: string[]) => dispatch({ type: 'SET_SELECTED_IDS', ids }), []);
 
   const setAutoRotate = useCallback((enabled: boolean) => {
     dispatch({ type: 'SET_AUTO_ROTATE', enabled });
@@ -817,6 +1012,10 @@ export function GeometryProvider({ children }: { children: React.ReactNode }) {
 
   const togglePoints = useCallback(() => {
     dispatch({ type: 'TOGGLE_POINTS' });
+  }, []);
+
+  const toggleAutoColor = useCallback(() => {
+    dispatch({ type: 'TOGGLE_AUTO_COLOR' });
   }, []);
 
   const setAiModel = useCallback((model: 'max' | 'high' | 'medium' | 'low') => {
@@ -827,13 +1026,16 @@ export function GeometryProvider({ children }: { children: React.ReactNode }) {
     dispatch({ type: 'SET_USE_REASONING', enabled });
   }, []);
 
+  const toggleSelection = useCallback((id: string) => dispatch({ type: 'TOGGLE_SELECTION', id }), []);
+  const clearSelection = useCallback(() => dispatch({ type: 'CLEAR_SELECTION' }), []);
+
   return (
     <GeometryContext.Provider value={{
       state, startDemo, analyzeImage, analyzeText, queueAnalyzeText, queueAnalyzeImage,
       modifyGeometry, loadGeometry, clearGeometry, stopScanning, viewQueueItem, removeQueueItem, clearActiveQueue,
       updateDynamicPoint, addPoint, addLine, addMidpoint, addPlane, addPlaneFromEquation, removeElement,
-      updatePoint, setManualMode, setManualTool, setVideoMode, setAutoRotate, togglePoints,
-      setAiModel, setUseReasoning
+      updatePoint, setManualMode, setManualTool, setVideoMode, toggleVideoMode, setSelectedIds, setAutoRotate, togglePoints, toggleAutoColor,
+      setAiModel, setUseReasoning, toggleSelection, clearSelection, undo, redo, canUndo, canRedo
     }}>
       {children}
     </GeometryContext.Provider>

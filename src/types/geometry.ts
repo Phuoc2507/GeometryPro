@@ -5,6 +5,7 @@ export interface Point3D {
   y: number;
   z: number;
   color?: string;
+  hidden?: boolean;
 }
 
 export interface Line3D {
@@ -171,9 +172,13 @@ export interface Curve3D {
   color?: string;
   style?: 'solid' | 'dashed';
   plane?: 'xy' | 'xz' | 'yz'; // Which mathematical plane the curve is drawn on
+  fill?: boolean;
+  fillOpacity?: number;
 }
 
 export interface GeometryData {
+  id?: string;
+  position?: [number, number, number];
   name: string;
   points: Point3D[];
   lines: Line3D[];
@@ -225,6 +230,8 @@ export type ManualTool = 'addPoint' | 'addLine' | 'midpoint' | 'addPlane' | 'del
 
 export interface GeometryState {
   geometry: GeometryData | null;
+  undoStack: GeometryData[];
+  redoStack: GeometryData[];
   isScanning: boolean;
   isBuilding: boolean;
   scanProgress: number;
@@ -235,16 +242,22 @@ export interface GeometryState {
   manualTool: ManualTool;
   videoMode: boolean;
   autoRotate: boolean;
+  freeCameraMode: boolean;
   showPoints: boolean;
+  autoColor: boolean;
   aiModel: 'max' | 'high' | 'medium' | 'low';
   useReasoning: boolean;
   streamingText?: string;
+  selectedIds: string[];
 }
 
 export type GeometryAction =
+  | { type: 'UNDO' }
+  | { type: 'REDO' }
   | { type: 'START_SCANNING' }
   | { type: 'STOP_SCANNING' }
   | { type: 'TOGGLE_POINTS' }
+  | { type: 'TOGGLE_AUTO_COLOR' }
   | { type: 'UPDATE_SCAN_PROGRESS'; progress: number; status: string }
   | { type: 'SET_GEOMETRY'; geometry: GeometryData }
   | { type: 'START_BUILDING' }
@@ -257,7 +270,7 @@ export type GeometryAction =
   | { type: 'ADD_POINT'; point: Point3D }
   | { type: 'ADD_LINE'; line: Line3D }
   | { type: 'ADD_PLANE'; plane: Plane3D }
-  | { type: 'REMOVE_ELEMENT'; elementType: 'point' | 'line' | 'plane'; elementId: string }
+  | { type: 'REMOVE_ELEMENT'; elementType: 'point' | 'line' | 'plane' | 'curve' | 'sphere' | 'cylinder' | 'circle' | 'cone'; elementId: string }
   | { type: 'UPDATE_POINT'; pointId: string; x: number; y: number; z: number }
   | { type: 'SET_MANUAL_MODE'; enabled: boolean }
   | { type: 'SET_MANUAL_TOOL'; tool: ManualTool }
@@ -266,4 +279,9 @@ export type GeometryAction =
   | { type: 'SET_AI_MODEL'; model: 'max' | 'high' | 'medium' | 'low' }
   | { type: 'SET_USE_REASONING'; enabled: boolean }
   | { type: 'APPEND_STREAMING_TEXT'; text: string }
-  | { type: 'CLEAR_STREAMING_TEXT' };
+  | { type: 'CLEAR_STREAMING_TEXT' }
+  | { type: 'TOGGLE_VIDEO_MODE' }
+  | { type: 'SET_FREE_CAMERA_MODE'; enabled: boolean }
+  | { type: 'SET_SELECTED_IDS'; ids: string[] }
+  | { type: 'TOGGLE_SELECTION'; id: string }
+  | { type: 'CLEAR_SELECTION' };

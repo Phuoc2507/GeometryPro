@@ -86,7 +86,7 @@ export function AnimatedVector({ vector, points, delay, isBuilding }: AnimatedVe
         <meshStandardMaterial color={color} />
       </mesh>
       {vector.label && (
-        <Html position={[midpoint.x - origin.x, midpoint.y - origin.y, midpoint.z - origin.z]} center distanceFactor={12}>
+        <Html position={[midpoint.x - origin.x, midpoint.y - origin.y, midpoint.z - origin.z]} center distanceFactor={12} style={{ pointerEvents: 'none' }}>
           <span className="math-label" style={{
             color, fontSize: '15px',
             background: 'rgba(0,0,0,0.6)', padding: '1px 4px', borderRadius: 3,

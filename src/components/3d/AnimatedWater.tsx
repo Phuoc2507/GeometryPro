@@ -73,14 +73,12 @@ export function AnimatedWater({ tracks }: Props) {
   return (
     <mesh ref={meshRef} position={[0, 0, 0]} rotation={[0, Math.PI / 6, 0]} visible={false}>
       <cylinderGeometry args={[2, 2, 1, 6]} />
-      <meshPhysicalMaterial
+      <meshStandardMaterial
         color="#3b82f6"
-        transmission={0.8}
-        opacity={1}
+        opacity={0.6}
         transparent={true}
         roughness={0.2}
         metalness={0}
-        ior={1.33}
         depthWrite={false}
       />
     </mesh>

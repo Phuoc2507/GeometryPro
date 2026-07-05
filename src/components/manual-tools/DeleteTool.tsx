@@ -1,44 +1,43 @@
-import { Button } from '@/components/ui/button';
-import { Trash2 } from 'lucide-react';
-import { GeometryData } from '@/types/geometry';
+import { useEffect } from 'react';
+import { useGeometry } from '@/context/GeometryContext';
+import { Eraser } from 'lucide-react';
 
-interface DeleteToolProps {
-  geometry: GeometryData | null;
-  onDelete: (type: 'point' | 'line' | 'plane', id: string) => void;
-}
+export function DeleteTool() {
+  const { state, removeElement, clearSelection } = useGeometry();
 
-export function DeleteTool({ geometry, onDelete }: DeleteToolProps) {
-  if (!geometry) return <p className="text-xs text-muted-foreground">Chưa có hình.</p>;
-
-  const hasItems = geometry.points.length > 0 || geometry.lines.length > 0 || (geometry.planes?.length || 0) > 0;
-  if (!hasItems) return <p className="text-xs text-muted-foreground">Không có phần tử nào.</p>;
+  useEffect(() => {
+    if (state.selectedIds.length > 0) {
+      const id = state.selectedIds[0];
+      const geo = state.geometry;
+      if (geo) {
+        if (geo.points?.some(p => p.id === id)) {
+          removeElement('point', id);
+        } else if (geo.planes?.some(p => p.id === id)) {
+          removeElement('plane', id);
+        } else if (geo.lines?.some(l => l.id === id)) {
+          removeElement('line', id);
+        } else if (geo.curves?.some(c => c.id === id)) {
+          removeElement('curve', id);
+        } else if (geo.spheres?.some(s => s.id === id)) {
+          removeElement('sphere', id);
+        } else if (geo.cylinders?.some(c => c.id === id)) {
+          removeElement('cylinder', id);
+        } else if (geo.circles?.some(c => c.id === id)) {
+          removeElement('circle', id);
+        } else if (geo.cones?.some(c => c.id === id)) {
+          removeElement('cone', id);
+        }
+      }
+      clearSelection();
+    }
+  }, [state.selectedIds, state.geometry, removeElement, clearSelection]);
 
   return (
-    <div className="space-y-2 max-h-40 overflow-y-auto">
-      {geometry.points.map(p => (
-        <div key={p.id} className="flex items-center justify-between text-xs">
-          <span>🔵 {p.label} ({p.x}, {p.y}, {p.z})</span>
-          <Button size="sm" variant="ghost" className="h-5 w-5 p-0 text-destructive" onClick={() => onDelete('point', p.id)}>
-            <Trash2 className="w-3 h-3" />
-          </Button>
-        </div>
-      ))}
-      {geometry.lines.map(l => (
-        <div key={l.id} className="flex items-center justify-between text-xs">
-          <span>📏 {l.from}→{l.to}</span>
-          <Button size="sm" variant="ghost" className="h-5 w-5 p-0 text-destructive" onClick={() => onDelete('line', l.id)}>
-            <Trash2 className="w-3 h-3" />
-          </Button>
-        </div>
-      ))}
-      {geometry.planes?.map(p => (
-        <div key={p.id} className="flex items-center justify-between text-xs">
-          <span>🟦 {p.label || p.id}</span>
-          <Button size="sm" variant="ghost" className="h-5 w-5 p-0 text-destructive" onClick={() => onDelete('plane', p.id)}>
-            <Trash2 className="w-3 h-3" />
-          </Button>
-        </div>
-      ))}
+    <div className="space-y-2 text-center text-xs text-muted-foreground pb-1">
+      <div className="flex items-center justify-center text-destructive mb-1 animate-pulse">
+        <Eraser className="w-4 h-4" />
+      </div>
+      <p>👉 Click vào bất kỳ đối tượng nào (điểm, đường, mặt phẳng) để xóa. Xóa điểm sẽ xóa luôn các thành phần liên kết.</p>
     </div>
   );
 }

@@ -1,0 +1,17 @@
+version: '3.8'
+
+services:
+  geo3d-app:
+    build: .
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      # - VITE_SUPABASE_URL=your_supabase_url
+      # - VITE_SUPABASE_PUBLISHABLE_KEY=your_supabase_anon_key
+      # - SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role
+      # - PAYOS_CLIENT_ID=your_payos_client_id
+      # - PAYOS_API_KEY=your_payos_api_key
+      # - PAYOS_CHECKSUM_KEY=your_payos_checksum_key
+      # - DEEPSEEK_API_KEY=your_deepseek_api_key
+    restart: always

@@ -7,6 +7,8 @@ interface Profile {
   user_id: string;
   display_name: string | null;
   avatar_url: string | null;
+  plan_type: string | null;
+  plan_expires_at: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -15,12 +17,14 @@ interface AuthContextType {
   user: User | null;
   session: Session | null;
   profile: Profile | null;
+  isPro: boolean;
   isLoading: boolean;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
   signInWithGoogle: () => Promise<{ error: Error | null }>;
   signUp: (email: string, password: string, displayName?: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
   updateProfile: (updates: Partial<Pick<Profile, 'display_name' | 'avatar_url'>>) => Promise<{ error: Error | null }>;
+  resetPassword: (email: string) => Promise<{ error: Error | null }>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -129,17 +133,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return { error: error as Error | null };
   };
 
+  const resetPassword = async (email: string) => {
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/auth?reset=true`,
+    });
+    return { error: error as Error | null };
+  };
+
+  const isPro = profile?.plan_type === 'pro' && profile?.plan_expires_at 
+    ? new Date(profile.plan_expires_at) > new Date() 
+    : false;
+
   return (
     <AuthContext.Provider value={{
       user,
       session,
       profile,
+      isPro,
       isLoading,
       signIn,
       signInWithGoogle,
       signUp,
       signOut,
       updateProfile,
+      resetPassword,
     }}>
       {children}
     </AuthContext.Provider>

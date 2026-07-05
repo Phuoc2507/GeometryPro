@@ -70,25 +70,54 @@ export function AnimatedCone({ cone, delay, isBuilding }: AnimatedConeProps) {
     return { position: mid, quaternion: quat, height: h };
   }, [cone]);
 
+  const [hovered, setHovered] = useState(false);
+
   if (!visible) return null;
 
   const currentRadius = cone.radius * scale;
   const currentHeight = height * scale;
 
+  const handleClick = (e: any) => {
+    if (e.delta > 2) return;
+    if (!isManualMode || !geometryCtx) return;
+    if (geometryCtx.state.manualTool === 'deleteLine') {
+      e.stopPropagation();
+      geometryCtx.toggleSelection(cone.id);
+    }
+  };
+
+  const handlePointerOver = (e: any) => {
+    if (!isManualMode || geometryCtx?.state.manualTool !== 'deleteLine') return;
+    e.stopPropagation();
+    setHovered(true);
+    document.body.style.cursor = 'crosshair';
+  };
+
+  const handlePointerOut = () => {
+    setHovered(false);
+    document.body.style.cursor = 'auto';
+  };
+
   return (
-    <group position={position} quaternion={quaternion}>
+    <group 
+      position={position} 
+      quaternion={quaternion}
+      onClick={handleClick}
+      onPointerOver={handlePointerOver}
+      onPointerOut={handlePointerOut}
+    >
       {/* Removed wireframe cone to reduce visual clutter */}
 
       {/* Semi-transparent fill (Frosted Glass) */}
       <mesh>
         <coneGeometry args={[currentRadius, currentHeight, 32, 1, true]} />
-        <meshPhysicalMaterial color={color} transparent opacity={0.3} roughness={0.2} transmission={0.8} thickness={0.5} clearcoat={1.0} side={THREE.DoubleSide} depthWrite={false} />
+        <meshStandardMaterial color={color} transparent opacity={0.3} roughness={0.2} side={THREE.DoubleSide} depthWrite={false} />
       </mesh>
 
       {/* Base cap to replace native cap, avoiding Z-fighting */}
       <mesh position={[0, -currentHeight / 2 + 0.002, 0]} rotation={[Math.PI / 2, 0, 0]}>
         <circleGeometry args={[currentRadius, 32]} />
-        <meshPhysicalMaterial color={color} transparent opacity={0.3} roughness={0.2} transmission={0.8} thickness={0.5} clearcoat={1.0} side={THREE.DoubleSide} depthWrite={false} />
+        <meshStandardMaterial color={color} transparent opacity={0.3} roughness={0.2} side={THREE.DoubleSide} depthWrite={false} />
       </mesh>
 
       {/* Base ring outline - slightly offset to avoid z-fighting with the base cap */}

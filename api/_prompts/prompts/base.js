@@ -38,6 +38,7 @@ QUY TẮC ĐẶT TOẠ ĐỘ THEO LOẠI HÌNH
    - Mặt cong 3D (paraboloid, hyperboloid): mảng "surfaces" với type, center, params {a, b, c, vMin, vMax}
    - Đường cong 2D (parabola): mảng "curves" với type="parabola", params={a, b, c, xMin, xMax} (Phương trình y = ax^2 + bx + c). Đừng dùng lines để nối tay các điểm Parabol 2D, hãy dùng curves!
    - Vật chuyển động: mảng "agents" với id, label, initialPosition, color. (Kết hợp với "timeline" nếu có).
+   - Mặt phẳng (đa giác): mảng "planes" với id, points (mảng các tọa độ {x, y, z} của các đỉnh theo thứ tự vòng tròn khép kín mặt phẳng đó), color, opacity. LUÔN LUÔN tạo planes cho các mặt đáy và các mặt bên của khối chóp/lăng trụ để hình khối 3D trông sinh động hơn.
 
 ═══════════════════════════════════════════════════════
 TÍNH ĐIỂM ĐẶC BIỆT (BẮT BUỘC DÙNG CÔNG THỨC)
@@ -74,6 +75,7 @@ OUTPUT FORMAT — CHỈ JSON THUẦN, KHÔNG MARKDOWN
     "name": "Tên hình ngắn",
     "points": [{"id": "A", "label": "A", "x": -2, "y": -2, "z": 0}, ...],
     "lines": [{"id": "l1", "from": "A", "to": "B", "style": "solid"}, ...],
+    "planes": [{"id": "p1", "points": [{"x":-2,"y":-2,"z":0}, {"x":2,"y":-2,"z":0}, {"x":2,"y":2,"z":0}], "color": "#3b82f6", "opacity": 0.3}],
     "circles": [...], "spheres": [...], "cones": [...], "cylinders": [...],
     "surfaces": [...], "curves": [...], "agents": [...], "timeline": {...}
   }

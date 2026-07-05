@@ -4,6 +4,7 @@ import { useAnimationOptional } from '@/context/AnimationContext';
 import { useGeometryOptional } from '@/context/GeometryContext';
 import * as THREE from 'three';
 import { Surface3D } from '@/types/geometry';
+import { handleAddPoint } from './ClickToPlacePoint';
 import { ParametricGeometry } from 'three/examples/jsm/geometries/ParametricGeometry.js';
 
 interface Props {
@@ -13,10 +14,20 @@ interface Props {
 }
 
 export function AnimatedSurface({ surface, delay, isBuilding }: Props) {
+  const animCtx = useAnimationOptional();
+  const geometryCtx = useGeometryOptional();
+
   const groupRef = useRef<THREE.Group>(null);
   const progressRef = useRef(isBuilding ? 0 : 1);
 
-  const color = surface.color || '#8b5cf6';
+  const autoColor = geometryCtx?.state.autoColor ?? false;
+  const color = useMemo(() => {
+    if (autoColor) {
+      return surface.color || '#8b5cf6';
+    }
+    return '#94a3b8';
+  }, [surface.color, autoColor]);
+  
   const opacity = surface.opacity ?? 0.3;
   const { x: cx, y: cy, z: cz } = surface.center;
 
@@ -85,8 +96,6 @@ export function AnimatedSurface({ surface, delay, isBuilding }: Props) {
     return new ParametricGeometry(paramFunc, segments, segments);
   }, [surface.type, surface.params]);
 
-  const animCtx = useAnimationOptional();
-  const geometryCtx = useGeometryOptional();
   const isManualMode = geometryCtx?.state.manualMode ?? false;
 
   useFrame((_, delta) => {
@@ -114,17 +123,37 @@ export function AnimatedSurface({ surface, delay, isBuilding }: Props) {
 
   return (
     <group ref={groupRef} position={[cx, cz, cy]}>
-      <mesh geometry={geometry}>
-        <meshPhysicalMaterial
+      <mesh 
+        geometry={geometry}
+        onClick={(e) => {
+          if (!geometryCtx) return;
+          const { manualMode, manualTool } = geometryCtx.state;
+          if (!manualMode) return;
+          if (manualTool === 'delete') {
+            e.stopPropagation();
+            geometryCtx.toggleSelection(surface.id);
+          } else if (manualTool === 'addPoint') {
+            handleAddPoint(e, geometryCtx, false);
+          }
+        }}
+        onPointerOver={(e) => {
+          if (!geometryCtx) return;
+          const { manualMode, manualTool } = geometryCtx.state;
+          if (!manualMode || (manualTool !== 'delete' && manualTool !== 'addPoint')) return;
+          e.stopPropagation();
+          document.body.style.cursor = 'crosshair';
+        }}
+        onPointerOut={() => {
+          document.body.style.cursor = 'auto';
+        }}
+      >
+        <meshStandardMaterial
           color={color}
           transparent
           opacity={opacity}
-          transmission={0.6}
           roughness={0.2}
           metalness={0.1}
           side={THREE.DoubleSide}
-          clearcoat={1.0}
-          clearcoatRoughness={0.1}
           depthWrite={false}
           polygonOffset={true}
           polygonOffsetFactor={1}

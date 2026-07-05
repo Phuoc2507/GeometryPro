@@ -1,4 +1,4 @@
-import { MapPin, Minus, CircleDot, Square, Trash2, FunctionSquare } from 'lucide-react';
+import { MapPin, Minus, CircleDot, Square, Trash2, FunctionSquare, Eraser } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { useGeometry } from '@/context/GeometryContext';
@@ -7,6 +7,7 @@ import { AddLineTool } from '@/components/manual-tools/AddLineTool';
 import { MidpointTool } from '@/components/manual-tools/MidpointTool';
 import { AddPlaneTool } from '@/components/manual-tools/AddPlaneTool';
 import { DeleteTool } from '@/components/manual-tools/DeleteTool';
+import { DeleteLineTool } from '@/components/manual-tools/DeleteLineTool';
 import { EquationTool } from '@/components/manual-tools/EquationTool';
 import { ManualTool } from '@/types/geometry';
 
@@ -16,7 +17,7 @@ const tools: { id: ManualTool; icon: React.ElementType; label: string }[] = [
   { id: 'midpoint', icon: CircleDot, label: 'Trung điểm' },
   { id: 'addPlane', icon: Square, label: 'Mặt phẳng' },
   { id: 'equation', icon: FunctionSquare, label: 'Phương trình' },
-  { id: 'delete', icon: Trash2, label: 'Xóa' },
+  { id: 'delete', icon: Eraser, label: 'Xóa' },
 ];
 
 export function ManualDrawToolbar() {
@@ -68,22 +69,13 @@ export function ManualDrawToolbar() {
             />
           )}
           {activeTool === 'addLine' && (
-            <AddLineTool
-              points={points}
-              onAdd={(from, to, style) => addLine(from, to, style)}
-            />
+            <AddLineTool />
           )}
           {activeTool === 'midpoint' && (
-            <MidpointTool
-              points={points}
-              onAdd={(p1, p2) => addMidpoint(p1, p2)}
-            />
+            <MidpointTool />
           )}
           {activeTool === 'addPlane' && (
-            <AddPlaneTool
-              points={points}
-              onAdd={(pointIds) => addPlane(pointIds)}
-            />
+            <AddPlaneTool />
           )}
           {activeTool === 'equation' && (
             <EquationTool
@@ -91,10 +83,7 @@ export function ManualDrawToolbar() {
             />
           )}
           {activeTool === 'delete' && (
-            <DeleteTool
-              geometry={geometry}
-              onDelete={(type, id) => removeElement(type, id)}
-            />
+            <DeleteTool />
           )}
         </div>
       )}

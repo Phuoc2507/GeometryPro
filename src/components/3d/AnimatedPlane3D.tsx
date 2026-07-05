@@ -6,6 +6,7 @@ import { getCssHslVar } from '@/lib/getCssHslVar';
 import { Line } from '@react-three/drei';
 import { useAnimationOptional } from '@/context/AnimationContext';
 import { useGeometryOptional } from '@/context/GeometryContext';
+import { handleAddPoint } from './ClickToPlacePoint';
 
 interface AnimatedPlane3DProps {
   plane: Plane3D;
@@ -17,12 +18,26 @@ export function AnimatedPlane3D({ plane, delay, isBuilding }: AnimatedPlane3DPro
   const [visible, setVisible] = useState(false);
   const [opacity, setOpacity] = useState(0);
   const [matrix, setMatrix] = useState(() => new THREE.Matrix4());
-  const color = useMemo(() => plane.color || getCssHslVar('--accent'), [plane.color]);
-
+  
   const animCtx = useAnimationOptional();
   const geometryCtx = useGeometryOptional();
+  
+  const autoColor = geometryCtx?.state.autoColor ?? false;
+  const color = useMemo(() => {
+    if (autoColor) {
+      return plane.color || getCssHslVar('--accent');
+    }
+    return '#94a3b8'; // neutral gray
+  }, [plane.color, autoColor]);
+
   const isManualMode = geometryCtx?.state.manualMode ?? false;
   const isVideoMode = geometryCtx?.state.videoMode ?? false;
+  
+  const isSelected = geometryCtx?.state.selectedIds.includes(plane.id) ?? false;
+  const [hovered, setHovered] = useState(false);
+  const isHighlighted = isSelected || hovered;
+  const displayColor = isHighlighted ? '#f97316' : color;
+
   const DURATION = 500;
   
   // Find tracks targeting this plane
@@ -83,9 +98,10 @@ export function AnimatedPlane3D({ plane, delay, isBuilding }: AnimatedPlane3DPro
       if (visible !== newVisible) setVisible(newVisible);
       setMatrix(newMatrix);
     } else {
-      // Fallback
-      if (visible && opacity < 1) {
-        setOpacity((prev) => Math.min(prev + delta * 2, 1));
+      // Manual mode or not building
+      if (!isBuilding || isManualMode) {
+        if (!visible) setVisible(true);
+        if (opacity < 1) setOpacity((prev) => Math.min(prev + delta * 4, 1));
       }
     }
   });
@@ -130,12 +146,45 @@ export function AnimatedPlane3D({ plane, delay, isBuilding }: AnimatedPlane3DPro
 
   return (
     <group matrixAutoUpdate={false} matrix={matrix}>
-      {/* Semi-transparent fill */}
-      <mesh geometry={vertices}>
-        <meshBasicMaterial
-          color={color}
+      {/* Main Plane Mesh */}
+      <mesh
+        geometry={vertices}
+        onClick={(e) => {
+          if (!isManualMode || !geometryCtx) return;
+
+          // Check if there is a line under the cursor. If so, yield to it.
+          const hasLine = e.intersections.some(x => x.object.userData?.type === 'line');
+          if (hasLine && geometryCtx.state.manualTool === 'delete') {
+            return; // Let the line handle the click
+          }
+
+          if (geometryCtx.state.manualTool === 'delete') {
+            e.stopPropagation();
+            geometryCtx.toggleSelection(plane.id);
+          } else if (geometryCtx.state.manualTool === 'addPoint') {
+            handleAddPoint(e, geometryCtx, false);
+          }
+        }}
+        onPointerOver={(e) => {
+          if (!isManualMode || (geometryCtx?.state.manualTool !== 'delete' && geometryCtx?.state.manualTool !== 'addPoint')) return;
+
+          // If deleting and hovering over a line, don't highlight the plane
+          const hasLine = e.intersections.some(x => x.object.userData?.type === 'line');
+          if (hasLine && geometryCtx?.state.manualTool === 'delete') return;
+
+          e.stopPropagation();
+          setHovered(true);
+          document.body.style.cursor = 'crosshair';
+        }}
+        onPointerOut={() => {
+          setHovered(false);
+          document.body.style.cursor = 'auto';
+        }}
+      >
+        <meshStandardMaterial
+          color={displayColor}
           transparent
-          opacity={finalOpacity}
+          opacity={isHighlighted ? finalOpacity * 2 : finalOpacity}
           side={THREE.DoubleSide}
           depthWrite={false}
           polygonOffset={true}
@@ -147,10 +196,10 @@ export function AnimatedPlane3D({ plane, delay, isBuilding }: AnimatedPlane3DPro
       {/* Edge outline */}
       <Line
         points={edgePoints}
-        color={color}
-        lineWidth={1.5}
+        color={displayColor}
+        lineWidth={isHighlighted ? 3 : 1.5}
         transparent
-        opacity={opacity * 0.6}
+        opacity={isHighlighted ? 1 : opacity * 0.6}
       />
     </group>
   );

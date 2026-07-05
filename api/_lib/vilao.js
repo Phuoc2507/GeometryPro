@@ -1,8 +1,7 @@
 import https from 'https';
 
 const VILAO_BASE_URL = 'https://api.vilao.ai';
-const VILAO_MODEL = 'gx/gpt-5.5';
-const VILAO_API_KEY = 'sk-2806ea932a5fdf89ba0bde1c5f5b3239a7d4c831fb1e1f052a9d6a6d720dfd40';
+const VILAO_MODEL = 'occ/claude-sonnet-4-6';
 
 function httpsRequest(url, options, bodyData, timeoutMs) {
   return new Promise((resolve, reject) => {
@@ -54,14 +53,17 @@ export async function callVilao(systemPrompt, userPrompt, options = {}) {
 
   let modelToUse = VILAO_MODEL;
   if (aiModel === 'high') {
-    modelToUse = 'ant/claude-sonnet-4-6';
+    modelToUse = 'occ/claude-sonnet-4-6';
   }
   
   if (useReasoning) {
     modelToUse = 'ox/o1-mini';
   }
 
-  const currentApiKey = process.env.VILAO_API_KEY || VILAO_API_KEY;
+  const currentApiKey = process.env.VILAO_API_KEY;
+  if (!currentApiKey) {
+    throw new Error('VILAO_API_KEY is not set in environment variables');
+  }
 
   const messages = [];
   if (systemPrompt) {

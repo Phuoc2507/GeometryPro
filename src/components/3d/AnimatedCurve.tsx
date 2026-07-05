@@ -16,6 +16,7 @@ interface AnimatedCurveProps {
 export function AnimatedCurve({ curve, delay, isBuilding }: AnimatedCurveProps) {
   const [visible, setVisible] = useState(true);
   const [progress, setProgress] = useState(1);
+  const [hovered, setHovered] = useState(false);
   const defaultColor = useMemo(() => getCssHslVar('--foreground'), []);
 
   const animCtx = useAnimationOptional();
@@ -41,8 +42,8 @@ export function AnimatedCurve({ curve, delay, isBuilding }: AnimatedCurveProps) 
     }
   });
 
-  const points = useMemo(() => {
-    if (curve.type !== 'parabola' && curve.type !== 'cubic' && curve.type !== 'rational') return [];
+  const { points, shapeGeometry } = useMemo(() => {
+    if (curve.type !== 'parabola' && curve.type !== 'cubic' && curve.type !== 'rational') return { points: [], shapeGeometry: null };
     
     // We can extract xMin and xMax
     let xMin = 0, xMax = 0;
@@ -53,6 +54,7 @@ export function AnimatedCurve({ curve, delay, isBuilding }: AnimatedCurveProps) 
     
     const steps = 100; // High resolution for perfectly smooth curve
     const pts = [];
+    const vec2Pts: THREE.Vector2[] = [];
     
     // We only draw up to 'progress' to animate it being drawn over time
     // But since it's a curve, we draw all points up to current progress
@@ -73,6 +75,8 @@ export function AnimatedCurve({ curve, delay, isBuilding }: AnimatedCurveProps) 
         y = (numA * x + numB) / (denA * x + denB);
       }
       
+      vec2Pts.push(new THREE.Vector2(x, y));
+      
       const plane = curve.plane || 'xy';
       if (plane === 'xy') {
         pts.push(new THREE.Vector3(x, 0, y)); // Math (x, y, 0) -> Three (x, 0, y)
@@ -87,20 +91,83 @@ export function AnimatedCurve({ curve, delay, isBuilding }: AnimatedCurveProps) 
         if (pts.length === 1) pts.push(pts[0].clone());
         else pts.push(new THREE.Vector3(xMin, 0, 0), new THREE.Vector3(xMin, 0, 0));
     }
-    return pts;
+    
+    let shapeGeo = null;
+    if (curve.fill && vec2Pts.length > 2) {
+      const shape = new THREE.Shape();
+      shape.moveTo(vec2Pts[0].x, 0); // start at bottom
+      shape.lineTo(vec2Pts[0].x, vec2Pts[0].y);
+      for (let i = 1; i < vec2Pts.length; i++) {
+        shape.lineTo(vec2Pts[i].x, vec2Pts[i].y);
+      }
+      shape.lineTo(vec2Pts[vec2Pts.length - 1].x, 0);
+      shape.lineTo(vec2Pts[0].x, 0); // close shape
+      shapeGeo = new THREE.ShapeGeometry(shape);
+    }
+
+    return { points: pts, shapeGeometry: shapeGeo };
   }, [curve, progress]);
 
   if (!visible) return null;
 
+  let rotation: [number, number, number] = [0, 0, 0];
+  const plane = curve.plane || 'xy';
+  if (plane === 'xy') {
+    rotation = [Math.PI / 2, 0, 0]; // Math (x, y) -> Three (x, 0, y)
+  } else if (plane === 'xz') {
+    rotation = [0, 0, 0]; // Math (x, z) -> Three (x, y, 0)
+  } else if (plane === 'yz') {
+    rotation = [0, -Math.PI / 2, 0]; // Math (y, z) -> Three (0, y, x)
+  }
+
+  const handleClick = (e: any) => {
+    if (e.delta > 2) return;
+    if (!isManualMode || !geometryCtx) return;
+    if (geometryCtx.state.manualTool === 'deleteLine') {
+      e.stopPropagation();
+      geometryCtx.toggleSelection(curve.id);
+    }
+  };
+
+  const handlePointerOver = (e: any) => {
+    if (!isManualMode || geometryCtx?.state.manualTool !== 'deleteLine') return;
+    e.stopPropagation();
+    setHovered(true);
+    document.body.style.cursor = 'crosshair';
+  };
+
+  const handlePointerOut = () => {
+    setHovered(false);
+    document.body.style.cursor = 'auto';
+  };
+
   return (
-    <Line
-      points={points}
-      color={curve.color || defaultColor}
-      lineWidth={3}
-      frustumCulled={false}
-      dashed={curve.style === 'dashed'}
-      dashSize={0.2}
-      gapSize={0.1}
-    />
+    <group 
+      rotation={rotation}
+      onClick={handleClick}
+      onPointerOver={handlePointerOver}
+      onPointerOut={handlePointerOut}
+    >
+      {shapeGeometry && (
+        <mesh geometry={shapeGeometry}>
+          <meshBasicMaterial 
+            color={curve.color || defaultColor} 
+            transparent 
+            opacity={curve.fillOpacity || 0.2} 
+            side={THREE.DoubleSide} 
+            depthWrite={false}
+          />
+        </mesh>
+      )}
+      <Line
+        points={points}
+        color={curve.color || defaultColor}
+        lineWidth={3}
+        frustumCulled={false}
+        dashed={curve.style === 'dashed'}
+        dashSize={0.2}
+        gapSize={0.1}
+      />
+    </group>
   );
 }

@@ -7,6 +7,7 @@
  */
 import { useState, useCallback } from 'react';
 import { GeometryData } from '@/types/geometry';
+import { supabase } from '@/integrations/supabase/client';
 
 export interface SolveStep {
   id: string;
@@ -38,9 +39,15 @@ export function useSolver() {
     setCurrentStep(0);
 
     try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData.session?.access_token;
+      
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+
       const res = await fetch('/api/solve', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({ problem, geometry, tags }),
       });
 
