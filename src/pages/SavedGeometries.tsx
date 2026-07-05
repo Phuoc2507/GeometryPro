@@ -1,17 +1,24 @@
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Hexagon, Globe, Lock, Trash2, Clock } from 'lucide-react';
+import { ArrowLeft, Hexagon, Globe, Lock, Trash2, Clock, MoreHorizontal, FolderPlus, Folder } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
+  DropdownMenuSeparator, DropdownMenuSub, DropdownMenuSubTrigger,
+  DropdownMenuSubContent, DropdownMenuPortal
+} from '@/components/ui/dropdown-menu';
 import { useAuth } from '@/context/AuthContext';
 import { useSavedGeometries, SavedGeometry } from '@/hooks/useSavedGeometries';
+import { useProjects } from '@/hooks/useProjects';
 import { formatDistanceToNow } from 'date-fns';
 import { vi } from 'date-fns/locale';
 
 const SavedGeometries = () => {
   const navigate = useNavigate();
   const { user, isLoading: authLoading } = useAuth();
-  const { savedGeometries, isLoading, fetchGeometries, deleteGeometry } = useSavedGeometries();
+  const { savedGeometries, isLoading, fetchGeometries, deleteGeometry, moveToProject } = useSavedGeometries();
+  const { projects } = useProjects();
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -128,14 +135,52 @@ const SavedGeometries = () => {
                     <p className="text-sm text-muted-foreground">
                       {geometry.geometry_data.points?.length || 0} điểm • {geometry.geometry_data.lines?.length || 0} đường
                     </p>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="opacity-0 group-hover:opacity-100 transition-opacity text-destructive hover:text-destructive hover:bg-destructive/10"
-                      onClick={(e) => handleDelete(e, geometry.id)}
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
+                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <button 
+                            className="flex items-center justify-center h-8 w-8 rounded-md hover:bg-secondary text-muted-foreground"
+                            onClick={e => e.stopPropagation()}
+                          >
+                            <MoreHorizontal className="w-4 h-4" />
+                          </button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-48">
+                          <DropdownMenuSub>
+                            <DropdownMenuSubTrigger>
+                              <FolderPlus className="w-4 h-4 mr-2" /> Thêm vào dự án
+                            </DropdownMenuSubTrigger>
+                            <DropdownMenuPortal>
+                              <DropdownMenuSubContent>
+                                {projects.length > 0 ? (
+                                  projects.map(proj => (
+                                    <DropdownMenuItem 
+                                      key={proj.id}
+                                      onClick={(e) => { e.stopPropagation(); moveToProject(geometry.id, proj.id); }}
+                                    >
+                                      <Folder className="w-4 h-4 mr-2" /> {proj.name}
+                                    </DropdownMenuItem>
+                                  ))
+                                ) : (
+                                  <DropdownMenuItem disabled>
+                                    Chưa có dự án nào
+                                  </DropdownMenuItem>
+                                )}
+                              </DropdownMenuSubContent>
+                            </DropdownMenuPortal>
+                          </DropdownMenuSub>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="text-destructive hover:text-destructive hover:bg-destructive/10 h-8 w-8"
+                        onClick={(e) => handleDelete(e, geometry.id)}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
                   </div>
                 </button>
               ))}

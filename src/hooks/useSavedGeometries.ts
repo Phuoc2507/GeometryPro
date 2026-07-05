@@ -12,6 +12,7 @@ export interface SavedGeometry {
   is_public: boolean;
   created_at: string;
   updated_at: string;
+  project_id?: string | null;
 }
 
 export function useSavedGeometries() {
@@ -28,6 +29,7 @@ export function useSavedGeometries() {
         .from('saved_geometries')
         .select('*')
         .eq('user_id', user.id)
+        .eq('is_history', false)
         .order('updated_at', { ascending: false });
 
       if (error) throw error;
@@ -155,6 +157,33 @@ export function useSavedGeometries() {
     }
   }, [user]);
 
+  const moveToProject = useCallback(async (id: string, project_id: string | null) => {
+    if (!user) return false;
+    try {
+      const { error } = await supabase
+        .from('saved_geometries')
+        .update({ project_id })
+        .eq('id', id)
+        .eq('user_id', user.id);
+        
+      if (error) throw error;
+      
+      setSavedGeometries(prev => prev.map(item => 
+        item.id === id ? { ...item, project_id } : item
+      ));
+      
+      return true;
+    } catch (error) {
+      console.error('Error moving to project:', error);
+      toast({
+        title: "Lỗi",
+        description: "Không thể di chuyển hình vào dự án",
+        variant: "destructive",
+      });
+      return false;
+    }
+  }, [user]);
+
   return {
     savedGeometries,
     isLoading,
@@ -162,5 +191,6 @@ export function useSavedGeometries() {
     saveGeometry,
     updateGeometry,
     deleteGeometry,
+    moveToProject,
   };
 }

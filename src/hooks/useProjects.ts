@@ -88,7 +88,12 @@ export function useProjects() {
   const deleteProject = async (id: string) => {
     if (!user) return false;
     try {
-      // Bỏ liên kết project_id trong saved_geometries trước (hoặc dựa vào ON DELETE SET NULL trong DB)
+      // Bỏ liên kết project_id trong saved_geometries trước (acts as manual ON DELETE SET NULL)
+      await supabase
+        .from('saved_geometries')
+        .update({ project_id: null })
+        .eq('project_id', id);
+
       const { error } = await supabase
         .from('projects')
         .delete()
