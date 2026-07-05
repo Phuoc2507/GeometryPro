@@ -7,6 +7,7 @@ import { AuthProvider } from "@/context/AuthContext";
 import { AnimationProvider } from "@/context/AnimationContext";
 import { ToolModeProvider } from "@/context/ToolModeContext";
 import { ToolSlider } from "@/components/ui/ToolSlider";
+import { AuthModal } from "@/components/AuthModal";
 import React, { Suspense } from 'react';
 import { Loader2 } from 'lucide-react';
 
@@ -20,42 +21,45 @@ const NotFound = React.lazy(() => import('./pages/NotFound'));
 
 function PageLoader() {
   return (
-    <div className="min-h-screen flex items-center justify-center radial-gradient-bg">
-      <Loader2 className="w-8 h-8 text-primary animate-spin" />
+    <div className="min-h-screen radial-gradient-bg flex items-center justify-center">
+      <Loader2 className="w-8 h-8 animate-spin text-primary" />
     </div>
   );
 }
 
 const queryClient = new QueryClient();
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <BrowserRouter>
-      <AuthProvider>
-        <AnimationProvider>
-          <ToolModeProvider>
-            <TooltipProvider>
-              <Toaster />
-              <Sonner />
-              <ToolSlider />
-              <Suspense fallback={<PageLoader />}>
-                <Routes>
-                  <Route path="/" element={<Landing />} />
-                  <Route path="/student" element={<StudentMode />} />
-                  <Route path="/teacher" element={<TeacherMode />} />
-                  <Route path="/auth" element={<Auth />} />
-                  <Route path="/saved" element={<SavedGeometries />} />
-                  <Route path="/settings" element={<Settings />} />
-                  {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-                  <Route path="*" element={<NotFound />} />
-                </Routes>
-              </Suspense>
-            </TooltipProvider>
-          </ToolModeProvider>
-        </AnimationProvider>
-      </AuthProvider>
-    </BrowserRouter>
-  </QueryClientProvider>
-);
+function App() {
+  return (
+    <QueryClientProvider client={queryClient}>
+      <BrowserRouter>
+        <AuthProvider>
+          <AnimationProvider>
+            <ToolModeProvider>
+              <TooltipProvider>
+                <Toaster />
+                <Sonner />
+                <AuthModal />
+                <ToolSlider />
+                <Suspense fallback={<PageLoader />}>
+                  <Routes>
+                    <Route path="/" element={<Landing />} />
+                    <Route path="/student" element={<StudentMode />} />
+                    <Route path="/teacher" element={<TeacherMode />} />
+                    <Route path="/auth" element={<Auth />} />
+                    <Route path="/saved" element={<SavedGeometries />} />
+                    <Route path="/settings" element={<Settings />} />
+                    {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+                    <Route path="*" element={<NotFound />} />
+                  </Routes>
+                </Suspense>
+              </TooltipProvider>
+            </ToolModeProvider>
+          </AnimationProvider>
+        </AuthProvider>
+      </BrowserRouter>
+    </QueryClientProvider>
+  );
+}
 
 export default App;

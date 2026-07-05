@@ -4,6 +4,8 @@ import { PYRAMID_MOCK_DATA, SATELLITE_DEMO_DATA, SCAN_STATUSES } from '@/data/mo
 import { lod4DemoData } from '@/lib/lod4DemoData';
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/context/AuthContext';
+import { checkAndIncrementGuestQuota } from '@/lib/quota';
 const LOCAL_API = import.meta.env.VITE_LOCAL_API_URL ?? '';
 
 async function invokeLocalApi(endpoint: string, body: Record<string, unknown>): Promise<{ data: any; error: any }> {
@@ -378,6 +380,7 @@ export function GeometryProvider({ children }: { children: React.ReactNode }) {
   const stateRef = useRef(state);
   const scanSessionRef = useRef(0);
   const { addToHistory } = useGeometryHistory();
+  const { user, openAuthModal } = useAuth();
   stateRef.current = state;
 
   const undo = useCallback(() => {
@@ -455,6 +458,11 @@ export function GeometryProvider({ children }: { children: React.ReactNode }) {
   }, [simulateScanProgress, finishWithGeometry]);
 
   const analyzeImage = useCallback(async (imageBase64: string) => {
+    if (!user && !checkAndIncrementGuestQuota()) {
+      openAuthModal('quota');
+      return;
+    }
+
     dispatch({ type: 'START_SCANNING' });
 
     try {
@@ -516,6 +524,11 @@ export function GeometryProvider({ children }: { children: React.ReactNode }) {
   }, [finishWithGeometry]);
 
   const analyzeText = useCallback(async (prompt: string, mode: DrawMode = 'quick') => {
+    if (!user && !checkAndIncrementGuestQuota()) {
+      openAuthModal('quota');
+      return;
+    }
+
     const sessionId = ++scanSessionRef.current;
     dispatch({ type: 'START_SCANNING' });
 

@@ -8,6 +8,7 @@ import {
   DropdownMenuSeparator, DropdownMenuSub, DropdownMenuSubTrigger,
   DropdownMenuSubContent, DropdownMenuPortal
 } from '@/components/ui/dropdown-menu';
+import { Skeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/context/AuthContext';
 import { useSavedGeometries, SavedGeometry } from '@/hooks/useSavedGeometries';
 import { useProjects } from '@/hooks/useProjects';
@@ -73,10 +74,22 @@ const SavedGeometries = () => {
 
         {/* Content */}
         {isLoading ? (
-          <div className="flex items-center justify-center py-20">
-            <div className="animate-spin">
-              <Hexagon className="w-8 h-8 text-primary" />
-            </div>
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {[1, 2, 3, 4, 5, 6].map(i => (
+              <div key={i} className="flex flex-col p-4 border rounded-xl gap-3">
+                <div className="flex justify-between items-start">
+                  <div className="space-y-2 flex-1">
+                    <Skeleton className="h-5 w-3/4" />
+                    <Skeleton className="h-4 w-1/2" />
+                  </div>
+                  <Skeleton className="h-5 w-16" />
+                </div>
+                <div className="flex justify-between items-center mt-4">
+                  <Skeleton className="h-4 w-24" />
+                  <Skeleton className="h-8 w-8 rounded-md" />
+                </div>
+              </div>
+            ))}
           </div>
         ) : savedGeometries.length === 0 ? (
           <div className="text-center py-20">

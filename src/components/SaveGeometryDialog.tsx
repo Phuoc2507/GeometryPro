@@ -24,8 +24,7 @@ interface SaveGeometryDialogProps {
 }
 
 export function SaveGeometryDialog({ geometry, trigger }: SaveGeometryDialogProps) {
-  const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, openAuthModal } = useAuth();
   const { saveGeometry } = useSavedGeometries();
   
   const [open, setOpen] = useState(false);
@@ -49,7 +48,7 @@ export function SaveGeometryDialog({ geometry, trigger }: SaveGeometryDialogProp
 
   const handleOpenChange = (newOpen: boolean) => {
     if (newOpen && !user) {
-      navigate('/auth');
+      openAuthModal('save');
       return;
     }
     setOpen(newOpen);

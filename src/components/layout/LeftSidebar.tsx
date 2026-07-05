@@ -17,6 +17,7 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
+import { Skeleton } from '@/components/ui/skeleton';
 import { useGeometryOptional } from '@/context/GeometryContext';
 import { useGeometryHistory, HistoryItem } from '@/hooks/useGeometryHistory';
 import { useProjects } from '@/hooks/useProjects';
@@ -126,7 +127,7 @@ function QueueItemCard({ item, isActive, onView, onRemove }: {
 
 function SidebarContent() {
   const context = useGeometryOptional();
-  const { user } = useAuth();
+  const { user, openAuthModal } = useAuth();
   const { toast } = useToast();
   const { history, deleteHistoryItem, renameHistoryItem, moveToProject } = useGeometryHistory();
   const { projects, createProject, deleteProject } = useProjects();
@@ -185,10 +186,7 @@ function SidebarContent() {
 
   const openNewProject = (itemIdToMove: string | null = null) => {
     if (!user) {
-      toast({
-        title: "Chưa đăng nhập",
-        description: "Vui lòng đăng nhập để tạo và quản lý Dự án.",
-      });
+      openAuthModal('project');
       return;
     }
     setPendingMoveItemId(itemIdToMove);
@@ -320,8 +318,29 @@ function SidebarContent() {
             </button>
           </div>
           
-          <div className="space-y-0.5">
-            {projects.map(project => {
+          <div className="space-y-0.5 px-2">
+            {!user ? (
+              <div 
+                className="mt-2 p-3 rounded-lg border border-primary/20 bg-primary/5 cursor-pointer hover:bg-primary/10 transition-colors"
+                onClick={() => openAuthModal('project')}
+              >
+                <div className="flex items-start gap-3">
+                  <div className="p-2 rounded-md bg-background/80 shadow-sm shrink-0">
+                    <FolderPlus className="w-4 h-4 text-primary" />
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold text-foreground">Tạo Dự án học tập</p>
+                    <p className="text-[11px] text-muted-foreground mt-0.5">Đăng nhập để lưu trữ và phân loại các bài toán một cách khoa học.</p>
+                  </div>
+                </div>
+              </div>
+            ) : projectsLoading ? (
+              <div className="space-y-2 py-2">
+                <Skeleton className="h-8 w-full" />
+                <Skeleton className="h-8 w-full" />
+                <Skeleton className="h-8 w-full" />
+              </div>
+            ) : projects.map(project => {
               const isExpanded = expandedProjects[project.id];
               const projectItems = history.filter(h => h.project_id === project.id);
               return (
@@ -365,7 +384,7 @@ function SidebarContent() {
         </div>
 
         {/* Recents Section */}
-        {recents.length > 0 && (
+        {(recents.length > 0 || historyLoading) && (
           <div className="mb-4">
             <div 
               className="flex items-center justify-between px-3 mb-1 cursor-pointer group"
@@ -379,14 +398,22 @@ function SidebarContent() {
             
             {showRecents && (
               <div className="space-y-0.5">
-                {recents.map(renderHistoryItem)}
+                {historyLoading ? (
+                  <div className="space-y-2 py-2 px-2">
+                    <Skeleton className="h-8 w-full" />
+                    <Skeleton className="h-8 w-full" />
+                    <Skeleton className="h-8 w-full" />
+                  </div>
+                ) : (
+                  recents.map(renderHistoryItem)
+                )}
               </div>
             )}
           </div>
         )}
 
         {/* Empty State */}
-        {history.length === 0 && projects.length === 0 && (
+        {history.length === 0 && projects.length === 0 && !historyLoading && !projectsLoading && (
           <div className="flex flex-col items-center justify-center p-6 text-center mt-10">
             <div className="p-4 rounded-full bg-secondary/30 mb-3">
               <Layers className="w-6 h-6 text-muted-foreground/50" />

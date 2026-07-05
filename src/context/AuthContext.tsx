@@ -25,6 +25,12 @@ interface AuthContextType {
   signOut: () => Promise<void>;
   updateProfile: (updates: Partial<Pick<Profile, 'display_name' | 'avatar_url'>>) => Promise<{ error: Error | null }>;
   resetPassword: (email: string) => Promise<{ error: Error | null }>;
+  
+  // Auth Modal State
+  isAuthModalOpen: boolean;
+  authModalReason: 'save' | 'project' | 'quota' | 'general' | null;
+  openAuthModal: (reason?: 'save' | 'project' | 'quota' | 'general') => void;
+  closeAuthModal: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -34,6 +40,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+
+  // Auth Modal State
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [authModalReason, setAuthModalReason] = useState<'save' | 'project' | 'quota' | 'general' | null>(null);
+
+  const openAuthModal = (reason: 'save' | 'project' | 'quota' | 'general' = 'general') => {
+    setAuthModalReason(reason);
+    setIsAuthModalOpen(true);
+  };
+
+  const closeAuthModal = () => {
+    setIsAuthModalOpen(false);
+    setAuthModalReason(null);
+  };
 
   const fetchProfile = async (userId: string) => {
     const { data, error } = await supabase
@@ -157,6 +177,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       signOut,
       updateProfile,
       resetPassword,
+      isAuthModalOpen,
+      authModalReason,
+      openAuthModal,
+      closeAuthModal,
     }}>
       {children}
     </AuthContext.Provider>

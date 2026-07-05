@@ -8,6 +8,8 @@
 import { useState, useCallback } from 'react';
 import { GeometryData } from '@/types/geometry';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/context/AuthContext';
+import { checkAndIncrementGuestQuota } from '@/lib/quota';
 
 export interface SolveStep {
   id: string;
@@ -31,8 +33,15 @@ export function useSolver() {
   const [loading, setLoading]         = useState(false);
   const [error, setError]             = useState<string | null>(null);
   const [currentStep, setCurrentStep] = useState(0);
+  
+  const { user, openAuthModal } = useAuth();
 
   const solve = useCallback(async (problem: string, geometry: GeometryData, tags?: string[]) => {
+    if (!user && !checkAndIncrementGuestQuota()) {
+      openAuthModal('quota');
+      return;
+    }
+
     setLoading(true);
     setError(null);
     setResult(null);
