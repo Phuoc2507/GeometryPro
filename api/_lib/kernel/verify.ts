@@ -97,6 +97,7 @@ export function verifyAssert(assertOp: AssertOp, symtab: SymbolTable): Violation
       let actual = angleBetween(directionOf(a), directionOf(b));
       const isLinePlane = (a.type === 'line' && b.type === 'plane') || (a.type === 'plane' && b.type === 'line');
       if (isLinePlane) {
+        if (actual > 90) actual = 180 - actual;
         actual = 90 - actual;
       } else if (actual > 90) {
         actual = 180 - actual;
