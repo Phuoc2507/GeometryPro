@@ -2,6 +2,7 @@ import type { ConstructionOp, Plan } from './planSchema';
 import type { SymbolTable, Vec3 } from './types';
 import { resolveEntity } from './resolve';
 import { buildSquare, buildRectangle, buildRhombus, buildRegPolygon, buildTriangle } from './ops/shapes';
+import type { TriangleDims } from './ops/shapes';
 import { extrudePrism, extrudePyramidApex } from './ops/extrude';
 import {
   midpoint, centroidPoint, ratioPoint, reflectPoint,
@@ -64,7 +65,7 @@ export function executeOp(op: ConstructionOp, symtab: SymbolTable): void {
           break;
         }
         case 'triangle':
-          positions = buildTriangle(op.dims as any);
+          positions = buildTriangle(op.dims as TriangleDims);
           break;
       }
       op.vertices.forEach((name, i) => setPoint(symtab, name, positions[i]));

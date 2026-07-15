@@ -71,6 +71,21 @@ describe('intersectLineLine', () => {
       intersectLineLine(vec3(0, 0, 0), vec3(1, 0, 0), vec3(0, 1, 1), vec3(1, 1, 1))
     ).toThrow();
   });
+
+  it('does not false-positive-reject two genuinely coplanar lines at large coordinate magnitude (~1000)', () => {
+    // Two lines through a common point P0=(1000,-500,800) along orthogonal directions
+    // u=(1,2,2) and v=(2,-2,1) (u.v=0). Sharing a point makes them trivially coplanar
+    // (never skew), so this must not throw even though every coordinate involved is
+    // ~O(1000) — regression test for the scaleRef-relative tolerance in the skew check.
+    const A1 = vec3(700, -1100, 200); // P0 - 300*u
+    const A2 = vec3(1300, 100, 1400); // P0 + 300*u
+    const B1 = vec3(600, -100, 600); // P0 - 200*v
+    const B2 = vec3(1400, -900, 1000); // P0 + 200*v
+    const p = intersectLineLine(A1, A2, B1, B2);
+    expect(p.x).toBeCloseTo(1000, 6);
+    expect(p.y).toBeCloseTo(-500, 6);
+    expect(p.z).toBeCloseTo(800, 6);
+  });
 });
 
 describe('intersectLinePlane', () => {

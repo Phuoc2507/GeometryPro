@@ -1,7 +1,7 @@
 // api/_lib/kernel/__tests__/execute.test.ts
 import { describe, it, expect } from 'vitest';
 import { executePlan, createEmptySymbolTable, executeOp } from '../execute';
-import { PlanSchema } from '../planSchema';
+import { PlanSchema, type ConstructionOp } from '../planSchema';
 import { distance } from '../vecMath';
 
 describe('executePlan — S.ABCD (SA perp base)', () => {
@@ -110,13 +110,13 @@ describe('executePlan — derived points and errors', () => {
     const symtab = createEmptySymbolTable();
     expect(() =>
       executeOp(
-        { op: 'base', shape: 'square', vertices: ['A', 'B', 'C', 'D'], dims: { edge: 1 } } as any,
+        { op: 'base', shape: 'square', vertices: ['A', 'B', 'C', 'D'], dims: { edge: 1 } } as ConstructionOp,
         symtab
       )
     ).not.toThrow();
     expect(() =>
       executeOp(
-        { op: 'point', name: 'A', def: { kind: 'midpoint', of: ['B', 'C'] } } as any,
+        { op: 'point', name: 'A', def: { kind: 'midpoint', of: ['B', 'C'] } } as ConstructionOp,
         symtab
       )
     ).toThrow(/already defined/);
@@ -125,7 +125,7 @@ describe('executePlan — derived points and errors', () => {
   it('throws a clear error referencing an unknown point', () => {
     const symtab = createEmptySymbolTable();
     expect(() =>
-      executeOp({ op: 'point', name: 'M', def: { kind: 'midpoint', of: ['X', 'Y'] } } as any, symtab)
+      executeOp({ op: 'point', name: 'M', def: { kind: 'midpoint', of: ['X', 'Y'] } } as ConstructionOp, symtab)
     ).toThrow(/Unknown point "X"/);
   });
 });

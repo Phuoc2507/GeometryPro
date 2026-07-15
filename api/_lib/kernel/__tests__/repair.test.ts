@@ -4,6 +4,8 @@ import { attemptDeterministicRepair } from '../repair';
 import { createEmptySymbolTable } from '../execute';
 import { verifyAssert } from '../verify';
 import { vec3 } from '../vecMath';
+import type { AssertOp } from '../planSchema';
+import type { Violation } from '../types';
 
 function baseSquareSymtab() {
   const symtab = createEmptySymbolTable();
@@ -19,18 +21,18 @@ describe('attemptDeterministicRepair — "on" violations', () => {
   it('snaps a point that is slightly off a line back onto it', () => {
     const symtab = baseSquareSymtab();
     symtab.points.set('M', vec3(0.5, 0.0003, 0)); // meant to be the midpoint of AB (on the line)
-    const violation = verifyAssert({ relation: 'on', args: ['M', 'AB'], tolerance: 1e-6 } as any, symtab);
+    const violation = verifyAssert({ relation: 'on', args: ['M', 'AB'], tolerance: 1e-6 } as AssertOp, symtab);
     expect(violation).not.toBeNull();
     const result = attemptDeterministicRepair(violation!, symtab);
     expect(result.repaired).toBe(true);
-    const after = verifyAssert({ relation: 'on', args: ['M', 'AB'], tolerance: 1e-6 } as any, symtab);
+    const after = verifyAssert({ relation: 'on', args: ['M', 'AB'], tolerance: 1e-6 } as AssertOp, symtab);
     expect(after).toBeNull();
   });
 
   it('snaps a point that is slightly off a plane back onto it', () => {
     const symtab = baseSquareSymtab();
     symtab.points.set('P', vec3(0.5, 0.5, 0.0004));
-    const violation = verifyAssert({ relation: 'on', args: ['P', 'ABCD'], tolerance: 1e-6 } as any, symtab);
+    const violation = verifyAssert({ relation: 'on', args: ['P', 'ABCD'], tolerance: 1e-6 } as AssertOp, symtab);
     expect(violation).not.toBeNull();
     const result = attemptDeterministicRepair(violation!, symtab);
     expect(result.repaired).toBe(true);
@@ -43,11 +45,11 @@ describe('attemptDeterministicRepair — "perp" violations (line vs plane)', () 
     const symtab = baseSquareSymtab();
     // S should be directly above A (perp to ABCD); nudge it slightly off-normal.
     symtab.points.set('S', vec3(0.005, 0, Math.sqrt(2)));
-    const violation = verifyAssert({ relation: 'perp', args: ['AS', 'ABCD'], tolerance: 1e-6 } as any, symtab);
+    const violation = verifyAssert({ relation: 'perp', args: ['AS', 'ABCD'], tolerance: 1e-6 } as AssertOp, symtab);
     expect(violation).not.toBeNull();
     const result = attemptDeterministicRepair(violation!, symtab);
     expect(result.repaired).toBe(true);
-    const after = verifyAssert({ relation: 'perp', args: ['AS', 'ABCD'], tolerance: 1e-6 } as any, symtab);
+    const after = verifyAssert({ relation: 'perp', args: ['AS', 'ABCD'], tolerance: 1e-6 } as AssertOp, symtab);
     expect(after).toBeNull();
   });
 });
@@ -56,7 +58,7 @@ describe('attemptDeterministicRepair — declines out-of-scope or large errors',
   it('declines when the violation is a large, likely-semantic error (not numeric noise)', () => {
     const symtab = baseSquareSymtab();
     symtab.points.set('S', vec3(5, 5, 5)); // wildly off, not "SA" at all
-    const violation = verifyAssert({ relation: 'perp', args: ['SA', 'ABCD'], tolerance: 1e-6 } as any, symtab);
+    const violation = verifyAssert({ relation: 'perp', args: ['SA', 'ABCD'], tolerance: 1e-6 } as AssertOp, symtab);
     expect(violation).not.toBeNull();
     const result = attemptDeterministicRepair(violation!, symtab);
     expect(result.repaired).toBe(false);
@@ -66,7 +68,7 @@ describe('attemptDeterministicRepair — declines out-of-scope or large errors',
   it('declines to repair a non-assert_failed (degenerate) violation', () => {
     const symtab = baseSquareSymtab();
     const result = attemptDeterministicRepair(
-      { kind: 'degenerate', message: 'x' } as any,
+      { kind: 'degenerate', message: 'x' } as Violation,
       symtab
     );
     expect(result.repaired).toBe(false);
@@ -74,7 +76,7 @@ describe('attemptDeterministicRepair — declines out-of-scope or large errors',
 
   it('declines relations it does not implement (e.g. dist)', () => {
     const symtab = baseSquareSymtab();
-    const violation = verifyAssert({ relation: 'dist', args: ['A', 'B'], value: 99 } as any, symtab);
+    const violation = verifyAssert({ relation: 'dist', args: ['A', 'B'], value: 99 } as AssertOp, symtab);
     const result = attemptDeterministicRepair(violation!, symtab);
     expect(result.repaired).toBe(false);
   });

@@ -68,6 +68,18 @@ describe('plane geometry — hand-verified against plane x+y+z=3 through (3,0,0)
   });
 });
 
+describe('planeNormal — near-vertical plane (z-component exactly 0) is not flipped', () => {
+  it('normal of the plane through (0,0,0),(1,0,0),(0,0,1) is (0,-1,0), unaffected by the +z-flip rule', () => {
+    // Hand-verified: cross((1,0,0)-(0,0,0), (0,0,1)-(0,0,0)) = cross((1,0,0),(0,0,1)) = (0,-1,0).
+    // Its z-component is exactly 0, which is not < -EPS, so planeNormal must leave it as-is
+    // rather than flipping toward +z.
+    const n = planeNormal(vec3(0, 0, 0), vec3(1, 0, 0), vec3(0, 0, 1));
+    expect(n.x).toBeCloseTo(0, 10);
+    expect(n.y).toBeCloseTo(-1, 10);
+    expect(n.z).toBeCloseTo(0, 10);
+  });
+});
+
 describe('line geometry', () => {
   it('distancePointToLine: point (0,5,0) to the x-axis is 5', () => {
     expect(distancePointToLine(vec3(0, 5, 0), vec3(0, 0, 0), vec3(1, 0, 0))).toBeCloseTo(5, 10);
