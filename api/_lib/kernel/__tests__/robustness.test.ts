@@ -4,6 +4,7 @@
 import { describe, it, expect } from 'vitest';
 import { areCollinear, angleBetween, vec3 } from '../vecMath';
 import { extrudePyramidApex } from '../ops/extrude';
+import { intersectLineLine } from '../ops/points';
 import { toExactForm } from '../exactForm';
 import { PlanSchema, QuerySchema } from '../planSchema';
 
@@ -18,6 +19,25 @@ describe('§3 areCollinear is scale-invariant', () => {
 
   it('still flags a genuinely collinear triple at any scale', () => {
     expect(areCollinear(vec3(0, 0, 0), vec3(1000, 0, 0), vec3(2000, 0, 0))).toBe(true);
+  });
+});
+
+describe('§3 intersectLineLine parallel gate is scale-invariant', () => {
+  it('finds the intersection of two small-magnitude non-parallel lines (was falsely "parallel")', () => {
+    // Two short segments (~0.03 long) crossing at a real point; the raw |d1×d2|² is ~2e-7,
+    // below the old absolute 1e-6 gate, so this used to be wrongly rejected as parallel.
+    const p = intersectLineLine(
+      vec3(0, 0, 0), vec3(0.03, 0, 0),
+      vec3(0.015, -0.015, 0), vec3(0.015, 0.015, 0)
+    );
+    expect(p.x).toBeCloseTo(0.015, 10);
+    expect(p.y).toBeCloseTo(0, 10);
+  });
+
+  it('still throws for genuinely parallel small-magnitude lines', () => {
+    expect(() =>
+      intersectLineLine(vec3(0, 0, 0), vec3(0.03, 0, 0), vec3(0, 0.01, 0), vec3(0.03, 0.01, 0))
+    ).toThrow();
   });
 });
 
