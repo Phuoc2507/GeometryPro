@@ -6,7 +6,7 @@ import {
   type PointE,
   pointFromCoords, lineFromTwoPoints, lineFromPointDir,
   planeFromThreePoints, planeFromPointNormal, planeFromCoeffs,
-  sphereFromCenterRadius2, sphereFromCenterPoint, sphereFromEquation,
+  sphereFromCenterRadius2, sphereFromCenterPoint, sphereFromEquation, sphereFromFourPoints,
 } from '../entities';
 import { type EntityTable, createEmptyEntityTable } from '../entityTable';
 import { parseScalar, parseVec3S } from './oxyzInput';
@@ -46,6 +46,7 @@ export const OxyzSphereSchema = z.object({
     z.object({ form: z.literal('center_radius'), center: Name, radius: RInput }),
     z.object({ form: z.literal('center_point'), center: Name, through: Name }),
     z.object({ form: z.literal('equation'), a: RInput, b: RInput, c: RInput, d: RInput }),
+    z.object({ form: z.literal('four_points'), a: Name, b: Name, c: Name, d: Name }),
   ]),
 });
 
@@ -146,6 +147,12 @@ export function executeOxyzOp(op: OxyzOp, et: EntityTable): void {
         const center = requirePointE(et, op.by.center);
         const through = requirePointE(et, op.by.through);
         setSphereE(et, op.name, sphereFromCenterPoint(center.p, through.p));
+      } else if (op.by.form === 'four_points') {
+        const a = requirePointE(et, op.by.a);
+        const b = requirePointE(et, op.by.b);
+        const c = requirePointE(et, op.by.c);
+        const d = requirePointE(et, op.by.d);
+        setSphereE(et, op.name, sphereFromFourPoints(a.p, b.p, c.p, d.p));
       } else {
         // Quy ước: x²+y²+z² + a·x + b·y + c·z + d = 0 (hệ số x²=1), tâm (−a/2,−b/2,−c/2).
         setSphereE(et, op.name, sphereFromEquation(

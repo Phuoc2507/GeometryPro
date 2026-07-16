@@ -1,6 +1,6 @@
 // api/_lib/kernel/entities.ts
-import { type Scalar, rat, add, sub, mul, neg } from './scalar';
-import { type Vec3S, subV, dotV, crossV, lenSqV } from './vec3s';
+import { type Scalar, rat, add, sub, mul, div, neg } from './scalar';
+import { type Vec3S, vec3s, subV, dotV, crossV, lenSqV } from './vec3s';
 
 export type PointE = { kind: 'point'; p: Vec3S };
 // INVARIANT for the compute layer (G2-3): `dir` and `n` are NOT unit vectors and are NOT
@@ -60,4 +60,35 @@ export function sphereFromEquation(a: Scalar, b: Scalar, c: Scalar, d: Scalar): 
   const center = { x: cx, y: cy, z: cz };
   const r2 = sub(add(add(mul(cx, cx), mul(cy, cy)), mul(cz, cz)), d);
   return { kind: 'sphere', center, r2 };
+}
+
+// det 3×3 với các CỘT là u,v,w: det = u·(v×w).
+function det3(u: Vec3S, v: Vec3S, w: Vec3S): Scalar {
+  return dotV(u, crossV(v, w));
+}
+
+// Mặt cầu ngoại tiếp 4 điểm. Tâm X thoả X·aᵢ = bᵢ với aᵢ = Pᵢ−P0, bᵢ = (|Pᵢ|²−|P0|²)/2
+// (i=1,2,3). Giải bằng Cramer (exact hữu tỷ). 4 điểm đồng phẳng ⇒ det = 0 ⇒ ném.
+export function sphereFromFourPoints(p0: Vec3S, p1: Vec3S, p2: Vec3S, p3: Vec3S): SphereE {
+  const half = rat(1n, 2n);
+  const a1 = subV(p1, p0), a2 = subV(p2, p0), a3 = subV(p3, p0);
+  const q0 = dotV(p0, p0);
+  const b1 = mul(sub(dotV(p1, p1), q0), half);
+  const b2 = mul(sub(dotV(p2, p2), q0), half);
+  const b3 = mul(sub(dotV(p3, p3), q0), half);
+  // Cột của ma trận hàng [a1;a2;a3]:
+  const c0 = vec3s(a1.x, a2.x, a3.x);
+  const c1 = vec3s(a1.y, a2.y, a3.y);
+  const c2 = vec3s(a1.z, a2.z, a3.z);
+  const bVec = vec3s(b1, b2, b3);
+  const detM = det3(c0, c1, c2);
+  if (detM.approx === 0 || (detM.exact !== null && detM.exact.num === 0n)) {
+    throw new Error('The four points are coplanar; no unique circumscribing sphere');
+  }
+  const center = vec3s(
+    div(det3(bVec, c1, c2), detM),
+    div(det3(c0, bVec, c2), detM),
+    div(det3(c0, c1, bVec), detM),
+  );
+  return { kind: 'sphere', center, r2: lenSqV(subV(center, p0)) };
 }
