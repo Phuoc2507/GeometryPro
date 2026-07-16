@@ -1,5 +1,5 @@
 // api/_lib/kernel/entities.ts
-import { type Scalar, neg } from './scalar';
+import { type Scalar, rat, add, sub, mul, neg } from './scalar';
 import { type Vec3S, subV, dotV, crossV, lenSqV } from './vec3s';
 
 export type PointE = { kind: 'point'; p: Vec3S };
@@ -41,4 +41,16 @@ export function sphereFromCenterRadius2(center: Vec3S, r2: Scalar): SphereE {
 
 export function sphereFromCenterPoint(center: Vec3S, onSphere: Vec3S): SphereE {
   return { kind: 'sphere', center, r2: lenSqV(subV(onSphere, center)) };
+}
+
+// Mặt cầu từ phương trình x²+y²+z² + a·x + b·y + c·z + d = 0.
+// Tâm = (−a/2, −b/2, −c/2); R² = (a²+b²+c²)/4 − d = tâm.x²+tâm.y²+tâm.z² − d.
+export function sphereFromEquation(a: Scalar, b: Scalar, c: Scalar, d: Scalar): SphereE {
+  const half = rat(1n, 2n);
+  const cx = neg(mul(a, half));
+  const cy = neg(mul(b, half));
+  const cz = neg(mul(c, half));
+  const center = { x: cx, y: cy, z: cz };
+  const r2 = sub(add(add(mul(cx, cx), mul(cy, cy)), mul(cz, cz)), d);
+  return { kind: 'sphere', center, r2 };
 }

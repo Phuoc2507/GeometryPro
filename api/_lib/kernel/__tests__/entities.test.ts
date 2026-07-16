@@ -64,3 +64,13 @@ describe('builder mặt cầu', () => {
     expect(s.r2.exact).toEqual(makeExact(9n, 1n, 1));
   });
 });
+
+import { sphereFromEquation } from '../entities';
+
+describe('sphereFromEquation (x²+y²+z² + a·x + b·y + c·z + d = 0)', () => {
+  it('x²+y²+z² −2x −4y −6z +5 = 0 ⇒ tâm (1,2,3), R²=9', () => {
+    const s = sphereFromEquation(rat(-2n), rat(-4n), rat(-6n), rat(5n));
+    expect(toApproxVec(s.center)).toEqual({ x: 1, y: 2, z: 3 });
+    expect(s.r2.exact).toEqual(makeExact(9n, 1n, 1));
+  });
+});
