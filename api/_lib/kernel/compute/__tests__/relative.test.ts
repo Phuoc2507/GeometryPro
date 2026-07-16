@@ -44,8 +44,9 @@ describe('computeRelativePosition — cầu-mặt (so d² với R² exact)', () 
 describe('computeRelativePosition — điểm-cầu', () => {
   const sphere = sphereFromCenterRadius2(ratVec(0n, 0n, 0n), rat(4n));
   it('trong / trên / ngoài', () => {
-    expect((computeRelativePosition(P(0n, 0n, 0n), sphere) as any).answer.relation).toBe('điểm nằm trong');
-    expect((computeRelativePosition(P(2n, 0n, 0n), sphere) as any).answer.relation).toBe('điểm nằm trên');
-    expect((computeRelativePosition(P(3n, 0n, 0n), sphere) as any).answer.relation).toBe('điểm nằm ngoài');
+    type Ok = Extract<ReturnType<typeof computeRelativePosition>, { ok: true }>;
+    expect((computeRelativePosition(P(0n, 0n, 0n), sphere) as Ok).answer.relation).toBe('điểm nằm trong');
+    expect((computeRelativePosition(P(2n, 0n, 0n), sphere) as Ok).answer.relation).toBe('điểm nằm trên');
+    expect((computeRelativePosition(P(3n, 0n, 0n), sphere) as Ok).answer.relation).toBe('điểm nằm ngoài');
   });
 });
