@@ -42,3 +42,50 @@ describe('displayExact', () => {
     expect(displayExact(makeExact(2n, 1n, 3))).toBe('2√3');
   });
 });
+
+// append to api/_lib/kernel/__tests__/scalar.test.ts
+import { addExact, mulExact, divExact, negExact, sqrtExact } from '../scalar';
+
+describe('số học Exact', () => {
+  it('cộng hai hữu tỷ', () => {
+    expect(addExact(makeExact(1n, 2n), makeExact(1n, 3n))).toEqual(makeExact(5n, 6n));
+  });
+
+  it('cộng hai căn cùng radicand', () => {
+    // √2 + 3√2 = 4√2
+    expect(addExact(makeExact(1n, 1n, 2), makeExact(3n, 1n, 2))).toEqual(makeExact(4n, 1n, 2));
+  });
+
+  it('cộng khác radicand (khác 0) ra ngoài trường ⇒ null', () => {
+    expect(addExact(makeExact(1n, 1n, 2), makeExact(1n, 1n, 3))).toBeNull();
+  });
+
+  it('cộng với 0 trả về số kia', () => {
+    expect(addExact(makeExact(0n, 1n), makeExact(1n, 1n, 3))).toEqual(makeExact(1n, 1n, 3));
+  });
+
+  it('nhân hai căn: √2·√6 = 2√3', () => {
+    expect(mulExact(makeExact(1n, 1n, 2), makeExact(1n, 1n, 6))).toEqual(makeExact(2n, 1n, 3));
+  });
+
+  it('chia: 3 / √14 = 3√14/14', () => {
+    expect(divExact(makeExact(3n, 1n, 1), makeExact(1n, 1n, 14))).toEqual(makeExact(3n, 14n, 14));
+  });
+
+  it('sqrt của hữu tỷ: √(9/4) = 3/2', () => {
+    expect(sqrtExact(makeExact(9n, 4n, 1))).toEqual(makeExact(3n, 2n, 1));
+  });
+
+  it('sqrt của hữu tỷ không chính phương: √2', () => {
+    expect(sqrtExact(makeExact(2n, 1n, 1))).toEqual(makeExact(1n, 1n, 2));
+  });
+
+  it('sqrt của số âm hoặc của một căn ⇒ null', () => {
+    expect(sqrtExact(makeExact(-1n, 1n, 1))).toBeNull();
+    expect(sqrtExact(makeExact(1n, 1n, 2))).toBeNull();
+  });
+
+  it('neg đảo dấu', () => {
+    expect(negExact(makeExact(3n, 2n, 5))).toEqual(makeExact(-3n, 2n, 5));
+  });
+});
