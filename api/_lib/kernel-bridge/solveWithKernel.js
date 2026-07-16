@@ -11,8 +11,11 @@ function extractJson(raw) {
 }
 
 // Đề tiếng Việt → Plan JSON hợp lệ (đã validate bằng schema của engine).
+// Model dịch có thể đổi qua env VILAO_TRANSLATOR_MODEL; mặc định gemini-flash (nhanh/rẻ).
+const TRANSLATOR_MODEL = process.env.VILAO_TRANSLATOR_MODEL || 'ram/gemini-3.5-flash-low';
+
 export async function planFromProblem(problem) {
-  const raw = await callVilao(TRANSLATOR_PROMPT, problem, { aiModel: 'high', maxTokens: 4096 });
+  const raw = await callVilao(TRANSLATOR_PROMPT, problem, { model: TRANSLATOR_MODEL, maxTokens: 4096 });
   let json;
   try {
     json = JSON.parse(extractJson(raw));

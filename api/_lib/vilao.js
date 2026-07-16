@@ -49,15 +49,21 @@ export async function callVilao(systemPrompt, userPrompt, options = {}) {
     aiModel = 'low',
     useReasoning = false,
     onStream = null,
+    model = null,
   } = options;
 
   let modelToUse = VILAO_MODEL;
   if (aiModel === 'high') {
     modelToUse = 'occ/claude-sonnet-4-6';
   }
-  
+
   if (useReasoning) {
     modelToUse = 'ox/o1-mini';
+  }
+
+  // Cho phép chỉ định model tường minh (dùng cho kernel-mode Translator) — ưu tiên cao nhất.
+  if (model) {
+    modelToUse = model;
   }
 
   const currentApiKey = process.env.VILAO_API_KEY;
