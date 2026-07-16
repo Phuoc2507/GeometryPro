@@ -30,7 +30,7 @@ export * from './planSchema';
 export * from './types';
 export * from './exactForm';
 export { verifyPlan, verifyAssert, checkDegeneracy } from './verify';
-export { attemptDeterministicRepair, REPAIR_MAX_RELATIVE_ERROR } from './repair';
+export { attemptDeterministicRepair, REPAIR_MAX_RELATIVE_ERROR, REPAIR_MAX_PERP_ERROR } from './repair';
 export { executePlan, executeOp, createEmptySymbolTable } from './execute';
 export { resolveEntity } from './resolve';
 export { toGeometryData } from './toGeometryData';

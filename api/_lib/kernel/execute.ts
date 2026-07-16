@@ -11,7 +11,7 @@ import {
 } from './ops/points';
 
 export function createEmptySymbolTable(): SymbolTable {
-  return { points: new Map(), namedPlanes: new Map(), edges: new Set() };
+  return { points: new Map(), namedPlanes: new Map(), edges: new Set(), derivedPoints: new Set() };
 }
 
 function requirePoint(symtab: SymbolTable, name: string): Vec3 {
@@ -25,6 +25,13 @@ function setPoint(symtab: SymbolTable, name: string, pos: Vec3) {
     throw new Error(`Point "${name}" is already defined`);
   }
   symtab.points.set(name, pos);
+}
+
+/** Register a computed helper point. Same as setPoint, but marks the name as derived so
+ * degeneracy detection tolerates it coinciding with an existing point. */
+function setDerivedPoint(symtab: SymbolTable, name: string, pos: Vec3) {
+  setPoint(symtab, name, pos);
+  (symtab.derivedPoints ??= new Set()).add(name);
 }
 
 function edgeKey(a: string, b: string): string {
@@ -105,7 +112,7 @@ export function executeOp(op: ConstructionOp, symtab: SymbolTable): void {
           pos = reflectPoint(requirePoint(symtab, op.def.point), requirePoint(symtab, op.def.about));
           break;
       }
-      setPoint(symtab, op.name, pos);
+      setDerivedPoint(symtab, op.name, pos);
       break;
     }
     case 'perp_point': {
@@ -114,7 +121,7 @@ export function executeOp(op: ConstructionOp, symtab: SymbolTable): void {
       if (plane.type !== 'plane') {
         throw new Error(`perp_point target "${op.target}" must resolve to a plane, got "${plane.type}"`);
       }
-      setPoint(symtab, op.name, perpPointFromPlane(fromPos, plane.positions.slice(0, 3), op.length));
+      setDerivedPoint(symtab, op.name, perpPointFromPlane(fromPos, plane.positions.slice(0, 3), op.length));
       break;
     }
     case 'foot': {
@@ -128,7 +135,7 @@ export function executeOp(op: ConstructionOp, symtab: SymbolTable): void {
         if (target.type !== 'line') throw new Error(`foot onto line: "${op.target}" must resolve to a line`);
         pos = footOnLine(fromPos, target.posA, target.posB);
       }
-      setPoint(symtab, op.name, pos);
+      setDerivedPoint(symtab, op.name, pos);
       break;
     }
     case 'intersect': {
@@ -146,7 +153,13 @@ export function executeOp(op: ConstructionOp, symtab: SymbolTable): void {
           `intersect: unsupported combination "${a.type}" x "${b.type}" (plane-plane intersection is out of scope for Phase 1)`
         );
       }
-      setPoint(symtab, op.name, pos);
+      setDerivedPoint(symtab, op.name, pos);
+      break;
+    }
+    case 'edge': {
+      requirePoint(symtab, op.from);
+      requirePoint(symtab, op.to);
+      addEdge(symtab, op.from, op.to);
       break;
     }
   }

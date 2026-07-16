@@ -4,6 +4,11 @@ export type SymbolTable = {
   points: Map<string, Vec3>;
   namedPlanes: Map<string, string[]>;
   edges: Set<string>; // canonical "A|B" key, A < B lexicographically
+  // Names of points produced by a derivation op (midpoint/centroid/ratio/reflect/
+  // perp_point/foot/intersect). A derived point may legitimately land on an existing
+  // point (e.g. the foot of an apex on its base coinciding with a base vertex), so
+  // degeneracy detection exempts any coincidence that involves a derived point.
+  derivedPoints?: Set<string>;
 };
 
 export type ResolvedEntity =

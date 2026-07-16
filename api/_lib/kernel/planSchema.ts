@@ -51,12 +51,22 @@ export const BaseOpSchema = z
     }
   });
 
-export const PrismOpSchema = z.object({
-  op: z.literal('prism'),
-  base: z.array(PointName).min(3),
-  top: z.array(PointName).min(3),
-  height: z.number().positive(),
-});
+export const PrismOpSchema = z
+  .object({
+    op: z.literal('prism'),
+    base: z.array(PointName).min(3),
+    top: z.array(PointName).min(3),
+    height: z.number().positive(),
+  })
+  .superRefine((val, ctx) => {
+    if (val.base.length !== val.top.length) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `prism "base" has ${val.base.length} vertices but "top" has ${val.top.length}; they must match`,
+        path: ['top'],
+      });
+    }
+  });
 
 export const PyramidOpSchema = z.object({
   op: z.literal('pyramid'),
@@ -100,6 +110,15 @@ export const IntersectOpSchema = z.object({
   b: z.string().min(1),
 });
 
+// Declares a visible segment between two already-defined points. Needed because derived
+// vertices (e.g. a pyramid apex built via perp_point) do not auto-generate lateral edges;
+// the plan states them explicitly so the rendered figure is complete.
+export const EdgeOpSchema = z.object({
+  op: z.literal('edge'),
+  from: PointName,
+  to: PointName,
+});
+
 export const ConstructionOpSchema = z.union([
   BaseOpSchema,
   PrismOpSchema,
@@ -108,6 +127,7 @@ export const ConstructionOpSchema = z.union([
   PerpPointOpSchema,
   FootOpSchema,
   IntersectOpSchema,
+  EdgeOpSchema,
 ]);
 
 export const AssertOpSchema = z

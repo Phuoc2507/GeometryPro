@@ -39,11 +39,19 @@ export function verifyAssert(assertOp: AssertOp, symtab: SymbolTable): Violation
     case 'parallel': {
       const a = resolveEntity(argA, symtab);
       const b = resolveEntity(argB, symtab);
-      const actual = length(cross(normalize(directionOf(a)), normalize(directionOf(b))));
+      const da = normalize(directionOf(a));
+      const db = normalize(directionOf(b));
+      // directionOf(plane) is the plane NORMAL, so a line is parallel to a plane when its
+      // direction is PERPENDICULAR to the normal (|cos| ≈ 0), not parallel to it. Mirror the
+      // line-vs-plane special-casing that 'perp' and 'angle' already do.
+      const isLinePlane = (a.type === 'line' && b.type === 'plane') || (a.type === 'plane' && b.type === 'line');
+      const actual = isLinePlane ? Math.abs(dot(da, db)) : length(cross(da, db));
       if (actual < tol) return null;
       return {
         kind: 'assert_failed', relation: 'parallel', args: assertOp.args, expected: 0, actual,
-        message: `Expected ${argA} ∥ ${argB}, but |cross product| = ${actual.toFixed(6)}`,
+        message: isLinePlane
+          ? `Expected ${argA} ∥ ${argB}, but |cos angle to plane normal| = ${actual.toFixed(6)}`
+          : `Expected ${argA} ∥ ${argB}, but |cross product| = ${actual.toFixed(6)}`,
       };
     }
     case 'coplanar': {
@@ -114,9 +122,14 @@ export function verifyAssert(assertOp: AssertOp, symtab: SymbolTable): Violation
 export function checkDegeneracy(symtab: SymbolTable): Violation[] {
   const violations: Violation[] = [];
   const names = Array.from(symtab.points.keys());
+  const derived = symtab.derivedPoints ?? new Set<string>();
 
   for (let i = 0; i < names.length; i++) {
     for (let j = i + 1; j < names.length; j++) {
+      // A derived point (foot/intersect/reflect/…) is allowed to coincide with another
+      // point — e.g. the foot of an apex on its base landing on a base vertex. Only two
+      // *structural* points collapsing onto each other is a genuine degeneracy.
+      if (derived.has(names[i]) || derived.has(names[j])) continue;
       const pi = symtab.points.get(names[i])!;
       const pj = symtab.points.get(names[j])!;
       const d = distance(pi, pj);

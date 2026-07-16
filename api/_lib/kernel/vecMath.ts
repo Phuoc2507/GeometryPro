@@ -109,14 +109,24 @@ export function areCollinear(a: Vec3, b: Vec3, c: Vec3, eps = EPS): boolean {
 
 export function arePointsCoplanar(points: Vec3[], eps = EPS): boolean {
   if (points.length <= 3) return true;
-  const [p0, p1, p2] = points;
-  let normal: Vec3;
-  try {
-    normal = planeNormal(p0, p1, p2);
-  } catch {
-    return false;
+  const p0 = points[0];
+  // Build the reference plane from the FIRST non-collinear triple, not blindly from
+  // indices 0,1,2 — the caller may list points that share an edge/line first, which
+  // would make planeNormal(p0,p1,p2) throw even though the whole set is coplanar.
+  let normal: Vec3 | null = null;
+  for (let i = 1; i < points.length - 1 && !normal; i++) {
+    for (let j = i + 1; j < points.length; j++) {
+      try {
+        normal = planeNormal(p0, points[i], points[j]);
+        break;
+      } catch {
+        // collinear triple — keep searching
+      }
+    }
   }
-  return points.slice(3).every((p) => distancePointToPlane(p, p0, normal) < eps);
+  // No non-collinear triple exists ⇒ every point lies on a single line ⇒ trivially coplanar.
+  if (!normal) return true;
+  return points.every((p) => distancePointToPlane(p, p0, normal!) < eps);
 }
 
 export function tetrahedronVolume(a: Vec3, b: Vec3, c: Vec3, d: Vec3): number {

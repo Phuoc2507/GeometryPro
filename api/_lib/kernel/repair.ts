@@ -1,11 +1,19 @@
 import type { Violation, SymbolTable } from './types';
 import { resolveEntity } from './resolve';
-import { add, sub, scale, planeNormal, projectPointOntoPlane, projectPointOntoLine, length } from './vecMath';
+import {
+  add, sub, scale, dot, planeNormal, projectPointOntoPlane, projectPointOntoLine,
+  distancePointToPlane, length,
+} from './vecMath';
 
-/** Beyond this fraction of the shape's own scale, an "on"/"perp" miss is treated as a
- * likely semantic construction error, not numeric noise — repair is declined so the
- * violation surfaces for LLM-targeted repair instead of being silently papered over. */
+/** Beyond this fraction of the shape's own scale, an "on" miss is treated as a likely
+ * semantic construction error, not numeric noise — repair is declined so the violation
+ * surfaces for LLM-targeted repair instead of being silently papered over. */
 export const REPAIR_MAX_RELATIVE_ERROR = 0.01;
+
+/** For "perp", the violation metric is a dimensionless 1 - |cos φ| (scale-independent), so
+ * it must be gated by an absolute angular bound, NOT divided by the figure scale. 1e-3
+ * corresponds to ≈2.56° of drift — beyond that, the miss is a semantic error, not noise. */
+export const REPAIR_MAX_PERP_ERROR = 1e-3;
 
 export type RepairResult = { repaired: boolean; reason?: string };
 
@@ -30,9 +38,17 @@ export function attemptDeterministicRepair(violation: Violation, symtab: SymbolT
   if (!violation.args || violation.args.length !== 2) {
     return { repaired: false, reason: 'Expected exactly 2 args for on/perp repair' };
   }
-  const scale_ = referenceScale(symtab);
-  if (violation.actual !== undefined && violation.actual / scale_ > REPAIR_MAX_RELATIVE_ERROR) {
-    return { repaired: false, reason: 'Error exceeds the deterministic-repair threshold; likely a semantic mistake, not numeric noise' };
+  if (violation.actual !== undefined) {
+    if (violation.relation === 'on') {
+      // "on" actual is a genuine distance ⇒ compare as a fraction of the figure scale.
+      const scale_ = referenceScale(symtab);
+      if (violation.actual / scale_ > REPAIR_MAX_RELATIVE_ERROR) {
+        return { repaired: false, reason: 'Error exceeds the deterministic-repair threshold; likely a semantic mistake, not numeric noise' };
+      }
+    } else if (violation.actual > REPAIR_MAX_PERP_ERROR) {
+      // "perp" actual is dimensionless (1 - |cos φ|) ⇒ absolute angular bound, scale-free.
+      return { repaired: false, reason: 'Angular error exceeds the deterministic-repair threshold; likely a semantic mistake, not numeric noise' };
+    }
   }
 
   if (violation.relation === 'on') {
@@ -52,8 +68,11 @@ export function attemptDeterministicRepair(violation: Violation, symtab: SymbolT
     return { repaired: false, reason: `Cannot project onto entity of type "${entity.type}"` };
   }
 
-  // relation === 'perp': re-anchor the second point of the "line" arg so the line
-  // becomes exactly perpendicular to the "other" plane, preserving distance from the anchor.
+  // relation === 'perp': make the line exactly perpendicular to the plane by keeping the
+  // endpoint that lies IN the plane fixed (the true anchor) and moving the other one along
+  // the plane normal. Which endpoint moves is decided by geometry (distance to the plane),
+  // NOT by token order — otherwise "SA" (apex-first) would move the base vertex A and wreck
+  // the base, while "AS" would move the apex; both must behave identically.
   const [lineTok, otherTok] = violation.args;
   const lineEntity = resolveEntity(lineTok, symtab);
   const otherEntity = resolveEntity(otherTok, symtab);
@@ -63,9 +82,21 @@ export function attemptDeterministicRepair(violation: Violation, symtab: SymbolT
   if (otherEntity.type !== 'plane') {
     return { repaired: false, reason: 'Deterministic perp-repair for line-vs-line is not implemented in Phase 1' };
   }
-  const anchorLen = length(sub(lineEntity.posB, lineEntity.posA));
   const normal = planeNormal(otherEntity.positions[0], otherEntity.positions[1], otherEntity.positions[2]);
-  const newB = add(lineEntity.posA, scale(normal, anchorLen));
-  symtab.points.set(lineEntity.b, newB);
+  const planePoint = otherEntity.positions[0];
+  const distA = distancePointToPlane(lineEntity.posA, planePoint, normal);
+  const distB = distancePointToPlane(lineEntity.posB, planePoint, normal);
+  // The endpoint closer to the plane is the anchor; move the far one.
+  const anchor = distA <= distB
+    ? { name: lineEntity.a, pos: lineEntity.posA }
+    : { name: lineEntity.b, pos: lineEntity.posB };
+  const moved = distA <= distB
+    ? { name: lineEntity.b, pos: lineEntity.posB }
+    : { name: lineEntity.a, pos: lineEntity.posA };
+  const segLen = length(sub(moved.pos, anchor.pos));
+  // Preserve which side of the plane the moved point was on.
+  const side = dot(sub(moved.pos, anchor.pos), normal) >= 0 ? 1 : -1;
+  const newMoved = add(anchor.pos, scale(normal, side * segLen));
+  symtab.points.set(moved.name, newMoved);
   return { repaired: true };
 }
