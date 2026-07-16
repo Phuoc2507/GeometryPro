@@ -1,6 +1,6 @@
 // api/_lib/kernel/compute/equation.ts
-import { type Scalar, displayExact } from '../scalar';
-import type { PlaneE, SphereE } from '../entities';
+import { type Scalar, displayExact, displayScalar, neg } from '../scalar';
+import type { PlaneE, SphereE, LineE } from '../entities';
 
 function bgcd(a: bigint, b: bigint): bigint {
   a = a < 0n ? -a : a;
@@ -71,4 +71,18 @@ export function sphereEquationText(s: SphereE): string {
     return `(${v} ${neg ? '+' : '-'} ${mag})²`;
   };
   return `${varPart(s.center.x, 'x')} + ${varPart(s.center.y, 'y')} + ${varPart(s.center.z, 'z')} = ${displayExact(s.r2.exact)}`;
+}
+
+// Dạng tham số: mỗi thành phần "v = p0 ± |d|t". Hệ số hiển thị dạng exact khi có.
+export function lineEquationText(l: LineE): string {
+  const comp = (p0: Scalar, d: Scalar, v: string): string => {
+    const dNeg = d.approx < 0;
+    const dMag = displayScalar(dNeg ? neg(d) : d);
+    return `${v} = ${displayScalar(p0)} ${dNeg ? '-' : '+'} ${dMag}t`;
+  };
+  return [
+    comp(l.p.x, l.dir.x, 'x'),
+    comp(l.p.y, l.dir.y, 'y'),
+    comp(l.p.z, l.dir.z, 'z'),
+  ].join(', ');
 }

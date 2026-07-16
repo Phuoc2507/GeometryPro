@@ -26,3 +26,15 @@ describe('sphereEquationText', () => {
     expect(sphereEquationText(s)).toBe('(x - 1)² + (y - 2)² + (z - 3)² = 9');
   });
 });
+
+import { lineEquationText } from '../equation';
+import { lineFromPointDir } from '../../entities';
+
+describe('lineEquationText (tham số)', () => {
+  it('điểm (1,0,0), chỉ phương (2,1,-1)', () => {
+    const l = lineFromPointDir(ratVec(1n, 0n, 0n), ratVec(2n, 1n, -1n));
+    const txt = lineEquationText(l);
+    expect(txt).toContain('x = 1 + 2t');
+    expect(txt).toContain('z = 0 - 1t');
+  });
+});
