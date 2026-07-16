@@ -57,8 +57,6 @@ export function displayExact(e: Exact): string {
   return e.den === 1n ? `${sign}${numer}` : `${sign}${numer}/${e.den}`;
 }
 
-// append to api/_lib/kernel/scalar.ts
-
 export function negExact(a: Exact): Exact {
   return { num: -a.num, den: a.den, radicand: a.radicand };
 }
@@ -100,8 +98,6 @@ export function sqrtExact(a: Exact): Exact | null {
   if (!Number.isSafeInteger(radicand)) return null; // quá lớn để làm radicand an toàn
   return makeExact(1n, a.den, radicand);
 }
-
-// append to api/_lib/kernel/scalar.ts
 
 // Số lai: approx (float) luôn có; exact khi tính được trong trường hữu tỷ+căn.
 export type Scalar = { approx: number; exact: Exact | null };
