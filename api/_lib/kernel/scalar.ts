@@ -100,3 +100,54 @@ export function sqrtExact(a: Exact): Exact | null {
   if (!Number.isSafeInteger(radicand)) return null; // quá lớn để làm radicand an toàn
   return makeExact(1n, a.den, radicand);
 }
+
+// append to api/_lib/kernel/scalar.ts
+
+// Số lai: approx (float) luôn có; exact khi tính được trong trường hữu tỷ+căn.
+export type Scalar = { approx: number; exact: Exact | null };
+
+export function num(n: number): Scalar {
+  return { approx: n, exact: null };
+}
+
+export function fromExact(e: Exact): Scalar {
+  return { approx: exactToApprox(e), exact: e };
+}
+
+// Hằng tiện dụng: số nguyên/hữu tỷ chính xác.
+export function rat(n: bigint, d: bigint = 1n): Scalar {
+  return fromExact(makeExact(n, d, 1));
+}
+
+export function add(a: Scalar, b: Scalar): Scalar {
+  const exact = a.exact && b.exact ? addExact(a.exact, b.exact) : null;
+  return { approx: a.approx + b.approx, exact };
+}
+
+export function sub(a: Scalar, b: Scalar): Scalar {
+  const exact = a.exact && b.exact ? subExact(a.exact, b.exact) : null;
+  return { approx: a.approx - b.approx, exact };
+}
+
+export function mul(a: Scalar, b: Scalar): Scalar {
+  const exact = a.exact && b.exact ? mulExact(a.exact, b.exact) : null;
+  return { approx: a.approx * b.approx, exact };
+}
+
+export function div(a: Scalar, b: Scalar): Scalar {
+  const exact = a.exact && b.exact && b.exact.num !== 0n ? divExact(a.exact, b.exact) : null;
+  return { approx: a.approx / b.approx, exact };
+}
+
+export function neg(a: Scalar): Scalar {
+  return { approx: -a.approx, exact: a.exact ? negExact(a.exact) : null };
+}
+
+export function sqrt(a: Scalar): Scalar {
+  const exact = a.exact ? sqrtExact(a.exact) : null;
+  return { approx: Math.sqrt(a.approx), exact };
+}
+
+export function displayScalar(s: Scalar): string {
+  return s.exact ? displayExact(s.exact) : s.approx.toFixed(4);
+}

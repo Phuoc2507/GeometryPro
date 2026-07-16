@@ -89,3 +89,51 @@ describe('số học Exact', () => {
     expect(negExact(makeExact(3n, 2n, 5))).toEqual(makeExact(-3n, 2n, 5));
   });
 });
+
+// append to api/_lib/kernel/__tests__/scalar.test.ts
+import { num, fromExact, add, mul, div, sqrt, displayScalar } from '../scalar';
+
+describe('Scalar lai', () => {
+  it('num() tạo scalar float-only (exact null)', () => {
+    const s = num(1.5);
+    expect(s.approx).toBe(1.5);
+    expect(s.exact).toBeNull();
+  });
+
+  it('fromExact() giữ cả exact lẫn approx', () => {
+    const s = fromExact(makeExact(3n, 2n, 1));
+    expect(s.approx).toBeCloseTo(1.5, 12);
+    expect(s.exact).toEqual(makeExact(3n, 2n, 1));
+  });
+
+  it('add hai exact giữ exact', () => {
+    const s = add(fromExact(makeExact(1n, 2n)), fromExact(makeExact(1n, 3n)));
+    expect(s.exact).toEqual(makeExact(5n, 6n));
+    expect(s.approx).toBeCloseTo(5 / 6, 12);
+  });
+
+  it('add khi một toán hạng float-only ⇒ exact null, approx vẫn đúng', () => {
+    const s = add(num(0.5), fromExact(makeExact(1n, 2n)));
+    expect(s.exact).toBeNull();
+    expect(s.approx).toBeCloseTo(1, 12);
+  });
+
+  it('add hai exact ra ngoài trường ⇒ exact null nhưng approx đúng', () => {
+    const s = add(fromExact(makeExact(1n, 1n, 2)), fromExact(makeExact(1n, 1n, 3)));
+    expect(s.exact).toBeNull();
+    expect(s.approx).toBeCloseTo(Math.sqrt(2) + Math.sqrt(3), 12);
+  });
+
+  it('mul/div/sqrt lan truyền exact khi ở trong trường', () => {
+    expect(mul(fromExact(makeExact(1n, 1n, 2)), fromExact(makeExact(1n, 1n, 6))).exact)
+      .toEqual(makeExact(2n, 1n, 3));
+    expect(div(fromExact(makeExact(3n, 1n)), fromExact(makeExact(1n, 1n, 14))).exact)
+      .toEqual(makeExact(3n, 14n, 14));
+    expect(sqrt(fromExact(makeExact(9n, 4n))).exact).toEqual(makeExact(3n, 2n, 1));
+  });
+
+  it('displayScalar dùng exact nếu có, ngược lại decimal', () => {
+    expect(displayScalar(fromExact(makeExact(3n, 14n, 14)))).toBe('3√14/14');
+    expect(displayScalar(num(Math.PI))).toBe(Math.PI.toFixed(4));
+  });
+});
