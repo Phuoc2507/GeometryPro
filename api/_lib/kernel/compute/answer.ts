@@ -82,3 +82,20 @@ export function certifyScalar(kind: string, s: Scalar, floatRef: number): Scalar
   }
   return { kind, exact: null, approx: floatRef, text: floatRef.toFixed(4), approximate: true };
 }
+
+// Kiểm một Scalar bằng 0 (exact chính xác khi có, ngược lại ngưỡng float).
+export function isZeroS(s: Scalar): boolean {
+  return s.exact !== null ? s.exact.num === 0n : Math.abs(s.approx) < EPS;
+}
+
+// So sánh hai Scalar: -1 / 0 / 1. Chính xác khi cả hai exact cùng radicand (gồm hữu tỷ
+// radicand 1); ngược lại dùng float. So (num/den)√r ⇔ so num·den chéo (√r>0, den>0).
+export function cmpScalar(a: Scalar, b: Scalar): number {
+  if (a.exact !== null && b.exact !== null && a.exact.radicand === b.exact.radicand) {
+    const lhs = a.exact.num * b.exact.den;
+    const rhs = b.exact.num * a.exact.den;
+    return lhs < rhs ? -1 : lhs > rhs ? 1 : 0;
+  }
+  const d = a.approx - b.approx;
+  return Math.abs(d) < EPS ? 0 : d < 0 ? -1 : 1;
+}
