@@ -1,7 +1,6 @@
 // api/_lib/kernel/__tests__/unifiedPlan.test.ts
 import { describe, it, expect } from 'vitest';
 import { UnifiedPlanSchema, executeUnifiedPlan } from '../unifiedPlan';
-import { toApproxVec } from '../vec3s';
 import { makeExact } from '../scalar';
 
 describe('UnifiedPlanSchema', () => {
