@@ -1,7 +1,7 @@
 // api/_lib/kernel/compute/__tests__/distance.test.ts
 import { describe, it, expect } from 'vitest';
 import { computeDistance } from '../distance';
-import { pointFromCoords, lineFromPointDir, planeFromCoeffs } from '../../entities';
+import { pointFromCoords, lineFromPointDir, planeFromCoeffs, sphereFromCenterRadius2 } from '../../entities';
 import { ratVec } from '../../vec3s';
 import { rat, makeExact } from '../../scalar';
 
@@ -41,5 +41,14 @@ describe('computeDistance', () => {
     const r = computeDistance(P(1n, 1n, 1n), bad);
     expect(r.ok).toBe(false);
     if (!r.ok) expect(r.problem).toMatch(/plane/i);
+  });
+});
+
+describe('khoảng cách điểm–cầu (gần đúng)', () => {
+  it('điểm ngoài: từ (5,0,0) tới mặt cầu tâm O R=2 = 3', () => {
+    const S = sphereFromCenterRadius2(ratVec(0n, 0n, 0n), rat(4n));
+    const r = computeDistance(pointFromCoords(ratVec(5n, 0n, 0n)), S);
+    expect(r.ok).toBe(true);
+    if (r.ok) { expect(r.answer.approx).toBeCloseTo(3, 9); expect(r.answer.approximate).toBe(true); }
   });
 });

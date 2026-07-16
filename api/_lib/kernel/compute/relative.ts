@@ -36,6 +36,13 @@ function relPointSphere(pt: PointE, s: SphereE): RelPosAnswer {
   const c = cmpScalar(lenSqV(subV(pt.p, s.center)), s.r2);
   return rel(c < 0 ? 'điểm nằm trong' : c === 0 ? 'điểm nằm trên' : 'điểm nằm ngoài');
 }
+function relSphereLine(s: SphereE, l: LineE): RelPosAnswer {
+  // d(tâm, đường)² so với R²
+  const cr = crossV(subV(s.center, l.p), l.dir);
+  const dSq = div(lenSqV(cr), lenSqV(l.dir));
+  const c = cmpScalar(dSq, s.r2);
+  return rel(c < 0 ? 'cắt nhau' : c === 0 ? 'tiếp xúc' : 'rời nhau');
+}
 
 export function computeRelativePosition(a: Entity, b: Entity): ComputeOutcome<RelPosAnswer> {
   const deg = firstDegenerate([a, b]);
@@ -50,6 +57,8 @@ export function computeRelativePosition(a: Entity, b: Entity): ComputeOutcome<Re
     case 'plane-sphere': return { ok: true, answer: relSpherePlane(b as SphereE, a as PlaneE) };
     case 'point-sphere': return { ok: true, answer: relPointSphere(a as PointE, b as SphereE) };
     case 'sphere-point': return { ok: true, answer: relPointSphere(b as PointE, a as SphereE) };
+    case 'sphere-line': return { ok: true, answer: relSphereLine(a as SphereE, b as LineE) };
+    case 'line-sphere': return { ok: true, answer: relSphereLine(b as SphereE, a as LineE) };
     default: return { ok: false, problem: `relative position not supported for ${key}` };
   }
 }

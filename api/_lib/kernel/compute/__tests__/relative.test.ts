@@ -50,3 +50,19 @@ describe('computeRelativePosition — điểm-cầu', () => {
     expect((computeRelativePosition(P(3n, 0n, 0n), sphere) as Ok).answer.relation).toBe('điểm nằm ngoài');
   });
 });
+
+describe('cầu–đường thẳng', () => {
+  const S = sphereFromCenterRadius2(ratVec(0n, 0n, 0n), rat(4n)); // R²=4, R=2
+  it('cắt: trục Ox qua tâm', () => {
+    const r = computeRelativePosition(S, lineFromPointDir(ratVec(0n, 0n, 0n), ratVec(1n, 0n, 0n)));
+    expect(r.ok && r.answer.relation).toBe('cắt nhau');
+  });
+  it('tiếp xúc: đường ‖ Ox tại khoảng cách 2', () => {
+    const r = computeRelativePosition(S, lineFromPointDir(ratVec(0n, 2n, 0n), ratVec(1n, 0n, 0n)));
+    expect(r.ok && r.answer.relation).toBe('tiếp xúc');
+  });
+  it('rời: đường ‖ Ox tại khoảng cách 3', () => {
+    const r = computeRelativePosition(S, lineFromPointDir(ratVec(0n, 3n, 0n), ratVec(1n, 0n, 0n)));
+    expect(r.ok && r.answer.relation).toBe('rời nhau');
+  });
+});

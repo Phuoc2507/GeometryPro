@@ -1,7 +1,7 @@
 // api/_lib/kernel/compute/distance.ts
-import { type Scalar, add, mul, div, neg, sqrt, rat } from '../scalar';
+import { type Scalar, add, mul, div, neg, sqrt, rat, num } from '../scalar';
 import { type Vec3S, subV, dotV, crossV, lenSqV, scaleV, toApproxVec } from '../vec3s';
-import type { Entity, PointE, LineE, PlaneE } from '../entities';
+import type { Entity, PointE, LineE, PlaneE, SphereE } from '../entities';
 import { sub, dot, cross, length, type Vec3 } from '../vecMath';
 import { type ComputeOutcome, type DistanceAnswer, EPS, firstDegenerate, certifyDistance, isZeroS } from './answer';
 
@@ -60,6 +60,12 @@ function dPlanePlane(p1: PlaneE, p2: PlaneE): DistanceAnswer {
   const pointOnP1 = scaleV(p1.n, div(neg(p1.d), lenSqV(p1.n))); // chân đường vuông góc từ O
   return dPointPlane(pt(pointOnP1), p2);
 }
+function dPointSphere(p: PointE, s: SphereE): DistanceAnswer {
+  const pc = Math.sqrt(lenSqV(subV(p.p, s.center)).approx);
+  const R = Math.sqrt(s.r2.approx);
+  const d = Math.abs(pc - R);
+  return certifyDistance(num(d), d); // exact rời trường ⇒ approximate
+}
 
 export function computeDistance(a: Entity, b: Entity): ComputeOutcome<DistanceAnswer> {
   const deg = firstDegenerate([a, b]);
@@ -75,6 +81,8 @@ export function computeDistance(a: Entity, b: Entity): ComputeOutcome<DistanceAn
     case 'line-plane': return { ok: true, answer: dLinePlane(a as LineE, b as PlaneE) };
     case 'plane-line': return { ok: true, answer: dLinePlane(b as LineE, a as PlaneE) };
     case 'plane-plane': return { ok: true, answer: dPlanePlane(a as PlaneE, b as PlaneE) };
+    case 'point-sphere': return { ok: true, answer: dPointSphere(a as PointE, b as SphereE) };
+    case 'sphere-point': return { ok: true, answer: dPointSphere(b as PointE, a as SphereE) };
     default: return { ok: false, problem: `distance not supported for ${key}` };
   }
 }
