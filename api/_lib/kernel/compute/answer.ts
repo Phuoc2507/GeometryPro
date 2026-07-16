@@ -65,3 +65,20 @@ export function certifyAngle(metric: Scalar, degrees: number): AngleAnswer {
     approximate: nice === null,
   };
 }
+
+// Đáp số vô hướng tổng quát (volume/area/ratio…) + self-certificate như certifyDistance.
+export type ScalarAnswer = {
+  kind: string;
+  exact: Exact | null;
+  approx: number;
+  text: string;
+  approximate: boolean;
+};
+
+export function certifyScalar(kind: string, s: Scalar, floatRef: number): ScalarAnswer {
+  const tol = 1e-6 * Math.max(1, Math.abs(floatRef));
+  if (s.exact !== null && Math.abs(s.approx - floatRef) <= tol) {
+    return { kind, exact: s.exact, approx: s.approx, text: displayScalar(s), approximate: false };
+  }
+  return { kind, exact: null, approx: floatRef, text: floatRef.toFixed(4), approximate: true };
+}
