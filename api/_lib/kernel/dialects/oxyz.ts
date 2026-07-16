@@ -72,9 +72,27 @@ function requirePointE(et: EntityTable, name: string): PointE {
   return p;
 }
 
-function setPointE(et: EntityTable, name: string, p: Vec3S): void {
+// `derived` marks helper points (midpoint/ratio/centroid/reflect) so downstream degeneracy
+// handling treats them like the synthetic dialect's derived points.
+function setPointE(et: EntityTable, name: string, p: Vec3S, derived = false): void {
   if (et.points.has(name)) throw new Error(`Oxyz: point "${name}" is already defined`);
   et.points.set(name, pointFromCoords(p));
+  if (derived) (et.derivedPoints ??= new Set()).add(name);
+}
+
+function setLineE(et: EntityTable, name: string, l: ReturnType<typeof lineFromTwoPoints>): void {
+  if (et.lines.has(name)) throw new Error(`Oxyz: line "${name}" is already defined`);
+  et.lines.set(name, l);
+}
+
+function setPlaneE(et: EntityTable, name: string, pl: ReturnType<typeof planeFromThreePoints>): void {
+  if (et.planes.has(name)) throw new Error(`Oxyz: plane "${name}" is already defined (or collides with a face)`);
+  et.planes.set(name, pl);
+}
+
+function setSphereE(et: EntityTable, name: string, s: ReturnType<typeof sphereFromEquation>): void {
+  if (et.spheres.has(name)) throw new Error(`Oxyz: sphere "${name}" is already defined`);
+  et.spheres.set(name, s);
 }
 
 export function executeOxyzOp(op: OxyzOp, et: EntityTable): void {
@@ -86,9 +104,9 @@ export function executeOxyzOp(op: OxyzOp, et: EntityTable): void {
       if (op.by.form === 'two_points') {
         const a = requirePointE(et, op.by.a);
         const b = requirePointE(et, op.by.b);
-        et.lines.set(op.name, lineFromTwoPoints(a.p, b.p));
+        setLineE(et, op.name, lineFromTwoPoints(a.p, b.p));
       } else {
-        et.lines.set(op.name, lineFromPointDir(parseVec3S(op.by.base), parseVec3S(op.by.dir)));
+        setLineE(et, op.name, lineFromPointDir(parseVec3S(op.by.base), parseVec3S(op.by.dir)));
       }
       break;
     }
@@ -97,12 +115,12 @@ export function executeOxyzOp(op: OxyzOp, et: EntityTable): void {
         const a = requirePointE(et, op.by.a);
         const b = requirePointE(et, op.by.b);
         const c = requirePointE(et, op.by.c);
-        et.planes.set(op.name, planeFromThreePoints(a.p, b.p, c.p));
+        setPlaneE(et, op.name, planeFromThreePoints(a.p, b.p, c.p));
       } else if (op.by.form === 'point_normal') {
         const point = requirePointE(et, op.by.point);
-        et.planes.set(op.name, planeFromPointNormal(point.p, parseVec3S(op.by.normal)));
+        setPlaneE(et, op.name, planeFromPointNormal(point.p, parseVec3S(op.by.normal)));
       } else {
-        et.planes.set(op.name, planeFromCoeffs(
+        setPlaneE(et, op.name, planeFromCoeffs(
           parseScalar(op.by.a), parseScalar(op.by.b), parseScalar(op.by.c), parseScalar(op.by.d),
         ));
       }
@@ -112,13 +130,14 @@ export function executeOxyzOp(op: OxyzOp, et: EntityTable): void {
       if (op.by.form === 'center_radius') {
         const center = requirePointE(et, op.by.center);
         const r = parseScalar(op.by.radius);
-        et.spheres.set(op.name, sphereFromCenterRadius2(center.p, mul(r, r)));
+        setSphereE(et, op.name, sphereFromCenterRadius2(center.p, mul(r, r)));
       } else if (op.by.form === 'center_point') {
         const center = requirePointE(et, op.by.center);
         const through = requirePointE(et, op.by.through);
-        et.spheres.set(op.name, sphereFromCenterPoint(center.p, through.p));
+        setSphereE(et, op.name, sphereFromCenterPoint(center.p, through.p));
       } else {
-        et.spheres.set(op.name, sphereFromEquation(
+        // Quy ước: x²+y²+z² + a·x + b·y + c·z + d = 0 (hệ số x²=1), tâm (−a/2,−b/2,−c/2).
+        setSphereE(et, op.name, sphereFromEquation(
           parseScalar(op.by.a), parseScalar(op.by.b), parseScalar(op.by.c), parseScalar(op.by.d),
         ));
       }
@@ -127,7 +146,7 @@ export function executeOxyzOp(op: OxyzOp, et: EntityTable): void {
     case 'oxyz_midpoint': {
       const a = requirePointE(et, op.a);
       const b = requirePointE(et, op.b);
-      setPointE(et, op.name, scaleV(addV(a.p, b.p), rat(1n, 2n)));
+      setPointE(et, op.name, scaleV(addV(a.p, b.p), rat(1n, 2n)), true);
       break;
     }
     case 'oxyz_ratio': {
@@ -135,21 +154,21 @@ export function executeOxyzOp(op: OxyzOp, et: EntityTable): void {
       const b = requirePointE(et, op.b);
       const t = parseScalar(op.t);
       // A + t·(B − A)
-      setPointE(et, op.name, addV(a.p, scaleV(subV(b.p, a.p), t)));
+      setPointE(et, op.name, addV(a.p, scaleV(subV(b.p, a.p), t)), true);
       break;
     }
     case 'oxyz_centroid': {
       const pts = op.of.map((n) => requirePointE(et, n).p);
       let sum = pts[0];
       for (let i = 1; i < pts.length; i++) sum = addV(sum, pts[i]);
-      setPointE(et, op.name, scaleV(sum, rat(1n, BigInt(pts.length))));
+      setPointE(et, op.name, scaleV(sum, rat(1n, BigInt(pts.length))), true);
       break;
     }
     case 'oxyz_reflect': {
       const point = requirePointE(et, op.point);
       const about = requirePointE(et, op.about);
       // 2·about − point
-      setPointE(et, op.name, subV(scaleV(about.p, rat(2n)), point.p));
+      setPointE(et, op.name, subV(scaleV(about.p, rat(2n)), point.p), true);
       break;
     }
   }

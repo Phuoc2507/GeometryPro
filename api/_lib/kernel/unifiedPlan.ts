@@ -14,6 +14,11 @@ const OXYZ_OPS = new Set([
   'oxyz_midpoint', 'oxyz_ratio', 'oxyz_centroid', 'oxyz_reflect',
 ]);
 
+// The Oxyz ops that introduce a named POINT (used to detect cross-dialect name clashes).
+const OXYZ_POINT_OPS = new Set([
+  'oxyz_point', 'oxyz_midpoint', 'oxyz_ratio', 'oxyz_centroid', 'oxyz_reflect',
+]);
+
 export const UnifiedOpSchema = z.union([ConstructionOpSchema, OxyzOpSchema]);
 
 export const UnifiedPlanSchema = z.object({
@@ -28,8 +33,13 @@ function floatVecToVec3S(v: Vec3): Vec3S {
 }
 
 // Đồng bộ (bồi thêm) mọi điểm/mặt/cạnh mới của SymbolTable float sang EntityTable.
-function syncSymtabToEntities(symtab: SymbolTable, et: EntityTable): void {
+// Ném rõ ràng nếu một điểm synthetic trùng tên với một điểm đã khai báo bằng Oxyz — nếu
+// không, EntityTable sẽ mâu thuẫn nội tại (điểm A ở toạ độ này, mặt chứa A ở toạ độ khác).
+function syncSymtabToEntities(symtab: SymbolTable, et: EntityTable, oxyzPointNames: Set<string>): void {
   for (const [name, pos] of symtab.points) {
+    if (oxyzPointNames.has(name)) {
+      throw new Error(`Point "${name}" is defined in both the Oxyz and synthetic dialects; use distinct names`);
+    }
     if (!et.points.has(name)) et.points.set(name, pointFromCoords(floatVecToVec3S(pos)));
   }
   for (const [key, verts] of symtab.namedPlanes) {
@@ -46,12 +56,15 @@ function syncSymtabToEntities(symtab: SymbolTable, et: EntityTable): void {
 export function executeUnifiedPlan(plan: UnifiedPlan): EntityTable {
   const symtab = createEmptySymbolTable();
   const et = createEmptyEntityTable();
+  const oxyzPointNames = new Set<string>();
   for (const op of plan.ops) {
-    if (OXYZ_OPS.has((op as { op: string }).op)) {
+    const kind = (op as { op: string }).op;
+    if (OXYZ_OPS.has(kind)) {
       executeOxyzOp(op as OxyzOp, et);
+      if (OXYZ_POINT_OPS.has(kind)) oxyzPointNames.add((op as { name: string }).name);
     } else {
       executeOp(op as ConstructionOp, symtab);
-      syncSymtabToEntities(symtab, et);
+      syncSymtabToEntities(symtab, et, oxyzPointNames);
     }
   }
   return et;

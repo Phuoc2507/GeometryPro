@@ -23,10 +23,17 @@ function decimalToExact(s: string): Exact {
   return makeExact(neg ? -numAbs : numAbs, den, 1);
 }
 
+const INT_RE = /^[+-]?\d+$/;
+
 export function parseRational(input: RationalInput): Exact {
   if (typeof input === 'number') {
     if (!Number.isFinite(input)) throw new Error('Rational input must be finite');
-    if (Number.isInteger(input)) return makeExact(BigInt(input), 1n, 1);
+    if (Number.isInteger(input)) {
+      if (!Number.isSafeInteger(input)) {
+        throw new Error(`Integer ${input} exceeds the safe range; pass it as a string instead`);
+      }
+      return makeExact(BigInt(input), 1n, 1);
+    }
     const s = input.toString();
     if (s.includes('e') || s.includes('E')) {
       throw new Error(`Number "${s}" is in exponent form; pass it as a string fraction instead`);
@@ -35,8 +42,13 @@ export function parseRational(input: RationalInput): Exact {
   }
   const s = input.trim();
   if (s.includes('/')) {
-    const [a, b] = s.split('/');
-    return makeExact(BigInt(a.trim()), BigInt(b.trim()), 1);
+    const parts = s.split('/');
+    const a = parts[0]?.trim();
+    const b = parts[1]?.trim();
+    if (parts.length !== 2 || !INT_RE.test(a) || !INT_RE.test(b)) {
+      throw new Error(`Cannot parse rational from "${input}" (expected "p/q" with integer p, q)`);
+    }
+    return makeExact(BigInt(a), BigInt(b), 1); // makeExact throws on q = 0
   }
   return decimalToExact(s);
 }

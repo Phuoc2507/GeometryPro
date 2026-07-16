@@ -4,6 +4,12 @@
 // radicand === 1 ⇒ số hữu tỷ thuần. den luôn > 0. Phân số luôn rút gọn.
 export type Exact = { num: bigint; den: bigint; radicand: number };
 
+// Trần cho radicand (một `number`). Vượt trần: (1) tích/căn có thể vượt 2^53 → làm tròn
+// double sai → giá trị exact sai; (2) extractSquare O(√radicand) ghim CPU. Trên trần này,
+// các phép trả `null` (rời trường an toàn) và rơi về float. 1e12 thừa cỡ bài phổ thông
+// (radicand thực tế là √2, √3, √13…) mà √(1e12)=1e6 vòng vẫn nhanh.
+export const MAX_SAFE_RADICAND = 1e12;
+
 function bgcd(a: bigint, b: bigint): bigint {
   a = a < 0n ? -a : a;
   b = b < 0n ? -b : b;
@@ -77,16 +83,20 @@ export function subExact(a: Exact, b: Exact): Exact | null {
 }
 
 // (a.num/a.den·√ra)·(b.num/b.den·√rb) = (a.num·b.num)/(a.den·b.den)·√(ra·rb)
-export function mulExact(a: Exact, b: Exact): Exact {
-  return makeExact(a.num * b.num, a.den * b.den, a.radicand * b.radicand);
+export function mulExact(a: Exact, b: Exact): Exact | null {
+  const radicand = a.radicand * b.radicand;
+  if (radicand > MAX_SAFE_RADICAND) return null; // rời trường an toàn ⇒ để caller rơi về float
+  return makeExact(a.num * b.num, a.den * b.den, radicand);
 }
 
 // a / b = (a.num·b.den)/(a.den·b.num) · √ra/√rb = ... · √(ra·rb)/rb
-export function divExact(a: Exact, b: Exact): Exact {
+export function divExact(a: Exact, b: Exact): Exact | null {
   if (b.num === 0n) throw new Error('Exact division by zero');
+  const radicand = a.radicand * b.radicand;
+  if (radicand > MAX_SAFE_RADICAND) return null;
   const num = a.num * b.den;
   const den = a.den * b.num * BigInt(b.radicand);
-  return makeExact(num, den, a.radicand * b.radicand);
+  return makeExact(num, den, radicand);
 }
 
 // √(num/den) khi là hữu tỷ không âm; = √(num·den)/den. Ngoài ra ⇒ null.
@@ -95,7 +105,7 @@ export function sqrtExact(a: Exact): Exact | null {
   if (a.num < 0n) return null;
   if (a.num === 0n) return makeExact(0n, 1n, 1);
   const radicand = Number(a.num * a.den);
-  if (!Number.isSafeInteger(radicand)) return null; // quá lớn để làm radicand an toàn
+  if (!Number.isSafeInteger(radicand) || radicand > MAX_SAFE_RADICAND) return null;
   return makeExact(1n, a.den, radicand);
 }
 

@@ -3,8 +3,15 @@ import { type Scalar, rat, add, sub, mul, neg } from './scalar';
 import { type Vec3S, subV, dotV, crossV, lenSqV } from './vec3s';
 
 export type PointE = { kind: 'point'; p: Vec3S };
+// INVARIANT for the compute layer (G2-3): `dir` and `n` are NOT unit vectors and are NOT
+// sign/scale-canonical — a true unit vector would leave the rational+surd field (length is a
+// surd), which is why vec3s only exposes lenSqV, not lenV. Therefore any metric formula MUST
+// use squared-magnitude forms (e.g. distance-to-plane |n·x+d|²/|n|²), and any equality test
+// between two lines/planes MUST compare up to a scalar multiple, never field-by-field.
 export type LineE = { kind: 'line'; p: Vec3S; dir: Vec3S };
 export type PlaneE = { kind: 'plane'; n: Vec3S; d: Scalar };
+// `r2` is the squared radius (kept in-field); the radius itself is a surd. R² ≤ 0 (imaginary
+// or point sphere) is representable and MUST be validated by the compute layer, not here.
 export type SphereE = { kind: 'sphere'; center: Vec3S; r2: Scalar };
 export type Entity = PointE | LineE | PlaneE | SphereE;
 
