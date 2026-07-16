@@ -5,7 +5,10 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build:kernel": "node scripts/build-kernel.mjs",
+    "build": "npm run build:kernel && vite build",
+    "server": "npm run build:kernel && node server.js",
+    "smoke:kernel": "npm run build:kernel && node scripts/kernel-smoke.mjs",
     "lint": "eslint .",
     "preview": "vite preview",
     "test": "vitest run",

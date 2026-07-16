@@ -33,13 +33,11 @@ function floatVecToVec3S(v: Vec3): Vec3S {
 }
 
 // Đồng bộ (bồi thêm) mọi điểm/mặt/cạnh mới của SymbolTable float sang EntityTable.
-// Ném rõ ràng nếu một điểm synthetic trùng tên với một điểm đã khai báo bằng Oxyz — nếu
-// không, EntityTable sẽ mâu thuẫn nội tại (điểm A ở toạ độ này, mặt chứa A ở toạ độ khác).
+// Bỏ qua điểm Oxyz (đã được mirror vào symtab để op tổng hợp tham chiếu) — giữ bản EXACT
+// trong et, không ghi đè bằng float. Va chạm định-nghĩa-lại được setPoint/setPointE bắt.
 function syncSymtabToEntities(symtab: SymbolTable, et: EntityTable, oxyzPointNames: Set<string>): void {
   for (const [name, pos] of symtab.points) {
-    if (oxyzPointNames.has(name)) {
-      throw new Error(`Point "${name}" is defined in both the Oxyz and synthetic dialects; use distinct names`);
-    }
+    if (oxyzPointNames.has(name)) continue; // điểm Oxyz mirror — bản exact đã ở et
     if (!et.points.has(name)) et.points.set(name, pointFromCoords(floatVecToVec3S(pos)));
   }
   for (const [key, verts] of symtab.namedPlanes) {
@@ -61,7 +59,13 @@ export function executeUnifiedPlan(plan: UnifiedPlan): EntityTable {
     const kind = (op as { op: string }).op;
     if (OXYZ_OPS.has(kind)) {
       executeOxyzOp(op as OxyzOp, et);
-      if (OXYZ_POINT_OPS.has(kind)) oxyzPointNames.add((op as { name: string }).name);
+      if (OXYZ_POINT_OPS.has(kind)) {
+        const name = (op as { name: string }).name;
+        oxyzPointNames.add(name);
+        // Mirror toạ độ float vào symtab để op tổng hợp sau (edge, foot…) tham chiếu được.
+        const pe = et.points.get(name);
+        if (pe) symtab.points.set(name, { x: pe.p.x.approx, y: pe.p.y.approx, z: pe.p.z.approx });
+      }
     } else {
       executeOp(op as ConstructionOp, symtab);
       syncSymtabToEntities(symtab, et, oxyzPointNames);
