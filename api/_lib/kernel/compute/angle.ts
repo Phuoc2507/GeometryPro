@@ -1,8 +1,11 @@
 // api/_lib/kernel/compute/angle.ts
 import { type Scalar, mul, div, sqrt } from '../scalar';
-import { type Vec3S, dotV, lenSqV } from '../vec3s';
+import { type Vec3S, dotV, lenSqV, toApproxVec } from '../vec3s';
 import type { Entity, LineE, PlaneE } from '../entities';
+import { dot, length, type Vec3 } from '../vecMath';
 import { type ComputeOutcome, type AngleAnswer, firstDegenerate, certifyAngle } from './answer';
+
+const av = toApproxVec;
 
 // |cos θ| giữa hai vector u,v = √( (u·v)² / (|u|²|v|²) ), θ ∈ [0,90]. Ở trong trường (đường
 // distSq hữu tỷ → sqrt), là giá trị chứng nhận exact cho cos (đường-đường/nhị diện) hoặc
@@ -12,23 +15,21 @@ function absCosOf(u: Vec3S, v: Vec3S): Scalar {
   return sqrt(div(mul(d, d), mul(lenSqV(u), lenSqV(v))));
 }
 
-function degFromMetric(metricApprox: number): number {
-  return (Math.acos(Math.min(1, Math.abs(metricApprox))) * 180) / Math.PI;
+// |cos| tính ĐỘC LẬP bằng float (để self-certificate cho góc, như certifyDistance).
+function fAbsCos(u: Vec3, v: Vec3): number {
+  return Math.abs(dot(u, v)) / (length(u) * length(v));
 }
 
 function aLineLine(l1: LineE, l2: LineE): AngleAnswer {
-  const cosAbs = absCosOf(l1.dir, l2.dir);
-  return certifyAngle(cosAbs, degFromMetric(cosAbs.approx));
+  return certifyAngle(absCosOf(l1.dir, l2.dir), fAbsCos(av(l1.dir), av(l2.dir)), false);
 }
 function aPlanePlane(p1: PlaneE, p2: PlaneE): AngleAnswer {
-  const cosAbs = absCosOf(p1.n, p2.n); // góc nhị diện = góc giữa hai pháp tuyến (nhọn)
-  return certifyAngle(cosAbs, degFromMetric(cosAbs.approx));
+  // góc nhị diện (nhọn) = góc giữa hai pháp tuyến
+  return certifyAngle(absCosOf(p1.n, p2.n), fAbsCos(av(p1.n), av(p2.n)), false);
 }
 function aLinePlane(l: LineE, pl: PlaneE): AngleAnswer {
-  // sin(góc đường–mặt) = |cos(dir, pháp tuyến)|; góc = 90° − góc(dir, n).
-  const sinAbs = absCosOf(l.dir, pl.n);
-  const deg = 90 - degFromMetric(sinAbs.approx);
-  return certifyAngle(sinAbs, deg);
+  // góc đường–mặt = 90° − góc(dir, pháp tuyến); metric = |cos(dir, n)| = |sin(góc)|.
+  return certifyAngle(absCosOf(l.dir, pl.n), fAbsCos(av(l.dir), av(pl.n)), true);
 }
 
 export function computeAngle(a: Entity, b: Entity): ComputeOutcome<AngleAnswer> {

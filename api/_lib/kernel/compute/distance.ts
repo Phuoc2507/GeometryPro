@@ -3,7 +3,7 @@ import { type Scalar, add, mul, div, neg, sqrt, rat } from '../scalar';
 import { type Vec3S, subV, dotV, crossV, lenSqV, scaleV, toApproxVec } from '../vec3s';
 import type { Entity, PointE, LineE, PlaneE } from '../entities';
 import { sub, dot, cross, length, type Vec3 } from '../vecMath';
-import { type ComputeOutcome, type DistanceAnswer, EPS, firstDegenerate, certifyDistance } from './answer';
+import { type ComputeOutcome, type DistanceAnswer, EPS, firstDegenerate, certifyDistance, isZeroS } from './answer';
 
 const av = toApproxVec;
 function pt(p: Vec3S): PointE { return { kind: 'point', p }; }
@@ -45,18 +45,18 @@ function dPointPlane(a: PointE, pl: PlaneE): DistanceAnswer {
 }
 function dLineLine(l1: LineE, l2: LineE): DistanceAnswer {
   const cr = crossV(l1.dir, l2.dir);
-  if (lenSqV(cr).approx < EPS) return dPointLine(pt(l1.p), l2); // song song → điểm–đường
+  if (isZeroS(lenSqV(cr))) return dPointLine(pt(l1.p), l2); // song song → điểm–đường
   const r = subV(l2.p, l1.p);
   const triple = dotV(r, cr);
   const distSq = div(mul(triple, triple), lenSqV(cr));
   return certifyDistance(sqrt(distSq), fLineLine(av(l1.p), av(l1.dir), av(l2.p), av(l2.dir)));
 }
 function dLinePlane(l: LineE, pl: PlaneE): DistanceAnswer {
-  if (Math.abs(dotV(l.dir, pl.n).approx) > EPS) return certifyDistance(rat(0n), 0); // cắt nhau
+  if (!isZeroS(dotV(l.dir, pl.n))) return certifyDistance(rat(0n), 0); // cắt nhau
   return dPointPlane(pt(l.p), pl); // song song → điểm–mặt
 }
 function dPlanePlane(p1: PlaneE, p2: PlaneE): DistanceAnswer {
-  if (lenSqV(crossV(p1.n, p2.n)).approx > EPS) return certifyDistance(rat(0n), 0); // cắt nhau
+  if (!isZeroS(lenSqV(crossV(p1.n, p2.n)))) return certifyDistance(rat(0n), 0); // cắt nhau
   const pointOnP1 = scaleV(p1.n, div(neg(p1.d), lenSqV(p1.n))); // chân đường vuông góc từ O
   return dPointPlane(pt(pointOnP1), p2);
 }

@@ -3,7 +3,7 @@ import { type Scalar, mul, sqrt, rat } from '../scalar';
 import { subV, crossV, lenSqV, addV, ratVec, toApproxVec } from '../vec3s';
 import type { PointE } from '../entities';
 import { sub, cross, length, type Vec3 } from '../vecMath';
-import { type ComputeOutcome, type ScalarAnswer, certifyScalar } from './answer';
+import { type ComputeOutcome, type ScalarAnswer, certifyScalar, coplanarityProblem } from './answer';
 
 const av = toApproxVec;
 
@@ -39,5 +39,8 @@ export function computeTriangleArea(a: PointE, b: PointE, c: PointE): ComputeOut
 }
 export function computePolygonArea(pts: PointE[]): ComputeOutcome<ScalarAnswer> {
   if (pts.length < 3) return { ok: false, problem: 'polygon needs at least 3 vertices' };
+  // Tiền-điều-kiện: đa giác phải PHẲNG (self-cert không bắt được vì float ref cùng công thức).
+  const cp = coplanarityProblem(pts.map((p) => p.p), 'polygon');
+  if (cp) return { ok: false, problem: cp };
   return { ok: true, answer: certifyScalar('area', polygonAreaScalar(pts), fPolygon(pts.map((p) => av(p.p)))) };
 }

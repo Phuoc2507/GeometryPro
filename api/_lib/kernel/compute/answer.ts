@@ -1,6 +1,6 @@
 // api/_lib/kernel/compute/answer.ts
-import { type Exact, type Scalar, displayScalar } from '../scalar';
-import { lenSqV } from '../vec3s';
+import { type Exact, type Scalar, displayScalar, exactToApprox, makeExact } from '../scalar';
+import { type Vec3S, subV, dotV, crossV, lenSqV } from '../vec3s';
 import type { Entity } from '../entities';
 
 // Ngưỡng float cho suy biến / song song (so trên đại lượng bình-phương).
@@ -35,12 +35,13 @@ export function firstDegenerate(entities: Entity[]): string | null {
   return null;
 }
 
-// So đường exact với một float tính ĐỘC LẬP; lệch quá dung sai ⇒ bỏ exact (không hiện
-// đáp số chưa chứng nhận), dùng float.
+// So GIÁ TRỊ EXACT (exactToApprox) với một float tính ĐỘC LẬP; lệch quá dung sai ⇒ bỏ
+// exact, dùng float. So exact (không phải bóng .approx) nên bắt được cả lỗi tầng số-học
+// exact lẫn lỗi chép công thức.
 export function certifyDistance(s: Scalar, floatRef: number): DistanceAnswer {
   const tol = 1e-6 * Math.max(1, Math.abs(floatRef));
-  if (s.exact !== null && Math.abs(s.approx - floatRef) <= tol) {
-    return { kind: 'distance', exact: s.exact, approx: s.approx, text: displayScalar(s), approximate: false };
+  if (s.exact !== null && Math.abs(exactToApprox(s.exact) - floatRef) <= tol) {
+    return { kind: 'distance', exact: s.exact, approx: exactToApprox(s.exact), text: displayScalar(s), approximate: false };
   }
   return { kind: 'distance', exact: null, approx: floatRef, text: floatRef.toFixed(4), approximate: true };
 }
@@ -52,18 +53,58 @@ export function recognizeDegree(deg: number): number | null {
   return null;
 }
 
-// Dùng cos/sin exact + độ float để tạo AngleAnswer. Góc đẹp ⇒ exactDegrees; ngược lại
-// approximate nhưng vẫn giữ cos/sin exact làm giá trị chứng nhận.
-export function certifyAngle(metric: Scalar, degrees: number): AngleAnswer {
-  const nice = recognizeDegree(degrees);
+// |cos φ| exact của các góc đẹp φ ∈ {0,30,45,60,90} giữa hai vector.
+const NICE_ABSCOS: { phi: number; m: Exact }[] = [
+  { phi: 0, m: makeExact(1n, 1n, 1) },
+  { phi: 30, m: makeExact(1n, 2n, 3) },
+  { phi: 45, m: makeExact(1n, 2n, 2) },
+  { phi: 60, m: makeExact(1n, 2n, 1) },
+  { phi: 90, m: makeExact(0n, 1n, 1) },
+];
+const exactEq = (a: Exact, b: Exact) => a.num === b.num && a.den === b.den && a.radicand === b.radicand;
+
+// metric = |cos φ| giữa hai vector (exact khi ở trong trường); floatMetric = |cos φ| tính
+// ĐỘC LẬP; complement=true cho góc đường–mặt (góc = 90 − φ). Chỉ khẳng định "góc đẹp" khi
+// metric EXACT khớp đúng |cos| của một góc đẹp — KHÔNG dựa vào float snap; và exact phải qua
+// cross-check với float độc lập (như certifyDistance).
+export function certifyAngle(metric: Scalar, floatMetric: number, complement: boolean): AngleAnswer {
+  let exactM: Exact | null = metric.exact;
+  if (exactM !== null && Math.abs(exactToApprox(exactM) - floatMetric) > 1e-6) exactM = null;
+  const phi = (Math.acos(Math.min(1, Math.abs(floatMetric))) * 180) / Math.PI;
+  const angleValue = complement ? 90 - phi : phi;
+  let niceDeg: number | null = null;
+  if (exactM !== null) {
+    const hit = NICE_ABSCOS.find((e) => exactEq(exactM as Exact, e.m));
+    if (hit) niceDeg = complement ? 90 - hit.phi : hit.phi;
+  }
   return {
     kind: 'angle',
-    exactDegrees: nice,
-    degrees: nice ?? degrees,
-    exactCos: metric.exact,
-    text: nice !== null ? `${nice}°` : `≈ ${degrees.toFixed(2)}°`,
-    approximate: nice === null,
+    exactDegrees: niceDeg,
+    degrees: niceDeg !== null ? niceDeg : angleValue,
+    exactCos: exactM,
+    text: niceDeg !== null ? `${niceDeg}°` : `≈ ${angleValue.toFixed(2)}°`,
+    approximate: niceDeg === null,
   };
+}
+
+// Kiểm đồng phẳng cho polygon/đáy (tiền-điều-kiện của area/volume). Trả thông điệp nếu có
+// đỉnh không nằm trên mặt của bộ ba không thẳng hàng đầu tiên; null nếu đồng phẳng (hoặc
+// suy biến toàn thẳng hàng). Dùng isZeroS (exact khi có).
+export function coplanarityProblem(pts: Vec3S[], what: string): string | null {
+  if (pts.length <= 3) return null;
+  const p0 = pts[0];
+  let normal: Vec3S | null = null;
+  for (let i = 1; i < pts.length && normal === null; i++) {
+    for (let j = i + 1; j < pts.length; j++) {
+      const n = crossV(subV(pts[i], p0), subV(pts[j], p0));
+      if (!isZeroS(lenSqV(n))) { normal = n; break; }
+    }
+  }
+  if (normal === null) return null; // mọi điểm thẳng hàng ⇒ đồng phẳng tầm thường
+  for (const p of pts) {
+    if (!isZeroS(dotV(subV(p, p0), normal))) return `${what} vertices are not coplanar`;
+  }
+  return null;
 }
 
 // Đáp số vô hướng tổng quát (volume/area/ratio…) + self-certificate như certifyDistance.
@@ -77,8 +118,8 @@ export type ScalarAnswer = {
 
 export function certifyScalar(kind: string, s: Scalar, floatRef: number): ScalarAnswer {
   const tol = 1e-6 * Math.max(1, Math.abs(floatRef));
-  if (s.exact !== null && Math.abs(s.approx - floatRef) <= tol) {
-    return { kind, exact: s.exact, approx: s.approx, text: displayScalar(s), approximate: false };
+  if (s.exact !== null && Math.abs(exactToApprox(s.exact) - floatRef) <= tol) {
+    return { kind, exact: s.exact, approx: exactToApprox(s.exact), text: displayScalar(s), approximate: false };
   }
   return { kind, exact: null, approx: floatRef, text: floatRef.toFixed(4), approximate: true };
 }

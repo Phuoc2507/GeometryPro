@@ -41,10 +41,34 @@ function formatLinear(a: bigint, b: bigint, c: bigint, d: bigint): string {
   return `${out} = 0`;
 }
 
+function fmtNum(n: number): string {
+  return Number.isInteger(n) ? `${n}` : n.toFixed(4);
+}
+
+// Như formatLinear nhưng cho hệ số float (nhánh fallback không-exact): vẫn bỏ hạng 0, gộp
+// dấu, ẩn hệ số đơn vị.
+function formatLinearApprox(a: number, b: number, c: number, d: number): string {
+  let out = '';
+  const term = (k: number, v: string) => {
+    if (Math.abs(k) < 1e-12) return;
+    const neg = k < 0;
+    const abs = Math.abs(k);
+    const mag = v !== '' && Math.abs(abs - 1) < 1e-12 ? '' : fmtNum(abs);
+    if (out === '') out += `${neg ? '-' : ''}${mag}${v}`;
+    else out += ` ${neg ? '-' : '+'} ${mag}${v}`;
+  };
+  term(a, 'x');
+  term(b, 'y');
+  term(c, 'z');
+  term(d, '');
+  if (out === '') out = '0';
+  return `${out} = 0`;
+}
+
 export function planeEquationText(pl: PlaneE): string {
   const rats = rationalCoeffs([pl.n.x, pl.n.y, pl.n.z, pl.d]);
   if (!rats) {
-    return `${pl.n.x.approx}x + ${pl.n.y.approx}y + ${pl.n.z.approx}z + ${pl.d.approx} = 0`;
+    return formatLinearApprox(pl.n.x.approx, pl.n.y.approx, pl.n.z.approx, pl.d.approx);
   }
   let D = 1n;
   for (const r of rats) D = blcm(D, r.den);
@@ -61,7 +85,7 @@ export function planeEquationText(pl: PlaneE): string {
 export function sphereEquationText(s: SphereE): string {
   const parts = [s.center.x, s.center.y, s.center.z];
   if (parts.some((c) => c.exact === null || c.exact.radicand !== 1) || s.r2.exact === null) {
-    return `(x, y, z) center ≈ (${parts.map((c) => c.approx).join(', ')}), R² ≈ ${s.r2.approx}`;
+    return `tâm ≈ (${parts.map((c) => fmtNum(c.approx)).join(', ')}), R² ≈ ${fmtNum(s.r2.approx)}`;
   }
   const varPart = (c: Scalar, v: string) => {
     const e = c.exact!;

@@ -3,7 +3,7 @@ import { type Scalar, div, neg, rat, add } from '../scalar';
 import { type Vec3S, subV, dotV, crossV, toApproxVec } from '../vec3s';
 import type { PointE } from '../entities';
 import { sub, scalarTriple, tetrahedronVolume, type Vec3 } from '../vecMath';
-import { type ComputeOutcome, type ScalarAnswer, certifyScalar } from './answer';
+import { type ComputeOutcome, type ScalarAnswer, certifyScalar, coplanarityProblem, isZeroS } from './answer';
 
 const av = toApproxVec;
 
@@ -11,8 +11,9 @@ const av = toApproxVec;
 function tripleScalar(a: Vec3S, b: Vec3S, c: Vec3S, d: Vec3S): Scalar {
   return dotV(subV(b, a), crossV(subV(c, a), subV(d, a)));
 }
+// Lấy dấu từ EXACT khi có (float có thể làm tròn ngược dấu ở ca gần suy biến).
 function absS(s: Scalar): Scalar {
-  return s.approx < 0 ? neg(s) : s;
+  return s.exact !== null ? (s.exact.num < 0n ? neg(s) : s) : (s.approx < 0 ? neg(s) : s);
 }
 
 export function tetraVolumeScalar(a: PointE, b: PointE, c: PointE, d: PointE): Scalar {
@@ -42,11 +43,14 @@ export function computeTetraVolume(a: PointE, b: PointE, c: PointE, d: PointE): 
 
 export function computePyramidVolume(base: PointE[], apex: PointE): ComputeOutcome<ScalarAnswer> {
   if (base.length < 3) return { ok: false, problem: 'pyramid base needs at least 3 vertices' };
+  // Tiền-điều-kiện: đáy phải PHẲNG (tổng tứ diện có dấu vô nghĩa nếu đáy không phẳng).
+  const cp = coplanarityProblem(base.map((p) => p.p), 'pyramid base');
+  if (cp) return { ok: false, problem: cp };
   const floatRef = fPyramid(base.map((p) => av(p.p)), av(apex.p));
   return { ok: true, answer: certifyScalar('volume', pyramidVolumeScalar(base, apex), floatRef) };
 }
 
 export function volumeRatio(a: Scalar, b: Scalar): ComputeOutcome<ScalarAnswer> {
-  if (Math.abs(b.approx) < 1e-12) return { ok: false, problem: 'volume ratio: denominator volume is zero' };
+  if (isZeroS(b)) return { ok: false, problem: 'volume ratio: denominator volume is zero' };
   return { ok: true, answer: certifyScalar('ratio', div(a, b), a.approx / b.approx) };
 }
