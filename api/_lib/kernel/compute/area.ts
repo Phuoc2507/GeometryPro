@@ -1,7 +1,7 @@
 // api/_lib/kernel/compute/area.ts
-import { type Scalar, mul, sqrt, rat } from '../scalar';
+import { type Scalar, mul, sqrt, rat, displayScalar } from '../scalar';
 import { subV, crossV, lenSqV, addV, ratVec, toApproxVec } from '../vec3s';
-import type { PointE } from '../entities';
+import type { PointE, SphereE } from '../entities';
 import { sub, cross, length, type Vec3 } from '../vecMath';
 import { type ComputeOutcome, type ScalarAnswer, certifyScalar, coplanarityProblem } from './answer';
 
@@ -43,4 +43,11 @@ export function computePolygonArea(pts: PointE[]): ComputeOutcome<ScalarAnswer> 
   const cp = coplanarityProblem(pts.map((p) => p.p), 'polygon');
   if (cp) return { ok: false, problem: cp };
   return { ok: true, answer: certifyScalar('area', polygonAreaScalar(pts), fPolygon(pts.map((p) => av(p.p)))) };
+}
+
+export function computeSphereArea(s: SphereE): ScalarAnswer {
+  const r2 = s.r2.approx;
+  const approx = 4 * Math.PI * r2;
+  const text = s.r2.exact ? `4π·${displayScalar(s.r2)}` : `${approx.toFixed(4)}`;
+  return { kind: 'area', exact: null, approx, text, approximate: true };
 }

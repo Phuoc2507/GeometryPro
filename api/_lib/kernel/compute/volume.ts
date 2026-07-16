@@ -1,7 +1,7 @@
 // api/_lib/kernel/compute/volume.ts
 import { type Scalar, div, neg, rat, add } from '../scalar';
 import { type Vec3S, subV, dotV, crossV, toApproxVec } from '../vec3s';
-import type { PointE } from '../entities';
+import type { PointE, SphereE } from '../entities';
 import { sub, scalarTriple, tetrahedronVolume, type Vec3 } from '../vecMath';
 import { type ComputeOutcome, type ScalarAnswer, certifyScalar, coplanarityProblem, isZeroS } from './answer';
 
@@ -48,6 +48,12 @@ export function computePyramidVolume(base: PointE[], apex: PointE): ComputeOutco
   if (cp) return { ok: false, problem: cp };
   const floatRef = fPyramid(base.map((p) => av(p.p)), av(apex.p));
   return { ok: true, answer: certifyScalar('volume', pyramidVolumeScalar(base, apex), floatRef) };
+}
+
+export function computeSphereVolume(s: SphereE): ScalarAnswer {
+  const R = Math.sqrt(s.r2.approx);
+  const approx = (4 / 3) * Math.PI * R * R * R;
+  return { kind: 'volume', exact: null, approx, text: `${approx.toFixed(4)}`, approximate: true };
 }
 
 export function volumeRatio(a: Scalar, b: Scalar): ComputeOutcome<ScalarAnswer> {
