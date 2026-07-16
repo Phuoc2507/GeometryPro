@@ -94,7 +94,12 @@ export function projectPointOntoLine(p: Vec3, a: Vec3, b: Vec3): Vec3 {
 
 /** Angle in degrees between two vectors, result in [0,180]. */
 export function angleBetween(a: Vec3, b: Vec3): number {
-  const cosT = dot(a, b) / (length(a) * length(b));
+  const la = length(a);
+  const lb = length(b);
+  if (la < EPS || lb < EPS) {
+    throw new Error('Cannot measure an angle with a zero-length (degenerate) vector');
+  }
+  const cosT = dot(a, b) / (la * lb);
   const clamped = Math.max(-1, Math.min(1, cosT));
   return (Math.acos(clamped) * 180) / Math.PI;
 }
@@ -104,7 +109,15 @@ export function scalarTriple(a: Vec3, b: Vec3, c: Vec3): number {
 }
 
 export function areCollinear(a: Vec3, b: Vec3, c: Vec3, eps = EPS): boolean {
-  return length(cross(sub(b, a), sub(c, a))) < eps;
+  const u = sub(b, a);
+  const v = sub(c, a);
+  const lu = length(u);
+  const lv = length(v);
+  // A coincident point makes the triple degenerate ⇒ treat as collinear.
+  if (lu < EPS || lv < EPS) return true;
+  // Compare sin(angle) = |u×v|/(|u||v|), a dimensionless quantity, against the tolerance —
+  // the raw cross-product magnitude has units of area and is not scale-invariant.
+  return length(cross(u, v)) / (lu * lv) < eps;
 }
 
 export function arePointsCoplanar(points: Vec3[], eps = EPS): boolean {

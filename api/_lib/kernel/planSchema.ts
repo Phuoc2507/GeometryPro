@@ -19,7 +19,7 @@ export const TriangleDimsSchema = z.discriminatedUnion('triangleType', [
 const SquareDims = z.object({ edge: z.number().positive() }).strict();
 const RectangleDims = z.object({ width: z.number().positive(), height: z.number().positive() }).strict();
 const RhombusDims = z.object({ diag1: z.number().positive(), diag2: z.number().positive() }).strict();
-const RegPolygonDims = z.object({ n: z.number().int().min(3), edge: z.number().positive() }).strict();
+const RegPolygonDims = z.object({ n: z.number().int().min(3).max(24), edge: z.number().positive() }).strict();
 
 export const BaseOpSchema = z
   .object({
@@ -154,12 +154,15 @@ export const AssertOpSchema = z
     }
   });
 
-export const QuerySchema = z.object({
-  kind: z.enum(['distance', 'angle', 'volume', 'area']),
-  a: z.string().min(1).optional(),
-  b: z.string().min(1).optional(),
-  target: z.string().min(1).optional(),
-});
+// distance/angle need two operands (a, b); volume/area need a single target. Modeled as a
+// discriminated union so a malformed query (e.g. { kind: 'distance' } with no operands) is
+// rejected at the schema boundary instead of surfacing as undefined downstream.
+export const QuerySchema = z.discriminatedUnion('kind', [
+  z.object({ kind: z.literal('distance'), a: z.string().min(1), b: z.string().min(1) }),
+  z.object({ kind: z.literal('angle'), a: z.string().min(1), b: z.string().min(1) }),
+  z.object({ kind: z.literal('volume'), target: z.string().min(1) }),
+  z.object({ kind: z.literal('area'), target: z.string().min(1) }),
+]);
 
 export const PlanSchema = z.object({
   solidName: z.string().min(1),
