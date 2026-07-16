@@ -1,6 +1,7 @@
 // api/_lib/kernel/resolveE.ts
 import type { EntityTable } from './entityTable';
 import { type Entity, lineFromTwoPoints, planeFromThreePoints } from './entities';
+import { coplanarityProblem } from './compute/answer';
 
 // Tách token thành các tên điểm (khớp dài nhất trước, như Phase 1).
 function tokenizePointNames(raw: string, known: Set<string>): string[] | null {
@@ -39,6 +40,12 @@ export function resolveEntityE(token: string, et: EntityTable): Entity {
   if (tokens.length === 2) {
     return lineFromTwoPoints(et.points.get(tokens[0])!.p, et.points.get(tokens[1])!.p);
   }
-  const [a, b, c] = tokens;
-  return planeFromThreePoints(et.points.get(a)!.p, et.points.get(b)!.p, et.points.get(c)!.p);
+  const positions = tokens.map((n) => et.points.get(n)!.p);
+  // Mặt ghép từ >3 điểm: kiểm đồng phẳng (nếu không, dựng mặt qua 3 điểm đầu sẽ bỏ im lặng
+  // các đỉnh sau, khiến assert/query về "mặt ABCD" đánh giá nhầm một mặt khác).
+  if (tokens.length > 3) {
+    const cp = coplanarityProblem(positions, `compound plane "${inner}"`);
+    if (cp) throw new Error(cp);
+  }
+  return planeFromThreePoints(positions[0], positions[1], positions[2]);
 }

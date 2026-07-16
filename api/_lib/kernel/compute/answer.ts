@@ -90,7 +90,7 @@ export function certifyAngle(metric: Scalar, floatMetric: number, complement: bo
 // Kiểm đồng phẳng cho polygon/đáy (tiền-điều-kiện của area/volume). Trả thông điệp nếu có
 // đỉnh không nằm trên mặt của bộ ba không thẳng hàng đầu tiên; null nếu đồng phẳng (hoặc
 // suy biến toàn thẳng hàng). Dùng isZeroS (exact khi có).
-export function coplanarityProblem(pts: Vec3S[], what: string): string | null {
+export function coplanarityProblem(pts: Vec3S[], what: string, tol: number = EPS): string | null {
   if (pts.length <= 3) return null;
   const p0 = pts[0];
   let normal: Vec3S | null = null;
@@ -101,8 +101,13 @@ export function coplanarityProblem(pts: Vec3S[], what: string): string | null {
     }
   }
   if (normal === null) return null; // mọi điểm thẳng hàng ⇒ đồng phẳng tầm thường
+  const nLen = Math.sqrt(lenSqV(normal).approx);
   for (const p of pts) {
-    if (!isZeroS(dotV(subV(p, p0), normal))) return `${what} vertices are not coplanar`;
+    const tp = dotV(subV(p, p0), normal);
+    // Đồng phẳng chính xác (Oxyz) → exact 0. Ngược lại so khoảng cách điểm–mặt CHUẨN HOÁ
+    // (|(p−p0)·n|/|n|) với tolerance — không dùng tích hỗn tạp thô (phụ thuộc thang).
+    const off = tp.exact !== null && tp.exact.num === 0n ? 0 : Math.abs(tp.approx) / nLen;
+    if (off > tol) return `${what} vertices are not coplanar`;
   }
   return null;
 }

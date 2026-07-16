@@ -14,8 +14,11 @@ import { parseScalar, parseVec3S } from './oxyzInput';
 const RInput = z.union([z.number(), z.string().min(1)]);
 const Coord3 = z.tuple([RInput, RInput, RInput]);
 const Name = z.string().min(1);
+// Điểm dùng grammar chặt (chữ hoa + số + phẩy) như dialect tổng hợp — tránh tên nhiều-chữ
+// (vd "BC") làm hỏng tách token ghép ("ABC") ở resolver.
+const PointNameStrict = z.string().regex(/^[A-Z]\d*'?$/);
 
-export const OxyzPointSchema = z.object({ op: z.literal('oxyz_point'), name: Name, at: Coord3 });
+export const OxyzPointSchema = z.object({ op: z.literal('oxyz_point'), name: PointNameStrict, at: Coord3 });
 
 export const OxyzLineSchema = z.object({
   op: z.literal('oxyz_line'),
@@ -72,26 +75,34 @@ function requirePointE(et: EntityTable, name: string): PointE {
   return p;
 }
 
+// Tên phải duy nhất XUYÊN mọi loại entity — nếu không resolver (point→line→plane→sphere)
+// sẽ âm thầm che entity trùng tên bằng cái tra được trước.
+function ensureNameFree(et: EntityTable, name: string, kind: string): void {
+  if (et.points.has(name) || et.lines.has(name) || et.planes.has(name) || et.spheres.has(name)) {
+    throw new Error(`Oxyz: name "${name}" is already used; cannot define ${kind} "${name}"`);
+  }
+}
+
 // `derived` marks helper points (midpoint/ratio/centroid/reflect) so downstream degeneracy
 // handling treats them like the synthetic dialect's derived points.
 function setPointE(et: EntityTable, name: string, p: Vec3S, derived = false): void {
-  if (et.points.has(name)) throw new Error(`Oxyz: point "${name}" is already defined`);
+  ensureNameFree(et, name, 'point');
   et.points.set(name, pointFromCoords(p));
   if (derived) (et.derivedPoints ??= new Set()).add(name);
 }
 
 function setLineE(et: EntityTable, name: string, l: ReturnType<typeof lineFromTwoPoints>): void {
-  if (et.lines.has(name)) throw new Error(`Oxyz: line "${name}" is already defined`);
+  ensureNameFree(et, name, 'line');
   et.lines.set(name, l);
 }
 
 function setPlaneE(et: EntityTable, name: string, pl: ReturnType<typeof planeFromThreePoints>): void {
-  if (et.planes.has(name)) throw new Error(`Oxyz: plane "${name}" is already defined (or collides with a face)`);
+  ensureNameFree(et, name, 'plane');
   et.planes.set(name, pl);
 }
 
 function setSphereE(et: EntityTable, name: string, s: ReturnType<typeof sphereFromEquation>): void {
-  if (et.spheres.has(name)) throw new Error(`Oxyz: sphere "${name}" is already defined`);
+  ensureNameFree(et, name, 'sphere');
   et.spheres.set(name, s);
 }
 

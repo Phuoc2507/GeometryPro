@@ -4,15 +4,17 @@ import type { EntityTable } from '../entityTable';
 import type { Entity, PointE } from '../entities';
 import { resolveEntityE } from '../resolveE';
 import { type ComputeOutcome, type DistanceAnswer, type AngleAnswer, type ScalarAnswer } from './answer';
+import type { Scalar } from '../scalar';
 import { computeDistance } from './distance';
 import { computeAngle } from './angle';
-import { computeTetraVolume, computePyramidVolume } from './volume';
+import { computeTetraVolume, computePyramidVolume, volumeRatio } from './volume';
 import { computeTriangleArea, computePolygonArea } from './area';
 import { computeRelativePosition, type RelPosAnswer } from './relative';
 import { computeIntersection, type IntersectionAnswer } from './intersect';
 import { planeEquationText, sphereEquationText, lineEquationText } from './equation';
 
 const Tok = z.string().min(1);
+const SolidSpec = z.object({ solid: z.enum(['tetrahedron', 'pyramid']), points: z.array(Tok).min(3), apex: Tok.optional() });
 
 export const QueryESchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('distance'), a: Tok, b: Tok }),
@@ -21,12 +23,15 @@ export const QueryESchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('intersection'), a: Tok, b: Tok }),
   z.object({ kind: z.literal('equation'), target: Tok }),
   z.object({ kind: z.literal('volume'), solid: z.enum(['tetrahedron', 'pyramid']), points: z.array(Tok).min(3), apex: Tok.optional() }),
+  z.object({ kind: z.literal('volume_ratio'), a: SolidSpec, b: SolidSpec }),
   z.object({ kind: z.literal('area'), shape: z.enum(['triangle', 'polygon']), points: z.array(Tok).min(3) }),
 ]);
 
+type SolidSpecT = z.infer<typeof SolidSpec>;
+
 export type QueryE = z.infer<typeof QueryESchema>;
 
-export type EquationAnswer = { kind: 'equation'; text: string };
+export type EquationAnswer = { kind: 'equation'; text: string; approximate: boolean };
 export type QueryAnswer =
   | DistanceAnswer | AngleAnswer | ScalarAnswer | RelPosAnswer | IntersectionAnswer | EquationAnswer;
 
@@ -36,6 +41,30 @@ function asPoints(tokens: string[], et: EntityTable): PointE[] {
     if (e.kind !== 'point') throw new Error(`"${t}" must be a point`);
     return e;
   });
+}
+
+// Entity có bất kỳ hệ số nền nào chỉ là float (exact=null) ⇒ phương trình chỉ gần đúng.
+function entityIsApprox(e: Entity): boolean {
+  const anyNull = (ss: Scalar[]) => ss.some((s) => s.exact === null);
+  if (e.kind === 'plane') return anyNull([e.n.x, e.n.y, e.n.z, e.d]);
+  if (e.kind === 'sphere') return anyNull([e.center.x, e.center.y, e.center.z, e.r2]);
+  if (e.kind === 'line') return anyNull([e.p.x, e.p.y, e.p.z, e.dir.x, e.dir.y, e.dir.z]);
+  return false;
+}
+
+// Thể tích một khối (đã kiểm đồng phẳng qua compute) dưới dạng Scalar để tính tỉ số.
+function solidVolumeScalar(spec: SolidSpecT, et: EntityTable): Scalar {
+  const pts = asPoints(spec.points, et);
+  let r;
+  if (spec.solid === 'tetrahedron') {
+    if (pts.length !== 4) throw new Error('tetrahedron needs exactly 4 points');
+    r = computeTetraVolume(pts[0], pts[1], pts[2], pts[3]);
+  } else {
+    if (!spec.apex) throw new Error('pyramid needs an apex');
+    r = computePyramidVolume(pts, asPoints([spec.apex], et)[0]);
+  }
+  if (!r.ok) throw new Error(r.problem);
+  return { approx: r.answer.approx, exact: r.answer.exact };
 }
 
 export function computeQuery(query: QueryE, et: EntityTable): ComputeOutcome<QueryAnswer> {
@@ -52,7 +81,7 @@ export function computeQuery(query: QueryE, et: EntityTable): ComputeOutcome<Que
           : e.kind === 'line' ? lineEquationText(e)
           : null;
         if (text === null) return { ok: false, problem: `no equation for a ${e.kind}` };
-        return { ok: true, answer: { kind: 'equation', text } };
+        return { ok: true, answer: { kind: 'equation', text, approximate: entityIsApprox(e) } };
       }
       case 'volume': {
         const pts = asPoints(query.points, et);
@@ -63,11 +92,15 @@ export function computeQuery(query: QueryE, et: EntityTable): ComputeOutcome<Que
         if (!query.apex) return { ok: false, problem: 'pyramid needs an apex' };
         return computePyramidVolume(pts, asPoints([query.apex], et)[0]);
       }
+      case 'volume_ratio':
+        return volumeRatio(solidVolumeScalar(query.a, et), solidVolumeScalar(query.b, et));
       case 'area': {
         const pts = asPoints(query.points, et);
-        return query.shape === 'triangle' && pts.length === 3
-          ? computeTriangleArea(pts[0], pts[1], pts[2])
-          : computePolygonArea(pts);
+        if (query.shape === 'triangle') {
+          if (pts.length !== 3) return { ok: false, problem: 'triangle area needs exactly 3 points' };
+          return computeTriangleArea(pts[0], pts[1], pts[2]);
+        }
+        return computePolygonArea(pts);
       }
     }
   } catch (e) {
