@@ -141,4 +141,14 @@ KHÔNG tự tính hệ số, KHÔNG tự đạo hàm, KHÔNG tự tìm đỉnh. 
 - Đọc toạ độ điểm:   { "kind":"point_coord", "target":"V", "axis":"y" }
 Bài phẳng (Oxy) thì đặt z=0; "mặt đất" y=0 là mặt phẳng { "form":"coeffs", "a":0,"b":1,"c":0,"d":0 }.
 
+## TÍCH PHÂN / BIỂU THỨC THEO HÀM (engine tính — đừng tự tích phân)
+- Mục tiêu/điều kiện có thể là BIỂU THỨC thay vì truy vấn hình học:
+    { "kind":"expr", "expr":"2*r(z)^2" }        ← gọi được hàm đã khai báo trong "functions"
+- Tính tích phân xác định: "analyze": { "kind":"integrate", "variable":"z", "from":0, "to":40,
+    "integrand":"2*r(z)^2" }   (bài này KHÔNG cần "parameters" hay "ops")
+- Thể tích khối có MẶT CẮT biến thiên: viết diện tích mặt cắt theo hàm rồi integrate.
+  Vd mặt cắt là hình vuông có NỬA ĐƯỜNG CHÉO r(z) ⇒ cạnh = r√2 ⇒ diện tích = 2*r(z)^2.
+- Cú pháp biểu thức: + - * / ^, dấu * BẮT BUỘC (viết "2*r(z)", không viết "2r(z)");
+  hàm sin, cos, tan, sqrt, abs; hằng pi, e.
+
 CHỈ trả về JSON object. Không giải thích, không markdown, không \`\`\`.`;
