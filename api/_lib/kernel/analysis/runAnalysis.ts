@@ -11,13 +11,21 @@ import { integrate } from './quadrature';
 import { optimizeParam, solveParam } from './paramsolve';
 import { recognizeConstant } from './recognize';
 import { fitPoly, evalPoly, derivPoly, extremumOfPoly } from './polyfit';
+import { intersectionVolume, type Solid } from './solids';
 
 const NumOrExpr = z.union([z.number(), z.string()]);
+
+// Khối tròn xoay trục đứng — chỉ sống ở lớp analysis (engine hình học không đổi).
+const SolidDeclSchema = z.union([
+  z.object({ name: z.string(), kind: z.literal('cylinder'), center: z.tuple([NumOrExpr, NumOrExpr]), radius: NumOrExpr, from: NumOrExpr, to: NumOrExpr }),
+  z.object({ name: z.string(), kind: z.literal('cone'), center: z.tuple([NumOrExpr, NumOrExpr]), baseRadius: NumOrExpr, baseZ: NumOrExpr, apexZ: NumOrExpr }),
+]);
 
 // Nguồn SỐ cho mục tiêu/điều kiện: truy vấn HÌNH HỌC, hoặc BIỂU THỨC (gọi được hàm đã khai báo).
 const ScalarSource = z.union([
   QueryESchema,
   z.object({ kind: z.literal('expr'), expr: z.string() }),
+  z.object({ kind: z.literal('solid_volume'), of: z.tuple([z.string(), z.string()]), mode: z.literal('intersection') }),
 ]);
 
 const AnalyzeSchema = z.union([
@@ -28,6 +36,7 @@ const AnalyzeSchema = z.union([
     report: ScalarSource,
   }),
   z.object({ kind: z.literal('integrate'), variable: z.string(), from: NumOrExpr, to: NumOrExpr, integrand: z.string() }),
+  z.object({ kind: z.literal('eval'), of: ScalarSource }),
 ]);
 
 // Op TẦNG HÀM: chỉ tồn tại ở lớp analysis — concreteOps hạ chúng thành op hình học SỐ trước khi gọi run().
@@ -47,6 +56,7 @@ export const AnalysisPlanSchema = RunPlanSchema.extend({
     through: z.array(z.tuple([NumOrExpr, NumOrExpr])),
     leading: z.string().optional(), // tên tham số dùng làm hệ số bậc cao nhất (để trống ⇒ khớp đủ điểm)
   })).default([]),
+  solids: z.array(SolidDeclSchema).default([]),
   analyze: AnalyzeSchema,
 });
 export type AnalysisPlan = z.infer<typeof AnalysisPlanSchema>;
@@ -97,6 +107,29 @@ export function runAnalysis(raw: unknown): AnalysisResult {
     return { coeffs, funcs };
   };
 
+  // Dựng khối tại env (số hoá mọi trường).
+  const buildSolids = (env: Env): Record<string, Solid> => {
+    const out: Record<string, Solid> = {};
+    for (const sd of plan.solids) {
+      const n = (v: number | string): number => evalExpr(String(v), env);
+      out[sd.name] = sd.kind === 'cylinder'
+        ? { kind: 'cylinder', cx: n(sd.center[0]), cy: n(sd.center[1]), radius: n(sd.radius), from: n(sd.from), to: n(sd.to) }
+        : { kind: 'cone', cx: n(sd.center[0]), cy: n(sd.center[1]), baseRadius: n(sd.baseRadius), baseZ: n(sd.baseZ), apexZ: n(sd.apexZ) };
+    }
+    return out;
+  };
+  const isExprSrc = (s: unknown): s is { kind: 'expr'; expr: string } =>
+    !!s && typeof s === 'object' && (s as { kind?: string }).kind === 'expr';
+  const isSolidVolSrc = (s: unknown): s is { kind: 'solid_volume'; of: [string, string]; mode: 'intersection' } =>
+    !!s && typeof s === 'object' && (s as { kind?: string }).kind === 'solid_volume';
+  const solidVolumeAt = (env: Env, src: { of: [string, string] }): number => {
+    const built = buildSolids(env);
+    const a = built[src.of[0]], b = built[src.of[1]];
+    if (!a) throw new Error(`Khối "${src.of[0]}" chưa khai báo trong solids`);
+    if (!b) throw new Error(`Khối "${src.of[1]}" chưa khai báo trong solids`);
+    return intersectionVolume(a, b).value;
+  };
+
   // ---- integrate: thuần hàm số, không cần tham số/hình học ----
   if (plan.analyze.kind === 'integrate') {
     const az = plan.analyze;
@@ -112,6 +145,23 @@ export function runAnalysis(raw: unknown): AnalysisResult {
         violations: [], errors: [],
       };
     } catch (e) { return fail(az.variable, (e as Error).message); }
+  }
+
+  // ---- eval: tính thẳng một nguồn số (không cần tham số/hình học) ----
+  if (plan.analyze.kind === 'eval') {
+    const src = plan.analyze.of;
+    try {
+      let val: number;
+      if (isSolidVolSrc(src)) val = solidVolumeAt({}, src);
+      else if (isExprSrc(src)) val = evalExpr(src.expr, {}, fitAt({}).funcs);
+      else return fail('-', 'analyze.eval chỉ nhận nguồn "expr" hoặc "solid_volume"');
+      const nice = recognizeConstant(val);
+      return {
+        ok: Number.isFinite(val), parameter: { name: '-', value: NaN },
+        answer: { approx: val, text: nice ? nice.text : val.toFixed(4), approximate: !nice },
+        violations: [], errors: [],
+      };
+    } catch (e) { return fail('-', (e as Error).message); }
   }
 
   const pname = plan.analyze.parameter;
@@ -157,14 +207,14 @@ export function runAnalysis(raw: unknown): AnalysisResult {
     });
   };
 
-  const isExprSrc = (s: unknown): s is { kind: 'expr'; expr: string } =>
-    !!s && typeof s === 'object' && (s as { kind?: string }).kind === 'expr';
-
   // Đánh giá nguồn số tại giá trị tham số (KHÔNG kèm asserts — dùng khi quét/giải). null nếu lỗi.
   const evalQuery = (value: number, src: unknown): number | null => {
     const env = { [pname]: value };
     if (isExprSrc(src)) {
       try { return evalExpr(src.expr, env, fitAt(env).funcs); } catch { return null; }
+    }
+    if (isSolidVolSrc(src)) {
+      try { return solidVolumeAt(env, src); } catch { return null; }
     }
     let ops: unknown[];
     try { ops = concreteOps(value); } catch { return null; }
@@ -179,8 +229,10 @@ export function runAnalysis(raw: unknown): AnalysisResult {
     let violations: unknown[] = [];
     let errors: { message: string }[] = [];
     let val = NaN;
-    if (isExprSrc(src)) {
-      try { val = evalExpr(src.expr, env, fitAt(env).funcs); } catch (e) { return fail(pname, (e as Error).message); }
+    if (isExprSrc(src) || isSolidVolSrc(src)) {
+      try {
+        val = isSolidVolSrc(src) ? solidVolumeAt(env, src) : evalExpr(src.expr, env, fitAt(env).funcs);
+      } catch (e) { return fail(pname, (e as Error).message); }
       if (plan.ops.length > 0) {
         try {
           const res = run({ solidName: plan.solidName, ops: concreteOps(value), asserts: plan.asserts, queries: [] });
