@@ -10,6 +10,9 @@ import {
 } from '../entities';
 import { type EntityTable, createEmptyEntityTable } from '../entityTable';
 import { parseScalar, parseVec3S } from './oxyzInput';
+import { footOnPlaneE, footOnLineE, reflectAcrossPlaneE, reflectAcrossLineE, orthocenterE, circumcenterE } from '../constructions';
+import { computeIntersection } from '../compute/intersect';
+import { resolveEntityE } from '../resolveE';
 
 const RInput = z.union([z.number(), z.string().min(1)]);
 const Coord3 = z.tuple([RInput, RInput, RInput]);
@@ -57,6 +60,12 @@ export const OxyzRatioSchema = z.object({ op: z.literal('oxyz_ratio'), name: Poi
 export const OxyzCentroidSchema = z.object({ op: z.literal('oxyz_centroid'), name: PointName, of: z.array(Name).min(2) });
 export const OxyzReflectSchema = z.object({ op: z.literal('oxyz_reflect'), name: PointName, point: Name, about: Name });
 
+export const OxyzFootSchema = z.object({ op: z.literal('oxyz_foot'), name: PointName, from: Name, onto: z.enum(['line', 'plane']), target: Name });
+export const OxyzReflectAcrossSchema = z.object({ op: z.literal('oxyz_reflect_across'), name: PointName, point: Name, across: z.enum(['line', 'plane']), target: Name });
+export const OxyzOrthocenterSchema = z.object({ op: z.literal('oxyz_orthocenter'), name: PointName, of: z.tuple([Name, Name, Name]) });
+export const OxyzCircumcenterSchema = z.object({ op: z.literal('oxyz_circumcenter'), name: PointName, of: z.tuple([Name, Name, Name]) });
+export const OxyzIntersectSchema = z.object({ op: z.literal('oxyz_intersect'), name: PointName, a: Name, b: Name });
+
 export const OxyzOpSchema = z.union([
   OxyzPointSchema,
   OxyzLineSchema,
@@ -66,6 +75,11 @@ export const OxyzOpSchema = z.union([
   OxyzRatioSchema,
   OxyzCentroidSchema,
   OxyzReflectSchema,
+  OxyzFootSchema,
+  OxyzReflectAcrossSchema,
+  OxyzOrthocenterSchema,
+  OxyzCircumcenterSchema,
+  OxyzIntersectSchema,
 ]);
 
 export type OxyzOp = z.infer<typeof OxyzOpSchema>;
@@ -187,6 +201,48 @@ export function executeOxyzOp(op: OxyzOp, et: EntityTable): void {
       const about = requirePointE(et, op.about);
       // 2·about − point
       setPointE(et, op.name, subV(scaleV(about.p, rat(2n)), point.p), true);
+      break;
+    }
+    case 'oxyz_foot': {
+      const from = requirePointE(et, op.from);
+      const target = resolveEntityE(op.target, et);
+      if (op.onto === 'plane') {
+        if (target.kind !== 'plane') throw new Error(`oxyz_foot onto plane: "${op.target}" is not a plane`);
+        setPointE(et, op.name, footOnPlaneE(from.p, target), true);
+      } else {
+        if (target.kind !== 'line') throw new Error(`oxyz_foot onto line: "${op.target}" is not a line`);
+        setPointE(et, op.name, footOnLineE(from.p, target), true);
+      }
+      break;
+    }
+    case 'oxyz_reflect_across': {
+      const pt = requirePointE(et, op.point);
+      const target = resolveEntityE(op.target, et);
+      if (op.across === 'plane') {
+        if (target.kind !== 'plane') throw new Error(`oxyz_reflect_across plane: "${op.target}" is not a plane`);
+        setPointE(et, op.name, reflectAcrossPlaneE(pt.p, target), true);
+      } else {
+        if (target.kind !== 'line') throw new Error(`oxyz_reflect_across line: "${op.target}" is not a line`);
+        setPointE(et, op.name, reflectAcrossLineE(pt.p, target), true);
+      }
+      break;
+    }
+    case 'oxyz_orthocenter': {
+      const [a, b, c] = op.of.map((n) => requirePointE(et, n).p);
+      setPointE(et, op.name, orthocenterE(a, b, c), true);
+      break;
+    }
+    case 'oxyz_circumcenter': {
+      const [a, b, c] = op.of.map((n) => requirePointE(et, n).p);
+      setPointE(et, op.name, circumcenterE(a, b, c), true);
+      break;
+    }
+    case 'oxyz_intersect': {
+      const r = computeIntersection(resolveEntityE(op.a, et), resolveEntityE(op.b, et));
+      if (!r.ok) throw new Error(r.problem);
+      const pt = r.answer.result === 'point' ? r.answer.point : r.answer.result === 'tangent-point' ? r.answer.point : null;
+      if (!pt) throw new Error(`oxyz_intersect: ${op.a} ∩ ${op.b} is not a single point (${r.answer.result})`);
+      setPointE(et, op.name, pt.p, true);
       break;
     }
   }

@@ -83,3 +83,40 @@ describe('executeOxyzPlan — dựng entity exact', () => {
     expect(() => executeOxyzPlan([{ op: 'oxyz_midpoint', name: 'M', a: 'A', b: 'B' }])).toThrow();
   });
 });
+
+describe('oxyz — phép dựng mở rộng', () => {
+  it('foot: hình chiếu S(0,0,3) lên mặt z=0 → (0,0,0)', () => {
+    const et = executeOxyzPlan([
+      { op: 'oxyz_point', name: 'S', at: [0, 0, 3] },
+      { op: 'oxyz_plane', name: 'P', by: { form: 'coeffs', a: 0, b: 0, c: 1, d: 0 } },
+      { op: 'oxyz_foot', name: 'H', from: 'S', onto: 'plane', target: 'P' },
+    ]);
+    expect(toApproxVec(et.points.get('H')!.p)).toEqual({ x: 0, y: 0, z: 0 });
+    expect(et.derivedPoints.has('H')).toBe(true);
+  });
+  it('orthocenter của tam giác vuông tại A = A', () => {
+    const et = executeOxyzPlan([
+      { op: 'oxyz_point', name: 'A', at: [0, 0, 0] },
+      { op: 'oxyz_point', name: 'B', at: [1, 0, 0] },
+      { op: 'oxyz_point', name: 'C', at: [0, 1, 0] },
+      { op: 'oxyz_orthocenter', name: 'H', of: ['A', 'B', 'C'] },
+    ]);
+    expect(toApproxVec(et.points.get('H')!.p)).toEqual({ x: 0, y: 0, z: 0 });
+  });
+  it('reflect_across: đối xứng A(1,1,1) qua mặt z=0 → (1,1,-1)', () => {
+    const et = executeOxyzPlan([
+      { op: 'oxyz_point', name: 'A', at: [1, 1, 1] },
+      { op: 'oxyz_plane', name: 'P', by: { form: 'coeffs', a: 0, b: 0, c: 1, d: 0 } },
+      { op: 'oxyz_reflect_across', name: 'A2', point: 'A', across: 'plane', target: 'P' },
+    ]);
+    expect(toApproxVec(et.points.get('A2')!.p)).toEqual({ x: 1, y: 1, z: -1 });
+  });
+  it('intersect: giao đường Oz với mặt z=0 → gốc', () => {
+    const et = executeOxyzPlan([
+      { op: 'oxyz_line', name: 'd', by: { form: 'point_dir', base: [0, 0, 5], dir: [0, 0, 1] } },
+      { op: 'oxyz_plane', name: 'P', by: { form: 'coeffs', a: 0, b: 0, c: 1, d: 0 } },
+      { op: 'oxyz_intersect', name: 'I', a: 'd', b: 'P' },
+    ]);
+    expect(toApproxVec(et.points.get('I')!.p)).toEqual({ x: 0, y: 0, z: 0 });
+  });
+});
