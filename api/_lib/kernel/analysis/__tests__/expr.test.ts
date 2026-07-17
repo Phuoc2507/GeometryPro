@@ -30,4 +30,10 @@ describe('evalExpr', () => {
   it('hàm chưa khai báo → ném', () => {
     expect(() => evalExpr('g(1)')).toThrow();
   });
+  it('tên trên Object.prototype KHÔNG rò rỉ thành hàm/hằng/biến', () => {
+    for (const name of ['constructor', 'toString', 'valueOf', 'hasOwnProperty']) {
+      expect(() => evalExpr(`${name}(1)`)).toThrow(`Hàm lạ: ${name}`);
+      expect(() => evalExpr(name, {})).toThrow(`Biến chưa gán: ${name}`);
+    }
+  });
 });

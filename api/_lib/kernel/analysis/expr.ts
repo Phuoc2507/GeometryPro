@@ -34,6 +34,10 @@ const FUNCS: Record<string, (x: number) => number> = {
 };
 const CONSTS: Record<string, number> = { pi: Math.PI, e: Math.E };
 
+// Chỉ nhận thuộc tính RIÊNG: `x in obj` đi qua prototype chain nên 'constructor', 'toString'...
+// sẽ lọt qua guard 'Hàm lạ'/'Biến chưa gán' và trả về hàm/đối tượng thay vì số.
+const own = (o: object, k: string): boolean => Object.prototype.hasOwnProperty.call(o, k);
+
 export function parseExpr(src: string): (env?: Env, funcs?: Funcs) => number {
   const toks = tokenize(src);
   let pos = 0;
@@ -81,14 +85,15 @@ export function parseExpr(src: string): (env?: Env, funcs?: Funcs) => number {
         const fname = tk.v;
         eat(); const arg = parseE(); if (!peek() || peek().t !== ')') throw new Error('Thiếu )'); eat();
         return (env, fs) => {
-          const fn = FUNCS[fname] ?? fs[fname];
+          // Tra bằng own-property: tránh rò rỉ tên trên prototype (constructor/toString/...).
+          const fn = own(FUNCS, fname) ? FUNCS[fname] : (own(fs, fname) ? fs[fname] : undefined);
           if (!fn) throw new Error(`Hàm lạ: ${fname}`);
           return fn(arg(env, fs));
         };
       }
-      if (tk.v in CONSTS) { const cv = CONSTS[tk.v]; return () => cv; }
+      if (own(CONSTS, tk.v)) { const cv = CONSTS[tk.v]; return () => cv; }
       const name = tk.v;
-      return (env) => { if (!(name in env)) throw new Error(`Biến chưa gán: ${name}`); return env[name]; };
+      return (env) => { if (!own(env, name)) throw new Error(`Biến chưa gán: ${name}`); return env[name]; };
     }
     throw new Error(`Token lạ: ${tk.v}`);
   }
