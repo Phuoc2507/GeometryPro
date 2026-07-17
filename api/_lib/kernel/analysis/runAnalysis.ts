@@ -63,18 +63,37 @@ export function runAnalysis(raw: unknown): AnalysisResult {
   const lo = evalExpr(String(decl.domain[0]), {});
   const hi = evalExpr(String(decl.domain[1]), {});
 
-  // Dựng plan CỤ THỂ tại giá trị tham số + một truy vấn mục tiêu; trả số của truy vấn (hoặc null nếu lỗi).
-  const evalQuery = (value: number, query: unknown): number | null => {
+  // Thay tham số bằng số trong các op (điểm/mặt-cầu-lệch).
+  const concreteOps = (value: number): unknown[] => {
     const env = { [pname]: value };
-    const ops = plan.ops.map((op) => {
+    return plan.ops.map((op) => {
       const o = op as Record<string, unknown>;
       if (o.op === 'oxyz_point' && Array.isArray(o.at)) return { ...o, at: (o.at as (number | string)[]).map((c) => numify(c, env, paramNames)) };
       if (o.op === 'oxyz_circumsphere_offset') return { ...o, t: numify(o.t as number | string, env, paramNames) };
       return op;
     });
-    const res = run({ solidName: plan.solidName, ops, asserts: [], queries: [query] });
+  };
+
+  // Đánh giá một truy vấn tại giá trị tham số (KHÔNG kèm asserts — dùng khi quét/giải). null nếu lỗi.
+  const evalQuery = (value: number, query: unknown): number | null => {
+    const res = run({ solidName: plan.solidName, ops: concreteOps(value), asserts: [], queries: [query] });
     if (!res.ok || res.answers.length === 0) return null;
     try { return scalarOf(res.answers[0]); } catch { return null; }
+  };
+
+  // Tại nghiệm cuối: chạy lại KÈM asserts của đề để tự kiểm mô hình (chống ảo giác) + lấy đáp số đẹp.
+  const finalize = (value: number, query: unknown): AnalysisResult => {
+    const res = run({ solidName: plan.solidName, ops: concreteOps(value), asserts: plan.asserts, queries: [query] });
+    let val = NaN;
+    try { if (res.answers.length > 0) val = scalarOf(res.answers[0]); } catch { /* truy vấn không trả số */ }
+    const nice = Number.isFinite(val) ? recognizeConstant(val) : null;
+    return {
+      ok: res.violations.length === 0 && res.errors.length === 0 && Number.isFinite(val),
+      parameter: { name: pname, value },
+      answer: { approx: val, text: nice ? nice.text : (Number.isFinite(val) ? val.toFixed(4) : '(lỗi)'), approximate: !nice },
+      violations: res.violations,
+      errors: res.errors.map((e) => ({ message: e.message })),
+    };
   };
 
   if (plan.analyze.kind === 'optimize') {
@@ -82,8 +101,7 @@ export function runAnalysis(raw: unknown): AnalysisResult {
     const f = (x: number): number => { const v = evalQuery(x, obj); if (v === null) throw new Error('objective lỗi tại tham số'); return v; };
     let best;
     try { best = optimizeParam(f, lo, hi, plan.analyze.sense); } catch (e) { return fail(pname, (e as Error).message); }
-    const nice = recognizeConstant(best.value);
-    return { ok: true, parameter: { name: pname, value: best.x }, answer: { approx: best.value, text: nice ? nice.text : best.value.toFixed(4), approximate: !nice }, violations: [], errors: [] };
+    return finalize(best.x, obj);
   }
 
   // solve
@@ -93,10 +111,7 @@ export function runAnalysis(raw: unknown): AnalysisResult {
   let sol;
   try { sol = solveParam(g, target, lo, hi); } catch (e) { return fail(pname, (e as Error).message); }
   if (!sol) return fail(pname, 'không tìm được nghiệm tham số trong miền');
-  const reported = evalQuery(sol.x, plan.analyze.report);
-  if (reported === null) return fail(pname, 'report query lỗi tại nghiệm');
-  const nice = recognizeConstant(reported);
-  return { ok: true, parameter: { name: pname, value: sol.x }, answer: { approx: reported, text: nice ? nice.text : reported.toFixed(4), approximate: !nice }, violations: [], errors: [] };
+  return finalize(sol.x, plan.analyze.report);
 }
 
 // Dispatch: có `analyze` ⇒ runAnalysis; ngược lại run() thường.

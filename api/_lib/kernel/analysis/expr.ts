@@ -45,27 +45,31 @@ export function parseExpr(src: string): (env: Env) => number {
     }
     return left;
   }
-  function parseT(): (env: Env) => number { // T := F (('*'|'/') F)*
-    let left = parseF();
+  function parseT(): (env: Env) => number { // T := U (('*'|'/') U)*
+    let left = parseU();
     while (peek() && peek().t === 'op' && (peek().v === '*' || peek().v === '/')) {
-      const op = eat().v; const right = parseF(); const l = left;
+      const op = eat().v; const right = parseU(); const l = left;
       left = (env) => (op === '*' ? l(env) * right(env) : l(env) / right(env));
     }
     return left;
   }
-  function parseF(): (env: Env) => number { // F := B ('^' F)?  (phải-kết-hợp)
+  function parseU(): (env: Env) => number { // U := ('-'|'+') U | F — đơn nguyên LỎNG hơn ^ (nên -2^2 = -(2^2))
+    const tk = peek();
+    if (tk && tk.t === 'op' && tk.v === '-') { eat(); const u = parseU(); return (env) => -u(env); }
+    if (tk && tk.t === 'op' && tk.v === '+') { eat(); return parseU(); }
+    return parseF();
+  }
+  function parseF(): (env: Env) => number { // F := B ('^' U)?  (^ phải-kết-hợp; số mũ có thể mang dấu)
     const base = parseB();
     if (peek() && peek().t === 'op' && peek().v === '^') {
-      eat(); const exp = parseF();
+      eat(); const exp = parseU();
       return (env) => Math.pow(base(env), exp(env));
     }
     return base;
   }
-  function parseB(): (env: Env) => number { // B := num | const | var | func '(' E ')' | '(' E ')' | ('-'|'+') B
+  function parseB(): (env: Env) => number { // B := num | const | var | func '(' E ')' | '(' E ')'
     const tk = peek();
     if (!tk) throw new Error('Biểu thức cụt');
-    if (tk.t === 'op' && tk.v === '-') { eat(); const b = parseB(); return (env) => -b(env); }
-    if (tk.t === 'op' && tk.v === '+') { eat(); return parseB(); }
     if (tk.t === 'num') { eat(); const val = parseFloat(tk.v); return () => val; }
     if (tk.t === '(') { eat(); const e = parseE(); if (!peek() || peek().t !== ')') throw new Error('Thiếu )'); eat(); return e; }
     if (tk.t === 'name') {

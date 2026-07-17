@@ -33,4 +33,40 @@ describe('runAnalysis', () => {
     expect(r.ok).toBe(true);
     expect(r.parameter.value).toBeCloseTo(2, 5);
   });
+
+  it('kiểm asserts tại nghiệm: assert SAI → ok=false + violation (chống ảo giác)', () => {
+    const r = runAnalysis({
+      solidName: 'x', parameters: [{ name: 't', domain: [0, 10] }],
+      ops: [
+        { op: 'oxyz_point', name: 'O', at: [0, 0, 0] },
+        { op: 'oxyz_point', name: 'P', at: ['t', 0, 0] },
+      ],
+      asserts: [{ relation: 'dist', args: ['O', 'P'], value: 99 }], // sai tại nghiệm t=3 (d=3≠99)
+      analyze: {
+        kind: 'solve', parameter: 't',
+        constraint: { of: { kind: 'distance', a: 'O', b: 'P' }, equals: 3 },
+        report: { kind: 'distance', a: 'O', b: 'P' },
+      },
+    });
+    expect(r.ok).toBe(false);
+    expect(r.violations.length).toBeGreaterThan(0);
+  });
+
+  it('kiểm asserts tại nghiệm: assert ĐÚNG → ok=true', () => {
+    const r = runAnalysis({
+      solidName: 'x', parameters: [{ name: 't', domain: [0, 10] }],
+      ops: [
+        { op: 'oxyz_point', name: 'O', at: [0, 0, 0] },
+        { op: 'oxyz_point', name: 'P', at: ['t', 0, 0] },
+      ],
+      asserts: [{ relation: 'dist', args: ['O', 'P'], value: 3 }], // đúng tại nghiệm t=3
+      analyze: {
+        kind: 'solve', parameter: 't',
+        constraint: { of: { kind: 'distance', a: 'O', b: 'P' }, equals: 3 },
+        report: { kind: 'distance', a: 'O', b: 'P' },
+      },
+    });
+    expect(r.ok).toBe(true);
+    expect(r.violations).toHaveLength(0);
+  });
 });
