@@ -28,6 +28,16 @@ describe('parseRational', () => {
   it('ném lỗi với number dạng mũ (gợi ý dùng string)', () => {
     expect(() => parseRational(1e-7)).toThrow();
   });
+
+  it('căn: sqrt(3), √3, 2*sqrt(3), sqrt(3)/2, 2*sqrt(3)/3, -sqrt(5)/2', () => {
+    expect(parseRational('sqrt(3)')).toEqual(makeExact(1n, 1n, 3));
+    expect(parseRational('√3')).toEqual(makeExact(1n, 1n, 3));
+    expect(parseRational('2*sqrt(3)')).toEqual(makeExact(2n, 1n, 3));
+    expect(parseRational('sqrt(3)/2')).toEqual(makeExact(1n, 2n, 3));
+    expect(parseRational('2*sqrt(3)/3')).toEqual(makeExact(2n, 3n, 3));
+    expect(parseRational('-sqrt(5)/2')).toEqual(makeExact(-1n, 2n, 5));
+    expect(parseRational('2√3')).toEqual(makeExact(2n, 1n, 3));
+  });
 });
 
 describe('parseVec3S', () => {

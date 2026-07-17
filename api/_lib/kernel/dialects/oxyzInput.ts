@@ -25,6 +25,20 @@ function decimalToExact(s: string): Exact {
 
 const INT_RE = /^[+-]?\d+$/;
 
+// Căn đơn: "sqrt(3)", "√3", "2*sqrt(3)", "sqrt(3)/2", "2*sqrt(3)/3", "-sqrt(5)/2"
+// → Exact dạng (num/den)·√radicand. Cho phép toạ độ vô tỉ (tam giác đều, góc 60°…) chính xác.
+function parseSurd(raw: string): Exact | null {
+  const s = raw.replace(/√\s*\(?\s*(\d+)\s*\)?/g, 'sqrt($1)').replace(/\s+/g, '');
+  const m = s.match(/^([+-]?)(?:(\d+)(?:\/(\d+))?\*?)?sqrt\((\d+)\)(?:\/(\d+))?$/i);
+  if (!m) return null;
+  const sign = m[1] === '-' ? -1n : 1n;
+  const cnum = m[2] ? BigInt(m[2]) : 1n;
+  const cden = m[3] ? BigInt(m[3]) : 1n;
+  const rad = Number(m[4]);
+  const den = m[5] ? BigInt(m[5]) : 1n;
+  return makeExact(sign * cnum, cden * den, rad); // (sign·cnum)/(cden·den) · √rad
+}
+
 export function parseRational(input: RationalInput): Exact {
   if (typeof input === 'number') {
     if (!Number.isFinite(input)) throw new Error('Rational input must be finite');
@@ -41,6 +55,11 @@ export function parseRational(input: RationalInput): Exact {
     return decimalToExact(s);
   }
   const s = input.trim();
+  if (/sqrt|√/i.test(s)) {
+    const surd = parseSurd(s);
+    if (!surd) throw new Error(`Cannot parse surd from "${input}" (dùng "sqrt(3)", "sqrt(3)/2", "2*sqrt(3)")`);
+    return surd;
+  }
   if (s.includes('/')) {
     const parts = s.split('/');
     const a = parts[0]?.trim();

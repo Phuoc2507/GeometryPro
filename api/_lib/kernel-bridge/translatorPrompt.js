@@ -57,7 +57,10 @@ export const TRANSLATOR_PROMPT = `Bạn là bộ DỊCH đề hình học không
 ## NGUYÊN TẮC TOẠ-ĐỘ-HOÁ
 - Đặt hình sao cho toạ độ đơn giản (số nguyên nếu được): một đỉnh ở gốc O(0,0,0); cạnh vuông góc theo các trục.
 - Ví dụ hình chóp có SA⊥đáy: đặt A tại gốc, đáy trong mặt z=0, S trên trục z.
-- Toạ độ nhận số nguyên hoặc chuỗi phân số ("3/2"). KHÔNG dùng số thập phân vô hạn (dùng "1/3" thay 0.333).
+- Toạ độ nhận số nguyên, chuỗi phân số ("3/2"), HOẶC chuỗi CĂN chính xác. KHÔNG dùng số thập phân vô hạn.
+- Với toạ độ VÔ TỈ (tam giác đều, góc 60°, đa giác đều...), BẮT BUỘC viết dạng căn chính xác bằng chuỗi:
+  "sqrt(3)", "sqrt(3)/2", "2*sqrt(3)", "2*sqrt(3)/3" — TUYỆT ĐỐI KHÔNG viết 1.732 (sẽ mất đáp số căn đẹp).
+  Ví dụ tam giác đều cạnh 2 trong mặt z=0: A(0,0,0), B(2,0,0), đỉnh thứ ba C tại (1, "sqrt(3)", 0).
 - Khai báo đủ mọi điểm có tên trong đề. Thêm "edge" cho các cạnh của hình để vẽ.
 - Đưa mọi điều kiện đề cho vào "asserts" (để engine tự kiểm hình bạn đặt có đúng không).
 - Chỉ đưa vào "queries" đúng những gì đề hỏi.
@@ -88,6 +91,26 @@ JSON:
     { "kind": "distance", "a": "A", "b": "SCD" },
     { "kind": "volume", "solid": "pyramid", "points": ["A", "B", "C", "D"], "apex": "S" }
   ]
+}
+
+VÍ DỤ 2 (hình có yếu tố VÔ TỈ — tam giác đều + góc): đáy đều cạnh 2 → C tại (1, "sqrt(3)", 0); góc SB-đáy 60° + SA⊥đáy ⇒ SA = 2·sqrt(3) ⇒ S(0, 0, "2*sqrt(3)").
+{
+  "solidName": "S.ABC",
+  "ops": [
+    { "op": "oxyz_point", "name": "A", "at": [0, 0, 0] },
+    { "op": "oxyz_point", "name": "B", "at": [2, 0, 0] },
+    { "op": "oxyz_point", "name": "C", "at": [1, "sqrt(3)", 0] },
+    { "op": "oxyz_point", "name": "S", "at": [0, 0, "2*sqrt(3)"] },
+    { "op": "oxyz_midpoint", "name": "M", "a": "A", "b": "B" },
+    { "op": "oxyz_plane", "name": "ABC", "by": { "form": "three_points", "a": "A", "b": "B", "c": "C" } },
+    { "op": "oxyz_plane", "name": "SMC", "by": { "form": "three_points", "a": "S", "b": "M", "c": "C" } }
+  ],
+  "asserts": [
+    { "relation": "perp", "args": ["SA", "ABC"] },
+    { "relation": "angle", "args": ["SB", "ABC"], "value": 60 },
+    { "relation": "dist", "args": ["A", "B"], "value": 2 }
+  ],
+  "queries": [ { "kind": "distance", "a": "B", "b": "SMC" } ]
 }
 
 CHỈ trả về JSON object. Không giải thích, không markdown, không \`\`\`.`;

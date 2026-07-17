@@ -65,6 +65,29 @@ describe('LLM Translator contract — the plan format solves real exam problems'
     expect((res.answers[1] as { text: string }).text).toBe('1/6');
   });
 
+  it('chóp tam giác đều (toạ độ CĂN) → khoảng cách exact 2√39/13', () => {
+    // Đáy đều cạnh 2, SA⊥đáy, góc(SB,đáy)=60° ⇒ SA=2√3. d(B,(SMC)) = 2√39/13.
+    const res = solve({
+      solidName: 'S.ABC',
+      ops: [
+        { op: 'oxyz_point', name: 'A', at: [0, 0, 0] },
+        { op: 'oxyz_point', name: 'B', at: [2, 0, 0] },
+        { op: 'oxyz_point', name: 'C', at: [1, 'sqrt(3)', 0] },
+        { op: 'oxyz_point', name: 'S', at: [0, 0, '2*sqrt(3)'] },
+        { op: 'oxyz_midpoint', name: 'M', a: 'A', b: 'B' },
+        { op: 'oxyz_plane', name: 'SMC', by: { form: 'three_points', a: 'S', b: 'M', c: 'C' } },
+      ],
+      asserts: [
+        { relation: 'angle', args: ['SB', 'ABC'], value: 60, tolerance: 1e-6 },
+        { relation: 'dist', args: ['A', 'B'], value: 2 },
+      ],
+      queries: [{ kind: 'distance', a: 'B', b: 'SMC' }],
+    });
+    expect(res.errors).toHaveLength(0);
+    expect((res.answers[0] as { text: string; approximate: boolean }).text).toBe('2√39/13');
+    expect((res.answers[0] as { approximate: boolean }).approximate).toBe(false);
+  });
+
   it('khoảng cách 2 đường chéo nhau = 1 (Oxyz)', () => {
     const res = solve({
       solidName: 'skew',
