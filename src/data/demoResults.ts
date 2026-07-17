@@ -367,8 +367,8 @@ export const demoResults = [
         { "id": "A", "label": "A", "x": 0, "y": 4, "z": 0 },
         { "id": "B", "label": "B", "x": 2, "y": 4, "z": 0 },
         { "id": "C", "label": "C", "x": 3, "y": 0, "z": 0 },
-        { "id": "M", "label": "M", "x": 2.667, "y": 2.37, "z": 0 },
-        { "id": "N", "label": "N", "x": 3.5, "y": 3, "z": 0 }
+        { "id": "M", "label": "M", "x": 2.3694, "y": 3.5402, "z": 0 },
+        { "id": "N", "label": "N", "x": 3.0689, "y": 3.8066, "z": 0 }
       ],
       "lines": [
         { "id": "l1", "from": "O", "to": "A", "style": "solid" },
@@ -962,16 +962,16 @@ export const demoResults = [
         },
         {
           "id": "I",
-          "label": "I",
-          "x": 2,
-          "y": 2,
-          "z": 8
+          "label": "I (tâm cầu)",
+          "x": 3.2915,
+          "y": 3.2915,
+          "z": 9.2915
         },
         {
           "id": "Top",
-          "label": "Đỉnh",
-          "x": 2,
-          "y": 2,
+          "label": "Đỉnh cao 14 m",
+          "x": 3.2915,
+          "y": 3.2915,
           "z": 14
         }
       ],
@@ -1022,12 +1022,13 @@ export const demoResults = [
       "spheres": [
         {
           "id": "ball",
+          "label": "R = 10 - 2√7 ≈ 4.71 m",
           "center": {
-            "x": 2,
-            "y": 2,
-            "z": 8
+            "x": 3.2915,
+            "y": 3.2915,
+            "z": 9.2915
           },
-          "radius": 3.464
+          "radius": 4.7085
         }
       ]
     }
