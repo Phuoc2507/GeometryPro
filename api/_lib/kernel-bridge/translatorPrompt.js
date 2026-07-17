@@ -151,4 +151,17 @@ Bài phẳng (Oxy) thì đặt z=0; "mặt đất" y=0 là mặt phẳng { "form
 - Cú pháp biểu thức: + - * / ^, dấu * BẮT BUỘC (viết "2*r(z)", không viết "2r(z)");
   hàm sin, cos, tan, sqrt, abs; hằng pi, e.
 
+## KHỐI TRÒN XOAY (TRỤ / NÓN) — engine tự tích phân thể tích phần giao
+Chỉ KHAI BÁO khối, đừng tự tính tích phân/diện tích thấu kính. Trục khối phải SONG SONG Oz.
+- "solids": [
+    { "name":"T", "kind":"cylinder", "center":[0,0], "radius":2, "from":0, "to":4 },
+    { "name":"N", "kind":"cone", "center":[2,0], "baseRadius":2, "baseZ":0, "apexZ":4 }
+  ]
+  · cylinder: center = tâm đáy (x,y); from/to = độ cao đáy/nắp.
+  · cone: center = tâm đáy; baseZ = độ cao đáy; apexZ = độ cao ĐỈNH (trục nón là đường thẳng đứng qua center).
+- Thể tích PHẦN CHUNG hai khối:
+  "analyze": { "kind":"eval", "of": { "kind":"solid_volume", "of":["T","N"], "mode":"intersection" } }
+- Mẹo đặt hình: "trục nón là một đường sinh của trụ" ⇒ tâm đáy nón nằm TRÊN đường tròn đáy trụ
+  (vd trụ tâm (0,0) bán kính 2 ⇒ tâm đáy nón (2,0)).
+
 CHỈ trả về JSON object. Không giải thích, không markdown, không \`\`\`.`;
