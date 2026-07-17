@@ -119,4 +119,15 @@ VÍ DỤ 2 (hình có yếu tố VÔ TỈ — tam giác đều + góc): đáy đ
   "queries": [ { "kind": "distance", "a": "B", "b": "SMC" } ]
 }
 
+## BÀI CÓ THAM SỐ / TỐI ƯU / TÌM ĐIỀU KIỆN (không tự tính — để engine giải)
+Nếu đề hỏi "lớn nhất/nhỏ nhất" theo một đại lượng thay đổi (góc, độ dài…), HOẶC cho một điều kiện cần
+tìm giá trị thoả: KHAI BÁO một tham số tự do và để engine giải. TUYỆT ĐỐI KHÔNG tự đạo hàm/tự tính.
+- Khai báo tham số: "parameters": [ { "name": "th", "domain": [0, "pi/2"] } ]
+- Toạ độ phụ thuộc tham số viết dạng CHUỖI biểu thức: "3*cos(th)", "2*sin(th)+1" (dùng sin/cos/sqrt/pi).
+- Tối ưu: "analyze": { "kind":"optimize", "parameter":"th", "sense":"max", "objective": <một query trả số, vd diện tích> }
+- Tìm điều kiện: "analyze": { "kind":"solve", "parameter":"t",
+    "constraint": { "of": <query trả số>, "equals": <giá trị> }, "report": <query muốn lấy đáp> }
+- Mặt cầu tựa 3 điểm (lệch t dọc trục): { "op":"oxyz_circumsphere_offset", "name":"S", "of":["A","B","C"], "t":"t" }
+- Đọc số của mặt cầu: { "kind":"sphere_metric", "target":"S", "what":"radius" | "top_z" | "bottom_z" }
+
 CHỈ trả về JSON object. Không giải thích, không markdown, không \`\`\`.`;

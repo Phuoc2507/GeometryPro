@@ -37,3 +37,4 @@ export { toGeometryData } from './toGeometryData';
 export { Trace } from './trace';
 export { run, RunPlanSchema, type EngineResult } from './run';
 export { entityTableToGeometryData } from './entityToGeometry';
+export { runAnalysis, runAny, AnalysisPlanSchema } from './analysis/runAnalysis';
