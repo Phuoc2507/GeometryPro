@@ -6644,14 +6644,23 @@ function optimizeParam(f, lo, hi, sense, grid = 400) {
   const x = (a + b) / 2;
   return { x, value: f(x) };
 }
-function solveParam(f, target, lo, hi, grid = 800) {
+function solveAllParam(f, target, lo, hi, grid = 800) {
   const g = (x) => f(x) - target;
+  const roots = [];
+  const push = (x) => {
+    if (roots.length === 0 || Math.abs(x - roots[roots.length - 1]) > 1e-9) roots.push(x);
+  };
   let x0 = lo, g0 = g(lo);
-  if (g0 === 0) return { x: lo, residual: 0 };
+  if (g0 === 0) push(lo);
   for (let i = 1; i <= grid; i++) {
     const x1 = lo + (hi - lo) * i / grid;
     const g1 = g(x1);
-    if (g1 === 0) return { x: x1, residual: 0 };
+    if (g1 === 0) {
+      push(x1);
+      x0 = x1;
+      g0 = g1;
+      continue;
+    }
     if (g0 * g1 < 0) {
       let a = x0, b = x1, ga = g0;
       for (let k = 0; k < 200; k++) {
@@ -6663,54 +6672,68 @@ function solveParam(f, target, lo, hi, grid = 800) {
         }
         if (b - a < 1e-13) break;
       }
-      const x = (a + b) / 2;
-      return { x, residual: Math.abs(g(x)) };
+      push((a + b) / 2);
     }
     x0 = x1;
     g0 = g1;
   }
-  return null;
+  return roots;
 }
-function optimizeMulti(f, los, his, sense, gridPerDim = 40, rounds = 60) {
+function solveParam(f, target, lo, hi, grid = 800) {
+  const roots = solveAllParam(f, target, lo, hi, grid);
+  if (roots.length === 0) return null;
+  const x = roots[0];
+  return { x, residual: Math.abs(f(x) - target) };
+}
+function optimizeMulti(f, los, his, sense, gridPerDim = 40, rounds = 60, restarts = 5) {
   const n = los.length;
   const sign = sense === "max" ? 1 : -1;
-  let best = { xs: los.slice(), v: -Infinity };
+  const gr = (Math.sqrt(5) - 1) / 2;
+  const cells = [];
   const total = Math.pow(gridPerDim + 1, n);
   for (let t = 0; t < total; t++) {
     let rem = t;
-    const xs2 = [];
+    const xs = [];
     for (let d = 0; d < n; d++) {
       const i = rem % (gridPerDim + 1);
       rem = Math.floor(rem / (gridPerDim + 1));
-      xs2.push(los[d] + (his[d] - los[d]) * i / gridPerDim);
+      xs.push(los[d] + (his[d] - los[d]) * i / gridPerDim);
     }
-    const v = sign * f(xs2);
-    if (v > best.v) best = { xs: xs2, v };
+    cells.push({ xs, v: sign * f(xs) });
   }
-  const xs = best.xs.slice();
-  const gr = (Math.sqrt(5) - 1) / 2;
-  for (let r = 0; r < rounds; r++) {
-    for (let d = 0; d < n; d++) {
-      const h = (his[d] - los[d]) / gridPerDim;
-      let a = Math.max(los[d], xs[d] - h);
-      let b = Math.min(his[d], xs[d] + h);
-      let c = b - gr * (b - a);
-      let e = a + gr * (b - a);
-      for (let k = 0; k < 80; k++) {
-        const xc = xs.slice();
-        xc[d] = c;
-        const xe = xs.slice();
-        xe[d] = e;
-        if (sign * f(xc) > sign * f(xe)) b = e;
-        else a = c;
-        c = b - gr * (b - a);
-        e = a + gr * (b - a);
-        if (b - a < 1e-13) break;
+  cells.sort((A, B) => B.v - A.v);
+  const starts = cells.slice(0, Math.max(1, restarts));
+  const refine = (start) => {
+    const xs = start.slice();
+    for (let r = 0; r < rounds; r++) {
+      for (let d = 0; d < n; d++) {
+        const h = (his[d] - los[d]) / gridPerDim;
+        let a = Math.max(los[d], xs[d] - h);
+        let b = Math.min(his[d], xs[d] + h);
+        let c = b - gr * (b - a);
+        let e = a + gr * (b - a);
+        for (let k = 0; k < 80; k++) {
+          const xc = xs.slice();
+          xc[d] = c;
+          const xe = xs.slice();
+          xe[d] = e;
+          if (sign * f(xc) > sign * f(xe)) b = e;
+          else a = c;
+          c = b - gr * (b - a);
+          e = a + gr * (b - a);
+          if (b - a < 1e-13) break;
+        }
+        xs[d] = (a + b) / 2;
       }
-      xs[d] = (a + b) / 2;
     }
+    return { xs, value: f(xs) };
+  };
+  let best = refine(starts[0].xs);
+  for (let s = 1; s < starts.length; s++) {
+    const cand = refine(starts[s].xs);
+    if (sign * cand.value > sign * best.value) best = cand;
   }
-  return { xs, value: f(xs) };
+  return best;
 }
 
 // api/_lib/kernel/analysis/recognize.ts
@@ -6828,11 +6851,13 @@ function derivPoly(c) {
   for (let k = 1; k < c.length; k++) d.push(k * c[k]);
   return d.length ? d : [0];
 }
-function extremumOfPoly(c, lo, hi) {
-  const d = derivPoly(c);
-  const r = solveParam((x) => evalPoly(d, x), 0, lo, hi);
-  if (!r) return null;
-  return { x: r.x, y: evalPoly(c, r.x) };
+function extremumOfPoly(c, lo, hi, sense) {
+  const d1 = derivPoly(c);
+  const d2 = derivPoly(d1);
+  const extrema = solveAllParam((x) => evalPoly(d1, x), 0, lo, hi).map((x) => ({ x, y: evalPoly(c, x), curv: evalPoly(d2, x) })).filter((e) => Math.abs(e.curv) > 1e-9);
+  const pick = sense === "max" ? extrema.filter((e) => e.curv < 0) : sense === "min" ? extrema.filter((e) => e.curv > 0) : extrema;
+  if (pick.length === 0) return null;
+  return { x: pick[0].x, y: pick[0].y };
 }
 
 // api/_lib/kernel/analysis/solids.ts

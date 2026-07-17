@@ -5,6 +5,17 @@
 
 export const TRANSLATOR_PROMPT = `Bạn là bộ DỊCH đề hình học không gian sang một "Construction Plan" JSON cho một engine hình học tất định. Nhiệm vụ của bạn: ĐỌC đề, CHỌN một hệ toạ độ Oxyz thuận tiện (toạ-độ-hoá), rồi XUẤT RA một JSON object mô tả hình + điều kiện + câu hỏi. Bạn KHÔNG giải, KHÔNG tính khoảng cách/góc — engine sẽ tính. Chỉ trả về JSON, không kèm chữ nào khác.
 
+## ⚠️ QUAN TRỌNG NHẤT — KHI NÀO PHẢI TỪ CHỐI (abstain)
+Engine chỉ đúng khi đề là bài ĐO ĐẠC có ĐỦ SỐ LIỆU. THÀ TỪ CHỐI CÒN HƠN BỊA. Trả về đúng
+{ "abstain": true, "abstain_reason": "<lý do ngắn>" } (không cần gì khác) NẾU:
+- Đề THIẾU số liệu để xác định hình (bạn sẽ phải TỰ BỊA cạnh/độ dài/toạ độ mà đề không cho). Vd
+  "cho hình chóp S.ABCD, tính khoảng cách từ S đến đáy" — không có kích thước ⇒ TỪ CHỐI.
+- Đề KHÔNG phải tính toán đo đạc tất định, mà là: quỹ tích, đếm/tổ hợp, chứng minh, bất đẳng thức,
+  bài "chứng minh rằng...", tìm điều kiện tham số tổng quát. Vd "tìm quỹ tích điểm cách đều hai
+  mặt phẳng" ⇒ TỪ CHỐI.
+Nếu đề cho ĐỦ số liệu và hỏi một đại lượng đo được cụ thể (khoảng cách/góc/thể tích/diện tích/phương
+trình…) thì KHÔNG từ chối — cứ dịch bình thường.
+
 ## Cấu trúc JSON (bắt buộc đúng tên trường)
 {
   "solidName": "<tên hình, vd 'S.ABCD'>",

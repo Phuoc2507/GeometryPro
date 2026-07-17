@@ -31,6 +31,11 @@ export async function planFromProblem(problem, options = {}) {
   } catch {
     throw new Error('Translator returned non-JSON output');
   }
+  // Bộ dịch TỰ KHƯỚC TỪ khi đề thiếu số liệu / ngoài danh mục (chống "phục vụ sai"). Ném ⇒ route
+  // rơi về luồng LLM cũ, thay vì để engine trả đáp tự tin cho một bài không nên trả.
+  if (json && typeof json === 'object' && json.abstain === true) {
+    throw new Error('translator abstained: ' + (json.abstain_reason || 'thiếu số liệu / ngoài danh mục'));
+  }
   // Plan có khối `analyze` (bài tham số/tối ưu/hàm số) dùng schema analysis; còn lại là plan hình học thuần.
   const schema = json && typeof json === 'object' && 'analyze' in json ? AnalysisPlanSchema : RunPlanSchema;
   const parsed = schema.safeParse(json);
