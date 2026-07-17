@@ -689,10 +689,10 @@ export function GeometryProvider({ children }: { children: React.ReactNode }) {
           },
         });
 
-          const id = await addToHistory(geometry, prompt);
-          if (id) {
+          const historyId = await addToHistory(geometry, prompt);
+          if (historyId) {
             const url = new URL(window.location.href);
-            url.searchParams.set('id', id);
+            url.searchParams.set('id', historyId);
             window.history.replaceState({}, '', url.toString());
           }
 
