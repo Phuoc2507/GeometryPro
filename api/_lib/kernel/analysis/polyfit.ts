@@ -22,20 +22,32 @@ function solveLinear(A: number[][], b: number[]): number[] {
   return M.map((row, i) => row[n] / row[i]);
 }
 
-// Khớp đa thức bậc `degree` qua `through`. Nếu `leading` cho trước ⇒ hệ số bậc cao nhất bị GHIM và
-// chỉ khớp `degree` hệ số còn lại (cần đúng `degree` điểm); ngược lại cần `degree+1` điểm.
-export function fitPoly(degree: number, through: [number, number][], leading?: number): number[] {
+// Khớp đa thức bậc `degree` qua `through` VÀ các ràng buộc đạo hàm `slopeAt` ([x, f'(x)]).
+// Nếu `leading` cho trước ⇒ hệ số bậc cao nhất bị GHIM, chỉ khớp `degree` hệ số còn lại.
+// Tổng số ràng buộc (through + slopeAt) phải BẰNG số ẩn.
+export function fitPoly(
+  degree: number, through: [number, number][], leading?: number, slopeAt: [number, number][] = [],
+): number[] {
   const nUnknown = leading === undefined ? degree + 1 : degree;
-  if (through.length !== nUnknown) {
-    throw new Error(`fitPoly: cần ${nUnknown} điểm cho bậc ${degree}${leading === undefined ? '' : ' (đã ghim hệ số đầu)'}, nhận ${through.length}`);
+  const nGiven = through.length + slopeAt.length;
+  if (nGiven !== nUnknown) {
+    throw new Error(`fitPoly: cần ${nUnknown} ràng buộc cho bậc ${degree}${leading === undefined ? '' : ' (đã ghim hệ số đầu)'}, nhận ${nGiven}`);
   }
   const A: number[][] = [];
   const b: number[] = [];
+  // Ràng buộc giá trị: c0 + c1·x + ... = y (trừ phần hệ số đã ghim).
   for (const [x, y] of through) {
     const row: number[] = [];
     for (let k = 0; k < nUnknown; k++) row.push(Math.pow(x, k));
     A.push(row);
     b.push(leading === undefined ? y : y - leading * Math.pow(x, degree));
+  }
+  // Ràng buộc đạo hàm: Σ k·c_k·x^(k−1) = s (trừ phần hệ số đã ghim).
+  for (const [x, s] of slopeAt) {
+    const row: number[] = [];
+    for (let k = 0; k < nUnknown; k++) row.push(k === 0 ? 0 : k * Math.pow(x, k - 1));
+    A.push(row);
+    b.push(leading === undefined ? s : s - degree * leading * Math.pow(x, degree - 1));
   }
   const sol = solveLinear(A, b);
   return leading === undefined ? sol : [...sol, leading];

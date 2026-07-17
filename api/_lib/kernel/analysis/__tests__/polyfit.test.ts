@@ -34,4 +34,24 @@ describe('polyfit', () => {
   it('sai số điểm → ném', () => {
     expect(() => fitPoly(2, [[0, 0]], -1 / 3)).toThrow();
   });
+
+  it('ràng buộc ĐẠO HÀM: bậc 3 qua (0,0),(2,4),(3,0) + f\'(2)=0 → f = -x³+3x²', () => {
+    const c = fitPoly(3, [[0, 0], [2, 4], [3, 0]], undefined, [[2, 0]]);
+    expect(c[0]).toBeCloseTo(0, 9);
+    expect(c[1]).toBeCloseTo(0, 9);
+    expect(c[2]).toBeCloseTo(3, 9);
+    expect(c[3]).toBeCloseTo(-1, 9);
+  });
+
+  it('slopeAt phối hợp với leading đã ghim', () => {
+    // bậc 2, ghim hệ số đầu = -1/3, chỉ cần 2 ràng buộc: qua (0,0) và f'(4)=0 (đỉnh tại x=4)
+    const c = fitPoly(2, [[0, 0]], -1 / 3, [[4, 0]]);
+    expect(c[0]).toBeCloseTo(0, 9);
+    expect(c[1]).toBeCloseTo(8 / 3, 9);   // f'(x) = -2x/3 + c1 ; f'(4)=0 ⇒ c1 = 8/3
+    expect(c[2]).toBeCloseTo(-1 / 3, 9);
+  });
+
+  it('tổng ràng buộc sai số lượng → ném', () => {
+    expect(() => fitPoly(3, [[0, 0], [2, 4]], undefined, [[2, 0]])).toThrow(); // 3 ràng buộc cho 4 ẩn
+  });
 });
