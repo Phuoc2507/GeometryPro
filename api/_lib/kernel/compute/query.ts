@@ -3,7 +3,7 @@ import { z } from 'zod';
 import type { EntityTable } from '../entityTable';
 import type { Entity, PointE } from '../entities';
 import { resolveEntityE } from '../resolveE';
-import { type ComputeOutcome, type DistanceAnswer, type AngleAnswer, type ScalarAnswer } from './answer';
+import { type ComputeOutcome, type DistanceAnswer, type AngleAnswer, type ScalarAnswer, certifyScalar } from './answer';
 import type { Scalar } from '../scalar';
 import { computeDistance } from './distance';
 import { computeAngle } from './angle';
@@ -28,6 +28,7 @@ export const QueryESchema = z.union([
   z.object({ kind: z.literal('area'), shape: z.literal('sphere'), target: Tok }),
   z.object({ kind: z.literal('area'), shape: z.enum(['triangle', 'polygon']), points: z.array(Tok).min(3) }),
   z.object({ kind: z.literal('sphere_metric'), target: Tok, what: z.enum(['radius', 'top_z', 'bottom_z']) }),
+  z.object({ kind: z.literal('point_coord'), target: Tok, axis: z.enum(['x', 'y', 'z']) }),
 ]);
 
 type SolidSpecT = z.infer<typeof SolidSpec>;
@@ -123,6 +124,12 @@ export function computeQuery(query: QueryE, et: EntityTable): ComputeOutcome<Que
           : query.what === 'top_z' ? e.center.z.approx + R
           : e.center.z.approx - R;
         return { ok: true, answer: { kind: 'sphere_metric', exact: null, approx: val, text: val.toFixed(4), approximate: true } };
+      }
+      case 'point_coord': {
+        const e = resolveEntityE(query.target, et);
+        if (e.kind !== 'point') return { ok: false, problem: 'point_coord needs a point' };
+        const s = query.axis === 'x' ? e.p.x : query.axis === 'y' ? e.p.y : e.p.z;
+        return { ok: true, answer: certifyScalar('point_coord', s, s.approx) };
       }
     }
   } catch (e) {
