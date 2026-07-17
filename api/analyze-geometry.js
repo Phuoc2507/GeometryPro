@@ -4,6 +4,7 @@ import {
   formatSpecialPoints,
 } from './_lib/jsonHelpers.js';
 import { normalizeGeometryData } from './_lib/normalizeGeometry.js';
+import { solveProblem } from './_lib/kernel-bridge/solveWithKernel.js';
 import { isLikely3DPrompt, isLikelyFlatGeometry, applyApexLiftFallback } from './_lib/flatGuard.js';
 import { buildGeometryFromPoints } from './_lib/geometryBuilder.js';
 import { verifyConstraints, pointsToMap } from './_lib/constraintVerify.js';
@@ -133,7 +134,68 @@ export default async function handler(req, res) {
     const validModes = ['quick', 'detailed'];
     const drawMode = validModes.includes(mode) ? mode : 'quick';
     let detailLevel = 'static';
-    
+
+    // ===== KERNEL MODE: engine tất định thử TRƯỚC, hỏng thì rơi về luồng LLM cũ =====
+    // LLM chỉ DỊCH đề thành plan; engine dựng hình bằng toạ độ chính xác rồi TỰ KIỂM điều kiện đề.
+    // Chỉ nhận khi engine chắc chắn (ok, 0 vi phạm, 0 lỗi, có điểm). Mọi trường hợp khác → im lặng
+    // rơi xuống luồng cũ ⇒ xấu nhất cũng chỉ bằng hôm nay, không bao giờ tệ hơn.
+    // Tắt khẩn cấp: đặt env KERNEL_MODE=off.
+    if (!imageBase64 && trimmedPrompt && process.env.KERNEL_MODE !== 'off') {
+      try {
+        sendEvent('Đang thử engine tất định...', 25);
+        const k = await solveProblem(trimmedPrompt);
+        const usable = k.ok
+          && k.geometry
+          && Array.isArray(k.geometry.points) && k.geometry.points.length > 0
+          && (k.violations?.length ?? 0) === 0
+          && (k.errors?.length ?? 0) === 0;
+        if (usable) {
+          const geometry = normalizeGeometryData(k.geometry);
+          geometry.confidence = 1; // engine đã tự kiểm mọi assert của đề
+          const answersLog = (k.answers || [])
+            .map((a) => `${a.kind}: ${a.text}${a.approximate ? ' (xấp xỉ)' : ''}`)
+            .join('; ');
+          const enginePayload = {
+            step1: {
+              text: trimmedPrompt,
+              gemini_dsl: '',
+              points_needed: geometry.points.map((p) => p.id),
+              shape_type: k.plan?.solidName || '',
+              constraints: (k.plan?.asserts || []).map((a) => `${a.relation}(${(a.args || []).join(',')})`),
+              tags: ['kernel'],
+              detailLevel: 'static',
+            },
+            step2: {
+              geometry,
+              calculation_log: answersLog || 'Engine tất định: toạ độ chính xác, đã tự kiểm điều kiện đề.',
+              confidence: 1,
+              constraint_violations: [],
+            },
+            mode: drawMode,
+            engine: 'kernel', // để đo tỉ lệ engine phục vụ so với luồng cũ
+          };
+          if (promptHash && supabase) {
+            supabase.from('ai_cache').insert([{
+              prompt_hash: promptHash, prompt_text: trimmedPrompt, response: enginePayload,
+            }]).then(({ error }) => { if (error) console.warn('Lỗi lưu cache (kernel):', error.message); });
+          }
+          console.log('[kernel] phục vụ:', trimmedPrompt.substring(0, 60));
+          sendEvent('Hoàn tất (engine)!', 100);
+          if (isStream) {
+            res.write(`data: ${JSON.stringify({ status: 'done', data: enginePayload })}\n\n`);
+            return res.end();
+          }
+          return res.json(enginePayload);
+        }
+        console.log('[kernel] không dùng được → rơi về LLM:', JSON.stringify({
+          ok: k.ok, violations: k.violations?.length ?? 0, errors: k.errors?.length ?? 0,
+        }));
+      } catch (e) {
+        console.warn('[kernel] lỗi → rơi về LLM:', e?.message);
+      }
+    }
+    // ===== Hết KERNEL MODE — từ đây là luồng LLM cũ, KHÔNG đổi =====
+
     let result;
     if (drawMode === 'quick') {
       sendEvent('Đang tạo hình học (Chế độ nhanh)...', 40);
