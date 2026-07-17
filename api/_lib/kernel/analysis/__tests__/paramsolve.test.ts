@@ -1,5 +1,34 @@
 import { describe, it, expect } from 'vitest';
-import { optimizeParam, solveParam } from '../paramsolve';
+import { optimizeParam, solveParam, solveAllParam, optimizeMulti } from '../paramsolve';
+
+describe('solveAllParam — mọi nghiệm', () => {
+  it('x³−x = 0 trên [−2,2] → 3 nghiệm −1, 0, 1', () => {
+    const r = solveAllParam((x) => x ** 3 - x, 0, -2, 2).sort((a, b) => a - b);
+    expect(r).toHaveLength(3);
+    expect(r[0]).toBeCloseTo(-1, 8);
+    expect(r[1]).toBeCloseTo(0, 8);
+    expect(r[2]).toBeCloseTo(1, 8);
+  });
+  it('vô nghiệm → []', () => {
+    expect(solveAllParam((x) => x * x + 1, 0, -5, 5)).toHaveLength(0);
+  });
+});
+
+describe('optimizeMulti — hàm nhiều lòng chảo', () => {
+  it('hàm 2 lòng chảo: tìm đúng cực tiểu TOÀN CỤC (giếng sâu hơn), không kẹt giếng nông', () => {
+    // Hai giếng gaussian rộng tương đương; giếng SÂU hơn ở (2.05,2.05) là cực tiểu toàn cục.
+    // (Regression: xác nhận đa-điểm-xuất-phát vẫn ra đúng toàn cục; nó KHÔNG làm tệ hơn 1-điểm.)
+    const f = (v: number[]): number => {
+      const w1 = -1.0 * Math.exp(-((v[0] - 1) ** 2 + (v[1] - 1) ** 2) / 0.5);       // nông tại (1,1)
+      const w2 = -1.8 * Math.exp(-((v[0] - 2.05) ** 2 + (v[1] - 2.05) ** 2) / 0.5); // SÂU tại (2.05,2.05)
+      return w1 + w2;
+    };
+    const r = optimizeMulti(f, [0, 0], [3, 3], 'min');
+    expect(r.xs[0]).toBeCloseTo(2.05, 1);
+    expect(r.xs[1]).toBeCloseTo(2.05, 1);
+    expect(r.value).toBeCloseTo(-1.8, 1);
+  });
+});
 
 describe('optimizeParam', () => {
   it('max của x(4−x) trên [0,4] = 4 tại x=2', () => {
@@ -23,8 +52,6 @@ describe('solveParam', () => {
     expect(solveParam((x) => x * x + 1, 0, 0, 5)).toBeNull();
   });
 });
-
-import { optimizeMulti } from '../paramsolve';
 
 describe('optimizeMulti', () => {
   it('min của (x−1)² + (y+2)² trên [-5,5]² → (1,−2), giá trị 0', () => {

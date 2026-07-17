@@ -26,17 +26,23 @@ export function optimizeParam(
   return { x, value: f(x) };
 }
 
-// Giải f(x)=target trên [lo,hi]: tìm ô đổi dấu của g=f−target rồi chia đôi. null nếu không có.
-export function solveParam(
+// Giải f(x)=target trên [lo,hi]: quét lưới tìm MỌI ô đổi dấu của g=f−target, chia đôi từng ô.
+// Trả TẤT CẢ nghiệm (đã khử trùng lặp gần nhau). Quan trọng khi hàm nhiều nghiệm — trước đây chỉ
+// lấy nghiệm đầu tiên nên có thể bỏ sót / chọn nhầm.
+export function solveAllParam(
   f: (x: number) => number, target: number, lo: number, hi: number, grid = 800,
-): { x: number; residual: number } | null {
+): number[] {
   const g = (x: number) => f(x) - target;
+  const roots: number[] = [];
+  const push = (x: number) => {
+    if (roots.length === 0 || Math.abs(x - roots[roots.length - 1]) > 1e-9) roots.push(x);
+  };
   let x0 = lo, g0 = g(lo);
-  if (g0 === 0) return { x: lo, residual: 0 };
+  if (g0 === 0) push(lo);
   for (let i = 1; i <= grid; i++) {
     const x1 = lo + ((hi - lo) * i) / grid;
     const g1 = g(x1);
-    if (g1 === 0) return { x: x1, residual: 0 };
+    if (g1 === 0) { push(x1); x0 = x1; g0 = g1; continue; }
     if (g0 * g1 < 0) {
       let a = x0, b = x1, ga = g0;
       for (let k = 0; k < 200; k++) {
@@ -44,23 +50,37 @@ export function solveParam(
         if (ga * gm <= 0) b = m; else { a = m; ga = gm; }
         if (b - a < 1e-13) break;
       }
-      const x = (a + b) / 2;
-      return { x, residual: Math.abs(g(x)) };
+      push((a + b) / 2);
     }
     x0 = x1; g0 = g1;
   }
-  return null;
+  return roots;
 }
 
-// Tối ưu NHIỀU biến trên hộp [los,his]: lưới thô tìm ô tốt nhất, rồi HẠ TOẠ ĐỘ — lặp golden-section
-// theo từng chiều (cửa sổ ±h quanh điểm hiện tại, nên điểm có thể "đi bộ" ra khỏi ô ban đầu).
+// Giải f(x)=target: trả nghiệm ĐẦU TIÊN (dùng khi hàm đơn điệu / chỉ cần một nghiệm). null nếu không có.
+export function solveParam(
+  f: (x: number) => number, target: number, lo: number, hi: number, grid = 800,
+): { x: number; residual: number } | null {
+  const roots = solveAllParam(f, target, lo, hi, grid);
+  if (roots.length === 0) return null;
+  const x = roots[0];
+  return { x, residual: Math.abs(f(x) - target) };
+}
+
+// Tối ưu NHIỀU biến trên hộp [los,his]: quét lưới thô, rồi HẠ TOẠ ĐỘ (golden-section từng chiều)
+// từ K Ô TỐT NHẤT (đa-điểm-xuất-phát), lấy kết quả tốt nhất. Đa-điểm-xuất-phát chống kẹt cực trị
+// địa phương khi ô lưới tốt nhất không nằm trong "lòng chảo" của cực trị toàn cục.
+// (Lưu ý: cực trị NHỌN hẹp hơn bước lưới vẫn có thể lọt — cần tăng gridPerDim.)
 export function optimizeMulti(
   f: (xs: number[]) => number, los: number[], his: number[], sense: 'max' | 'min',
-  gridPerDim = 40, rounds = 60,
+  gridPerDim = 40, rounds = 60, restarts = 5,
 ): { xs: number[]; value: number } {
   const n = los.length;
   const sign = sense === 'max' ? 1 : -1;
-  let best = { xs: los.slice(), v: -Infinity };
+  const gr = (Math.sqrt(5) - 1) / 2;
+
+  // Quét lưới, thu mọi ô kèm giá trị.
+  const cells: { xs: number[]; v: number }[] = [];
   const total = Math.pow(gridPerDim + 1, n);
   for (let t = 0; t < total; t++) {
     let rem = t;
@@ -70,27 +90,38 @@ export function optimizeMulti(
       rem = Math.floor(rem / (gridPerDim + 1));
       xs.push(los[d] + ((his[d] - los[d]) * i) / gridPerDim);
     }
-    const v = sign * f(xs);
-    if (v > best.v) best = { xs, v };
+    cells.push({ xs, v: sign * f(xs) });
   }
-  const xs = best.xs.slice();
-  const gr = (Math.sqrt(5) - 1) / 2;
-  for (let r = 0; r < rounds; r++) {
-    for (let d = 0; d < n; d++) {
-      const h = (his[d] - los[d]) / gridPerDim;
-      let a = Math.max(los[d], xs[d] - h);
-      let b = Math.min(his[d], xs[d] + h);
-      let c = b - gr * (b - a);
-      let e = a + gr * (b - a);
-      for (let k = 0; k < 80; k++) {
-        const xc = xs.slice(); xc[d] = c;
-        const xe = xs.slice(); xe[d] = e;
-        if (sign * f(xc) > sign * f(xe)) b = e; else a = c;
-        c = b - gr * (b - a); e = a + gr * (b - a);
-        if (b - a < 1e-13) break;
+  cells.sort((A, B) => B.v - A.v); // tốt nhất (theo sign) lên đầu
+  const starts = cells.slice(0, Math.max(1, restarts));
+
+  // Hạ toạ độ từ một điểm xuất phát.
+  const refine = (start: number[]): { xs: number[]; value: number } => {
+    const xs = start.slice();
+    for (let r = 0; r < rounds; r++) {
+      for (let d = 0; d < n; d++) {
+        const h = (his[d] - los[d]) / gridPerDim;
+        let a = Math.max(los[d], xs[d] - h);
+        let b = Math.min(his[d], xs[d] + h);
+        let c = b - gr * (b - a);
+        let e = a + gr * (b - a);
+        for (let k = 0; k < 80; k++) {
+          const xc = xs.slice(); xc[d] = c;
+          const xe = xs.slice(); xe[d] = e;
+          if (sign * f(xc) > sign * f(xe)) b = e; else a = c;
+          c = b - gr * (b - a); e = a + gr * (b - a);
+          if (b - a < 1e-13) break;
+        }
+        xs[d] = (a + b) / 2;
       }
-      xs[d] = (a + b) / 2;
     }
+    return { xs, value: f(xs) };
+  };
+
+  let best = refine(starts[0].xs);
+  for (let s = 1; s < starts.length; s++) {
+    const cand = refine(starts[s].xs);
+    if (sign * cand.value > sign * best.value) best = cand;
   }
-  return { xs, value: f(xs) };
+  return best;
 }
