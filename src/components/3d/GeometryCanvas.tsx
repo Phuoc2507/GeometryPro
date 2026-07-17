@@ -157,23 +157,34 @@ function Scene({ geometry, isBuilding, autoRotate = false, is2D = false }: Scene
     return Math.max(10, Math.ceil(max + 1) * 2);
   }, [geometry]);
 
-  // Persist camera pose to React state ONCE when the user finishes orbiting/panning.
-  // Writing on every frame (via useFrame) caused heavy consumers (LaTeX panel, etc.)
-  // to re-render 60x/sec, making rotation stutter.
+  // Persist camera pose to React state when the user finishes interacting.
+  // Writing on every frame (via useFrame) made rotation stutter; additionally,
+  // wheel-zoom fires OrbitControls' 'end' on EVERY notch, so we debounce here to
+  // persist once the interaction settles. Otherwise each notch triggers a React
+  // state write that re-renders heavy consumers (the LaTeX panel) and stutters.
+  const persistTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const handleControlsEnd = useCallback(() => {
     if (!cameraStateContext) return;
-    const pos = camera.position;
-    const targetVec = new THREE.Vector3(...centroid);
-    const currentZoom = (camera as any).isOrthographicCamera
-      ? (camera as any).zoom
-      : (10.59 / Math.max(0.1, pos.distanceTo(targetVec)));
+    if (persistTimerRef.current) clearTimeout(persistTimerRef.current);
+    persistTimerRef.current = setTimeout(() => {
+      const pos = camera.position;
+      const targetVec = new THREE.Vector3(...centroid);
+      const currentZoom = (camera as any).isOrthographicCamera
+        ? (camera as any).zoom
+        : (10.59 / Math.max(0.1, pos.distanceTo(targetVec)));
 
-    cameraStateContext.setCameraState({
-      position: [pos.x, pos.y, pos.z],
-      target: centroid,
-      zoom: currentZoom,
-    });
+      cameraStateContext.setCameraState({
+        position: [pos.x, pos.y, pos.z],
+        target: centroid,
+        zoom: currentZoom,
+      });
+    }, 180);
   }, [camera, cameraStateContext, centroid]);
+
+  useEffect(() => () => {
+    if (persistTimerRef.current) clearTimeout(persistTimerRef.current);
+  }, []);
 
   return (
     <>
