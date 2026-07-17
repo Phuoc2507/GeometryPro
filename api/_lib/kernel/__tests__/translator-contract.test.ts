@@ -104,4 +104,23 @@ describe('LLM Translator contract — the plan format solves real exam problems'
     expect(res.ok).toBe(true);
     expect((res.answers[0] as { text: string }).text).toBe('1');
   });
+
+  it('bài trực tâm — engine TÍNH H (không để AI tự cắm)', () => {
+    // A(1,0,0), B(0,2,0), C(0,0,4): trực tâm H = (16/21, 8/21, 4/21).
+    const res = solve({
+      solidName: 'ABC',
+      ops: [
+        { op: 'oxyz_point', name: 'A', at: [1, 0, 0] },
+        { op: 'oxyz_point', name: 'B', at: [0, 2, 0] },
+        { op: 'oxyz_point', name: 'C', at: [0, 0, 4] },
+        { op: 'oxyz_orthocenter', name: 'H', of: ['A', 'B', 'C'] },
+      ],
+    });
+    expect(res.ok).toBe(true);
+    const H = res.entities.points.get('H');
+    expect(H).toBeDefined();
+    expect(H!.p.x.approx).toBeCloseTo(16 / 21, 9);
+    expect(H!.p.y.approx).toBeCloseTo(8 / 21, 9);
+    expect(H!.p.z.approx).toBeCloseTo(4 / 21, 9);
+  });
 });

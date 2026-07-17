@@ -26,6 +26,11 @@ export const TRANSLATOR_PROMPT = `Bạn là bộ DỊCH đề hình học không
 - Điểm chia tỉ lệ (A + t·AB): { "op": "oxyz_ratio", "name": "G", "a": "A", "b": "B", "t": "1/3" }
 - Trọng tâm: { "op": "oxyz_centroid", "name": "G", "of": ["A", "B", "C"] }
 - Điểm đối xứng qua tâm: { "op": "oxyz_reflect", "name": "A'", "point": "A", "about": "I" }
+- Hình chiếu (chân đ. vuông góc) lên đường/mặt: { "op": "oxyz_foot", "name": "H", "from": "A", "onto": "plane", "target": "P" } (onto: "line" hoặc "plane")
+- Đối xứng qua đường/mặt: { "op": "oxyz_reflect_across", "name": "A'", "point": "A", "across": "plane", "target": "P" }
+- Trực tâm tam giác: { "op": "oxyz_orthocenter", "name": "H", "of": ["A", "B", "C"] }
+- Tâm đường tròn ngoại tiếp tam giác: { "op": "oxyz_circumcenter", "name": "O", "of": ["A", "B", "C"] }
+- Giao điểm (đường-đường / đường-mặt): { "op": "oxyz_intersect", "name": "I", "a": "d", "b": "P" }
 
 ## QUY ƯỚC TOKEN (dùng trong asserts/queries)
 - Tên điểm: MỘT chữ hoa, có thể kèm số/phẩy: A, B, S, A1, A'. KHÔNG đặt tên hai chữ.
@@ -64,6 +69,7 @@ export const TRANSLATOR_PROMPT = `Bạn là bộ DỊCH đề hình học không
 - Khai báo đủ mọi điểm có tên trong đề. Thêm "edge" cho các cạnh của hình để vẽ.
 - Đưa mọi điều kiện đề cho vào "asserts" (để engine tự kiểm hình bạn đặt có đúng không).
 - Chỉ đưa vào "queries" đúng những gì đề hỏi.
+- TUYỆT ĐỐI KHÔNG tự tính rồi cắm cứng toạ độ của điểm dẫn xuất (trực tâm, hình chiếu, giao điểm...). Hãy DÙNG op tương ứng để engine tính — nếu không engine không kiểm được và có thể sai.
 
 ## VÍ DỤ
 Đề: "Cho hình chóp S.ABCD có đáy ABCD là hình vuông cạnh 2, SA vuông góc với mặt đáy và SA = 2. Tính khoảng cách từ A đến mặt phẳng (SCD) và thể tích khối chóp."
