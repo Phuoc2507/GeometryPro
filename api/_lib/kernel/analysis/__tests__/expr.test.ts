@@ -21,4 +21,13 @@ describe('evalExpr', () => {
   it('biến chưa gán → ném', () => {
     expect(() => evalExpr('x+1')).toThrow();
   });
+  it('gọi hàm do người dùng truyền vào', () => {
+    const f = (x: number) => -0.01 * x * x + 0.4 * x + 10;
+    expect(evalExpr('2*f(z)^2', { z: 20 }, { f })).toBeCloseTo(392, 9);
+    expect(evalExpr('f(0)+f(40)', {}, { f })).toBeCloseTo(20, 9);
+    expect(evalExpr('sqrt(f(20))', {}, { f })).toBeCloseTo(Math.sqrt(14), 9);
+  });
+  it('hàm chưa khai báo → ném', () => {
+    expect(() => evalExpr('g(1)')).toThrow();
+  });
 });
