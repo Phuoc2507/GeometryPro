@@ -1,7 +1,7 @@
-import { useRef, useEffect, useMemo } from 'react';
+import { useRef, useEffect, useMemo, useCallback } from 'react';
 import { CameraFitter } from './CameraFitter';
 import { Hexagon } from 'lucide-react';
-import { Canvas, useThree, useFrame } from '@react-three/fiber';
+import { Canvas, useThree } from '@react-three/fiber';
 import { OrbitControls, Grid, Environment, Html } from '@react-three/drei';
 import * as THREE from 'three';
 import { GeometryRenderer } from './GeometryRenderer';
@@ -64,61 +64,27 @@ function CameraFitter({ geometry, is2D }: { geometry: any; is2D?: boolean }) {
   return null;
 }
 
-function CameraTracker({ target }: { target: [number, number, number] }) {
+function CameraTracker() {
   const { camera } = useThree();
   const cameraStateContext = useCameraStateOptional();
-
-  const lastPos = useRef(new THREE.Vector3());
-  const lastTarget = useRef(new THREE.Vector3());
-  const lastZoom = useRef(1);
 
   // Sync FROM CameraState TO WebGL Camera (e.g. when modified by CaptureModal)
   useEffect(() => {
     if (!cameraStateContext) return;
     const { position, target: stTarget, zoom } = cameraStateContext.cameraState;
     const currentPos = new THREE.Vector3(...position);
-    
+
     // If the state is different from the WebGL camera, it means it was updated externally
     if (camera.position.distanceTo(currentPos) > 0.05 || Math.abs(camera.zoom - zoom) > 0.05) {
       camera.position.copy(currentPos);
       camera.lookAt(new THREE.Vector3(...stTarget));
-      
+
       if ((camera as any).isOrthographicCamera) {
          camera.zoom = zoom;
          camera.updateProjectionMatrix();
       }
-      
-      lastPos.current.copy(currentPos);
-      lastZoom.current = zoom;
     }
   }, [cameraStateContext?.cameraState, camera]);
-
-  // Sync FROM WebGL Camera TO CameraState (e.g. when user orbits with OrbitControls)
-  useFrame(() => {
-    if (cameraStateContext) {
-      const pos = camera.position;
-      const targetVec = new THREE.Vector3(...target);
-
-      const currentZoom = (camera as any).isOrthographicCamera 
-        ? camera.zoom 
-        : (10.59 / Math.max(0.1, pos.distanceTo(targetVec)));
-
-      const distPos = pos.distanceTo(lastPos.current);
-      const distTarget = targetVec.distanceTo(lastTarget.current);
-      const distZoom = Math.abs(currentZoom - lastZoom.current);
-
-      if (distPos > 0.01 || distTarget > 0.01 || distZoom > 0.01) {
-        cameraStateContext.setCameraState({
-          position: [pos.x, pos.y, pos.z],
-          target: target,
-          zoom: currentZoom
-        });
-        lastPos.current.copy(pos);
-        lastTarget.current.copy(targetVec);
-        lastZoom.current = currentZoom;
-      }
-    }
-  });
 
   return null;
 }
@@ -133,6 +99,8 @@ interface SceneProps {
 
 function Scene({ geometry, isBuilding, autoRotate = false, is2D = false }: SceneProps) {
   const geometryContext = useGeometryOptional();
+  const { camera } = useThree();
+  const cameraStateContext = useCameraStateOptional();
 
   // Calculate the centroid (center of mass) of the geometry
   // and convert math coords (z=up) to Three.js (y=up)
@@ -186,13 +154,31 @@ function Scene({ geometry, isBuilding, autoRotate = false, is2D = false }: Scene
     });
     // size is total width, so double the max extent from center, plus padding
     // For an object up to x=9, max=9, size=(9+2)*2 = 22. axisLength = 22*0.6 = 13.2
-    return Math.max(10, Math.ceil(max + 1) * 2); 
+    return Math.max(10, Math.ceil(max + 1) * 2);
   }, [geometry]);
+
+  // Persist camera pose to React state ONCE when the user finishes orbiting/panning.
+  // Writing on every frame (via useFrame) caused heavy consumers (LaTeX panel, etc.)
+  // to re-render 60x/sec, making rotation stutter.
+  const handleControlsEnd = useCallback(() => {
+    if (!cameraStateContext) return;
+    const pos = camera.position;
+    const targetVec = new THREE.Vector3(...centroid);
+    const currentZoom = (camera as any).isOrthographicCamera
+      ? (camera as any).zoom
+      : (10.59 / Math.max(0.1, pos.distanceTo(targetVec)));
+
+    cameraStateContext.setCameraState({
+      position: [pos.x, pos.y, pos.z],
+      target: centroid,
+      zoom: currentZoom,
+    });
+  }, [camera, cameraStateContext, centroid]);
 
   return (
     <>
       {/* Camera Tracker with Dynamic Target */}
-      <CameraTracker target={centroid} />
+      <CameraTracker />
       <CameraFitter geometry={geometry} is2D={is2D} />
 
       {/* Lighting with shadows */}
@@ -247,6 +233,7 @@ function Scene({ geometry, isBuilding, autoRotate = false, is2D = false }: Scene
         enableDamping
         dampingFactor={0.05}
         target={centroid}
+        onEnd={handleControlsEnd}
         autoRotate={!is2D && autoRotate}
         autoRotateSpeed={1.5}
         enableRotate={!is2D}
