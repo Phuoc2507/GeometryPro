@@ -1,7 +1,7 @@
 import https from 'https';
 
 const VILAO_BASE_URL = 'https://api.vilao.ai';
-const VILAO_MODEL = 'occ/claude-sonnet-4-6';
+const VILAO_MODEL = 'ram/gemini-3.5-flash-low';
 
 function httpsRequest(url, options, bodyData, timeoutMs) {
   return new Promise((resolve, reject) => {
@@ -53,11 +53,11 @@ export async function callVilao(systemPrompt, userPrompt, options = {}) {
 
   let modelToUse = VILAO_MODEL;
   if (aiModel === 'high') {
-    modelToUse = 'occ/claude-sonnet-4-6';
+    modelToUse = 'ram/gemini-3.5-flash-low';
   }
-  
+
   if (useReasoning) {
-    modelToUse = 'ox/o1-mini';
+    modelToUse = 'ram/gemini-3.5-flash-low';
   }
 
   const currentApiKey = process.env.VILAO_API_KEY;
