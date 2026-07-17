@@ -14,8 +14,17 @@ function extractJson(raw) {
 // Model dịch có thể đổi qua env VILAO_TRANSLATOR_MODEL; mặc định gemini-flash (nhanh/rẻ).
 const TRANSLATOR_MODEL = process.env.VILAO_TRANSLATOR_MODEL || 'ram/gemini-3.5-flash-low';
 
-export async function planFromProblem(problem) {
-  const raw = await callVilao(TRANSLATOR_PROMPT, problem, { model: TRANSLATOR_MODEL, maxTokens: 4096 });
+// Timeout MẶC ĐỊNH cho bước dịch. Đo thực tế: 5–10s/đề (cả gemini lẫn claude). Đặt 25s = thừa đệm.
+// KHÔNG dùng mặc định 180s của callVilao: khi engine là bước THỬ TRƯỚC rồi mới rơi về luồng cũ,
+// một lần LLM treo sẽ bắt người dùng chờ 3 phút trước khi luồng cũ mới bắt đầu.
+const TRANSLATE_TIMEOUT_MS = Number(process.env.VILAO_TRANSLATOR_TIMEOUT_MS) || 25000;
+
+export async function planFromProblem(problem, options = {}) {
+  const raw = await callVilao(TRANSLATOR_PROMPT, problem, {
+    model: TRANSLATOR_MODEL,
+    maxTokens: 4096,
+    timeoutMs: options.timeoutMs ?? TRANSLATE_TIMEOUT_MS,
+  });
   let json;
   try {
     json = JSON.parse(extractJson(raw));
@@ -55,7 +64,7 @@ export function solvePlan(plan) {
   };
 }
 
-export async function solveProblem(problem) {
-  const plan = await planFromProblem(problem);
+export async function solveProblem(problem, options = {}) {
+  const plan = await planFromProblem(problem, options);
   return { plan, ...solvePlan(plan) };
 }
