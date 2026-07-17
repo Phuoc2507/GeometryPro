@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { RotateCcw, Maximize2, Grid3X3, Camera, Download, Save, PenTool, Youtube, Scissors, Box, Eye, EyeOff, Cpu, Menu, Home, Navigation, Undo2, Redo2 } from 'lucide-react';
+import { RotateCcw, Maximize2, Grid3X3, Camera, Download, Save, PenTool, Youtube, Scissors, Box, Eye, EyeOff, Cpu, Home, Navigation, Undo2, Redo2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Toggle } from '@/components/ui/toggle';
@@ -185,42 +185,56 @@ export function TopToolbar() {
           <TooltipContent>Tạo Video (Animation)</TooltipContent>
         </Tooltip>
 
-        {/* ACTIONS MENU */}
+        {/* FILE ACTIONS — surfaced from the old hamburger menu */}
         {state.geometry && (
           <>
             <div className="w-px h-6 bg-border/50 mx-1" />
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-8 w-8">
-                  <Menu className="w-4 h-4" />
+
+            <Tooltip>
+              <SaveGeometryDialog
+                geometry={state.geometry}
+                trigger={
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 text-emerald-500 hover:text-emerald-600 hover:bg-emerald-500/10"
+                    >
+                      <Save className="w-4 h-4" />
+                    </Button>
+                  </TooltipTrigger>
+                }
+              />
+              <TooltipContent>Lưu hình học</TooltipContent>
+            </Tooltip>
+
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 text-primary hover:text-primary hover:bg-primary/10"
+                  onClick={() => setIsCaptureOpen(true)}
+                >
+                  <Download className="w-4 h-4" />
                 </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-56">
-                <DropdownMenuLabel className="text-xs">Tệp & Hệ thống</DropdownMenuLabel>
-                
-                <SaveGeometryDialog
-                  geometry={state.geometry}
-                  trigger={
-                    <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
-                      <Save className="w-4 h-4 mr-2 text-muted-foreground" />
-                      Lưu hình học
-                    </DropdownMenuItem>
-                  }
-                />
-                
-                <DropdownMenuItem onClick={() => setIsCaptureOpen(true)}>
-                  <Download className="w-4 h-4 mr-2 text-muted-foreground" />
-                  Xuất ảnh / LaTeX
-                </DropdownMenuItem>
+              </TooltipTrigger>
+              <TooltipContent>Xuất ảnh / LaTeX</TooltipContent>
+            </Tooltip>
 
-                <DropdownMenuSeparator />
-
-                <DropdownMenuItem onClick={clearGeometry} className="text-primary focus:text-primary focus:bg-primary/10">
-                  <Home className="w-4 h-4 mr-2" />
-                  Về trang nhập đề
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8"
+                  onClick={clearGeometry}
+                >
+                  <Home className="w-4 h-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Về trang nhập đề</TooltipContent>
+            </Tooltip>
           </>
         )}
 
