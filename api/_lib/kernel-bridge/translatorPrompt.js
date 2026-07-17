@@ -130,4 +130,15 @@ tìm giá trị thoả: KHAI BÁO một tham số tự do và để engine giả
 - Mặt cầu tựa 3 điểm (lệch t dọc trục): { "op":"oxyz_circumsphere_offset", "name":"S", "of":["A","B","C"], "t":"t" }
 - Đọc số của mặt cầu: { "kind":"sphere_metric", "target":"S", "what":"radius" | "top_z" | "bottom_z" }
 
+## BÀI CÓ ĐỒ THỊ HÀM SỐ (parabol/bậc ba…) — engine tự khớp & tự đạo hàm
+KHÔNG tự tính hệ số, KHÔNG tự đạo hàm, KHÔNG tự tìm đỉnh. Hãy KHAI BÁO:
+- "functions": [ { "name":"f", "form":"poly", "degree":2, "through":[[0,0],[8,0]], "leading":"a" } ]
+  · "through": các điểm đồ thị ĐI QUA (đề cho). · "leading": tên tham số làm hệ số bậc cao nhất
+    (dùng khi đề chưa đủ điểm để xác định hàm); bỏ trống nếu đủ điểm (cần degree+1 điểm).
+- Điểm trên đồ thị:  { "op":"curve_point", "name":"B", "f":"f", "x":6 }
+- Tiếp tuyến tại x:  { "op":"tangent_line", "name":"T", "f":"f", "x":6 }   ← engine tự đạo hàm
+- Đỉnh/cực trị:      { "op":"curve_extremum", "name":"V", "f":"f", "domain":[0,8] }
+- Đọc toạ độ điểm:   { "kind":"point_coord", "target":"V", "axis":"y" }
+Bài phẳng (Oxy) thì đặt z=0; "mặt đất" y=0 là mặt phẳng { "form":"coeffs", "a":0,"b":1,"c":0,"d":0 }.
+
 CHỈ trả về JSON object. Không giải thích, không markdown, không \`\`\`.`;
