@@ -41,27 +41,41 @@ export async function planFromProblem(problem, options = {}) {
 }
 
 // Chạy một Plan qua engine → gói kết quả để frontend dùng.
+// Đáp số exact của engine mang BigInt (num/den của phân số chính xác). JSON.stringify NÉM khi gặp
+// BigInt ⇒ res.json() của route sẽ chết. Chuyển BigInt → chuỗi để mọi consumer serialize được.
+// (Giá trị exact vẫn đọc được ở .text dạng '√2'; đây chỉ là làm cho JSON an toàn.)
+function jsonSafe(v) {
+  if (typeof v === 'bigint') return v.toString();
+  if (Array.isArray(v)) return v.map(jsonSafe);
+  if (v && typeof v === 'object') {
+    const out = {};
+    for (const [k, val] of Object.entries(v)) out[k] = jsonSafe(val);
+    return out;
+  }
+  return v;
+}
+
 export function solvePlan(plan) {
   const result = runAny(plan);
   // Nhánh analysis: runAnalysis trả { parameter, answer } và KHÔNG có entities ⇒ chưa dựng được hình.
   if (!('entities' in result)) {
-    return {
+    return jsonSafe({
       ok: result.ok,
       geometry: null,
       parameter: result.parameter,
       answers: result.ok ? [result.answer] : [],
       violations: result.violations,
       errors: result.errors,
-    };
+    });
   }
-  return {
+  return jsonSafe({
     ok: result.ok,
     geometry: entityTableToGeometryData(result.entities, plan.solidName || 'figure'),
     answers: result.answers, // mỗi cái có .text (đáp số dạng exact) + .approximate
     violations: result.violations,
     errors: result.errors,
     trace: result.trace,
-  };
+  });
 }
 
 export async function solveProblem(problem, options = {}) {
