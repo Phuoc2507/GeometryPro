@@ -1,6 +1,7 @@
 
+import { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { User, LogOut, Save, Settings } from 'lucide-react';
+import { User, LogOut, Save, Settings, Sparkles, Crown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -10,15 +11,42 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/context/AuthContext';
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+const RENEW_THRESHOLD_DAYS = 7;
 
 export function UserMenu() {
   const navigate = useNavigate();
-  const { user, profile, signOut } = useAuth();
+  const { user, profile, isPro, signOut } = useAuth();
+
+  const daysLeft = useMemo(() => {
+    if (!isPro || !profile?.plan_expires_at) return null;
+    const ms = new Date(profile.plan_expires_at).getTime() - Date.now();
+    return Math.max(0, Math.ceil(ms / DAY_MS));
+  }, [isPro, profile?.plan_expires_at]);
+
+  const expiringSoon = daysLeft !== null && daysLeft <= RENEW_THRESHOLD_DAYS;
 
   const handleSignOut = async () => {
     await signOut();
     navigate('/');
+  };
+
+  const handleUpgrade = async () => {
+    try {
+      const res = await fetch('/api/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ amount: 50000, description: 'Nang cap Pro' })
+      });
+      const data = await res.json();
+      if (data.checkoutUrl) window.location.href = data.checkoutUrl;
+      else alert('Lỗi tạo link thanh toán: ' + (data.error || 'Unknown'));
+    } catch (e: any) {
+      alert('Lỗi: ' + e.message);
+    }
   };
 
   if (!user) {
@@ -53,27 +81,44 @@ export function UserMenu() {
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-48">
         <div className="px-2 py-1.5">
-          <p className="text-sm font-medium">{displayName}</p>
+          <div className="flex items-center gap-1.5">
+            <p className="text-sm font-medium truncate">{displayName}</p>
+            {isPro && (
+              <Badge className="h-4 px-1.5 text-[10px] font-semibold tracking-wide bg-gradient-to-r from-amber-500 to-yellow-400 text-black hover:from-amber-500 hover:to-yellow-400 border-0 shrink-0">
+                PRO
+              </Badge>
+            )}
+          </div>
           <p className="text-xs text-muted-foreground truncate">{user.email}</p>
         </div>
         <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={async () => {
-          try {
-            const res = await fetch('/api/checkout', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ amount: 50000, description: 'Nang cap Pro' })
-            });
-            const data = await res.json();
-            if (data.checkoutUrl) window.location.href = data.checkoutUrl;
-            else alert('Lỗi tạo link thanh toán: ' + (data.error || 'Unknown'));
-          } catch (e: any) {
-            alert('Lỗi: ' + e.message);
-          }
-        }} className="text-primary font-medium focus:text-primary focus:bg-primary/10">
-          <Settings className="w-4 h-4 mr-2" />
-          Nâng cấp Pro
-        </DropdownMenuItem>
+
+        {!isPro && (
+          <DropdownMenuItem onClick={handleUpgrade} className="text-primary font-medium focus:text-primary focus:bg-primary/10">
+            <Sparkles className="w-4 h-4 mr-2" />
+            Nâng cấp Pro
+          </DropdownMenuItem>
+        )}
+
+        {isPro && expiringSoon && (
+          <DropdownMenuItem onClick={handleUpgrade} className="text-amber-500 font-medium focus:text-amber-500 focus:bg-amber-500/10">
+            <Sparkles className="w-4 h-4 mr-2" />
+            <span className="flex-1">Gia hạn Pro</span>
+            <span className="text-[10px] text-muted-foreground ml-2">
+              {daysLeft === 0 ? 'hết hạn hôm nay' : `còn ${daysLeft} ngày`}
+            </span>
+          </DropdownMenuItem>
+        )}
+
+        {isPro && !expiringSoon && (
+          <DropdownMenuItem onClick={() => navigate('/settings')}>
+            <Crown className="w-4 h-4 mr-2 text-amber-500" />
+            <span className="flex-1">Gói Pro</span>
+            {daysLeft !== null && (
+              <span className="text-[10px] text-muted-foreground ml-2">còn {daysLeft} ngày</span>
+            )}
+          </DropdownMenuItem>
+        )}
         <DropdownMenuItem onClick={() => navigate('/saved')}>
           <Save className="w-4 h-4 mr-2" />
           Hình đã lưu

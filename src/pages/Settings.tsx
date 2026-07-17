@@ -11,7 +11,7 @@ import { useToast } from '@/hooks/use-toast';
 
 const Settings = () => {
   const navigate = useNavigate();
-  const { user, profile, updateProfile, signOut, isLoading: authLoading } = useAuth();
+  const { user, profile, isPro, updateProfile, signOut, isLoading: authLoading } = useAuth();
   const { toast } = useToast();
 
   const [displayName, setDisplayName] = useState('');
@@ -98,11 +98,20 @@ const Settings = () => {
                 <h3 className="font-semibold text-lg">{displayName || 'Người dùng'}</h3>
                 <p className="text-sm text-muted-foreground break-all">{user.email}</p>
                 
-                <div className="mt-4 pt-4 border-t border-border/50">
-                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-primary/10 text-primary">
+                <div className="mt-4 pt-4 border-t border-border/50 space-y-1.5">
+                  <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${
+                    isPro
+                      ? 'bg-gradient-to-r from-amber-500 to-yellow-400 text-black'
+                      : 'bg-primary/10 text-primary'
+                  }`}>
                     <Shield className="w-3.5 h-3.5" />
-                    Gói {(profile as any)?.plan || 'Free'}
+                    Gói {isPro ? 'Pro' : 'Free'}
                   </span>
+                  {isPro && profile?.plan_expires_at && (
+                    <p className="text-[11px] text-muted-foreground">
+                      Hết hạn {new Date(profile.plan_expires_at).toLocaleDateString('vi-VN')}
+                    </p>
+                  )}
                 </div>
               </CardContent>
             </Card>
