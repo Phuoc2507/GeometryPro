@@ -8,7 +8,7 @@ import { UnifiedOpSchema } from '../unifiedPlan';
 import { QueryESchema } from '../compute/query';
 import { evalExpr, type Env, type Funcs } from './expr';
 import { integrate } from './quadrature';
-import { optimizeParam, solveParam } from './paramsolve';
+import { optimizeParam, solveParam, optimizeMulti } from './paramsolve';
 import { recognizeConstant } from './recognize';
 import { fitPoly, evalPoly, derivPoly, extremumOfPoly } from './polyfit';
 import { intersectionVolume, type Solid } from './solids';
@@ -37,6 +37,7 @@ const AnalyzeSchema = z.union([
   }),
   z.object({ kind: z.literal('integrate'), variable: z.string(), from: NumOrExpr, to: NumOrExpr, integrand: z.string() }),
   z.object({ kind: z.literal('eval'), of: ScalarSource }),
+  z.object({ kind: z.literal('optimize_multi'), parameters: z.array(z.string()).min(2), sense: z.enum(['max', 'min']), objective: ScalarSource }),
 ]);
 
 // Op TẦNG HÀM: chỉ tồn tại ở lớp analysis — concreteOps hạ chúng thành op hình học SỐ trước khi gọi run().
@@ -55,6 +56,7 @@ export const AnalysisPlanSchema = RunPlanSchema.extend({
     degree: z.number().int().min(1),
     through: z.array(z.tuple([NumOrExpr, NumOrExpr])),
     leading: z.string().optional(), // tên tham số dùng làm hệ số bậc cao nhất (để trống ⇒ khớp đủ điểm)
+    slopeAt: z.array(z.tuple([NumOrExpr, NumOrExpr])).default([]),
   })).default([]),
   solids: z.array(SolidDeclSchema).default([]),
   analyze: AnalyzeSchema,
@@ -100,7 +102,8 @@ export function runAnalysis(raw: unknown): AnalysisResult {
     for (const fd of plan.functions) {
       const pts = fd.through.map(([px, py]) => [evalExpr(String(px), env), evalExpr(String(py), env)] as [number, number]);
       const lead = fd.leading !== undefined ? evalExpr(fd.leading, env) : undefined;
-      const c = fitPoly(fd.degree, pts, lead);
+      const slopes = fd.slopeAt.map(([sx, ss]) => [evalExpr(String(sx), env), evalExpr(String(ss), env)] as [number, number]);
+      const c = fitPoly(fd.degree, pts, lead, slopes);
       coeffs[fd.name] = c;
       funcs[fd.name] = (x: number) => evalPoly(c, x);
     }
@@ -162,6 +165,32 @@ export function runAnalysis(raw: unknown): AnalysisResult {
         violations: [], errors: [],
       };
     } catch (e) { return fail('-', (e as Error).message); }
+  }
+
+  // ---- optimize_multi: tối ưu nhiều tham số; objective PHẢI là biểu thức (chưa hỗ trợ query hình học) ----
+  if (plan.analyze.kind === 'optimize_multi') {
+    const az = plan.analyze;
+    const src = az.objective;
+    if (!isExprSrc(src)) return fail(az.parameters.join(','), 'optimize_multi chỉ nhận objective dạng "expr"');
+    const decls = az.parameters.map((nm) => plan.parameters.find((p) => p.name === nm));
+    const missing = az.parameters.find((nm, i) => !decls[i]);
+    if (missing) return fail(az.parameters.join(','), `parameter "${missing}" chưa khai báo`);
+    try {
+      const los = decls.map((d) => evalExpr(String(d!.domain[0]), {}));
+      const his = decls.map((d) => evalExpr(String(d!.domain[1]), {}));
+      const objective = (xs: number[]): number => {
+        const env: Env = {};
+        az.parameters.forEach((nm, i) => { env[nm] = xs[i]; });
+        return evalExpr(src.expr, env, fitAt(env).funcs);
+      };
+      const best = optimizeMulti(objective, los, his, az.sense);
+      const nice = recognizeConstant(best.value);
+      return {
+        ok: Number.isFinite(best.value), parameter: { name: az.parameters.join(','), value: NaN },
+        answer: { approx: best.value, text: nice ? nice.text : best.value.toFixed(4), approximate: !nice },
+        violations: [], errors: [],
+      };
+    } catch (e) { return fail(az.parameters.join(','), (e as Error).message); }
   }
 
   const pname = plan.analyze.parameter;
