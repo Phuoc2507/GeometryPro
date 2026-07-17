@@ -123,4 +123,32 @@ describe('LLM Translator contract — the plan format solves real exam problems'
     expect(H!.p.y.approx).toBeCloseTo(8 / 21, 9);
     expect(H!.p.z.approx).toBeCloseTo(4 / 21, 9);
   });
+
+  it('Câu 3 (máy bay/radar) — giao đường bay với biên radar qua run()', () => {
+    const res = solve({
+      solidName: 'flight',
+      ops: [
+        { op: 'oxyz_point', name: 'O', at: [0, 0, 0] },
+        { op: 'oxyz_point', name: 'D', at: [20, 0, 9] },
+        { op: 'oxyz_point', name: 'E', at: [0, 16, 12] },
+        { op: 'oxyz_point', name: 'P', at: [16, '16/5', '48/5'] },
+        { op: 'oxyz_midpoint', name: 'M', a: 'D', b: 'E' },
+        { op: 'oxyz_line', name: 'DE', by: { form: 'two_points', a: 'D', b: 'E' } },
+        { op: 'oxyz_sphere', name: 'R', by: { form: 'center_radius', center: 'O', radius: 20 } },
+      ],
+      asserts: [{ relation: 'on', args: ['P', 'DE'] }], // ý c: P thuộc đường bay
+      queries: [
+        { kind: 'distance', a: 'O', b: 'D' },     // ý a: √481 (≈21932 m, ⇒ "25000" là Sai)
+        { kind: 'intersection', a: 'DE', b: 'R' }, // ý d: chord
+      ],
+    });
+    expect(res.ok).toBe(true);
+    expect(res.violations).toHaveLength(0); // assert ý c thoả
+    expect((res.answers[0] as { text: string }).text).toBe('√481'); // ý a
+    const inter = res.answers[1] as { result: string; chord?: { approx: number } };
+    expect(inter.result).toBe('segment');
+    expect(inter.chord!.approx).toBeCloseTo(22.6465, 3); // ý d → ×1000 ≈ 22600 m
+    const M = res.entities.points.get('M');
+    expect(M!.p.z.approx).toBeCloseTo(10.5, 9); // ý b: chính giữa DE cao 10,5
+  });
 });
