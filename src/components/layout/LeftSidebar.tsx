@@ -129,8 +129,8 @@ function SidebarContent() {
   const context = useGeometryOptional();
   const { user, openAuthModal } = useAuth();
   const { toast } = useToast();
-  const { history, deleteHistoryItem, renameHistoryItem, moveToProject } = useGeometryHistory();
-  const { projects, createProject, deleteProject } = useProjects();
+  const { history, isLoading: historyLoading, deleteHistoryItem, renameHistoryItem, moveToProject } = useGeometryHistory();
+  const { projects, isLoading: projectsLoading, createProject, deleteProject } = useProjects();
   
   const [expandedProjects, setExpandedProjects] = useState<Record<string, boolean>>({});
   const [showRecents, setShowRecents] = useState(true);
