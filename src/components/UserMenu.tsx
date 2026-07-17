@@ -13,6 +13,7 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/context/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const RENEW_THRESHOLD_DAYS = 7;
@@ -36,10 +37,23 @@ export function UserMenu() {
 
   const handleUpgrade = async () => {
     try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData.session?.access_token;
+      if (!token) {
+        alert('Vui lòng đăng nhập lại để mua gói Pro.');
+        return;
+      }
+
       const res = await fetch('/api/checkout', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ amount: 50000, description: 'Nang cap Pro' })
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          returnUrl: window.location.href.split('?')[0] + '?payment=success',
+          cancelUrl: window.location.href.split('?')[0],
+        })
       });
       const data = await res.json();
       if (data.checkoutUrl) window.location.href = data.checkoutUrl;

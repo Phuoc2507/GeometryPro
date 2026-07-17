@@ -1,5 +1,6 @@
 import { PayOS } from '@payos/node';
 import { createClient } from '@supabase/supabase-js';
+import { PRO_PRICE_VND } from './_lib/pricing.js';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.VITE_SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY; // Must use service role to bypass RLS for inserts
@@ -9,7 +10,7 @@ export default async function handler(req, res) {
   // Bật CORS nếu được gọi từ frontend
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
 
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
@@ -20,11 +21,23 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { userId, amount, description, returnUrl, cancelUrl } = req.body;
+    const { returnUrl, cancelUrl } = req.body || {};
 
-    if (!userId) {
-      return res.status(400).json({ error: 'Missing userId in request' });
+    if (!supabase) {
+      return res.status(500).json({ error: 'Supabase credentials are not configured correctly' });
     }
+
+    // Identify the buyer from their JWT. Never from the request body: trusting a
+    // client-supplied userId lets anyone create orders against another account.
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({ error: 'Unauthorized: Bạn cần đăng nhập để mua gói Pro' });
+    }
+    const { data: { user }, error: authError } = await supabase.auth.getUser(authHeader.split(' ')[1]);
+    if (authError || !user) {
+      return res.status(401).json({ error: 'Unauthorized: Phiên đăng nhập không hợp lệ' });
+    }
+    const userId = user.id;
 
     const clientId = process.env.PAYOS_CLIENT_ID;
     const apiKey = process.env.PAYOS_API_KEY;
@@ -33,16 +46,24 @@ export default async function handler(req, res) {
     if (!clientId || !apiKey || !checksumKey) {
       return res.status(500).json({ error: 'PayOS credentials are not configured on server' });
     }
-    
-    if (!supabase) {
-      return res.status(500).json({ error: 'Supabase credentials are not configured correctly' });
-    }
 
     const payos = new PayOS({ clientId, apiKey, checksumKey });
 
     // Tạo mã đơn hàng duy nhất (số nguyên < 2147483647)
     const orderCode = Math.floor(Math.random() * 900000) + 100000;
-    const finalAmount = amount || 49000; // Giá mặc định 49k/tháng
+    const finalAmount = PRO_PRICE_VND;
+
+    // orders.user_id FKs to profiles(user_id), so a missing profile makes the
+    // insert below fail. Signup normally creates it via the on_auth_user_created
+    // trigger; ensure it here too so checkout can never dead-end.
+    const { error: profileError } = await supabase
+      .from('profiles')
+      .upsert({ user_id: userId }, { onConflict: 'user_id', ignoreDuplicates: true });
+
+    if (profileError) {
+      console.error('Lỗi khi đảm bảo profile tồn tại:', profileError);
+      return res.status(500).json({ error: 'Failed to prepare account for checkout' });
+    }
 
     // 1. Lưu order vào database ở trạng thái pending
     const { error: dbError } = await supabase.from('orders').insert({
@@ -63,7 +84,7 @@ export default async function handler(req, res) {
     const requestData = {
       orderCode: orderCode,
       amount: finalAmount,
-      description: description || 'Geo3D Pro - 1 Tháng',
+      description: 'Geo3D Pro 1 thang',
       returnUrl: returnUrl || `${baseUrl}/?payment=success`,
       cancelUrl: cancelUrl || baseUrl
     };

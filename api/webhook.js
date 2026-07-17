@@ -1,5 +1,6 @@
 import { PayOS } from '@payos/node';
 import { createClient } from '@supabase/supabase-js';
+import { PRO_DURATION_DAYS } from './_lib/pricing.js';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.VITE_SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -47,22 +48,38 @@ export default async function handler(req, res) {
           .from('orders')
           .update({ status: 'paid', updated_at: new Date().toISOString() })
           .eq('order_code', orderCode);
-          
-        // 3. Nâng cấp tài khoản user lên Pro (Gia hạn 30 ngày)
-        const expiryDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+
+        // 3. Nâng cấp tài khoản user lên Pro (thêm 30 ngày).
+        //    Cộng dồn từ hạn hiện tại nếu còn hiệu lực, để gia hạn sớm không mất
+        //    số ngày còn lại.
+        const { data: current } = await supabase
+          .from('profiles')
+          .select('plan_expires_at')
+          .eq('user_id', order.user_id)
+          .maybeSingle();
+
+        const now = Date.now();
+        const currentExpiry = current?.plan_expires_at
+          ? new Date(current.plan_expires_at).getTime()
+          : 0;
+        const base = Math.max(now, currentExpiry);
+        const expiryDate = new Date(base + PRO_DURATION_DAYS * 24 * 60 * 60 * 1000).toISOString();
+
+        // upsert, không phải update: nếu profile chưa tồn tại thì update() sẽ sửa
+        // 0 dòng và IM LẶNG thành công -> user trả tiền mà không được lên Pro.
         const { error: profileError } = await supabase
           .from('profiles')
-          .update({ 
-            plan_type: 'pro', 
+          .upsert({
+            user_id: order.user_id,
+            plan_type: 'pro',
             plan_expires_at: expiryDate,
             updated_at: new Date().toISOString()
-          })
-          .eq('user_id', order.user_id);
-          
+          }, { onConflict: 'user_id' });
+
         if (profileError) {
           console.error(`Lỗi cập nhật Profile cho user ${order.user_id}:`, profileError);
         } else {
-          console.log(`Đơn hàng ${orderCode} thanh toán thành công! Đã nâng cấp user ${order.user_id} lên Pro.`);
+          console.log(`Đơn hàng ${orderCode} thanh toán thành công! User ${order.user_id} lên Pro tới ${expiryDate}.`);
         }
       } else {
         console.log(`Đơn hàng ${orderCode} đã được xử lý trước đó.`);

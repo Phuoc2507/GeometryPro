@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/context/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
 import { Loader2, Crown, CheckCircle2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
@@ -27,15 +28,21 @@ export function UpgradeModal({ open, onOpenChange }: UpgradeModalProps) {
 
     setIsLoading(true);
     try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData.session?.access_token;
+      if (!token) {
+        throw new Error('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.');
+      }
+
+      // userId and amount are derived server-side from this token; sending them
+      // from the client would let anyone pick their own price.
       const response = await fetch('/api/checkout', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
-          userId: user.id,
-          amount: 49000,
-          description: 'Geo3D Pro - 1 Tháng',
           returnUrl: window.location.href.split('?')[0] + '?payment=success',
           cancelUrl: window.location.href.split('?')[0]
         }),
