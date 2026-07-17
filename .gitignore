@@ -39,3 +39,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# built geometry kernel (esbuild artifact)
+api/_lib/kernel-dist/
