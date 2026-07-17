@@ -143,8 +143,11 @@ export default async function handler(req, res) {
     // LLM chỉ DỊCH đề thành plan; engine dựng hình bằng toạ độ chính xác rồi TỰ KIỂM điều kiện đề.
     // Chỉ nhận khi engine chắc chắn (ok, 0 vi phạm, 0 lỗi, có điểm). Mọi trường hợp khác → im lặng
     // rơi xuống luồng cũ ⇒ xấu nhất cũng chỉ bằng hôm nay, không bao giờ tệ hơn.
+    // CHỈ nhận chế độ 'quick' (hình tĩnh). KHÔNG đụng 'detailed': chế độ đó phân loại đề rồi có thể
+    // sinh hình CINEMATIC (Kinematic/Morphing/Geodesic — có chuyển động), mà engine chỉ dựng hình
+    // TĨNH ⇒ chặn 'detailed' sẽ là giật lùi cho người dùng đã chọn chế độ giàu hơn.
     // Tắt khẩn cấp: đặt env KERNEL_MODE=off.
-    if (!imageBase64 && trimmedPrompt && process.env.KERNEL_MODE !== 'off') {
+    if (drawMode === 'quick' && !imageBase64 && trimmedPrompt && process.env.KERNEL_MODE !== 'off') {
       try {
         sendEvent('Đang thử engine tất định...', 25);
         // Nạp ĐỘNG: nếu kernel-dist chưa được build thì ném ở đây và rơi êm về luồng LLM cũ.
