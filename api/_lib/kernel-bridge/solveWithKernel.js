@@ -1,7 +1,7 @@
 // api/_lib/kernel-bridge/solveWithKernel.js
 // Đường ống "kernel mode": đề → (LLM Translator) → Plan JSON → engine.run() → hình + đáp số.
 // Import engine từ bản đã build (esbuild) để chạy được trong route .js thuần.
-import { run, RunPlanSchema, entityTableToGeometryData } from '../kernel-dist/index.mjs';
+import { runAny, RunPlanSchema, AnalysisPlanSchema, entityTableToGeometryData } from '../kernel-dist/index.mjs';
 import { callVilao } from '../vilao.js';
 import { TRANSLATOR_PROMPT } from './translatorPrompt.js';
 
@@ -22,7 +22,9 @@ export async function planFromProblem(problem) {
   } catch {
     throw new Error('Translator returned non-JSON output');
   }
-  const parsed = RunPlanSchema.safeParse(json);
+  // Plan có khối `analyze` (bài tham số/tối ưu/hàm số) dùng schema analysis; còn lại là plan hình học thuần.
+  const schema = json && typeof json === 'object' && 'analyze' in json ? AnalysisPlanSchema : RunPlanSchema;
+  const parsed = schema.safeParse(json);
   if (!parsed.success) {
     throw new Error('Translator plan failed schema: ' + (parsed.error.issues[0]?.message || 'invalid'));
   }
@@ -31,7 +33,18 @@ export async function planFromProblem(problem) {
 
 // Chạy một Plan qua engine → gói kết quả để frontend dùng.
 export function solvePlan(plan) {
-  const result = run(plan);
+  const result = runAny(plan);
+  // Nhánh analysis: runAnalysis trả { parameter, answer } và KHÔNG có entities ⇒ chưa dựng được hình.
+  if (!('entities' in result)) {
+    return {
+      ok: result.ok,
+      geometry: null,
+      parameter: result.parameter,
+      answers: result.ok ? [result.answer] : [],
+      violations: result.violations,
+      errors: result.errors,
+    };
+  }
   return {
     ok: result.ok,
     geometry: entityTableToGeometryData(result.entities, plan.solidName || 'figure'),
