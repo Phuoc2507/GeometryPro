@@ -6737,9 +6737,21 @@ function optimizeMulti(f, los, his, sense, gridPerDim = 40, rounds = 60, restart
 }
 
 // api/_lib/kernel/analysis/recognize.ts
-var EPS4 = 1e-9;
-var SQUAREFREE = [2, 3, 5, 6, 7, 10, 11, 13, 14, 15, 17, 19, 21, 22, 23, 26, 29, 30, 31, 33, 34, 35, 37, 38, 39, 41, 42, 43, 46, 47];
-var MAX_DEN = 64;
+var EPS4 = 1e-10;
+function isSquareFree(n) {
+  if (n < 2) return false;
+  for (let d = 2; d * d <= n; d++) {
+    if (n % (d * d) === 0) return false;
+  }
+  return true;
+}
+function squareFreeUpTo(n) {
+  const out = [];
+  for (let k = 2; k <= n; k++) if (isSquareFree(k)) out.push(k);
+  return out;
+}
+var SQUAREFREE = squareFreeUpTo(400);
+var MAX_DEN = 200;
 function gcd2(a, b) {
   a = Math.abs(a);
   b = Math.abs(b);
@@ -6763,6 +6775,10 @@ function fmtRational(p, q) {
 }
 function fmtSurdTerm(num2, den, rad) {
   const coeff = num2 === 1 ? `\u221A${rad}` : `${num2}\u221A${rad}`;
+  return den === 1 ? coeff : `${coeff}/${den}`;
+}
+function fmtPiTerm(num2, den) {
+  const coeff = num2 === 1 ? "\u03C0" : `${num2}\u03C0`;
   return den === 1 ? coeff : `${coeff}/${den}`;
 }
 function recognizeConstant(x) {
@@ -6795,6 +6811,30 @@ function recognizeConstant(x) {
           const op = qn < 0 ? "-" : "+";
           return { text: `${fmtRational(p.p, p.q)} ${op} ${surd}`, value: val };
         }
+      }
+    }
+  }
+  const rp = asRational(x / Math.PI, 64);
+  if (rp && rp.p !== 0) {
+    const val = rp.p / rp.q * Math.PI;
+    if (Math.abs(val - x) < EPS4) {
+      const sign = rp.p < 0 ? "-" : "";
+      return { text: sign + fmtPiTerm(Math.abs(rp.p), rp.q), value: val };
+    }
+  }
+  for (let qd = 1; qd <= 8; qd++) {
+    for (let qn = -8; qn <= 8; qn++) {
+      if (qn === 0) continue;
+      const qv = qn / qd;
+      const p = asRational(x - qv * Math.PI, 16);
+      if (!p || p.p === 0) continue;
+      const val = p.p / p.q + qv * Math.PI;
+      if (Math.abs(val - x) < EPS4) {
+        const qAbsNum = Math.abs(qn);
+        const g = gcd2(qAbsNum, qd);
+        const piTerm = fmtPiTerm(qAbsNum / g, qd / g);
+        const op = qn < 0 ? "-" : "+";
+        return { text: `${fmtRational(p.p, p.q)} ${op} ${piTerm}`, value: val };
       }
     }
   }
