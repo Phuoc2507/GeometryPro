@@ -9,12 +9,17 @@ export function generateLatexCode(geometry: GeometryData): string {
   const name = sanitizeLatexName(geometry.name);
   const lines: string[] = [];
 
+  // Guard: geometry may arrive without points/lines arrays (e.g. curve/surface-only
+  // shapes). Missing arrays previously threw and discarded the whole drawing.
+  const geomPoints = Array.isArray(geometry.points) ? geometry.points : [];
+  const geomLines = Array.isArray(geometry.lines) ? geometry.lines : [];
+
   lines.push(`\\begin{tikzpicture}[scale=1.5]`);
   lines.push(`  % ${name}`);
   lines.push(`  % Define coordinates`);
 
   // Points
-  for (const point of geometry.points) {
+  for (const point of geomPoints) {
     const label = sanitizeLatexLabel(point.label);
     lines.push(`  \\coordinate (${label}) at (${point.x}, ${point.y}, ${point.z});`);
   }
@@ -22,8 +27,8 @@ export function generateLatexCode(geometry: GeometryData): string {
   lines.push('');
 
   // Solid edges
-  const solidLines = geometry.lines.filter(l => l.style !== 'dashed');
-  const dashedLines = geometry.lines.filter(l => l.style === 'dashed');
+  const solidLines = geomLines.filter(l => l.style !== 'dashed');
+  const dashedLines = geomLines.filter(l => l.style === 'dashed');
 
   if (solidLines.length > 0) {
     lines.push('  % Draw solid edges');
@@ -46,7 +51,7 @@ export function generateLatexCode(geometry: GeometryData): string {
 
   lines.push('');
   lines.push('  % Label vertices');
-  for (const point of geometry.points) {
+  for (const point of geomPoints) {
     const label = sanitizeLatexLabel(point.label);
     // Choose position based on point's relative position
     const pos = point.y > 2 ? 'above' : 'below';

@@ -1,4 +1,4 @@
-import { callOllama } from './_lib/ollama.js';
+import { callVilao } from './_lib/vilao.js';
 import { validateAndFixProjections } from './_lib/postProcess.js';
 import { generateLatexCode } from './_lib/generateLatex.js';
 
@@ -146,10 +146,9 @@ Hãy:
 
 CHỈ trả về JSON thuần, KHÔNG markdown.`;
 
-    const content = await callOllama(MODIFY_SYSTEM_PROMPT, userMessage, {
+    const content = await callVilao(MODIFY_SYSTEM_PROMPT, userMessage, {
       maxTokens: 4096,
       timeoutMs: 120000,
-      useJsonMode: false,
     });
 
     console.log('Modify AI response:', content?.substring(0, 300));

@@ -1,4 +1,4 @@
-import { callOllama } from './ollama.js';
+import { callVilao } from './vilao.js';
 
 export function repairTruncatedJson(jsonStr) {
   let s = jsonStr.trim();
@@ -150,7 +150,7 @@ export async function parseJsonResponseWithAiRepair(raw) {
     const fixerSystemPrompt = `Bạn là bộ sửa JSON chuyên nghiệp. Nhận chuỗi JSON bị lỗi/cắt và trả về JSON HỢP LỆ duy nhất, không markdown, không giải thích.`;
     const fixerUserPrompt = `Sửa chuỗi sau thành JSON hợp lệ. Giữ tối đa dữ liệu gốc, loại bỏ phần hỏng ở cuối nếu cần:\n\n${clipped}`;
 
-    const fixedRaw = await callOllama(fixerSystemPrompt, fixerUserPrompt, { maxTokens: 4096, timeoutMs: 35000, useJsonMode: true });
+    const fixedRaw = await callVilao(fixerSystemPrompt, fixerUserPrompt, { maxTokens: 4096, timeoutMs: 60000 });
 
     try {
       return parseJsonResponse(fixedRaw);

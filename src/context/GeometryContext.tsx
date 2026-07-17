@@ -710,12 +710,13 @@ export function GeometryProvider({ children }: { children: React.ReactNode }) {
           setTimeout(() => dispatch({ type: 'FINISH_BUILDING' }), 2000);
         }
       } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
         dispatch({
           type: 'QUEUE_UPDATE',
           id,
-          updates: { status: 'error', progress: 0, statusText: 'Lỗi kết nối', error: 'Lỗi kết nối' },
+          updates: { status: 'error', progress: 0, statusText: msg || 'Lỗi kết nối', error: msg || 'Lỗi kết nối' },
         });
-        toast({ title: "❌ Lỗi", description: `Không thể xử lý "${prompt.substring(0, 40)}..."`, variant: "destructive" });
+        toast({ title: "❌ Lỗi", description: `Không thể xử lý "${prompt.substring(0, 40)}...": ${msg}`, variant: "destructive" });
       }
     })();
   }, []);

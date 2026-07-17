@@ -1,4 +1,3 @@
-import { callOllama } from './_lib/ollama.js';
 import { callVilao } from './_lib/vilao.js';
 import {
   parseJsonResponseWithAiRepair,
@@ -61,16 +60,10 @@ export default async function handler(req, res) {
         if (isStream) { res.write(`data: ${JSON.stringify({ error: errMsg })}\n\n`); return res.end(); }
         return res.status(401).json({ error: errMsg });
       }
-      
-      if (req.body.useReasoning || req.body.aiModel === 'high') {
-         const { data: profile } = await supabase.from('profiles').select('plan_type, plan_expires_at').eq('user_id', user.id).maybeSingle();
-         const isPro = profile?.plan_type === 'pro' && profile?.plan_expires_at && new Date(profile.plan_expires_at) > new Date();
-         if (!isPro) {
-            const errMsg = 'Forbidden: Tính năng này yêu cầu tài khoản Pro';
-            if (isStream) { res.write(`data: ${JSON.stringify({ error: errMsg })}\n\n`); return res.end(); }
-            return res.status(403).json({ error: errMsg });
-         }
-      }
+      // NOTE: Drawing is a free feature (guests are limited client-side by quota).
+      // The previous Pro gate keyed on aiModel==='high' blocked every default draw
+      // because the client sends aiModel:'high' by default, and there is no separate
+      // premium model anymore (all requests route to gemini). Gate removed.
     }
 
     let { imageBase64, prompt, mode = 'quick', ocrOnly = false, aiModel, useReasoning } = req.body;
@@ -250,18 +243,13 @@ KẾT QUẢ TRƯỚC BỊ PHẲNG (mọi điểm có z≈0). Hãy dựng lại h
 3) Tính lại các điểm phụ theo toạ độ mới
 4) Trả JSON thuần đúng schema { geometry, calculation_log }, KHÔNG markdown.`;
 
-      const modelToUse = drawMode === 'detailed' ? DETAILED_MODEL : undefined;
-      const apiKeyToUse = drawMode === 'detailed' ? DETAILED_API_KEY : undefined;
       const fallbackSystemPrompt = drawMode === 'quick' ? `${BASE_PROMPT}\n\n${LEVEL_STATIC}` : (result._systemPromptUsed || `${BASE_PROMPT}\n\n${LEVEL_STATIC}`);
 
       try {
-        const forcedRaw = await callOllama(fallbackSystemPrompt, forced3DInput, {
+        const forcedRaw = await callVilao(fallbackSystemPrompt, forced3DInput, {
           maxTokens: 6144,
           timeoutMs: 120000,
-          useJsonMode: true,
           imageBase64,
-          model: modelToUse,
-          apiKey: apiKeyToUse,
         });
         const forcedResult = await parseJsonResponseWithAiRepair(forcedRaw);
         const forcedGeometry = normalizeGeometryData(forcedResult.geometry || forcedResult);
