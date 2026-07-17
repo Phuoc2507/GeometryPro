@@ -1,7 +1,7 @@
 // api/_lib/kernel/dialects/oxyz.ts
 import { z } from 'zod';
-import { rat, mul } from '../scalar';
-import { type Vec3S, addV, subV, scaleV } from '../vec3s';
+import { rat, mul, num } from '../scalar';
+import { type Vec3S, addV, subV, scaleV, crossV, lenSqV } from '../vec3s';
 import {
   type PointE,
   pointFromCoords, lineFromTwoPoints, lineFromPointDir,
@@ -66,6 +66,13 @@ export const OxyzOrthocenterSchema = z.object({ op: z.literal('oxyz_orthocenter'
 export const OxyzCircumcenterSchema = z.object({ op: z.literal('oxyz_circumcenter'), name: PointName, of: z.tuple([Name, Name, Name]) });
 export const OxyzIntersectSchema = z.object({ op: z.literal('oxyz_intersect'), name: PointName, a: Name, b: Name });
 
+export const OxyzCircumsphereOffsetSchema = z.object({
+  op: z.literal('oxyz_circumsphere_offset'),
+  name: PointName, // dùng grammar tên chặt như các op dựng khác
+  of: z.tuple([Name, Name, Name]),
+  t: RInput, // số (đã thay tham số) — khoảng cách CÓ DẤU dọc pháp tuyến ĐƠN VỊ của mặt (ABC)
+});
+
 export const OxyzOpSchema = z.union([
   OxyzPointSchema,
   OxyzLineSchema,
@@ -80,6 +87,7 @@ export const OxyzOpSchema = z.union([
   OxyzOrthocenterSchema,
   OxyzCircumcenterSchema,
   OxyzIntersectSchema,
+  OxyzCircumsphereOffsetSchema,
 ]);
 
 export type OxyzOp = z.infer<typeof OxyzOpSchema>;
@@ -243,6 +251,19 @@ export function executeOxyzOp(op: OxyzOp, et: EntityTable): void {
       const pt = r.answer.result === 'point' ? r.answer.point : r.answer.result === 'tangent-point' ? r.answer.point : null;
       if (!pt) throw new Error(`oxyz_intersect: ${op.a} ∩ ${op.b} is not a single point (${r.answer.result})`);
       setPointE(et, op.name, pt.p, true);
+      break;
+    }
+    case 'oxyz_circumsphere_offset': {
+      const a = requirePointE(et, op.of[0]).p;
+      const b = requirePointE(et, op.of[1]).p;
+      const c = requirePointE(et, op.of[2]).p;
+      const Q = circumcenterE(a, b, c);
+      const normal = crossV(subV(b, a), subV(c, a));
+      const nlen = Math.sqrt(lenSqV(normal).approx);
+      const tv = parseScalar(op.t).approx;
+      const center = addV(Q, scaleV(normal, num(tv / nlen))); // Q + (t/|n|)·n  (số)
+      const r2 = lenSqV(subV(center, a));
+      setSphereE(et, op.name, sphereFromCenterRadius2(center, r2));
       break;
     }
   }

@@ -13,6 +13,7 @@ const OXYZ_OPS = new Set([
   'oxyz_point', 'oxyz_line', 'oxyz_plane', 'oxyz_sphere',
   'oxyz_midpoint', 'oxyz_ratio', 'oxyz_centroid', 'oxyz_reflect',
   'oxyz_foot', 'oxyz_reflect_across', 'oxyz_orthocenter', 'oxyz_circumcenter', 'oxyz_intersect',
+  'oxyz_circumsphere_offset',
 ]);
 
 // The Oxyz ops that introduce a named POINT (used to detect cross-dialect name clashes).

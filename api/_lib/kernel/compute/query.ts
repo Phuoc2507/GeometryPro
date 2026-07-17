@@ -27,6 +27,7 @@ export const QueryESchema = z.union([
   z.object({ kind: z.literal('volume_ratio'), a: SolidSpec, b: SolidSpec }),
   z.object({ kind: z.literal('area'), shape: z.literal('sphere'), target: Tok }),
   z.object({ kind: z.literal('area'), shape: z.enum(['triangle', 'polygon']), points: z.array(Tok).min(3) }),
+  z.object({ kind: z.literal('sphere_metric'), target: Tok, what: z.enum(['radius', 'top_z', 'bottom_z']) }),
 ]);
 
 type SolidSpecT = z.infer<typeof SolidSpec>;
@@ -113,6 +114,15 @@ export function computeQuery(query: QueryE, et: EntityTable): ComputeOutcome<Que
           return computeTriangleArea(pts[0], pts[1], pts[2]);
         }
         return computePolygonArea(pts);
+      }
+      case 'sphere_metric': {
+        const e = resolveEntityE(query.target, et);
+        if (e.kind !== 'sphere') return { ok: false, problem: 'sphere_metric needs a sphere' };
+        const R = Math.sqrt(e.r2.approx);
+        const val = query.what === 'radius' ? R
+          : query.what === 'top_z' ? e.center.z.approx + R
+          : e.center.z.approx - R;
+        return { ok: true, answer: { kind: 'sphere_metric', exact: null, approx: val, text: val.toFixed(4), approximate: true } };
       }
     }
   } catch (e) {
