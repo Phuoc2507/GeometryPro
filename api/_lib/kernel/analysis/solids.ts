@@ -29,8 +29,9 @@ export function lensArea(r1: number, r2: number, d: number): number {
   if (r1 <= 0 || r2 <= 0) return 0;
   if (d >= r1 + r2) return 0;                                  // rời / tiếp xúc ngoài
   if (d <= Math.abs(r1 - r2)) return Math.PI * Math.min(r1, r2) ** 2; // lồng trọn
-  const a1 = r1 * r1 * Math.acos((d * d + r1 * r1 - r2 * r2) / (2 * d * r1));
-  const a2 = r2 * r2 * Math.acos((d * d + r2 * r2 - r1 * r1) / (2 * d * r2));
+  const clamp1 = (v: number): number => (v < -1 ? -1 : v > 1 ? 1 : v);
+  const a1 = r1 * r1 * Math.acos(clamp1((d * d + r1 * r1 - r2 * r2) / (2 * d * r1)));
+  const a2 = r2 * r2 * Math.acos(clamp1((d * d + r2 * r2 - r1 * r1) / (2 * d * r2)));
   const tri = 0.5 * Math.sqrt((-d + r1 + r2) * (d + r1 - r2) * (d - r1 + r2) * (d + r1 + r2));
   return a1 + a2 - tri;
 }

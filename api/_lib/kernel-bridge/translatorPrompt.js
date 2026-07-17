@@ -164,4 +164,16 @@ Chỉ KHAI BÁO khối, đừng tự tính tích phân/diện tích thấu kính
 - Mẹo đặt hình: "trục nón là một đường sinh của trụ" ⇒ tâm đáy nón nằm TRÊN đường tròn đáy trụ
   (vd trụ tâm (0,0) bán kính 2 ⇒ tâm đáy nón (2,0)).
 
+## HÀM CÓ ĐIỀU KIỆN CỰC TRỊ / TỐI ƯU NHIỀU BIẾN
+- Đề cho "B(2;4) là điểm CỰC ĐẠI của f" ⇒ đó là ràng buộc ĐẠO HÀM, khai báo:
+    { "name":"f", "form":"poly", "degree":3, "through":[[0,0],[2,4],[3,0]], "slopeAt":[[2,0]] }
+  (slopeAt: [[x, f'(x)]]. Tổng số ràng buộc through + slopeAt phải BẰNG số hệ số cần tìm.)
+- Khoảng cách ngắn nhất giữa HAI đường cong (điểm chạy trên cả hai) ⇒ tối ưu HAI tham số:
+    "parameters": [ {"name":"a","domain":[2,3]}, {"name":"b","domain":[2.05,7]} ],
+    "analyze": { "kind":"optimize_multi", "parameters":["a","b"], "sense":"min",
+                 "objective": { "kind":"expr", "expr":"sqrt((a-b)^2 + (f(a)-g(b))^2)" } }
+  · objective của optimize_multi PHẢI là "expr". Hàm cho SẴN trong đề (vd g(x)=(x+1)/(x-2)) cứ viết
+    thẳng vào expr: "(b+1)/(b-2)" — không cần khai báo trong "functions".
+  · Nếu đơn vị mỗi trục là 10 m thì nhân 10 trong expr để ra mét.
+
 CHỈ trả về JSON object. Không giải thích, không markdown, không \`\`\`.`;
