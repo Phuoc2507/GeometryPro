@@ -4,7 +4,11 @@ import {
   formatSpecialPoints,
 } from './_lib/jsonHelpers.js';
 import { normalizeGeometryData } from './_lib/normalizeGeometry.js';
-import { solveProblem } from './_lib/kernel-bridge/solveWithKernel.js';
+// LƯU Ý: kernel-bridge được nạp ĐỘNG bên trong handler, KHÔNG import tĩnh ở đây.
+// Lý do: nó import từ api/_lib/kernel-dist/ — thư mục BỊ GITIGNORE, chỉ sinh ra bởi
+// `npm run build:kernel`. Nếu môi trường triển khai không sinh kịp, import tĩnh sẽ làm
+// CẢ route này chết lúc load (mất luôn tính năng vẽ hình). Nạp động ⇒ lỗi rơi vào
+// try/catch và tự động dùng luồng LLM cũ.
 import { isLikely3DPrompt, isLikelyFlatGeometry, applyApexLiftFallback } from './_lib/flatGuard.js';
 import { buildGeometryFromPoints } from './_lib/geometryBuilder.js';
 import { verifyConstraints, pointsToMap } from './_lib/constraintVerify.js';
@@ -143,6 +147,8 @@ export default async function handler(req, res) {
     if (!imageBase64 && trimmedPrompt && process.env.KERNEL_MODE !== 'off') {
       try {
         sendEvent('Đang thử engine tất định...', 25);
+        // Nạp ĐỘNG: nếu kernel-dist chưa được build thì ném ở đây và rơi êm về luồng LLM cũ.
+        const { solveProblem } = await import('./_lib/kernel-bridge/solveWithKernel.js');
         const k = await solveProblem(trimmedPrompt);
         const usable = k.ok
           && k.geometry
