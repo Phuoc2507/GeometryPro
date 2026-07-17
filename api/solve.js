@@ -1,18 +1,24 @@
 import { createClient } from '@supabase/supabase-js';
-import { callDeepSeek } from './_lib/deepseek.js';
+import { callVilao } from './_lib/vilao.js';
 import { parseJsonResponse, repairTruncatedJson } from './_lib/jsonHelpers.js';
 import { SOLVE_SYSTEM_PROMPT, buildSolveUserMessage, buildCoordPreamble } from './_lib/solvePrompts.js';
 
 function parseSolveResponse(raw) {
-  let text = raw
-    .replace(/^```(?:json)?s*/i, '')
-    .replace(/s*```s*$/, '')
+  const text = raw
+    .replace(/^```(?:json)?\s*/i, '')
+    .replace(/\s*```\s*$/, '')
     .trim();
 
-  let parsed = parseJsonResponse(text);
-  if (!parsed) {
-    const repaired = repairTruncatedJson(text);
-    parsed = parseJsonResponse(repaired);
+  let parsed = null;
+  // parseJsonResponse handles fence-stripping + first-JSON extraction, and throws on failure.
+  try {
+    parsed = parseJsonResponse(text);
+  } catch (_e) {
+    try {
+      parsed = parseJsonResponse(repairTruncatedJson(text));
+    } catch (_e2) {
+      return null;
+    }
   }
   if (!parsed) return null;
 
@@ -76,13 +82,12 @@ export default async function handler(req, res) {
 
   let raw;
   try {
-    raw = await callDeepSeek(SOLVE_SYSTEM_PROMPT, userMessage, {
-      model: 'deepseek-chat',
-      maxTokens: 3000,
-      timeoutMs: 60000,
+    raw = await callVilao(SOLVE_SYSTEM_PROMPT, userMessage, {
+      maxTokens: 6144,
+      timeoutMs: 120000,
     });
   } catch (err) {
-    console.error('[solve] DeepSeek API error:', err.message);
+    console.error('[solve] Vilao API error:', err.message);
     return res.status(502).json({ error: `LLM call failed: ${err.message}` });
   }
 
