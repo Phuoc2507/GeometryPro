@@ -17,12 +17,32 @@ CHÚ Ý THUẬT NGỮ TIẾNG VIỆT:
 - "hình chiếu" = projection
 - "SA ⊥ đáy" = SA perpendicular to base plane
 
+## "constraints_structured" — dạng MÁY KIỂM ĐƯỢC (engine tất định sẽ tự kiểm hình vẽ ra)
+Ngoài "constraints" (văn xuôi, giữ nguyên như cũ), hãy dịch NHỮNG ĐIỀU KIỆN HÌNH HỌC CHẮC CHẮN
+sang dạng có cấu trúc. Engine dùng nó để BẮT LỖI hình vẽ sai.
+- Token: tên điểm là MỘT chữ hoa (+số/phẩy): A, B, S, A1, A'. "AB" = đường thẳng AB. "ABCD" = mặt phẳng ABCD.
+  KHÔNG dùng chữ tiếng Việt ("đáy") — phải quy ra tên điểm cụ thể (đáy ABCD ⇒ "ABCD").
+- Các quan hệ dùng được (CHỈ 6 loại này):
+    { "relation": "perp",     "args": ["SA", "ABCD"] }          vuông góc
+    { "relation": "parallel", "args": ["MN", "BC"] }            song song
+    { "relation": "dist",     "args": ["A", "B"], "value": 4 }  khoảng cách BẰNG số
+    { "relation": "angle",    "args": ["SC", "ABCD"], "value": 45 }  góc (độ)
+    { "relation": "on",       "args": ["H", "ABCD"] }           điểm/đường nằm trên mặt
+    { "relation": "coplanar", "args": ["A", "B", "C", "D"] }    đồng phẳng (≥4 điểm)
+- CHỈ đưa vào điều kiện bạn CHẮC CHẮN và quy được ra tên điểm. Không chắc thì BỎ QUA
+  (thà thiếu còn hơn sai — điều kiện sai sẽ khiến engine tố oan hình đúng).
+- Không có điều kiện nào hợp lệ ⇒ để mảng rỗng [].
+
 CHỈ trả về JSON thuần, KHÔNG markdown theo định dạng sau:
 {
   "text": "đề bài đã chuẩn hóa",
   "shape_type": "pyramid / cube / prism / tetrahedron / parallelepiped / circles_sphere / composite / angle_plane_locus",
   "points_needed": ["A", "B", "C"],
   "constraints": ["SA ⊥ đáy", "AB = 4", "f(0)=0"],
+  "constraints_structured": [
+    { "relation": "perp", "args": ["SA", "ABCD"] },
+    { "relation": "dist", "args": ["A", "B"], "value": 4 }
+  ],
   "base_type": "none / isosceles_right_triangle / equilateral_triangle / square / rectangle",
   "dimensions": {"a": 4, "h": 6},
   "special_points": [{"id": "M", "type": "midpoint", "of": ["A", "B"]}],

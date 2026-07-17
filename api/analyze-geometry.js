@@ -11,7 +11,7 @@ import { normalizeGeometryData } from './_lib/normalizeGeometry.js';
 // try/catch và tự động dùng luồng LLM cũ.
 import { isLikely3DPrompt, isLikelyFlatGeometry, applyApexLiftFallback } from './_lib/flatGuard.js';
 import { buildGeometryFromPoints } from './_lib/geometryBuilder.js';
-import { verifyConstraints, pointsToMap } from './_lib/constraintVerify.js';
+import { verifyWithKernel } from './_lib/kernelVerify.js';
 import { BASE_PROMPT } from './_prompts/prompts/base.js';
 import { LEVEL_STATIC, LEVEL_CINEMATIC } from './_prompts/prompts/levels.js';
 import { STEP1_PARSE_PROMPT } from './_prompts/prompts/classifier.js';
@@ -259,6 +259,63 @@ Hãy:
           detailLevel = 'cinematic';
         }
       }
+      // ===== KERNEL ở chế độ KỸ: chỉ nhận bài TĨNH =====
+      // Pass 1 đã phân loại xong. Bài cinematic (Kinematic/Morphing/Geodesic) cần hình ĐỘNG mà engine
+      // không dựng được ⇒ để nguyên luồng LLM. Bài TĨNH (đa số đề hình học) thì engine dựng chính xác
+      // hơn hẳn — và đây mới là chỗ người dùng cần đúng nhất (đề khó, LLM bịa nhiều nhất).
+      if (detailLevel === 'static' && !imageBase64 && process.env.KERNEL_MODE !== 'off') {
+        try {
+          sendEvent('Đang thử engine tất định...', 50);
+          const { solveProblem } = await import('./_lib/kernel-bridge/solveWithKernel.js');
+          const k = await solveProblem(trimmedPrompt);
+          const usable = k.ok && k.geometry && Array.isArray(k.geometry.points) && k.geometry.points.length > 0
+            && (k.violations?.length ?? 0) === 0 && (k.errors?.length ?? 0) === 0;
+          if (usable) {
+            const geometry = normalizeGeometryData(k.geometry);
+            geometry.confidence = 1;
+            const answersLog = (k.answers || [])
+              .map((a) => `${a.kind}: ${a.text}${a.approximate ? ' (xấp xỉ)' : ''}`).join('; ');
+            const enginePayload = {
+              step1: {
+                text: step1Data?.text || trimmedPrompt,
+                gemini_dsl: '',
+                points_needed: geometry.points.map((p) => p.id),
+                shape_type: step1Data?.shape_type || k.plan?.solidName || '',
+                constraints: step1Data?.constraints || [],
+                tags: step1Data?.tags || [],
+                detailLevel: 'static',
+              },
+              step2: {
+                geometry,
+                calculation_log: answersLog || 'Engine tất định: toạ độ chính xác, đã tự kiểm điều kiện đề.',
+                confidence: 1,
+                constraint_violations: [],
+              },
+              mode: drawMode,
+              engine: 'kernel',
+            };
+            if (promptHash && supabase) {
+              supabase.from('ai_cache').insert([{
+                prompt_hash: promptHash, prompt_text: trimmedPrompt, response: enginePayload,
+              }]).then(({ error }) => { if (error) console.warn('Lỗi lưu cache (kernel/detailed):', error.message); });
+            }
+            console.log('[kernel] phục vụ (detailed/static):', trimmedPrompt.substring(0, 60));
+            sendEvent('Hoàn tất (engine)!', 100);
+            if (isStream) {
+              res.write(`data: ${JSON.stringify({ status: 'done', data: enginePayload })}\n\n`);
+              return res.end();
+            }
+            return res.json(enginePayload);
+          }
+          console.log('[kernel] detailed/static không dùng được → LLM:', JSON.stringify({
+            ok: k.ok, violations: k.violations?.length ?? 0, errors: k.errors?.length ?? 0,
+          }));
+        } catch (e) {
+          console.warn('[kernel] detailed/static lỗi → LLM:', e?.message);
+        }
+      }
+      // ===== Hết KERNEL detailed — dưới đây là luồng LLM cũ, KHÔNG đổi =====
+
       const levelPrompt = detailLevel === 'cinematic' ? LEVEL_CINEMATIC : LEVEL_STATIC;
       const SYSTEM_PROMPT = `${BASE_PROMPT}\n\n${levelPrompt}`;
       
@@ -342,20 +399,29 @@ KẾT QUẢ TRƯỚC BỊ PHẲNG (mọi điểm có z≈0). Hãy dựng lại h
     console.log('Geometry points:', normalizedGeometry.points?.length || 0);
 
     let verification = { ok: true, confidence: 1.0, violations: [], stats: {} };
-    const step1Constraints = step1Data?.constraints || [];
-    if (step1Constraints.length > 0 && drawMode === 'detailed') {
+    // Kiểm hình LLM vẽ bằng ENGINE TẤT ĐỊNH (thay constraintVerify cũ: nó spawn Python với file .py
+    // CHƯA TỪNG TỒN TẠI ⇒ luôn thất bại im lặng và trả confidence bịa 0.5).
+    // Dùng constraints_structured của Pass 1; không có thì KHÔNG bịa điểm tin cậy.
+    const structured = step1Data?.constraints_structured || [];
+    if (structured.length > 0 && drawMode === 'detailed') {
       sendEvent('Đang xác thực ràng buộc toán học...', 90);
       try {
-        const ptsMap = pointsToMap(normalizedGeometry.points);
-        verification = await verifyConstraints(ptsMap, step1Constraints);
-
-        if (!verification.ok) {
-          console.warn(`[constraintVerify] ${verification.violations.length} violation(s) in "${drawMode}" mode:`,
-            verification.violations.map(v => `${v.constraint} (delta=${v.delta})`).join('; '));
+        const kv = await verifyWithKernel(normalizedGeometry.points, structured);
+        if (kv.verified) {
+          verification = { ok: kv.ok, confidence: kv.confidence, violations: kv.violations };
+          normalizedGeometry.confidence = kv.confidence;
+          if (!kv.ok) {
+            console.warn(`[kernelVerify] ${kv.violations.length}/${kv.checked} vi phạm:`,
+              kv.violations.map((v) => v.message || JSON.stringify(v)).join('; ').slice(0, 300));
+          } else {
+            console.log(`[kernelVerify] ✓ ${kv.checked} ràng buộc đạt` + (kv.skipped ? ` (bỏ qua ${kv.skipped} cái không kiểm được)` : ''));
+          }
+        } else {
+          // Không kiểm được ⇒ NÓI THẬT là chưa kiểm, thay vì bịa 0.5 như code cũ.
+          console.log('[kernelVerify] chưa kiểm được:', kv.reason);
         }
-        normalizedGeometry.confidence = verification.confidence;
       } catch (verifyErr) {
-        console.warn('[constraintVerify] error (non-fatal):', verifyErr.message);
+        console.warn('[kernelVerify] lỗi (không chặn luồng):', verifyErr.message);
       }
     }
 
