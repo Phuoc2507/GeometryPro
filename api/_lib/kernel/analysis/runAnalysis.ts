@@ -6,20 +6,28 @@ import { z } from 'zod';
 import { run, RunPlanSchema } from '../run';
 import { UnifiedOpSchema } from '../unifiedPlan';
 import { QueryESchema } from '../compute/query';
-import { evalExpr } from './expr';
+import { evalExpr, type Env, type Funcs } from './expr';
+import { integrate } from './quadrature';
 import { optimizeParam, solveParam } from './paramsolve';
 import { recognizeConstant } from './recognize';
 import { fitPoly, evalPoly, derivPoly, extremumOfPoly } from './polyfit';
 
 const NumOrExpr = z.union([z.number(), z.string()]);
 
+// Nguồn SỐ cho mục tiêu/điều kiện: truy vấn HÌNH HỌC, hoặc BIỂU THỨC (gọi được hàm đã khai báo).
+const ScalarSource = z.union([
+  QueryESchema,
+  z.object({ kind: z.literal('expr'), expr: z.string() }),
+]);
+
 const AnalyzeSchema = z.union([
-  z.object({ kind: z.literal('optimize'), parameter: z.string(), sense: z.enum(['max', 'min']), objective: QueryESchema }),
+  z.object({ kind: z.literal('optimize'), parameter: z.string(), sense: z.enum(['max', 'min']), objective: ScalarSource }),
   z.object({
     kind: z.literal('solve'), parameter: z.string(),
-    constraint: z.object({ of: QueryESchema, equals: NumOrExpr }),
-    report: QueryESchema,
+    constraint: z.object({ of: ScalarSource, equals: NumOrExpr }),
+    report: ScalarSource,
   }),
+  z.object({ kind: z.literal('integrate'), variable: z.string(), from: NumOrExpr, to: NumOrExpr, integrand: z.string() }),
 ]);
 
 // Op TẦNG HÀM: chỉ tồn tại ở lớp analysis — concreteOps hạ chúng thành op hình học SỐ trước khi gọi run().
@@ -30,8 +38,8 @@ const FunctionOpSchema = z.union([
 ]);
 
 export const AnalysisPlanSchema = RunPlanSchema.extend({
-  ops: z.array(z.union([FunctionOpSchema, UnifiedOpSchema])).min(1),
-  parameters: z.array(z.object({ name: z.string(), domain: z.tuple([NumOrExpr, NumOrExpr]) })).min(1),
+  ops: z.array(z.union([FunctionOpSchema, UnifiedOpSchema])).default([]),
+  parameters: z.array(z.object({ name: z.string(), domain: z.tuple([NumOrExpr, NumOrExpr]) })).default([]),
   functions: z.array(z.object({
     name: z.string(),
     form: z.literal('poly'),
@@ -73,8 +81,40 @@ export function runAnalysis(raw: unknown): AnalysisResult {
   const parsed = AnalysisPlanSchema.safeParse(raw);
   if (!parsed.success) return fail('?', `Invalid analysis plan: ${parsed.error.issues[0]?.message ?? 'schema'}`);
   const plan = parsed.data;
-  const pname = plan.analyze.parameter;
   const paramNames = plan.parameters.map((p) => p.name);
+
+  // Khớp mọi hàm khai báo tại env → map tên→hàm số để biểu thức gọi được (engine khớp, LLM không tính).
+  const fitAt = (env: Env): { coeffs: Record<string, number[]>; funcs: Funcs } => {
+    const coeffs: Record<string, number[]> = {};
+    const funcs: Funcs = {};
+    for (const fd of plan.functions) {
+      const pts = fd.through.map(([px, py]) => [evalExpr(String(px), env), evalExpr(String(py), env)] as [number, number]);
+      const lead = fd.leading !== undefined ? evalExpr(fd.leading, env) : undefined;
+      const c = fitPoly(fd.degree, pts, lead);
+      coeffs[fd.name] = c;
+      funcs[fd.name] = (x: number) => evalPoly(c, x);
+    }
+    return { coeffs, funcs };
+  };
+
+  // ---- integrate: thuần hàm số, không cần tham số/hình học ----
+  if (plan.analyze.kind === 'integrate') {
+    const az = plan.analyze;
+    try {
+      const { funcs } = fitAt({});
+      const from = evalExpr(String(az.from), {}, funcs);
+      const to = evalExpr(String(az.to), {}, funcs);
+      const r = integrate((x) => evalExpr(az.integrand, { [az.variable]: x }, funcs), from, to);
+      const nice = recognizeConstant(r.value);
+      return {
+        ok: true, parameter: { name: az.variable, value: NaN },
+        answer: { approx: r.value, text: nice ? nice.text : r.value.toFixed(4), approximate: !nice },
+        violations: [], errors: [],
+      };
+    } catch (e) { return fail(az.variable, (e as Error).message); }
+  }
+
+  const pname = plan.analyze.parameter;
   const decl = plan.parameters.find((p) => p.name === pname);
   if (!decl) return fail(pname, `parameter "${pname}" chưa khai báo`);
   const lo = evalExpr(String(decl.domain[0]), {});
@@ -84,12 +124,7 @@ export function runAnalysis(raw: unknown): AnalysisResult {
   const concreteOps = (value: number): unknown[] => {
     const env = { [pname]: value };
     // 1) Khớp hàm tại giá trị tham số hiện tại (engine tự khớp — LLM không tính).
-    const fitted: Record<string, number[]> = {};
-    for (const fd of plan.functions) {
-      const pts = fd.through.map(([px, py]) => [evalExpr(String(px), env), evalExpr(String(py), env)] as [number, number]);
-      const lead = fd.leading !== undefined ? evalExpr(fd.leading, env) : undefined;
-      fitted[fd.name] = fitPoly(fd.degree, pts, lead);
-    }
+    const fitted = fitAt(env).coeffs;
     const needFn = (name: string): number[] => {
       const c = fitted[name];
       if (!c) throw new Error(`Hàm "${name}" chưa khai báo trong functions`);
@@ -122,29 +157,49 @@ export function runAnalysis(raw: unknown): AnalysisResult {
     });
   };
 
-  // Đánh giá một truy vấn tại giá trị tham số (KHÔNG kèm asserts — dùng khi quét/giải). null nếu lỗi.
-  const evalQuery = (value: number, query: unknown): number | null => {
+  const isExprSrc = (s: unknown): s is { kind: 'expr'; expr: string } =>
+    !!s && typeof s === 'object' && (s as { kind?: string }).kind === 'expr';
+
+  // Đánh giá nguồn số tại giá trị tham số (KHÔNG kèm asserts — dùng khi quét/giải). null nếu lỗi.
+  const evalQuery = (value: number, src: unknown): number | null => {
+    const env = { [pname]: value };
+    if (isExprSrc(src)) {
+      try { return evalExpr(src.expr, env, fitAt(env).funcs); } catch { return null; }
+    }
     let ops: unknown[];
     try { ops = concreteOps(value); } catch { return null; }
-    const res = run({ solidName: plan.solidName, ops, asserts: [], queries: [query] });
+    const res = run({ solidName: plan.solidName, ops, asserts: [], queries: [src] });
     if (!res.ok || res.answers.length === 0) return null;
     try { return scalarOf(res.answers[0]); } catch { return null; }
   };
 
-  // Tại nghiệm cuối: chạy lại KÈM asserts của đề để tự kiểm mô hình (chống ảo giác) + lấy đáp số đẹp.
-  const finalize = (value: number, query: unknown): AnalysisResult => {
-    let ops: unknown[];
-    try { ops = concreteOps(value); } catch (e) { return fail(pname, (e as Error).message); }
-    const res = run({ solidName: plan.solidName, ops, asserts: plan.asserts, queries: [query] });
+  // Tại nghiệm cuối: lấy đáp số + kiểm asserts (nếu có hình học) để tự kiểm mô hình.
+  const finalize = (value: number, src: unknown): AnalysisResult => {
+    const env = { [pname]: value };
+    let violations: unknown[] = [];
+    let errors: { message: string }[] = [];
     let val = NaN;
-    try { if (res.answers.length > 0) val = scalarOf(res.answers[0]); } catch { /* truy vấn không trả số */ }
+    if (isExprSrc(src)) {
+      try { val = evalExpr(src.expr, env, fitAt(env).funcs); } catch (e) { return fail(pname, (e as Error).message); }
+      if (plan.ops.length > 0) {
+        try {
+          const res = run({ solidName: plan.solidName, ops: concreteOps(value), asserts: plan.asserts, queries: [] });
+          violations = res.violations; errors = res.errors.map((e) => ({ message: e.message }));
+        } catch (e) { errors = [{ message: (e as Error).message }]; }
+      }
+    } else {
+      let ops: unknown[];
+      try { ops = concreteOps(value); } catch (e) { return fail(pname, (e as Error).message); }
+      const res = run({ solidName: plan.solidName, ops, asserts: plan.asserts, queries: [src] });
+      try { if (res.answers.length > 0) val = scalarOf(res.answers[0]); } catch { /* không trả số */ }
+      violations = res.violations; errors = res.errors.map((e) => ({ message: e.message }));
+    }
     const nice = Number.isFinite(val) ? recognizeConstant(val) : null;
     return {
-      ok: res.violations.length === 0 && res.errors.length === 0 && Number.isFinite(val),
+      ok: violations.length === 0 && errors.length === 0 && Number.isFinite(val),
       parameter: { name: pname, value },
       answer: { approx: val, text: nice ? nice.text : (Number.isFinite(val) ? val.toFixed(4) : '(lỗi)'), approximate: !nice },
-      violations: res.violations,
-      errors: res.errors.map((e) => ({ message: e.message })),
+      violations, errors,
     };
   };
 
