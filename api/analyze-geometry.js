@@ -398,7 +398,9 @@ KẾT QUẢ TRƯỚC BỊ PHẲNG (mọi điểm có z≈0). Hãy dựng lại h
 
     console.log('Geometry points:', normalizedGeometry.points?.length || 0);
 
-    let verification = { ok: true, confidence: 1.0, violations: [], stats: {} };
+    // confidence = null nghĩa là CHƯA KIỂM (không phải "tin 100%"). Chỉ điền số khi engine
+    // thật sự kiểm được — thà im lặng còn hơn khoe một con số bịa.
+    let verification = { ok: true, confidence: null, violations: [], stats: {} };
     // Kiểm hình LLM vẽ bằng ENGINE TẤT ĐỊNH (thay constraintVerify cũ: nó spawn Python với file .py
     // CHƯA TỪNG TỒN TẠI ⇒ luôn thất bại im lặng và trả confidence bịa 0.5).
     // Dùng constraints_structured của Pass 1; không có thì KHÔNG bịa điểm tin cậy.
