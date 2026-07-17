@@ -51,3 +51,46 @@ export function solveParam(
   }
   return null;
 }
+
+// Tối ưu NHIỀU biến trên hộp [los,his]: lưới thô tìm ô tốt nhất, rồi HẠ TOẠ ĐỘ — lặp golden-section
+// theo từng chiều (cửa sổ ±h quanh điểm hiện tại, nên điểm có thể "đi bộ" ra khỏi ô ban đầu).
+export function optimizeMulti(
+  f: (xs: number[]) => number, los: number[], his: number[], sense: 'max' | 'min',
+  gridPerDim = 40, rounds = 60,
+): { xs: number[]; value: number } {
+  const n = los.length;
+  const sign = sense === 'max' ? 1 : -1;
+  let best = { xs: los.slice(), v: -Infinity };
+  const total = Math.pow(gridPerDim + 1, n);
+  for (let t = 0; t < total; t++) {
+    let rem = t;
+    const xs: number[] = [];
+    for (let d = 0; d < n; d++) {
+      const i = rem % (gridPerDim + 1);
+      rem = Math.floor(rem / (gridPerDim + 1));
+      xs.push(los[d] + ((his[d] - los[d]) * i) / gridPerDim);
+    }
+    const v = sign * f(xs);
+    if (v > best.v) best = { xs, v };
+  }
+  const xs = best.xs.slice();
+  const gr = (Math.sqrt(5) - 1) / 2;
+  for (let r = 0; r < rounds; r++) {
+    for (let d = 0; d < n; d++) {
+      const h = (his[d] - los[d]) / gridPerDim;
+      let a = Math.max(los[d], xs[d] - h);
+      let b = Math.min(his[d], xs[d] + h);
+      let c = b - gr * (b - a);
+      let e = a + gr * (b - a);
+      for (let k = 0; k < 80; k++) {
+        const xc = xs.slice(); xc[d] = c;
+        const xe = xs.slice(); xe[d] = e;
+        if (sign * f(xc) > sign * f(xe)) b = e; else a = c;
+        c = b - gr * (b - a); e = a + gr * (b - a);
+        if (b - a < 1e-13) break;
+      }
+      xs[d] = (a + b) / 2;
+    }
+  }
+  return { xs, value: f(xs) };
+}
