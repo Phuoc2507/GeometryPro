@@ -81,7 +81,7 @@ export function useGeometryHistory() {
       if (!user) {
         const newItem: HistoryItem = {
           id: crypto.randomUUID(),
-          name: prompt ? `Dựng hình từ: ${prompt.substring(0, 30)}...` : 'Bản vẽ thủ công',
+          name: prompt ? `${prompt.substring(0, 40)}${prompt.length > 40 ? '…' : ''}` : 'Bản vẽ thủ công',
           prompt,
           geometry_data: geometry,
           created_at: new Date().toISOString(),
@@ -99,7 +99,7 @@ export function useGeometryHistory() {
         .from('saved_geometries')
         .insert({
           user_id: user.id,
-          name: prompt ? `Dựng hình từ: ${prompt.substring(0, 30)}...` : 'Bản vẽ thủ công',
+          name: prompt ? `${prompt.substring(0, 40)}${prompt.length > 40 ? '…' : ''}` : 'Bản vẽ thủ công',
           prompt,
           geometry_data: geometry as any,
           is_history: true,
