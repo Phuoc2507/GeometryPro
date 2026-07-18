@@ -1,9 +1,7 @@
+// PHẢI đứng ĐẦU TIÊN: nạp .env.local trước khi các handler (import bên dưới) đọc process.env.
+import './load-env.js';
 import express from 'express';
 import cors from 'cors';
-import { config } from 'dotenv';
-
-// Load environment variables from .env.local
-config({ path: '.env.local' });
 
 // We need to dynamically import the handlers because they use ES modules
 import analyzeGeometryHandler from './api/analyze-geometry.js';
