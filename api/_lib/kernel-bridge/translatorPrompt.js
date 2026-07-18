@@ -179,6 +179,12 @@ Chỉ KHAI BÁO khối, đừng tự tính tích phân/diện tích thấu kính
 - Đề cho "B(2;4) là điểm CỰC ĐẠI của f" ⇒ đó là ràng buộc ĐẠO HÀM, khai báo:
     { "name":"f", "form":"poly", "degree":3, "through":[[0,0],[2,4],[3,0]], "slopeAt":[[2,0]] }
   (slopeAt: [[x, f'(x)]]. Tổng số ràng buộc through + slopeAt phải BẰNG số hệ số cần tìm.)
+- ⚠️ KHỚP HÀM PHẢI ĐÚNG SỐ RÀNG BUỘC — sai một chút là khớp hỏng hoặc ra HÀM KHÁC (đáp sai âm thầm):
+  · Bậc n cần ĐÚNG n+1 ràng buộc. Bậc 3 ⇒ đúng 4 = (3 điểm through) + (1 slopeAt). KHÔNG thừa, KHÔNG thiếu.
+  · Điểm CỰC ĐẠI/CỰC TIỂU (x₀,y₀): BẮT BUỘC vừa cho (x₀,y₀) vào "through", VỪA thêm "slopeAt":[[x₀,0]]
+    (đạo hàm = 0 tại cực trị). BỎ slopeAt ⇒ thiếu ràng buộc ⇒ khớp sai. Đây là lỗi hay gặp — đừng bỏ.
+  · CHỈ đưa vào "through" những điểm NẰM TRÊN đường cong f (gốc O, đỉnh cực trị, giao trục Ox…).
+    KHÔNG đưa các điểm chỉ là GÓC MẢNH ĐẤT / đỉnh hình thang (vd A(0;4)) nếu chúng KHÔNG nằm trên f.
 - Khoảng cách ngắn nhất giữa HAI đường cong (điểm chạy trên cả hai) ⇒ tối ưu HAI tham số:
     "parameters": [ {"name":"a","domain":[2,3]}, {"name":"b","domain":[2.05,7]} ],
     "analyze": { "kind":"optimize_multi", "parameters":["a","b"], "sense":"min",
