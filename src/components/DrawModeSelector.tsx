@@ -1,6 +1,7 @@
 import { Zap, Layers, Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/context/AuthContext';
+import { getGuestQuotaRemaining } from '@/lib/quota';
 
 export type DrawMode = 'quick' | 'detailed';
 
@@ -29,9 +30,11 @@ const modes = [
 ];
 
 export function DrawModeSelector({ value, onChange }: DrawModeSelectorProps) {
-  const { tier, credits } = useAuth();
+  const { tier, credits, user, drawQuotaRemaining } = useAuth();
   const selected = modes.find(m => m.id === value)!;
   const isPaid = tier !== 'free';
+  // Free: user đăng nhập đếm ở server; khách vãng lai đếm ở client.
+  const freeRemaining = user ? drawQuotaRemaining : getGuestQuotaRemaining();
   return (
     <div className="w-full space-y-1.5">
       <div className="flex gap-1.5 w-full">
@@ -62,6 +65,12 @@ export function DrawModeSelector({ value, onChange }: DrawModeSelectorProps) {
             <Sparkles className="w-3 h-3 text-primary" />
             Tốn <strong className="text-primary">{selected.credits} credit</strong> · còn {credits}
           </>
+        ) : freeRemaining != null ? (
+          freeRemaining > 0 ? (
+            <>Miễn phí · <strong>còn {freeRemaining}</strong> lượt vẽ hôm nay</>
+          ) : (
+            <span className="text-primary">Đã hết lượt hôm nay — nâng cấp để vẽ tiếp</span>
+          )
         ) : (
           <>{selected.desc} · Ước tính {selected.time}</>
         )}

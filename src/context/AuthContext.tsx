@@ -28,6 +28,7 @@ interface AuthContextType {
   credits: number;              // tổng còn lại = plan + purchased
   planCredits: number;          // credit theo gói (reset mỗi kỳ)
   purchasedCredits: number;     // credit mua lẻ (không hết hạn)
+  drawQuotaRemaining: number | null;  // số lượt vẽ free còn lại hôm nay (null nếu chưa biết)
   refreshProfile: () => Promise<void>;
   isLoading: boolean;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
@@ -55,6 +56,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
+  const [drawQuotaRemaining, setDrawQuotaRemaining] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   // Auth Modal State
@@ -84,6 +86,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     if (!error && data) {
       setProfile(data as Profile);
+    }
+
+    // Số lượt VẼ miễn phí còn lại (gói free đếm bằng usage_counters phía server).
+    // Fetch luôn cho mọi user (query nhỏ); chỉ hiển thị khi tier='free'.
+    const FREE_DRAW_MAX = 3;
+    const DRAW_PERIOD_MS = 24 * 60 * 60 * 1000;
+    const { data: ctr } = await supabase
+      .from('usage_counters')
+      .select('used, window_start')
+      .eq('user_id', userId)
+      .eq('feature', 'draw')
+      .maybeSingle();
+    if (!ctr) {
+      setDrawQuotaRemaining(FREE_DRAW_MAX);
+    } else {
+      const windowActive = Date.now() < new Date(ctr.window_start).getTime() + DRAW_PERIOD_MS;
+      setDrawQuotaRemaining(windowActive ? Math.max(0, FREE_DRAW_MAX - ctr.used) : FREE_DRAW_MAX);
     }
   };
 
@@ -216,6 +235,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       credits,
       planCredits,
       purchasedCredits,
+      drawQuotaRemaining,
       refreshProfile,
       isLoading,
       signIn,
