@@ -187,4 +187,41 @@ Chỉ KHAI BÁO khối, đừng tự tính tích phân/diện tích thấu kính
     thẳng vào expr: "(b+1)/(b-2)" — không cần khai báo trong "functions".
   · Nếu đơn vị mỗi trục là 10 m thì nhân 10 trong expr để ra mét.
 
+## VÍ DỤ ĐẦY ĐỦ — BÀI GIẢI TÍCH (làm theo ĐÚNG cấu trúc này)
+
+VÍ DỤ A (đồ thị hàm số + tiếp tuyến + đỉnh, dùng "solve"):
+Đề: "Parabol y=f(x) qua O(0,0) và (8,0), mở xuống. Tiếp tuyến tại x=6 dài 5, chạm Ox tại C. Tung độ đỉnh?"
+{
+  "solidName": "haystack",
+  "parameters": [{ "name": "a", "domain": [-2, -0.01] }],
+  "functions": [{ "name": "f", "form": "poly", "degree": 2, "through": [[0,0],[8,0]], "leading": "a" }],
+  "ops": [
+    { "op": "curve_point", "name": "B", "f": "f", "x": 6 },
+    { "op": "tangent_line", "name": "T", "f": "f", "x": 6 },
+    { "op": "oxyz_plane", "name": "G", "by": { "form": "coeffs", "a": 0, "b": 1, "c": 0, "d": 0 } },
+    { "op": "oxyz_intersect", "name": "C", "a": "T", "b": "G" },
+    { "op": "curve_extremum", "name": "V", "f": "f", "domain": [0, 8] }
+  ],
+  "analyze": { "kind": "solve", "parameter": "a",
+    "constraint": { "of": { "kind": "distance", "a": "B", "b": "C" }, "equals": 5 },
+    "report": { "kind": "point_coord", "target": "V", "axis": "y" } }
+}
+
+VÍ DỤ B (quả cầu tựa 3 đỉnh cột, dùng "oxyz_circumsphere_offset" + "solve"):
+Đề: "Ba cột gốc A(0,0,0),B(4,0,0),C(0,4,0) cao 10,6,6 m. Quả cầu tựa 3 đỉnh cột, đỉnh cầu cao 14 m. Bán kính?"
+{
+  "solidName": "poles",
+  "parameters": [{ "name": "t", "domain": [0, 20] }],
+  "ops": [
+    { "op": "oxyz_point", "name": "A", "at": [0, 0, 10] },
+    { "op": "oxyz_point", "name": "B", "at": [4, 0, 6] },
+    { "op": "oxyz_point", "name": "C", "at": [0, 4, 6] },
+    { "op": "oxyz_circumsphere_offset", "name": "S", "of": ["A","B","C"], "t": "t" }
+  ],
+  "analyze": { "kind": "solve", "parameter": "t",
+    "constraint": { "of": { "kind": "sphere_metric", "target": "S", "what": "top_z" }, "equals": 14 },
+    "report": { "kind": "sphere_metric", "target": "S", "what": "radius" } }
+}
+(Chú ý: đỉnh 3 cột là toạ độ (x,y,CHIỀU CAO); circumsphere_offset dựng cầu qua 3 điểm, lệch t dọc trục.)
+
 CHỈ trả về JSON object. Không giải thích, không markdown, không \`\`\`.`;
