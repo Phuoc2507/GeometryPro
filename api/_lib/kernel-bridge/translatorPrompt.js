@@ -141,6 +141,35 @@ tìm giá trị thoả: KHAI BÁO một tham số tự do và để engine giả
 - Mặt cầu tựa 3 điểm (lệch t dọc trục): { "op":"oxyz_circumsphere_offset", "name":"S", "of":["A","B","C"], "t":"t" }
 - Đọc số của mặt cầu: { "kind":"sphere_metric", "target":"S", "what":"radius" | "top_z" | "bottom_z" }
 
+## DỰNG HÌNH OXYZ (dựng cấu hình thoả ràng buộc → tính một ĐẠI LƯỢNG SỐ)
+Nhiều đề Oxyz KHÔNG cho sẵn mọi toạ độ mà mô tả một CẤU HÌNH phải DỰNG từ đối tượng cho trước
+(đường/mặt/điểm) rồi hỏi một số. ĐỪNG tự tính — hãy COMPOSE các op dựng, thả 1 tham số tự do rồi "solve".
+- Op dựng dùng được:
+  · oxyz_foot{ name, from, onto:"line"|"plane", target } — chân đường vuông góc hạ từ 1 điểm xuống đường/mặt.
+  · oxyz_intersect{ name, a, b } — giao 2 đối tượng → 1 ĐIỂM. CHỈ ra điểm khi giao ĐƯỜNG × MẶT.
+    (mặt×mặt ra ĐƯỜNG, đường×đường không hỗ trợ ⇒ KHÔNG dùng oxyz_intersect cho chúng.)
+  · oxyz_reflect_across{ name, point, across:"line"|"plane", target } — đối xứng 1 điểm qua đường/mặt.
+  · oxyz_ratio{ name, a, b, t } — điểm = a + t·(b−a); t CÓ THỂ là THAM SỐ để TRƯỢT điểm dọc a→b.
+  · oxyz_plane form coeffs{ a, b, c, d } — hệ số CÓ THỂ là THAM SỐ. Mp "(α) ∥ (P)": lấy ĐÚNG a,b,c của (P),
+    để d = THAM SỐ (vd d:"k") ⇒ (α) trượt song song (P).
+  · oxyz_line (two_points | point_dir), oxyz_sphere, oxyz_midpoint/centroid/circumcenter — như phần OPS trên.
+- MẪU "mp thoả ràng buộc metric" (VÍ DỤ E): khai (α) bằng coeffs với d = THAM SỐ → dựng điểm phụ bằng
+  oxyz_intersect (giao (α) với các đường) → analyze.solve theo tham số, constraint = ĐÚNG ràng buộc đề →
+  report = ĐẠI LƯỢNG SỐ đề hỏi.
+- MẪU "điểm trên đường ở khoảng cách cho trước" (VÍ DỤ F): oxyz_intersect lấy giao I = d∩(P) → chọn 1 điểm
+  mốc B trên d (toạ độ base+dir) → oxyz_ratio M = I + t·(B−I) với t THAM SỐ → solve t để dist(I,M) = số đề
+  cho (ĐƠN ĐIỆU theo t ⇒ chắc ăn) → report đại lượng cần (vd khoảng cách từ M tới (P)).
+- BẮT BUỘC "asserts": bài dựng PHẢI phát khối asserts kiểm lại điều kiện đề TẠI NGHIỆM. Không có assert
+  ⇒ ĐỪNG mô hình (để rơi về) — tránh serve mù một cấu hình sai.
+  · assert "value" PHẢI là SỐ (thập phân) — schema KHÔNG nhận chuỗi "sqrt(3)". Nếu giá trị VÔ TỈ, ghi
+    ~7 chữ số thập phân, HOẶC ghi gọn kèm "tolerance" nới (vd value 1.7320508, tolerance 0.001) — dung sai
+    mặc định rất chặt (1e-6) nên số làm tròn thô (1.732) sẽ TRƯỢT assert.
+- ƯU TIÊN ràng buộc CẮT-ĐỔI-DẤU (đại lượng đi qua giá trị đích khi tham số chạy). Ràng buộc kiểu "khoảng
+  cách NHỎ NHẤT đúng bằng…" (tiếp xúc/nghiệm kép) solver hiện dễ TRƯỢT → nếu gặp cứ mô hình + assert; assert
+  trượt sẽ TỰ rơi về, không serve sai.
+- ĐÁP PHẢI LÀ SỐ. Nếu đề hỏi "điểm nào thuộc (α)", "viết phương trình đường/mặt/mặt cầu" (đáp là điểm/đường/
+  phương trình, KHÔNG phải một số) ⇒ KHÔNG mô hình theo mẫu này, để rơi về.
+
 ## BÀI CÓ ĐỒ THỊ HÀM SỐ (parabol/bậc ba…) — engine tự khớp & tự đạo hàm
 KHÔNG tự tính hệ số, KHÔNG tự đạo hàm, KHÔNG tự tìm đỉnh. Hãy KHAI BÁO:
 - "functions": [ { "name":"f", "form":"poly", "degree":2, "through":[[0,0],[8,0]], "leading":"a" } ]
@@ -252,5 +281,48 @@ VÍ DỤ D (thể tích khối có mặt cắt biến thiên — "integrate"; KH
 }
 (mặt cắt vuông nửa-đường-chéo r ⇒ cạnh r√2 ⇒ diện tích 2*r(z)^2; integrate theo độ cao ra cm³;
  1 lít = 1000 cm³ ⇒ answerScale 0.001, answerUnit "lít". Nếu đề KHÔNG đổi đơn vị thì bỏ 2 khoá này.)
+
+VÍ DỤ E (DỰNG HÌNH Oxyz — mp (α) ∥ (P) với hệ số offset d = THAM SỐ, "solve" theo ràng buộc metric):
+Đề: "Cho (P): x−2y+3z−4=0 và hai đường d1 (qua (1,0,−1), chỉ phương (1,−1,2)), d2 (qua (1,3,−1), chỉ phương
+(2,1,1)). Mặt phẳng (α) ∥ (P) cắt d1, d2 tại M, N với MN=√3. Tính MN." (đáp SỐ = √3 — ví dụ minh hoạ CẤU TRÚC;
+nếu đề thật hỏi "điểm nào thuộc (α)" hay "viết pt (α)" thì đáp KHÔNG phải số ⇒ KHÔNG mô hình, để rơi về.)
+{
+  "solidName": "planepar",
+  "parameters": [{ "name": "k", "domain": [-20, 20] }],
+  "ops": [
+    { "op": "oxyz_line", "name": "E", "by": { "form": "point_dir", "base": [1,0,-1], "dir": [1,-1,2] } },
+    { "op": "oxyz_line", "name": "G", "by": { "form": "point_dir", "base": [1,3,-1], "dir": [2,1,1] } },
+    { "op": "oxyz_plane", "name": "W", "by": { "form": "coeffs", "a": 1, "b": -2, "c": 3, "d": "k" } },
+    { "op": "oxyz_intersect", "name": "M", "a": "W", "b": "E" },
+    { "op": "oxyz_intersect", "name": "N", "a": "W", "b": "G" }
+  ],
+  "asserts": [{ "relation": "dist", "args": ["M","N"], "value": 1.7320508, "tolerance": 0.001 }],
+  "analyze": { "kind": "solve", "parameter": "k",
+    "constraint": { "of": { "kind": "distance", "a": "M", "b": "N" }, "equals": "sqrt(3)" },
+    "report": { "kind": "distance", "a": "M", "b": "N" } }
+}
+(d = "k" ⇒ (α) trượt song song (P); giao (α) với mỗi đường ra M, N; solve k để MN=√3. assert value là SỐ
+1.7320508 + tolerance 0.001 vì √3 vô tỉ — KHÔNG ghi chuỗi "sqrt(3)" trong asserts.)
+
+VÍ DỤ F (DỰNG HÌNH Oxyz — giao đường-mặt I = d∩(P), điểm M trên d ở khoảng cách IM=9, tính d(M,(P))):
+Đề: "Cho đường d (qua (1,−1,−2), chỉ phương (2,2,1)) và mp (P): x+2y+2z−7=0. Gọi I=d∩(P). Điểm M trên d với
+IM=9. Tính khoảng cách từ M đến (P)." (đáp SỐ = 8.)
+{
+  "solidName": "lineplane",
+  "parameters": [{ "name": "t", "domain": [0, 20] }],
+  "ops": [
+    { "op": "oxyz_line", "name": "d", "by": { "form": "point_dir", "base": [1,-1,-2], "dir": [2,2,1] } },
+    { "op": "oxyz_plane", "name": "P", "by": { "form": "coeffs", "a": 1, "b": 2, "c": 2, "d": -7 } },
+    { "op": "oxyz_intersect", "name": "I", "a": "d", "b": "P" },
+    { "op": "oxyz_point", "name": "B", "at": [3,1,-1] },
+    { "op": "oxyz_ratio", "name": "M", "a": "I", "b": "B", "t": "t" }
+  ],
+  "asserts": [{ "relation": "dist", "args": ["I","M"], "value": 9 }],
+  "analyze": { "kind": "solve", "parameter": "t",
+    "constraint": { "of": { "kind": "distance", "a": "I", "b": "M" }, "equals": 9 },
+    "report": { "kind": "distance", "a": "M", "b": "P" } }
+}
+(B = base+dir của d là 1 điểm mốc trên d; M = I + t·(B−I) trượt dọc d; dist(I,M) ĐƠN ĐIỆU theo t ⇒ solve chắc
+ăn; report là khoảng cách điểm→mặt d(M,(P)). assert IM=9 số nguyên, để nguyên.)
 
 CHỈ trả về JSON object. Không giải thích, không markdown, không \`\`\`.`;
