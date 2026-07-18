@@ -18,6 +18,7 @@ import { STEP1_PARSE_PROMPT } from './_prompts/prompts/classifier.js';
 import { getDescriptionsForTags } from './_lib/tagDescriptions.js';
 import { createClient } from '@supabase/supabase-js';
 import crypto from 'crypto';
+import { creditsConfigured, checkAndConsume, refund } from './_lib/credits.js';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -31,6 +32,8 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method Not Allowed' });
   }
 
+  let userId = null;        // ví credit: cần ở scope hàm để catch ngoài cùng hoàn được
+  let creditCharge = null;  // { cost, reqId } nếu đã TRỪ credit (paid tier) -> hoàn khi lỗi
   try {
     const isStream = req.query.stream === 'true';
 
@@ -65,6 +68,7 @@ export default async function handler(req, res) {
         if (isStream) { res.write(`data: ${JSON.stringify({ error: errMsg })}\n\n`); return res.end(); }
         return res.status(401).json({ error: errMsg });
       }
+      userId = user.id;
       // NOTE: Drawing is a free feature (guests are limited client-side by quota).
       // The previous Pro gate keyed on aiModel==='high' blocked every default draw
       // because the client sends aiModel:'high' by default, and there is no separate
@@ -101,6 +105,21 @@ export default async function handler(req, res) {
     }
 
     const trimmedPrompt = prompt.trim();
+
+    // ===== TRỪ CREDIT / QUOTA CHO LƯỢT VẼ =====
+    // Trừ TRƯỚC khi làm việc nặng; hoàn ở catch ngoài cùng nếu lỗi (chỉ hoàn credit,
+    // quota free không hoàn). Fail-open khi credit CHƯA cấu hình (env chưa set) để
+    // không làm hỏng chức năng vẽ khi deploy chưa đủ biến môi trường.
+    const drawAction = mode === 'detailed' ? 'draw_detailed' : 'draw_quick';
+    if (userId && creditsConfigured()) {
+      const gate = await checkAndConsume(userId, 'draw', drawAction);
+      if (!gate.ok) {
+        const errMsg = gate.message || 'Bạn đã hết lượt/credit để vẽ.';
+        if (isStream) { res.write(`data: ${JSON.stringify({ error: errMsg, code: gate.reason })}\n\n`); return res.end(); }
+        return res.status(402).json({ error: errMsg, code: gate.reason });
+      }
+      if (gate.mode === 'credit') creditCharge = { cost: gate.cost, reqId: crypto.randomUUID() };
+    }
 
     // -- Bắt đầu Caching --
     let promptHash = null;
@@ -474,6 +493,11 @@ KẾT QUẢ TRƯỚC BỊ PHẲNG (mọi điểm có z≈0). Hãy dựng lại h
 
   } catch (error) {
     console.error('Error in analyze-geometry:', error);
+    // Vẽ lỗi -> HOÀN credit đã trừ (nếu có). Quota free không hoàn.
+    if (creditCharge && userId) {
+      try { await refund(userId, creditCharge.cost, creditCharge.reqId); }
+      catch (e) { console.warn('refund credit lỗi:', e?.message); }
+    }
     const isAbort = error?.name === 'AbortError' || (error?.message || '').includes('aborted');
     const status = isAbort ? 504 : (error?.status || 500);
     const message = isAbort
