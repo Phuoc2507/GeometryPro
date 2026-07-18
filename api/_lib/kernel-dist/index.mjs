@@ -7237,6 +7237,17 @@ function runAnalysis(raw) {
       }
       if (o.op === "oxyz_point" && Array.isArray(o.at)) return { ...o, at: o.at.map((c) => numify(c, env, paramNames)) };
       if (o.op === "oxyz_circumsphere_offset") return { ...o, t: numify(o.t, env, paramNames) };
+      if (o.op === "oxyz_plane" && o.by?.form === "coeffs") {
+        const by = o.by;
+        return { ...o, by: {
+          ...by,
+          a: numify(by.a, env, paramNames),
+          b: numify(by.b, env, paramNames),
+          c: numify(by.c, env, paramNames),
+          d: numify(by.d, env, paramNames)
+        } };
+      }
+      if (o.op === "oxyz_ratio") return { ...o, t: numify(o.t, env, paramNames) };
       return op;
     });
   };
