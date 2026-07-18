@@ -99,8 +99,10 @@ create policy "ledger readable by owner" on public.credit_ledger for select usin
 alter table public.orders add column if not exists plan_code text references public.plans(code);
 
 -- 6) Tier hiệu lực (hạ về free khi hết hạn) --------------------------
+-- STABLE (không phải IMMUTABLE): hàm dùng now() nên kết quả đổi theo thời gian;
+-- khai IMMUTABLE dễ bị planner cache sai -> tier hết hạn vẫn tính là còn hạn.
 create or replace function public.effective_tier(p public.profiles)
-returns text language sql immutable as $$
+returns text language sql stable as $$
   select case
     when p.plan_code = 'free'                       then 'free'
     when p.plan_expires_at is null                  then 'free'
@@ -174,7 +176,7 @@ begin
    where user_id = p_user_id returning * into v_p;
   insert into public.credit_ledger(user_id, delta, reason, ref, balance_after)
   values (p_user_id, p_amount, 'refund', 'refund:'||p_ref, v_p.plan_credits + v_p.purchased_credits)
-  on conflict (user_id, ref) do nothing;   -- hoàn 2 lần cùng ref = no-op
+  on conflict (user_id, ref) where ref is not null do nothing;   -- khớp PARTIAL index; hoàn 2 lần cùng ref = no-op
   return jsonb_build_object('ok', true, 'remaining', v_p.plan_credits + v_p.purchased_credits);
 end $$;
 
@@ -185,13 +187,14 @@ create or replace function public.grant_credits(
 language plpgsql security definer set search_path = public as $$
 declare v_p public.profiles; v_exists int;
 begin
-  -- Đã cấp cho ref này rồi thì thôi (webhook PayOS có thể bắn lặp).
+  select * into v_p from public.profiles where user_id = p_user_id for update;
+  if not found then return jsonb_build_object('ok', false, 'err', 'no_profile'); end if;
+
+  -- Đã cấp cho ref này rồi thì thôi (webhook PayOS có thể bắn lặp). Kiểm SAU khi khoá
+  -- hàng để 2 webhook trùng không cùng vượt qua rồi cùng cấp.
   select 1 into v_exists from public.credit_ledger
     where user_id = p_user_id and ref = p_ref limit 1;
   if found then return jsonb_build_object('ok', true, 'duplicate', true); end if;
-
-  select * into v_p from public.profiles where user_id = p_user_id for update;
-  if not found then return jsonb_build_object('ok', false, 'err', 'no_profile'); end if;
 
   if p_to_purchased then
     update public.profiles set purchased_credits = purchased_credits + p_amount
@@ -214,13 +217,13 @@ create or replace function public.consume_quota(
 language plpgsql security definer set search_path = public as $$
 declare v_row public.usage_counters;
 begin
+  -- Đảm bảo có dòng RỒI mới khoá (tránh race lần dùng đầu tiên gây lỗi trùng khoá chính).
+  insert into public.usage_counters(user_id, feature, window_start, used)
+  values (p_user_id, p_feature, now(), 0)
+  on conflict (user_id, feature) do nothing;
+
   select * into v_row from public.usage_counters
     where user_id = p_user_id and feature = p_feature for update;
-
-  if not found then
-    insert into public.usage_counters(user_id, feature, window_start, used)
-    values (p_user_id, p_feature, now(), 0) returning * into v_row;
-  end if;
 
   if now() >= v_row.window_start + (p_period_days || ' days')::interval then
     update public.usage_counters set window_start = now(), used = 0
@@ -239,10 +242,16 @@ end $$;
 
 -- 11) BẢO MẬT: chỉ service_role được gọi các hàm ghi. -----------------
 -- (Không thì user tự gọi refund_credits/grant_credits để tự cộng credit.)
-revoke all on function public.spend_credits(uuid,int,text,text)      from public;
-revoke all on function public.refund_credits(uuid,int,text)          from public;
+revoke all on function public.spend_credits(uuid,int,text,text)         from public;
+revoke all on function public.refund_credits(uuid,int,text)             from public;
 revoke all on function public.grant_credits(uuid,int,text,text,boolean) from public;
-revoke all on function public.consume_quota(uuid,text,int,int)       from public;
+revoke all on function public.consume_quota(uuid,text,int,int)          from public;
+-- ...nhưng SERVER (service_role) BẮT BUỘC gọi được — nếu không cả hệ credit chết
+-- vì revoke from public đã lấy luôn quyền của service_role.
+grant execute on function public.spend_credits(uuid,int,text,text)         to service_role;
+grant execute on function public.refund_credits(uuid,int,text)             to service_role;
+grant execute on function public.grant_credits(uuid,int,text,text,boolean) to service_role;
+grant execute on function public.consume_quota(uuid,text,int,int)          to service_role;
 
 -- 12) Backfill user hiện có ------------------------------------------
 update public.profiles
