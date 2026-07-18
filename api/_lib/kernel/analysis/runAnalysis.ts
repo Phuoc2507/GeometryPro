@@ -13,6 +13,7 @@ import { recognizeConstant } from './recognize';
 import { fitPoly, evalPoly, derivPoly, extremumOfPoly } from './polyfit';
 import { intersectionVolume, type Solid } from './solids';
 import { entityTableToGeometryData } from '../entityToGeometry';
+import { buildAnalysisFigure, type FigureInput } from './analysisFigure';
 
 const NumOrExpr = z.union([z.number(), z.string()]);
 
@@ -123,6 +124,25 @@ export function runAnalysis(raw: unknown): AnalysisResult {
     }
     return out;
   };
+  // Dựng FigureInput cho bài giải tích thuần tại env: hàm→coeffs (+miền x từ through), điểm oxyz_point, khối.
+  const buildFigureInput = (env: Env): FigureInput => {
+    const polys = fitAt(env).coeffs;
+    const polyDomains: Record<string, [number, number]> = {};
+    for (const fd of plan.functions) {
+      const xs = fd.through.map(([px]) => evalExpr(String(px), env));
+      if (xs.length > 0) polyDomains[fd.name] = [Math.min(...xs), Math.max(...xs)];
+    }
+    const points: { id: string; x: number; y: number; z: number }[] = [];
+    for (const op of plan.ops) {
+      const o = op as Record<string, unknown>;
+      if (o.op === 'oxyz_point' && Array.isArray(o.at)) {
+        const at = (o.at as (number | string)[]).map((c) => evalExpr(String(c), env));
+        points.push({ id: String(o.name), x: at[0], y: at[1], z: at[2] ?? 0 });
+      }
+    }
+    return { polys, polyDomains, points, solids: buildSolids(env) };
+  };
+
   const isExprSrc = (s: unknown): s is { kind: 'expr'; expr: string } =>
     !!s && typeof s === 'object' && (s as { kind?: string }).kind === 'expr';
   const isSolidVolSrc = (s: unknown): s is { kind: 'solid_volume'; of: [string, string]; mode: 'intersection' } =>
@@ -147,7 +167,7 @@ export function runAnalysis(raw: unknown): AnalysisResult {
       return {
         ok: true, parameter: { name: az.variable, value: NaN },
         answer: { approx: r.value, text: nice ? nice.text : r.value.toFixed(4), approximate: !nice },
-        violations: [], errors: [],
+        violations: [], errors: [], geometry: buildAnalysisFigure(az.variable, buildFigureInput({})),
       };
     } catch (e) { return fail(az.variable, (e as Error).message); }
   }
@@ -164,7 +184,7 @@ export function runAnalysis(raw: unknown): AnalysisResult {
       return {
         ok: Number.isFinite(val), parameter: { name: '-', value: NaN },
         answer: { approx: val, text: nice ? nice.text : val.toFixed(4), approximate: !nice },
-        violations: [], errors: [],
+        violations: [], errors: [], geometry: buildAnalysisFigure(plan.solidName || 'figure', buildFigureInput({})),
       };
     } catch (e) { return fail('-', (e as Error).message); }
   }
@@ -187,10 +207,12 @@ export function runAnalysis(raw: unknown): AnalysisResult {
       };
       const best = optimizeMulti(objective, los, his, az.sense);
       const nice = recognizeConstant(best.value);
+      const envBest: Env = {};
+      az.parameters.forEach((nm, i) => { envBest[nm] = best.xs[i]; });
       return {
         ok: Number.isFinite(best.value), parameter: { name: az.parameters.join(','), value: NaN },
         answer: { approx: best.value, text: nice ? nice.text : best.value.toFixed(4), approximate: !nice },
-        violations: [], errors: [],
+        violations: [], errors: [], geometry: buildAnalysisFigure(az.parameters.join(','), buildFigureInput(envBest)),
       };
     } catch (e) { return fail(az.parameters.join(','), (e as Error).message); }
   }

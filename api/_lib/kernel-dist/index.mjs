@@ -6936,6 +6936,74 @@ function intersectionVolume(a, b) {
   return integrate(f, lo, hi);
 }
 
+// api/_lib/kernel/analysis/analysisFigure.ts
+var RING = 16;
+var CURVE_SAMPLES = 24;
+function effectiveDegree(coeffs) {
+  let deg = coeffs.length - 1;
+  while (deg > 0 && Math.abs(coeffs[deg]) < 1e-12) deg--;
+  return deg;
+}
+function polyCurve(id, coeffs, xMin, xMax) {
+  const deg = effectiveDegree(coeffs);
+  const c = (k) => coeffs[k] ?? 0;
+  if (deg <= 2) {
+    return { id, type: "parabola", params: { a: c(2), b: c(1), c: c(0), xMin, xMax } };
+  }
+  if (deg === 3) {
+    return { id, type: "cubic", params: { a: c(3), b: c(2), c: c(1), d: c(0), xMin, xMax } };
+  }
+  return { id, type: "poly", params: { coeffs: [...coeffs], xMin, xMax } };
+}
+function buildAnalysisFigure(name, inp) {
+  const points = [];
+  const lines = [];
+  const curves = [];
+  for (const p of inp.points) {
+    points.push({ id: p.id, label: p.id, x: p.x, y: p.y, z: p.z });
+  }
+  for (const [fnName, coeffs] of Object.entries(inp.polys)) {
+    const [xMin, xMax] = inp.polyDomains[fnName] ?? [0, 10];
+    curves.push(polyCurve(`curve_${fnName}`, coeffs, xMin, xMax));
+    for (let k = 0; k <= CURVE_SAMPLES; k++) {
+      const x = xMin + (xMax - xMin) * k / CURVE_SAMPLES;
+      const y = evalPoly(coeffs, x);
+      const id = `${fnName}_s${k}`;
+      points.push({ id, label: "", x, y, z: 0 });
+    }
+  }
+  for (const [solidName, s] of Object.entries(inp.solids)) {
+    const ringPoints = (cx, cy, r, z, tag) => {
+      const ids = [];
+      for (let k = 0; k < RING; k++) {
+        const theta = 2 * Math.PI * k / RING;
+        const id = `${solidName}_${tag}${k}`;
+        points.push({ id, label: "", x: cx + r * Math.cos(theta), y: cy + r * Math.sin(theta), z });
+        ids.push(id);
+      }
+      for (let k = 0; k < RING; k++) {
+        lines.push({ id: `${solidName}_${tag}L${k}`, from: ids[k], to: ids[(k + 1) % RING], style: "solid" });
+      }
+      return ids;
+    };
+    if (s.kind === "cylinder") {
+      const bottom = ringPoints(s.cx, s.cy, s.radius, Math.min(s.from, s.to), "b");
+      const top = ringPoints(s.cx, s.cy, s.radius, Math.max(s.from, s.to), "t");
+      for (let k = 0; k < RING; k += 4) {
+        lines.push({ id: `${solidName}_g${k}`, from: bottom[k], to: top[k], style: "solid" });
+      }
+    } else {
+      const base = ringPoints(s.cx, s.cy, s.baseRadius, s.baseZ, "b");
+      const apexId = `${solidName}_apex`;
+      points.push({ id: apexId, label: apexId, x: s.cx, y: s.cy, z: s.apexZ });
+      for (let k = 0; k < RING; k += 4) {
+        lines.push({ id: `${solidName}_e${k}`, from: base[k], to: apexId, style: "solid" });
+      }
+    }
+  }
+  return { name, points, lines, curves, spheres: [], planes: [] };
+}
+
 // api/_lib/kernel/analysis/runAnalysis.ts
 var NumOrExpr = external_exports.union([external_exports.number(), external_exports.string()]);
 var SolidDeclSchema = external_exports.union([
@@ -7018,6 +7086,23 @@ function runAnalysis(raw) {
     }
     return out;
   };
+  const buildFigureInput = (env) => {
+    const polys = fitAt(env).coeffs;
+    const polyDomains = {};
+    for (const fd of plan.functions) {
+      const xs = fd.through.map(([px]) => evalExpr(String(px), env));
+      if (xs.length > 0) polyDomains[fd.name] = [Math.min(...xs), Math.max(...xs)];
+    }
+    const points = [];
+    for (const op of plan.ops) {
+      const o = op;
+      if (o.op === "oxyz_point" && Array.isArray(o.at)) {
+        const at = o.at.map((c) => evalExpr(String(c), env));
+        points.push({ id: String(o.name), x: at[0], y: at[1], z: at[2] ?? 0 });
+      }
+    }
+    return { polys, polyDomains, points, solids: buildSolids(env) };
+  };
   const isExprSrc = (s) => !!s && typeof s === "object" && s.kind === "expr";
   const isSolidVolSrc = (s) => !!s && typeof s === "object" && s.kind === "solid_volume";
   const solidVolumeAt = (env, src) => {
@@ -7040,7 +7125,8 @@ function runAnalysis(raw) {
         parameter: { name: az.variable, value: NaN },
         answer: { approx: r.value, text: nice ? nice.text : r.value.toFixed(4), approximate: !nice },
         violations: [],
-        errors: []
+        errors: [],
+        geometry: buildAnalysisFigure(az.variable, buildFigureInput({}))
       };
     } catch (e) {
       return fail2(az.variable, e.message);
@@ -7059,7 +7145,8 @@ function runAnalysis(raw) {
         parameter: { name: "-", value: NaN },
         answer: { approx: val, text: nice ? nice.text : val.toFixed(4), approximate: !nice },
         violations: [],
-        errors: []
+        errors: [],
+        geometry: buildAnalysisFigure(plan.solidName || "figure", buildFigureInput({}))
       };
     } catch (e) {
       return fail2("-", e.message);
@@ -7084,12 +7171,17 @@ function runAnalysis(raw) {
       };
       const best = optimizeMulti(objective, los, his, az.sense);
       const nice = recognizeConstant(best.value);
+      const envBest = {};
+      az.parameters.forEach((nm, i) => {
+        envBest[nm] = best.xs[i];
+      });
       return {
         ok: Number.isFinite(best.value),
         parameter: { name: az.parameters.join(","), value: NaN },
         answer: { approx: best.value, text: nice ? nice.text : best.value.toFixed(4), approximate: !nice },
         violations: [],
-        errors: []
+        errors: [],
+        geometry: buildAnalysisFigure(az.parameters.join(","), buildFigureInput(envBest))
       };
     } catch (e) {
       return fail2(az.parameters.join(","), e.message);
