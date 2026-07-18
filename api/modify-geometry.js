@@ -1,6 +1,13 @@
 import { callVilao } from './_lib/vilao.js';
 import { validateAndFixProjections } from './_lib/postProcess.js';
 import { generateLatexCode } from './_lib/generateLatex.js';
+import { createClient } from '@supabase/supabase-js';
+import crypto from 'crypto';
+import { creditsConfigured, checkAndConsume, refund } from './_lib/credits.js';
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+const supabase = supabaseUrl && supabaseKey ? createClient(supabaseUrl, supabaseKey) : null;
 
 const MODIFY_SYSTEM_PROMPT = `Bạn là chuyên gia chỉnh sửa hình học 3D cho học sinh Việt Nam (lớp 11-12). Nhận hình học hiện tại + yêu cầu chỉnh sửa → trả về hình học đã cập nhật.
 
@@ -101,6 +108,8 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method Not Allowed' });
   }
 
+  let userId = null;         // cần ở scope hàm để catch/parse-fail hoàn được credit
+  let creditCharge = null;   // { cost, reqId } nếu đã TRỪ credit -> hoàn khi không sửa được
   try {
     const { prompt, currentGeometry } = req.body;
 
@@ -120,6 +129,25 @@ export default async function handler(req, res) {
     }
     if (currentGeometry.points.length > 100 || currentGeometry.lines.length > 200) {
       return res.status(400).json({ error: 'Hình quá phức tạp' });
+    }
+
+    // ── Cổng credit "Sửa bằng AI": 0,2/lần cho gói trả phí; free -> nâng cấp ──
+    // Chỉ tính phí khi credit đã cấu hình. Trừ TRƯỚC khi gọi AI, hoàn nếu sửa không thành.
+    const authHeader = req.headers.authorization || '';
+    const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
+    if (supabase && token) {
+      const { data: { user } } = await supabase.auth.getUser(token);
+      if (user) userId = user.id;
+    }
+    if (creditsConfigured()) {
+      if (!userId) {
+        return res.status(401).json({ error: 'Vui lòng đăng nhập để dùng Sửa bằng AI', code: 'auth_required' });
+      }
+      const gate = await checkAndConsume(userId, 'modify', 'modify');
+      if (!gate.ok) {
+        return res.status(402).json({ error: gate.message, code: gate.reason });
+      }
+      if (gate.mode === 'credit') creditCharge = { cost: gate.cost, reqId: crypto.randomUUID() };
     }
 
     console.log('Modifying geometry with prompt:', trimmedPrompt);
@@ -170,6 +198,8 @@ CHỈ trả về JSON thuần, KHÔNG markdown.`;
       }
     } catch (parseError) {
       console.error('Parse error:', parseError);
+      // Không sửa được -> hoàn credit đã trừ (chỉ tính phí khi sửa thành công).
+      if (creditCharge && userId) { try { await refund(userId, creditCharge.cost, creditCharge.reqId); } catch (e) { console.warn('refund lỗi:', e?.message); } }
       if (content.toLowerCase().includes('clarif') || content.includes('?')) {
         return res.json({ needsClarification: true, message: content, geometry: currentGeometry });
       }
@@ -191,6 +221,8 @@ CHỈ trả về JSON thuần, KHÔNG markdown.`;
 
   } catch (error) {
     console.error('Error in modify-geometry:', error);
+    // Lỗi hạ tầng (timeout/mạng) -> hoàn credit đã trừ.
+    if (creditCharge && userId) { try { await refund(userId, creditCharge.cost, creditCharge.reqId); } catch (e) { console.warn('refund lỗi:', e?.message); } }
     const isAbort = error?.name === 'AbortError' || (error?.message || '').includes('aborted');
     const status = isAbort ? 504 : (error?.status || 500);
     const message = isAbort

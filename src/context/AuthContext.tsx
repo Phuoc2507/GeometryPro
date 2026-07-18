@@ -221,8 +221,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const tier = planActive
     ? (profile?.plan_tier || (profile?.plan_type === 'pro' ? 'pro' : 'free'))
     : 'free';
-  const planCredits = tier === 'free' ? 0 : (profile?.plan_credits ?? 0);
-  const purchasedCredits = profile?.purchased_credits ?? 0;  // không hết hạn
+  // numeric(12,2) về từ PostgREST là CHUỖI -> ép Number, không thì "+" thành nối chuỗi.
+  const planCredits = tier === 'free' ? 0 : Number(profile?.plan_credits ?? 0);
+  const purchasedCredits = Number(profile?.purchased_credits ?? 0);  // không hết hạn
   const credits = planCredits + purchasedCredits;
 
   return (

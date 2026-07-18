@@ -1,5 +1,5 @@
 import { Zap, Layers, Sparkles } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn, formatCredits } from '@/lib/utils';
 import { useAuth } from '@/context/AuthContext';
 import { getGuestQuotaRemaining } from '@/lib/quota';
 
@@ -63,7 +63,7 @@ export function DrawModeSelector({ value, onChange }: DrawModeSelectorProps) {
         {isPaid ? (
           <>
             <Sparkles className="w-3 h-3 text-primary" />
-            Tốn <strong className="text-primary">{selected.credits} credit</strong> · còn {credits}
+            Tốn <strong className="text-primary">{selected.credits} credit</strong> · còn {formatCredits(credits)}
           </>
         ) : freeRemaining != null ? (
           freeRemaining > 0 ? (

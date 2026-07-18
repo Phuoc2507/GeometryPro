@@ -13,6 +13,7 @@
 export const CREDIT_COST = {
   draw_quick: 1,
   draw_detailed: 2,
+  modify: 0.2,        // sửa hình bằng AI (chat tự do) — rẻ vì thao tác nhỏ
   solve: 2,
   export_video: 5,
 };
@@ -24,6 +25,7 @@ export function creditCostFor(action) {
 // feature: 'draw' | 'solve' | 'export_image' | 'export_tikz' | 'export_doc' | 'export_video'
 const FREE = {
   draw:         { mode: 'quota', max: 3, periodDays: 1 },   // 3 lượt vẽ/ngày (nhanh+kỹ chung)
+  modify:       { mode: 'blocked' },                        // sửa bằng AI: gói free phải nâng cấp
   solve:        { mode: 'quota', max: 3, periodDays: 30 },  // 3 lượt giải/tháng
   export_image: { mode: 'quota', max: 1, periodDays: 30 },  // 1 lượt/tháng
   export_tikz:  { mode: 'quota', max: 1, periodDays: 30 },  // 1 lượt/tháng (đếm riêng)
@@ -33,6 +35,7 @@ const FREE = {
 
 const TEACHER = {
   draw:         { mode: 'credit' },
+  modify:       { mode: 'credit' },    // sửa bằng AI: trừ CREDIT_COST.modify (0,2)
   solve:        { mode: 'credit' },
   export_image: { mode: 'unlimited' },
   export_tikz:  { mode: 'unlimited' },

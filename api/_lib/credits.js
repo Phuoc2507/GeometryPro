@@ -35,13 +35,16 @@ export async function getAccount(userId) {
     .maybeSingle();
   if (!data) return { tier: 'free', credits: 0, plan_credits: 0, purchased_credits: 0, plan_code: 'free' };
   const tier = effectiveTier(data);
+  // numeric(12,2) về từ PostgREST là CHUỖI -> ép Number, không thì "203.80" + "0.2" = nối chuỗi.
+  const planCr = Number(data.plan_credits ?? 0);
+  const purchCr = Number(data.purchased_credits ?? 0);
   return {
     tier,
     plan_code: tier === 'free' ? 'free' : data.plan_code,
     plan_expires_at: data.plan_expires_at,
-    plan_credits: data.plan_credits ?? 0,
-    purchased_credits: data.purchased_credits ?? 0,
-    credits: (data.plan_credits ?? 0) + (data.purchased_credits ?? 0),
+    plan_credits: planCr,
+    purchased_credits: purchCr,
+    credits: planCr + purchCr,
   };
 }
 

@@ -344,7 +344,7 @@ export interface GeometryContextType {
   analyzeText: (prompt: string, mode?: DrawMode) => Promise<void>;
   queueAnalyzeText: (prompt: string, mode?: DrawMode, tags?: string[], detailLevel?: import('@/types/geometry').DetailLevel, offset?: [number, number, number]) => void;
   queueAnalyzeImage: (imageBase64: string, mode?: DrawMode, tags?: string[], detailLevel?: import('@/types/geometry').DetailLevel) => void;
-  modifyGeometry: (prompt: string) => Promise<void>;
+  modifyGeometry: (prompt: string, opts?: { aiMode?: boolean }) => Promise<void>;
   loadGeometry: (geometry: GeometryData) => void;
   clearGeometry: () => void;
   stopScanning: () => void;
@@ -857,9 +857,11 @@ export function GeometryProvider({ children }: { children: React.ReactNode }) {
     dispatch({ type: 'QUEUE_REMOVE', id });
   }, []);
 
-  const modifyGeometry = useCallback(async (prompt: string) => {
+  const modifyGeometry = useCallback(async (prompt: string, opts?: { aiMode?: boolean }) => {
     if (!state.geometry) return;
+    const aiMode = opts?.aiMode ?? false;
 
+    // Luôn thử lệnh local trước (tất định, nhanh, miễn phí).
     const localResult = tryLocalCommand(prompt, state.geometry);
     if (localResult) {
       dispatch({ type: 'SET_GEOMETRY', geometry: localResult.geometry });
@@ -872,11 +874,29 @@ export function GeometryProvider({ children }: { children: React.ReactNode }) {
       return;
     }
 
+    // Không khớp lệnh local. Nếu TẮT "Sửa bằng AI" -> không gọi AI, gợi ý bật lên.
+    if (!aiMode) {
+      toast({
+        title: "Chưa hiểu lệnh này",
+        description: 'Dùng gợi ý cú pháp, hoặc bật "Sửa bằng AI" để chat tự do (0,2 credit/lần).',
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Chế độ AI (trừ 0,2 credit ở server, hoàn nếu sửa không thành).
     try {
       const { data, error } = await invokeLocalApi('/api/modify-geometry', { prompt, currentGeometry: state.geometry });
 
       if (error) {
+        if (error.code === 'auth_required' || error.status === 401) { openAuthModal(); return; }
+        if (needsUpgrade(error)) { openUpgradeModal(); return; }
         toast({ title: "Lỗi", description: error.message || "Không thể chỉnh sửa hình học", variant: "destructive" });
+        return;
+      }
+
+      if (data?.needsClarification) {
+        toast({ title: "AI cần bạn nói rõ hơn", description: (data.message || '').slice(0, 200) });
         return;
       }
 
@@ -891,11 +911,12 @@ export function GeometryProvider({ children }: { children: React.ReactNode }) {
             description: `Thêm ${data.addedElements?.points?.length || 0} điểm và ${data.addedElements?.lines?.length || 0} đường`,
           });
         }, 1500);
+        refreshProfile();  // sửa vừa trừ credit ở server -> cập nhật số dư
       }
     } catch (error) {
       toast({ title: "Lỗi", description: "Không thể xử lý yêu cầu", variant: "destructive" });
     }
-  }, [state.geometry]);
+  }, [state.geometry, openAuthModal, openUpgradeModal, refreshProfile]);
 
   const stopScanning = useCallback(() => {
     scanSessionRef.current++;
