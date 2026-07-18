@@ -8,6 +8,8 @@ import { AnimationProvider } from "@/context/AnimationContext";
 import { ToolModeProvider } from "@/context/ToolModeContext";
 import { ToolSlider } from "@/components/ui/ToolSlider";
 import { AuthModal } from "@/components/AuthModal";
+import { UpgradeModal } from "@/components/UpgradeModal";
+import { useAuth } from "@/context/AuthContext";
 import React, { Suspense } from 'react';
 import { Loader2 } from 'lucide-react';
 
@@ -27,6 +29,12 @@ function PageLoader() {
   );
 }
 
+// Modal nâng cấp toàn cục — mở từ bất kỳ đâu qua openUpgradeModal() (hết credit, nút Nâng cấp...).
+function GlobalUpgradeModal() {
+  const { isUpgradeModalOpen, closeUpgradeModal } = useAuth();
+  return <UpgradeModal open={isUpgradeModalOpen} onOpenChange={(o) => { if (!o) closeUpgradeModal(); }} />;
+}
+
 const queryClient = new QueryClient();
 
 function App() {
@@ -40,6 +48,7 @@ function App() {
                 <Toaster />
                 <Sonner />
                 <AuthModal />
+                <GlobalUpgradeModal />
                 <ToolSlider />
                 <Suspense fallback={<PageLoader />}>
                   <Routes>

@@ -1,7 +1,6 @@
 
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { UpgradeModal } from '@/components/UpgradeModal';
 import { User, LogOut, Save, Settings, Sparkles, Crown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -21,8 +20,7 @@ const RENEW_THRESHOLD_DAYS = 7;
 
 export function UserMenu() {
   const navigate = useNavigate();
-  const { user, profile, isPro, tier, credits, signOut } = useAuth();
-  const [upgradeOpen, setUpgradeOpen] = useState(false);
+  const { user, profile, isPro, tier, credits, signOut, openUpgradeModal } = useAuth();
 
   const daysLeft = useMemo(() => {
     if (!isPro || !profile?.plan_expires_at) return null;
@@ -119,14 +117,14 @@ export function UserMenu() {
         <DropdownMenuSeparator />
 
         {!isPro && (
-          <DropdownMenuItem onClick={() => setUpgradeOpen(true)} className="text-primary font-medium focus:text-primary focus:bg-primary/10">
+          <DropdownMenuItem onClick={() => openUpgradeModal()} className="text-primary font-medium focus:text-primary focus:bg-primary/10">
             <Sparkles className="w-4 h-4 mr-2" />
             Nâng cấp Pro
           </DropdownMenuItem>
         )}
 
         {isPro && expiringSoon && (
-          <DropdownMenuItem onClick={() => setUpgradeOpen(true)} className="text-amber-500 font-medium focus:text-amber-500 focus:bg-amber-500/10">
+          <DropdownMenuItem onClick={() => openUpgradeModal()} className="text-amber-500 font-medium focus:text-amber-500 focus:bg-amber-500/10">
             <Sparkles className="w-4 h-4 mr-2" />
             <span className="flex-1">Gia hạn Pro</span>
             <span className="text-[10px] text-muted-foreground ml-2">
@@ -159,7 +157,6 @@ export function UserMenu() {
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
-    <UpgradeModal open={upgradeOpen} onOpenChange={setUpgradeOpen} />
     </>
   );
 }

@@ -42,6 +42,11 @@ interface AuthContextType {
   authModalReason: 'save' | 'project' | 'quota' | 'general' | null;
   openAuthModal: (reason?: 'save' | 'project' | 'quota' | 'general') => void;
   closeAuthModal: () => void;
+
+  // Upgrade Modal (mở khi hết credit/quota hoặc bấm "Nâng cấp")
+  isUpgradeModalOpen: boolean;
+  openUpgradeModal: () => void;
+  closeUpgradeModal: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -65,6 +70,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setIsAuthModalOpen(false);
     setAuthModalReason(null);
   };
+
+  const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false);
+  const openUpgradeModal = () => setIsUpgradeModalOpen(true);
+  const closeUpgradeModal = () => setIsUpgradeModalOpen(false);
 
   const fetchProfile = async (userId: string) => {
     const { data, error } = await supabase
@@ -212,6 +221,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       authModalReason,
       openAuthModal,
       closeAuthModal,
+      isUpgradeModalOpen,
+      openUpgradeModal,
+      closeUpgradeModal,
     }}>
       {children}
     </AuthContext.Provider>

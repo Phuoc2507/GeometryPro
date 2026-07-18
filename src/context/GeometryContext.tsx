@@ -22,7 +22,7 @@ async function invokeLocalApi(endpoint: string, body: Record<string, unknown>): 
       body: JSON.stringify(body),
     });
     const data = await res.json();
-    if (!res.ok) return { data: null, error: { message: data?.error || `HTTP ${res.status}` } };
+    if (!res.ok) return { data: null, error: { message: data?.error || `HTTP ${res.status}`, code: data?.code, status: res.status } };
     return { data, error: null };
   } catch (err: any) {
     return { data: null, error: { message: err?.message || 'Network error' } };
@@ -49,7 +49,7 @@ async function invokeLocalApiStream(
 
     if (!res.ok) {
       const data = await res.json().catch(() => null);
-      return { data: null, error: { message: data?.error || `HTTP ${res.status}` } };
+      return { data: null, error: { message: data?.error || `HTTP ${res.status}`, code: data?.code, status: res.status } };
     }
 
     const reader = res.body?.getReader();
@@ -71,7 +71,7 @@ async function invokeLocalApiStream(
             const dataStr = chunk.slice(6);
             const parsed = JSON.parse(dataStr);
             if (parsed.error) {
-              return { data: null, error: { message: parsed.error } };
+              return { data: null, error: { message: parsed.error, code: parsed.code } };
             }
             if (parsed.status === 'done') {
               finalData = parsed.data;
@@ -91,6 +91,12 @@ async function invokeLocalApiStream(
   } catch (err: any) {
     return { data: null, error: { message: err?.message || 'Network error' } };
   }
+}
+
+// Lỗi hết credit/quota (từ API 402) -> nên mở modal nâng cấp.
+const NEEDS_UPGRADE_CODES = ['insufficient', 'quota_exceeded', 'blocked'];
+function needsUpgrade(err: any): boolean {
+  return err?.status === 402 || NEEDS_UPGRADE_CODES.includes(err?.code);
 }
 import { generateLatexCode } from '@/lib/geometry/generateLatex';
 import { tryLocalCommand } from '@/lib/geometry/localCommands';
@@ -380,7 +386,7 @@ export function GeometryProvider({ children }: { children: React.ReactNode }) {
   const stateRef = useRef(state);
   const scanSessionRef = useRef(0);
   const { addToHistory } = useGeometryHistory();
-  const { user, openAuthModal } = useAuth();
+  const { user, openAuthModal, openUpgradeModal } = useAuth();
   stateRef.current = state;
 
   const undo = useCallback(() => {
@@ -499,11 +505,12 @@ export function GeometryProvider({ children }: { children: React.ReactNode }) {
       if (geminiError || geminiData?.error) {
         clearInterval(progressInterval);
         let errorMessage = geminiData?.error || geminiError?.message || "Không thể đọc đề bài từ ảnh";
-        
+
         if (errorMessage.includes('Missing or invalid token')) {
           errorMessage = "Vui lòng đăng nhập để sử dụng tính năng AI phân tích ảnh.";
         }
-        
+        if (needsUpgrade(geminiError)) openUpgradeModal();
+
         toast({ title: "❌ Lỗi", description: errorMessage, variant: "destructive" });
         dispatch({ type: 'CLEAR_GEOMETRY' });
         return;
@@ -585,6 +592,7 @@ export function GeometryProvider({ children }: { children: React.ReactNode }) {
         if (errorMessage.includes('Missing or invalid token')) {
           errorMessage = "Vui lòng đăng nhập để sử dụng tính năng AI vẽ hình.";
         }
+        if (needsUpgrade(geminiError)) openUpgradeModal();
         
         toast({ title: "❌ Lỗi", description: errorMessage, variant: "destructive" });
         dispatch({ type: 'CLEAR_GEOMETRY' });
@@ -645,6 +653,7 @@ export function GeometryProvider({ children }: { children: React.ReactNode }) {
           if (errorMessage.includes('Missing or invalid token')) {
             errorMessage = "Vui lòng đăng nhập để sử dụng tính năng AI vẽ hình.";
           }
+          if (needsUpgrade(error)) openUpgradeModal();
           
           dispatch({
             type: 'QUEUE_UPDATE',
@@ -757,6 +766,7 @@ export function GeometryProvider({ children }: { children: React.ReactNode }) {
           if (errorMessage.includes('Missing or invalid token')) {
             errorMessage = "Vui lòng đăng nhập để sử dụng tính năng AI phân tích ảnh.";
           }
+          if (needsUpgrade(error)) openUpgradeModal();
           
           dispatch({ type: 'QUEUE_UPDATE', id, updates: { status: 'error', progress: 0, statusText: errorMessage, error: errorMessage } });
           toast({ title: "❌ Lỗi vẽ hình", description: errorMessage, variant: "destructive" });
