@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -87,9 +87,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const refreshProfile = async () => {
+  const refreshProfile = useCallback(async () => {
     if (user) await fetchProfile(user.id);
-  };
+  }, [user]);
+
+  // Số dư credit đổi ở server (vẽ, thanh toán ở tab khác...) -> refresh khi tab được focus lại.
+  useEffect(() => {
+    const onFocus = () => { if (user) fetchProfile(user.id); };
+    window.addEventListener('focus', onFocus);
+    return () => window.removeEventListener('focus', onFocus);
+  }, [user]);
 
   useEffect(() => {
     // Set up auth state listener FIRST

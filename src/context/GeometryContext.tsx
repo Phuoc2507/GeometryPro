@@ -386,7 +386,7 @@ export function GeometryProvider({ children }: { children: React.ReactNode }) {
   const stateRef = useRef(state);
   const scanSessionRef = useRef(0);
   const { addToHistory } = useGeometryHistory();
-  const { user, openAuthModal, openUpgradeModal } = useAuth();
+  const { user, openAuthModal, openUpgradeModal, refreshProfile } = useAuth();
   stateRef.current = state;
 
   const undo = useCallback(() => {
@@ -421,6 +421,7 @@ export function GeometryProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const finishWithGeometry = useCallback((geometry: GeometryData) => {
+    refreshProfile();  // vẽ vừa trừ credit ở server -> cập nhật số dư hiển thị
     if (!geometry.latexCode) {
       geometry = { ...geometry, latexCode: generateLatexCode(geometry) };
     }
@@ -705,6 +706,7 @@ export function GeometryProvider({ children }: { children: React.ReactNode }) {
             window.history.replaceState({}, '', url.toString());
           }
 
+          refreshProfile();  // vẽ vừa trừ credit ở server -> cập nhật số dư hiển thị
           toast({
           title: "✅ Vẽ xong!",
           description: `${geometry.name} (${modeLabels[mode] || mode}) — Nhấn để xem`,

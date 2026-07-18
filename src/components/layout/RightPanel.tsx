@@ -132,7 +132,8 @@ function PanelContent() {
         </TabsList>
 
         <TabsContent value="problem" className="flex-1 p-0 m-0 min-h-0 data-[state=active]:flex flex-col">
-          <SolverContent creditNote="Mỗi lần giải tốn 1 lượt AI (1 credit)." />
+          {/* Chưa gắn trừ credit cho /api/solve (chờ engine) -> không hiện creditNote sai. */}
+          <SolverContent />
         </TabsContent>
 
         <TabsContent value="properties" className="flex-1 p-4">

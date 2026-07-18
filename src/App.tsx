@@ -2,7 +2,8 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, useSearchParams } from "react-router-dom";
+import { toast } from "sonner";
 import { AuthProvider } from "@/context/AuthContext";
 import { AnimationProvider } from "@/context/AnimationContext";
 import { ToolModeProvider } from "@/context/ToolModeContext";
@@ -10,7 +11,7 @@ import { ToolSlider } from "@/components/ui/ToolSlider";
 import { AuthModal } from "@/components/AuthModal";
 import { UpgradeModal } from "@/components/UpgradeModal";
 import { useAuth } from "@/context/AuthContext";
-import React, { Suspense } from 'react';
+import React, { Suspense, useEffect } from 'react';
 import { Loader2 } from 'lucide-react';
 
 const Landing = React.lazy(() => import('./pages/Landing'));
@@ -35,6 +36,23 @@ function GlobalUpgradeModal() {
   return <UpgradeModal open={isUpgradeModalOpen} onOpenChange={(o) => { if (!o) closeUpgradeModal(); }} />;
 }
 
+// Sau khi thanh toán PayOS quay về ?payment=success: báo thành công + refresh credit (webhook cộng async).
+function PaymentSuccessHandler() {
+  const [params, setParams] = useSearchParams();
+  const { refreshProfile } = useAuth();
+  useEffect(() => {
+    if (params.get('payment') !== 'success') return;
+    toast.success('Thanh toán thành công!', { description: 'Credit đang được cộng vào tài khoản...', duration: 6000 });
+    refreshProfile();
+    const t = setTimeout(() => refreshProfile(), 4000); // chờ webhook cộng credit rồi refresh lại
+    params.delete('payment');
+    setParams(params, { replace: true });
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  return null;
+}
+
 const queryClient = new QueryClient();
 
 function App() {
@@ -49,6 +67,7 @@ function App() {
                 <Sonner />
                 <AuthModal />
                 <GlobalUpgradeModal />
+                <PaymentSuccessHandler />
                 <ToolSlider />
                 <Suspense fallback={<PageLoader />}>
                   <Routes>
