@@ -6,6 +6,7 @@ import cors from 'cors';
 // We need to dynamically import the handlers because they use ES modules
 import analyzeGeometryHandler from './api/analyze-geometry.js';
 import analyzeGeometryV2Handler from './api/analyze-geometry-v2.js';
+import modifyGeometryHandler from './api/modify-geometry.js';
 import solveHandler from './api/solve.js';
 import checkoutHandler from './api/checkout.js';
 import webhookHandler from './api/webhook.js';
@@ -35,6 +36,17 @@ app.post('/api/analyze-geometry-v2', async (req, res) => {
     await analyzeGeometryV2Handler(req, res);
   } catch (error) {
     console.error('Error in /api/analyze-geometry-v2:', error);
+    if (!res.headersSent) {
+      res.status(500).json({ error: error.message || 'Internal Server Error' });
+    }
+  }
+});
+
+app.post('/api/modify-geometry', async (req, res) => {
+  try {
+    await modifyGeometryHandler(req, res);
+  } catch (error) {
+    console.error('Error in /api/modify-geometry:', error);
     if (!res.headersSent) {
       res.status(500).json({ error: error.message || 'Internal Server Error' });
     }
@@ -78,6 +90,7 @@ const PORT = 3000;
 app.listen(PORT, () => {
   console.log(`✅ Vercel Local API Mock Server running at http://localhost:${PORT}`);
   console.log(`- Ready to receive requests for /api/analyze-geometry`);
+  console.log(`- Ready to receive requests for /api/modify-geometry`);
   console.log(`- Ready to receive requests for /api/solve`);
   console.log(`- Ready to receive requests for /api/checkout`);
   console.log(`- Ready to receive requests for /api/webhook`);
