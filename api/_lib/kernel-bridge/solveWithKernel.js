@@ -64,11 +64,13 @@ export function solvePlan(plan) {
   const result = runAny(plan);
   // Nhánh analysis: runAnalysis trả { parameter, answer } và KHÔNG có entities ⇒ chưa dựng được hình.
   if (!('entities' in result)) {
+    // Nhánh analysis: runAnalysis nay trả THÊM hình dựng tại nghiệm (optimize/solve có op hình học)
+    // ⇒ route vẽ hiện được cả hình lẫn đáp số. Gắn `kind` để calculation_log của route định dạng gọn.
     return jsonSafe({
       ok: result.ok,
-      geometry: null,
+      geometry: result.geometry ?? null,
       parameter: result.parameter,
-      answers: result.ok ? [result.answer] : [],
+      answers: result.ok ? [{ kind: 'kết quả', ...result.answer }] : [],
       violations: result.violations,
       errors: result.errors,
     });

@@ -69,4 +69,25 @@ describe('runAnalysis', () => {
     expect(r.ok).toBe(true);
     expect(r.violations).toHaveLength(0);
   });
+
+  it('trả HÌNH tại nghiệm (để route vẽ hiện được cả hình lẫn số)', () => {
+    const r = runAnalysis({
+      solidName: 'x', parameters: [{ name: 't', domain: [0, 10] }],
+      ops: [
+        { op: 'oxyz_point', name: 'O', at: [0, 0, 0] },
+        { op: 'oxyz_point', name: 'P', at: ['t', 0, 0] },
+      ],
+      analyze: {
+        kind: 'solve', parameter: 't',
+        constraint: { of: { kind: 'distance', a: 'O', b: 'P' }, equals: 3 },
+        report: { kind: 'distance', a: 'O', b: 'P' },
+      },
+    });
+    expect(r.ok).toBe(true);
+    expect(r.geometry).not.toBeNull();
+    const g = r.geometry as { points: { id: string; x: number }[] };
+    expect(g.points.length).toBe(2);
+    // P dựng tại nghiệm t=3 ⇒ P.x = 3
+    expect(g.points.find((p) => p.id === 'P').x).toBeCloseTo(3, 6);
+  });
 });

@@ -7168,6 +7168,7 @@ function runAnalysis(raw) {
     let violations = [];
     let errors = [];
     let val = NaN;
+    let geometry = null;
     if (isExprSrc(src) || isSolidVolSrc(src)) {
       try {
         val = isSolidVolSrc(src) ? solidVolumeAt(env, src) : evalExpr(src.expr, env, fitAt(env).funcs);
@@ -7179,6 +7180,7 @@ function runAnalysis(raw) {
           const res = run({ solidName: plan.solidName, ops: concreteOps(value), asserts: plan.asserts, queries: [] });
           violations = res.violations;
           errors = res.errors.map((e) => ({ message: e.message }));
+          if (res.entities.points.size > 0) geometry = entityTableToGeometryData(res.entities, plan.solidName || "figure");
         } catch (e) {
           errors = [{ message: e.message }];
         }
@@ -7197,6 +7199,7 @@ function runAnalysis(raw) {
       }
       violations = res.violations;
       errors = res.errors.map((e) => ({ message: e.message }));
+      if (res.entities.points.size > 0) geometry = entityTableToGeometryData(res.entities, plan.solidName || "figure");
     }
     const nice = Number.isFinite(val) ? recognizeConstant(val) : null;
     return {
@@ -7204,7 +7207,8 @@ function runAnalysis(raw) {
       parameter: { name: pname, value },
       answer: { approx: val, text: nice ? nice.text : Number.isFinite(val) ? val.toFixed(4) : "(l\u1ED7i)", approximate: !nice },
       violations,
-      errors
+      errors,
+      geometry
     };
   };
   if (plan.analyze.kind === "optimize") {

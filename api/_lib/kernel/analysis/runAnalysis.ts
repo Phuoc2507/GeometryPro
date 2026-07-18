@@ -12,6 +12,7 @@ import { optimizeParam, solveParam, optimizeMulti } from './paramsolve';
 import { recognizeConstant } from './recognize';
 import { fitPoly, evalPoly, derivPoly, extremumOfPoly } from './polyfit';
 import { intersectionVolume, type Solid } from './solids';
+import { entityTableToGeometryData } from '../entityToGeometry';
 
 const NumOrExpr = z.union([z.number(), z.string()]);
 
@@ -69,6 +70,7 @@ export type AnalysisResult = {
   answer: { approx: number; text: string; approximate: boolean };
   violations: unknown[];
   errors: { message: string }[];
+  geometry?: unknown; // hình DỰNG TẠI NGHIỆM (để route vẽ hiện được), null nếu bài không có hình
 };
 
 // Số hoá một entry toạ độ/tham số: nếu là chuỗi CÓ chứa tên tham số → evalExpr; ngược lại giữ nguyên.
@@ -258,6 +260,7 @@ export function runAnalysis(raw: unknown): AnalysisResult {
     let violations: unknown[] = [];
     let errors: { message: string }[] = [];
     let val = NaN;
+    let geometry: unknown = null;
     if (isExprSrc(src) || isSolidVolSrc(src)) {
       try {
         val = isSolidVolSrc(src) ? solidVolumeAt(env, src) : evalExpr(src.expr, env, fitAt(env).funcs);
@@ -266,6 +269,7 @@ export function runAnalysis(raw: unknown): AnalysisResult {
         try {
           const res = run({ solidName: plan.solidName, ops: concreteOps(value), asserts: plan.asserts, queries: [] });
           violations = res.violations; errors = res.errors.map((e) => ({ message: e.message }));
+          if (res.entities.points.size > 0) geometry = entityTableToGeometryData(res.entities, plan.solidName || 'figure');
         } catch (e) { errors = [{ message: (e as Error).message }]; }
       }
     } else {
@@ -274,13 +278,14 @@ export function runAnalysis(raw: unknown): AnalysisResult {
       const res = run({ solidName: plan.solidName, ops, asserts: plan.asserts, queries: [src] });
       try { if (res.answers.length > 0) val = scalarOf(res.answers[0]); } catch { /* không trả số */ }
       violations = res.violations; errors = res.errors.map((e) => ({ message: e.message }));
+      if (res.entities.points.size > 0) geometry = entityTableToGeometryData(res.entities, plan.solidName || 'figure');
     }
     const nice = Number.isFinite(val) ? recognizeConstant(val) : null;
     return {
       ok: violations.length === 0 && errors.length === 0 && Number.isFinite(val),
       parameter: { name: pname, value },
       answer: { approx: val, text: nice ? nice.text : (Number.isFinite(val) ? val.toFixed(4) : '(lỗi)'), approximate: !nice },
-      violations, errors,
+      violations, errors, geometry,
     };
   };
 
