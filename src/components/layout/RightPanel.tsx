@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback, useDeferredValue } from 'react';
-import { ChevronRight, ChevronLeft, Copy, Check, Box, MapPin, Ruler, Triangle, Cuboid, Code } from 'lucide-react';
+import { ChevronRight, ChevronLeft, Copy, Check, Box, MapPin, Ruler, Cuboid, Code, Download, Maximize2, FileDown, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -11,11 +11,15 @@ import { computeProperties, fmt } from '@/lib/geometry/calculations';
 import { DynamicPointControls } from '@/components/DynamicPointControls';
 import { cn } from '@/lib/utils';
 import { scaleGeometry } from '@/lib/geometry/scaleGeometry';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { CaptureModal } from '@/components/CaptureModal';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
 
 function PanelContent() {
   const [copied, setCopied] = useState(false);
   const [tikzScale, setTikzScale] = useState(1.2);
-  const [activeTab, setActiveTab] = useState('properties');
+  const [activeTab, setActiveTab] = useState('export');
+  const [isCaptureOpen, setIsCaptureOpen] = useState(false);
   const context = useGeometryOptional();
   const camera = useCameraOptional();
   const cameraStateContext = useCameraStateOptional();
@@ -79,6 +83,16 @@ function PanelContent() {
     }
   };
 
+  const handleDownloadLatex = () => {
+    const latex = getDynamicLatex();
+    if (!latex) return;
+    const blob = new Blob([latex], { type: 'text/plain' });
+    const link = document.createElement('a');
+    link.download = `${state.geometry?.name || 'geometry'}.tex`;
+    link.href = URL.createObjectURL(blob);
+    link.click();
+  };
+
   if (!state.geometry) {
     return (
       <div className="h-full flex items-center justify-center">
@@ -101,36 +115,16 @@ function PanelContent() {
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col min-h-0">
-        <TabsList className="mx-4 mt-4 grid w-auto grid-cols-4">
+        <TabsList className="mx-4 mt-4 grid w-auto grid-cols-2">
+          <TabsTrigger value="export" className="gap-2 text-xs">
+            <Download className="w-3 h-3" />
+            Xuất
+          </TabsTrigger>
           <TabsTrigger value="properties" className="gap-2 text-xs">
             <Box className="w-3 h-3" />
             Properties
           </TabsTrigger>
-          <TabsTrigger value="latex" className="gap-2 text-xs">
-            <span className="text-[10px] font-mono">TeX</span>
-            LaTeX
-          </TabsTrigger>
-          <TabsTrigger value="json" className="gap-2 text-xs">
-            <Code className="w-3 h-3" />
-            JSON
-          </TabsTrigger>
-          <TabsTrigger value="prompt" className="gap-2 text-xs">
-            Prompt
-          </TabsTrigger>
         </TabsList>
-
-        <TabsContent value="prompt" className="flex-1 p-0 m-0 min-h-0 data-[state=active]:flex flex-col">
-          <div className="flex items-center justify-between p-2 border-b border-border/50 bg-muted/20">
-            <span className="text-xs text-muted-foreground ml-2">Đề bài đã gửi (Prompt)</span>
-          </div>
-          <ScrollArea className="flex-1">
-            <div className="p-4">
-              <pre className="text-xs font-mono text-muted-foreground whitespace-pre-wrap break-words">
-                {state.geometry.llmPrompt || 'No prompt available.'}
-              </pre>
-            </div>
-          </ScrollArea>
-        </TabsContent>
 
         <TabsContent value="properties" className="flex-1 p-4">
           <ScrollArea className="h-full">
@@ -224,54 +218,67 @@ function PanelContent() {
                 </div>
               </div>
 
-              {/* Edges */}
-              <div>
-                <h3 className="text-sm font-medium text-muted-foreground mb-2">Các cạnh</h3>
-                <div className="flex flex-wrap gap-1">
-                  {state.geometry.lines.map((line) => (
-                    <span
-                      key={line.id}
-                      className="px-2 py-1 rounded text-xs font-mono bg-secondary/30 text-foreground"
-                    >
-                      {line.from}→{line.to}
-                    </span>
-                  ))}
-                </div>
-              </div>
+              {/* Nâng cao — JSON + Prompt (dev/debug, thu gọn) */}
+              <Collapsible>
+                <CollapsibleTrigger className="flex items-center gap-2 w-full text-sm font-medium text-muted-foreground hover:text-foreground transition-colors [&[data-state=open]>svg:first-child]:rotate-180">
+                  <ChevronDown className="w-4 h-4 transition-transform" />
+                  <Code className="w-3 h-3" />
+                  Nâng cao (JSON · Prompt)
+                </CollapsibleTrigger>
+                <CollapsibleContent className="pt-3 space-y-4">
+                  {/* Raw JSON */}
+                  <div>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Raw Geometry JSON</span>
+                      <Button variant="ghost" size="sm" className="h-6 gap-1 px-1.5" onClick={() => {
+                        const { latexCode, ...rest } = state.geometry!;
+                        navigator.clipboard.writeText(JSON.stringify(rest, null, 2));
+                        setCopied(true);
+                        setTimeout(() => setCopied(false), 2000);
+                      }}>
+                        {copied ? <Check className="w-3 h-3 text-green-500" /> : <Copy className="w-3 h-3" />}
+                        <span className="text-[10px]">JSON</span>
+                      </Button>
+                    </div>
+                    <div className="bg-secondary/20 rounded-md border border-border/30 max-h-48 overflow-auto">
+                      <pre className="p-2 text-[10px] font-mono text-muted-foreground whitespace-pre-wrap break-all">
+                        {(() => {
+                          const { latexCode, ...rest } = state.geometry;
+                          return JSON.stringify(rest, null, 2);
+                        })()}
+                      </pre>
+                    </div>
+                  </div>
+                  {/* Prompt đã gửi */}
+                  <div>
+                    <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Đề đã gửi (Prompt)</span>
+                    <div className="mt-1.5 bg-secondary/20 rounded-md border border-border/30 max-h-48 overflow-auto">
+                      <pre className="p-2 text-[10px] font-mono text-muted-foreground whitespace-pre-wrap break-words">
+                        {state.geometry.llmPrompt || 'No prompt available.'}
+                      </pre>
+                    </div>
+                  </div>
+                </CollapsibleContent>
+              </Collapsible>
             </div>
           </ScrollArea>
         </TabsContent>
 
-        <TabsContent value="latex" className="flex-1 overflow-hidden p-0">
+        <TabsContent value="export" className="flex-1 overflow-hidden p-0">
           <ScrollArea className="h-full w-full">
             <div className="p-4 flex flex-col gap-4">
               <div className="flex items-center justify-between">
-            <h3 className="text-sm font-medium text-muted-foreground">TikZ Preview</h3>
-            <div className="flex items-center gap-4">
-              <div className="flex items-center gap-2">
-                <span className="text-[10px] text-muted-foreground">Scale: {tikzScale.toFixed(1)}</span>
-                <input 
-                  type="range" min="0.5" max="3.0" step="0.1" 
-                  value={tikzScale} 
-                  onChange={e => setTikzScale(parseFloat(e.target.value))} 
-                  className="w-20 h-1 bg-secondary rounded-lg appearance-none cursor-pointer" 
-                />
+                <h3 className="text-sm font-medium text-muted-foreground">Bản xem trước</h3>
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] text-muted-foreground">Scale {tikzScale.toFixed(1)}</span>
+                  <input
+                    type="range" min="0.5" max="3.0" step="0.1"
+                    value={tikzScale}
+                    onChange={e => setTikzScale(parseFloat(e.target.value))}
+                    className="w-20 h-1 bg-secondary rounded-lg appearance-none cursor-pointer"
+                  />
+                </div>
               </div>
-              <Button variant="ghost" size="sm" onClick={handleCopy} className="h-8 gap-1">
-                {copied ? (
-                  <>
-                    <Check className="w-3 h-3 text-green-500" />
-                    <span className="text-[10px]">Copied</span>
-                  </>
-                ) : (
-                  <>
-                    <Copy className="w-3 h-3" />
-                    <span className="text-[10px]">Copy Code</span>
-                  </>
-                )}
-              </Button>
-            </div>
-          </div>
 
           {/* Visual Preview */}
           <div className="aspect-square w-full bg-white rounded-lg border border-border/50 flex items-center justify-center p-4 shadow-sm relative overflow-hidden group">
@@ -290,7 +297,7 @@ function PanelContent() {
                   </radialGradient>
                 </defs>
                 {(() => {
-                  if (activeTab !== 'latex') return null;
+                  if (activeTab !== 'export') return null;
                   // Use a fixed scale factor (30.4) that precisely matches the 3D canvas perspective 
                   // to viewport height ratio (viewport=300px, 3D FOV=50deg, dist=10.59)
                   const scale = 30.4 * (tikzScale / 1.2) * (fixedCamera.zoom || 1);
@@ -742,11 +749,32 @@ function PanelContent() {
             </div>
           </div>
 
+            {/* Hành động xuất */}
+            <div className="grid grid-cols-2 gap-2">
+              <Button variant="outline" size="sm" className="h-9 gap-1.5" onClick={handleCopy}>
+                {copied ? <Check className="w-3.5 h-3.5 text-green-500" /> : <Copy className="w-3.5 h-3.5" />}
+                <span className="text-xs">{copied ? 'Đã chép' : 'Copy TikZ'}</span>
+              </Button>
+              <Button variant="outline" size="sm" className="h-9 gap-1.5" onClick={handleDownloadLatex}>
+                <FileDown className="w-3.5 h-3.5" />
+                <span className="text-xs">Tải .tex</span>
+              </Button>
+            </div>
+            <Button
+              variant="default"
+              size="sm"
+              className="h-10 gap-2 w-full"
+              onClick={() => setIsCaptureOpen(true)}
+            >
+              <Maximize2 className="w-4 h-4" />
+              <span className="text-xs font-medium">Mở rộng: xuất PNG &amp; chỉnh nhãn</span>
+            </Button>
+
             <div className="flex flex-col">
               <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1.5 ml-1">TikZ Source</span>
               <div className="bg-secondary/20 rounded-md border border-border/30">
                 <pre className="p-3 text-[10px] font-mono text-muted-foreground whitespace-pre-wrap break-all">
-                  {activeTab === 'latex' ? getDynamicLatex() : '% Chuyển sang tab LaTeX để tạo mã (để tiết kiệm hiệu năng)'}
+                  {activeTab === 'export' ? getDynamicLatex() : '% Chuyển sang tab Xuất để tạo mã'}
                 </pre>
               </div>
             </div>
@@ -754,42 +782,18 @@ function PanelContent() {
           </ScrollArea>
         </TabsContent>
 
-        <TabsContent value="json" className="flex-1 overflow-hidden p-0">
-          <ScrollArea className="h-full w-full">
-            <div className="p-4 flex flex-col gap-4">
-              <div className="flex items-center justify-between">
-                <h3 className="text-sm font-medium text-muted-foreground">Raw Geometry JSON</h3>
-                <Button variant="ghost" size="sm" className="h-8 gap-1" onClick={() => {
-                  const { latexCode, ...rest } = state.geometry!;
-                  navigator.clipboard.writeText(JSON.stringify(rest, null, 2));
-                  setCopied(true);
-                  setTimeout(() => setCopied(false), 2000);
-                }}>
-                  {copied ? (
-                    <>
-                      <Check className="w-3 h-3 text-green-500" />
-                      <span className="text-[10px]">Copied</span>
-                    </>
-                  ) : (
-                    <>
-                      <Copy className="w-3 h-3" />
-                      <span className="text-[10px]">Copy JSON</span>
-                    </>
-                  )}
-                </Button>
-              </div>
-              <div className="bg-secondary/20 rounded-md border border-border/30">
-                <pre className="p-3 text-[10px] font-mono text-muted-foreground whitespace-pre-wrap break-all">
-                  {(() => {
-                    const { latexCode, ...rest } = state.geometry;
-                    return JSON.stringify(rest, null, 2);
-                  })()}
-                </pre>
-              </div>
-            </div>
-          </ScrollArea>
-        </TabsContent>
       </Tabs>
+
+      {/* Modal xuất đầy đủ (PNG, kéo-thả nhãn) — mở từ nút "Mở rộng" ở tab Xuất */}
+      {camera && (
+        <CaptureModal
+          isOpen={isCaptureOpen}
+          onClose={() => setIsCaptureOpen(false)}
+          geometry={state.geometry}
+          canvasRef={camera.canvasRef}
+          hiddenLines={camera.hiddenLines}
+        />
+      )}
     </div>
   );
 }
@@ -816,7 +820,9 @@ export function MobileRightPanel() {
         </Button>
       </SheetTrigger>
       <SheetContent side="right" className="w-80 p-0 glass border-l border-border/50">
-        <PanelContent />
+        <ErrorBoundary>
+          <PanelContent />
+        </ErrorBoundary>
       </SheetContent>
     </Sheet>
   );
@@ -856,7 +862,9 @@ export function RightPanel() {
         )}
       >
         <div className="h-full w-[320px] flex flex-col relative">
-          <PanelContent />
+          <ErrorBoundary>
+            <PanelContent />
+          </ErrorBoundary>
         </div>
       </aside>
     </div>

@@ -415,6 +415,43 @@ export const generateProjectedLatex = (
 
     latex += `\n  % Nhãn các đỉnh\n`;
 
+    // Chọn hướng đặt nhãn cho một đỉnh: quay về phía "trống" nhất, tức ngược hướng
+    // trung bình của các cạnh nối vào đỉnh, để nhãn không đè lên cạnh. Trả về radian.
+    const getBestLabelAngle = (
+        pointId: string,
+        pProj: { x: number; y: number },
+        lines: any[],
+        allProjected: any[],
+        _cameraPos: any,
+        _target: any
+    ): number => {
+        const neighborIds = new Set<string>();
+        (lines || []).forEach((ln: any) => {
+            if (ln.from === pointId) neighborIds.add(ln.to);
+            else if (ln.to === pointId) neighborIds.add(ln.from);
+        });
+
+        let sx = 0, sy = 0, count = 0;
+        (allProjected || []).forEach((q: any) => {
+            if (!q || !neighborIds.has(q.id) || !q.projected) return;
+            const dx = q.projected.x - pProj.x;
+            const dy = q.projected.y - pProj.y;
+            const len = Math.hypot(dx, dy);
+            if (len < 1e-9) return;
+            sx += dx / len;
+            sy += dy / len;
+            count++;
+        });
+
+        // Không có cạnh nối (hoặc các hướng triệt tiêu nhau) → mặc định phía trên-phải.
+        if (count === 0 || (Math.abs(sx) < 1e-9 && Math.abs(sy) < 1e-9)) {
+            return Math.PI / 4;
+        }
+
+        // Ngược hướng trung bình các cạnh = phía trống nhất quanh đỉnh.
+        return Math.atan2(-sy, -sx);
+    };
+
     const getTikzAnchor = (p: any) => {
         const bestAngle = getBestLabelAngle(p.id, p.projected, geometry.lines, projected, cameraPos, target);
         let angleDeg = (bestAngle * 180) / Math.PI;

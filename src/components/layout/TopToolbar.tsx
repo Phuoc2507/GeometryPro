@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { RotateCcw, Maximize2, Grid3X3, Camera, Download, Save, PenTool, Youtube, Scissors, Box, Eye, EyeOff, Cpu, Home, Navigation, Undo2, Redo2 } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Toggle } from '@/components/ui/toggle';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
@@ -31,7 +31,9 @@ export function TopToolbar() {
   const { isPro } = useAuth();
   
   const { mode, setMode } = useToolMode();
-  
+  const location = useLocation();
+  const isTeacher = location.pathname.startsWith('/teacher');
+
   if (!context) return null;
   
   const navigate = useNavigate();
@@ -208,19 +210,22 @@ export function TopToolbar() {
               <TooltipContent>Lưu hình học</TooltipContent>
             </Tooltip>
 
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8 text-primary hover:text-primary hover:bg-primary/10"
-                  onClick={() => setIsCaptureOpen(true)}
-                >
-                  <Download className="w-4 h-4" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>Xuất ảnh / LaTeX</TooltipContent>
-            </Tooltip>
+            {/* Teacher: export sống trong RightPanel nên ẩn nút này; Student: giữ */}
+            {!isTeacher && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 text-primary hover:text-primary hover:bg-primary/10"
+                    onClick={() => setIsCaptureOpen(true)}
+                  >
+                    <Download className="w-4 h-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Xuất ảnh / LaTeX</TooltipContent>
+              </Tooltip>
+            )}
 
             <Tooltip>
               <TooltipTrigger asChild>
