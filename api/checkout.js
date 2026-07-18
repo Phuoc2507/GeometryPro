@@ -1,6 +1,5 @@
 import { PayOS } from '@payos/node';
 import { createClient } from '@supabase/supabase-js';
-import { PRO_PRICE_VND } from './_lib/pricing.js';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.VITE_SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY; // Must use service role to bypass RLS for inserts
@@ -21,7 +20,10 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { returnUrl, cancelUrl } = req.body || {};
+    // planCode xác định gói + giá. KHÔNG nhận giá từ client. Mặc định 'pro_1m'
+    // để giữ tương thích với nút "Nâng cấp" cũ (chưa gửi planCode).
+    const { returnUrl, cancelUrl, planCode } = req.body || {};
+    const code = planCode || 'pro_1m';
 
     if (!supabase) {
       return res.status(500).json({ error: 'Supabase credentials are not configured correctly' });
@@ -49,9 +51,20 @@ export default async function handler(req, res) {
 
     const payos = new PayOS({ clientId, apiKey, checksumKey });
 
+    // Tra gói + GIÁ từ DB (nguồn sự thật). Giá client gửi lên bị bỏ qua.
+    const { data: plan, error: planError } = await supabase
+      .from('plans')
+      .select('code, name, price_vnd, active')
+      .eq('code', code)
+      .maybeSingle();
+
+    if (planError || !plan || plan.active === false) {
+      return res.status(400).json({ error: `Gói không hợp lệ: ${code}` });
+    }
+
     // Tạo mã đơn hàng duy nhất (số nguyên < 2147483647)
     const orderCode = Math.floor(Math.random() * 900000) + 100000;
-    const finalAmount = PRO_PRICE_VND;
+    const finalAmount = plan.price_vnd;
 
     // orders.user_id FKs to profiles(user_id), so a missing profile makes the
     // insert below fail. Signup normally creates it via the on_auth_user_created
@@ -70,6 +83,7 @@ export default async function handler(req, res) {
       order_code: orderCode,
       user_id: userId,
       amount: finalAmount,
+      plan_code: code,
       status: 'pending'
     });
 
@@ -84,7 +98,7 @@ export default async function handler(req, res) {
     const requestData = {
       orderCode: orderCode,
       amount: finalAmount,
-      description: 'Geo3D Pro 1 thang',
+      description: `Geo3D ${code}`.slice(0, 25),
       returnUrl: returnUrl || `${baseUrl}/?payment=success`,
       cancelUrl: cancelUrl || baseUrl
     };

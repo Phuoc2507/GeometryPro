@@ -1,6 +1,5 @@
 import { PayOS } from '@payos/node';
 import { createClient } from '@supabase/supabase-js';
-import { PRO_DURATION_DAYS } from './_lib/pricing.js';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.VITE_SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -36,7 +35,7 @@ export default async function handler(req, res) {
       // 1. Tìm user_id dựa vào order_code
       const { data: order, error: fetchError } = await supabase
         .from('orders')
-        .select('user_id, status')
+        .select('user_id, status, plan_code')
         .eq('order_code', orderCode)
         .maybeSingle();
         
@@ -49,37 +48,56 @@ export default async function handler(req, res) {
           .update({ status: 'paid', updated_at: new Date().toISOString() })
           .eq('order_code', orderCode);
 
-        // 3. Nâng cấp tài khoản user lên Pro (thêm 30 ngày).
-        //    Cộng dồn từ hạn hiện tại nếu còn hiệu lực, để gia hạn sớm không mất
-        //    số ngày còn lại.
-        const { data: current } = await supabase
-          .from('profiles')
-          .select('plan_expires_at')
-          .eq('user_id', order.user_id)
+        // 3. Kích hoạt gói đã mua theo plan_code.
+        const { data: plan } = await supabase
+          .from('plans')
+          .select('code, tier, duration_days, credits_per_cycle')
+          .eq('code', order.plan_code || 'pro_1m')
           .maybeSingle();
 
-        const now = Date.now();
-        const currentExpiry = current?.plan_expires_at
-          ? new Date(current.plan_expires_at).getTime()
-          : 0;
-        const base = Math.max(now, currentExpiry);
-        const expiryDate = new Date(base + PRO_DURATION_DAYS * 24 * 60 * 60 * 1000).toISOString();
-
-        // upsert, không phải update: nếu profile chưa tồn tại thì update() sẽ sửa
-        // 0 dòng và IM LẶNG thành công -> user trả tiền mà không được lên Pro.
-        const { error: profileError } = await supabase
-          .from('profiles')
-          .upsert({
-            user_id: order.user_id,
-            plan_type: 'pro',
-            plan_expires_at: expiryDate,
-            updated_at: new Date().toISOString()
-          }, { onConflict: 'user_id' });
-
-        if (profileError) {
-          console.error(`Lỗi cập nhật Profile cho user ${order.user_id}:`, profileError);
+        if (!plan) {
+          console.error(`Không tìm thấy gói ${order.plan_code} cho đơn ${orderCode}.`);
         } else {
-          console.log(`Đơn hàng ${orderCode} thanh toán thành công! User ${order.user_id} lên Pro tới ${expiryDate}.`);
+          // Cộng dồn hạn từ hạn hiện tại nếu còn hiệu lực (gia hạn sớm không mất ngày).
+          const { data: current } = await supabase
+            .from('profiles')
+            .select('plan_expires_at')
+            .eq('user_id', order.user_id)
+            .maybeSingle();
+
+          const now = Date.now();
+          const currentExpiry = current?.plan_expires_at ? new Date(current.plan_expires_at).getTime() : 0;
+          const base = Math.max(now, currentExpiry);
+          const expiryDate = new Date(base + plan.duration_days * 24 * 60 * 60 * 1000).toISOString();
+
+          // upsert (không phải update): nếu profile chưa tồn tại thì update() sửa 0 dòng
+          // và IM LẶNG thành công -> user trả tiền mà không được lên gói.
+          const { error: profileError } = await supabase
+            .from('profiles')
+            .upsert({
+              user_id: order.user_id,
+              plan_type: plan.tier,              // giữ cột cũ cho tương thích
+              plan_tier: plan.tier,
+              plan_code: plan.code,
+              plan_expires_at: expiryDate,
+              plan_credits: plan.credits_per_cycle,       // cấp mới cả kỳ (không cộng dồn)
+              credits_reset_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            }, { onConflict: 'user_id' });
+
+          if (profileError) {
+            console.error(`Lỗi cập nhật Profile cho user ${order.user_id}:`, profileError);
+          } else {
+            // Ghi sổ cái (unique index theo ref=order_code chống cấp 2 lần).
+            await supabase.from('credit_ledger').insert({
+              user_id: order.user_id,
+              delta: plan.credits_per_cycle,
+              reason: 'plan_grant',
+              ref: String(orderCode),
+              balance_after: plan.credits_per_cycle
+            });
+            console.log(`Đơn ${orderCode} OK — user ${order.user_id} lên ${plan.tier} tới ${expiryDate}, +${plan.credits_per_cycle} credit.`);
+          }
         }
       } else {
         console.log(`Đơn hàng ${orderCode} đã được xử lý trước đó.`);

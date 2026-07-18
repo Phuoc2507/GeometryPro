@@ -9,6 +9,11 @@ interface Profile {
   avatar_url: string | null;
   plan_type: string | null;
   plan_expires_at: string | null;
+  // Ví credit (thêm ở migration credit; có thể undefined nếu chưa áp SQL).
+  plan_tier?: string | null;
+  plan_code?: string | null;
+  plan_credits?: number | null;
+  purchased_credits?: number | null;
   created_at: string;
   updated_at: string;
 }
@@ -18,6 +23,12 @@ interface AuthContextType {
   session: Session | null;
   profile: Profile | null;
   isPro: boolean;
+  // Ví credit
+  tier: string;                 // tier hiệu lực ('free' nếu hết hạn)
+  credits: number;              // tổng còn lại = plan + purchased
+  planCredits: number;          // credit theo gói (reset mỗi kỳ)
+  purchasedCredits: number;     // credit mua lẻ (không hết hạn)
+  refreshProfile: () => Promise<void>;
   isLoading: boolean;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
   signInWithGoogle: () => Promise<{ error: Error | null }>;
@@ -61,10 +72,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       .select('*')
       .eq('user_id', userId)
       .maybeSingle();
-    
+
     if (!error && data) {
       setProfile(data as Profile);
     }
+  };
+
+  const refreshProfile = async () => {
+    if (user) await fetchProfile(user.id);
   };
 
   useEffect(() => {
@@ -160,9 +175,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return { error: error as Error | null };
   };
 
-  const isPro = profile?.plan_type === 'pro' && profile?.plan_expires_at 
-    ? new Date(profile.plan_expires_at) > new Date() 
+  const isPro = profile?.plan_type === 'pro' && profile?.plan_expires_at
+    ? new Date(profile.plan_expires_at) > new Date()
     : false;
+
+  // Ví credit — tier hiệu lực hạ về 'free' khi gói hết hạn (mirror effective_tier ở SQL).
+  const planActive = profile?.plan_expires_at
+    ? new Date(profile.plan_expires_at).getTime() > Date.now()
+    : false;
+  const tier = planActive
+    ? (profile?.plan_tier || (profile?.plan_type === 'pro' ? 'pro' : 'free'))
+    : 'free';
+  const planCredits = tier === 'free' ? 0 : (profile?.plan_credits ?? 0);
+  const purchasedCredits = profile?.purchased_credits ?? 0;  // không hết hạn
+  const credits = planCredits + purchasedCredits;
 
   return (
     <AuthContext.Provider value={{
@@ -170,6 +196,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       session,
       profile,
       isPro,
+      tier,
+      credits,
+      planCredits,
+      purchasedCredits,
+      refreshProfile,
       isLoading,
       signIn,
       signInWithGoogle,

@@ -1,6 +1,7 @@
 
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { UpgradeModal } from '@/components/UpgradeModal';
 import { User, LogOut, Save, Settings, Sparkles, Crown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -20,7 +21,8 @@ const RENEW_THRESHOLD_DAYS = 7;
 
 export function UserMenu() {
   const navigate = useNavigate();
-  const { user, profile, isPro, signOut } = useAuth();
+  const { user, profile, isPro, tier, credits, signOut } = useAuth();
+  const [upgradeOpen, setUpgradeOpen] = useState(false);
 
   const daysLeft = useMemo(() => {
     if (!isPro || !profile?.plan_expires_at) return null;
@@ -81,6 +83,7 @@ export function UserMenu() {
   const initials = displayName.slice(0, 2).toUpperCase();
 
   return (
+    <>
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" size="sm" className="gap-2 px-2">
@@ -104,18 +107,26 @@ export function UserMenu() {
             )}
           </div>
           <p className="text-xs text-muted-foreground truncate">{user.email}</p>
+          <div className="mt-1.5 flex items-center gap-1.5 rounded-md bg-primary/5 px-2 py-1">
+            <Sparkles className="w-3 h-3 text-primary" />
+            <span className="text-xs font-semibold text-foreground">{credits}</span>
+            <span className="text-[10px] text-muted-foreground">credit</span>
+            {tier !== 'free' && (
+              <span className="ml-auto text-[9px] uppercase font-bold tracking-wide text-primary">{tier}</span>
+            )}
+          </div>
         </div>
         <DropdownMenuSeparator />
 
         {!isPro && (
-          <DropdownMenuItem onClick={handleUpgrade} className="text-primary font-medium focus:text-primary focus:bg-primary/10">
+          <DropdownMenuItem onClick={() => setUpgradeOpen(true)} className="text-primary font-medium focus:text-primary focus:bg-primary/10">
             <Sparkles className="w-4 h-4 mr-2" />
             Nâng cấp Pro
           </DropdownMenuItem>
         )}
 
         {isPro && expiringSoon && (
-          <DropdownMenuItem onClick={handleUpgrade} className="text-amber-500 font-medium focus:text-amber-500 focus:bg-amber-500/10">
+          <DropdownMenuItem onClick={() => setUpgradeOpen(true)} className="text-amber-500 font-medium focus:text-amber-500 focus:bg-amber-500/10">
             <Sparkles className="w-4 h-4 mr-2" />
             <span className="flex-1">Gia hạn Pro</span>
             <span className="text-[10px] text-muted-foreground ml-2">
@@ -148,5 +159,7 @@ export function UserMenu() {
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
+    <UpgradeModal open={upgradeOpen} onOpenChange={setUpgradeOpen} />
+    </>
   );
 }
