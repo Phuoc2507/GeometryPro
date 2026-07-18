@@ -93,7 +93,7 @@ export async function solveProblem(problem, options = {}) {
   // A1 — ĐỐI CHIẾU 2 ĐƯỜNG (gated qua env KERNEL_CROSSCHECK='on'; mặc định TẮT ⇒ không tốn thêm).
   // Dịch đề LẦN 2 độc lập rồi so ĐÁP SỐ. Lệch ⇒ engine không đủ tin ⇒ đánh dấu ok=false để route
   // rơi về luồng LLM cũ (thay vì phục vụ một đáp có thể sai). Trùng ⇒ tin cao. Đây là lưới chống #1.
-  if (process.env.KERNEL_CROSSCHECK === 'on' && result.ok && result.answers?.length) {
+  if (String(process.env.KERNEL_CROSSCHECK || '').trim() === 'on' && result.ok && result.answers?.length) {
     try {
       const r2 = solvePlan(await planFromProblem(problem, options));
       const a1text = result.answers[0]?.text;
