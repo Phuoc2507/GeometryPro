@@ -192,7 +192,7 @@ export default async function handler(req, res) {
             }]).then(({ error }) => { if (error) console.warn('Lỗi lưu cache (kernel):', error.message); });
           }
           console.log('[kernel] phục vụ:', trimmedPrompt.substring(0, 60));
-          logEngineDecision({ mode: 'quick', served: true, reason: '', ms: _kms, promptLen: trimmedPrompt.length });
+          logEngineDecision({ mode: 'quick', served: true, reason: '', ms: _kms, promptLen: trimmedPrompt.length, approx: (k.answers || []).some((a) => a.approximate) });
           sendEvent('Hoàn tất (engine)!', 100);
           if (isStream) {
             res.write(`data: ${JSON.stringify({ status: 'done', data: enginePayload })}\n\n`);
@@ -312,7 +312,7 @@ Hãy:
               }]).then(({ error }) => { if (error) console.warn('Lỗi lưu cache (kernel/detailed):', error.message); });
             }
             console.log('[kernel] phục vụ (detailed/static):', trimmedPrompt.substring(0, 60));
-            logEngineDecision({ mode: 'detailed', served: true, reason: '', ms: _kms, promptLen: trimmedPrompt.length });
+            logEngineDecision({ mode: 'detailed', served: true, reason: '', ms: _kms, promptLen: trimmedPrompt.length, approx: (k.answers || []).some((a) => a.approximate) });
             sendEvent('Hoàn tất (engine)!', 100);
             if (isStream) {
               res.write(`data: ${JSON.stringify({ status: 'done', data: enginePayload })}\n\n`);
