@@ -306,7 +306,27 @@ export function CaptureModal({ isOpen, onClose, geometry, canvasRef, hiddenLines
           <marker id="dot" markerWidth="4" markerHeight="4" refX="2" refY="2">
             <circle cx="2" cy="2" r="1.5" fill="black" />
           </marker>
+          <radialGradient id="sphere-grad" cx="35%" cy="35%" r="65%">
+            <stop offset="0%" stopColor="#ffffff" stopOpacity="0.6" />
+            <stop offset="40%" stopColor="#60a5fa" stopOpacity="0.25" />
+            <stop offset="100%" stopColor="#1d4ed8" stopOpacity="0.45" />
+          </radialGradient>
         </defs>
+        {/* Mặt cầu — vẽ giống LIVE VIEW của panel (quả cầu bóng + xích đạo/kinh tuyến nét đứt) */}
+        {(scaledGeometry.spheres || []).map(s => {
+          const centerProj = project3DTo2D(s.center, fixedCamera.cameraPos, fixedCamera.target);
+          const cx = centerProj.x * scale;
+          const cy = -centerProj.y * scale;
+          const r = s.radius * scale;
+          return (
+            <g key={s.id}>
+              <circle cx={cx} cy={cy} r={r} fill="url(#sphere-grad)" />
+              <circle cx={cx} cy={cy} r={r} stroke="#2563eb" strokeWidth={1.2} fill="none" />
+              <ellipse cx={cx} cy={cy} rx={r} ry={r * 0.25} stroke="#3b82f6" strokeWidth={0.8} strokeDasharray="3,3" fill="none" />
+              <ellipse cx={cx} cy={cy} rx={r * 0.25} ry={r} stroke="#3b82f6" strokeWidth={0.8} strokeDasharray="3,3" fill="none" />
+            </g>
+          );
+        })}
         {scaledGeometry.lines.map(line => {
           const from = scaledGeometry.points.find(p => p.id === line.from);
           const to = scaledGeometry.points.find(p => p.id === line.to);

@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback, useDeferredValue } from 'react';
-import { ChevronRight, ChevronLeft, Copy, Check, Box, MapPin, Ruler, Cuboid, Code, Download, Maximize2, FileDown, ChevronDown } from 'lucide-react';
+import { ChevronRight, ChevronLeft, Copy, Check, Box, MapPin, Ruler, Cuboid, Code, Download, Maximize2, FileDown, ChevronDown, BookOpen } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -14,6 +14,7 @@ import { scaleGeometry } from '@/lib/geometry/scaleGeometry';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { CaptureModal } from '@/components/CaptureModal';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
+import { SolverContent } from '@/components/SolverPanel';
 
 function PanelContent() {
   const [copied, setCopied] = useState(false);
@@ -115,16 +116,24 @@ function PanelContent() {
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col min-h-0">
-        <TabsList className="mx-4 mt-4 grid w-auto grid-cols-2">
-          <TabsTrigger value="export" className="gap-2 text-xs">
+        <TabsList className="mx-4 mt-4 grid w-auto grid-cols-3">
+          <TabsTrigger value="export" className="gap-1.5 text-xs px-1">
             <Download className="w-3 h-3" />
             Xuất
           </TabsTrigger>
-          <TabsTrigger value="properties" className="gap-2 text-xs">
+          <TabsTrigger value="problem" className="gap-1.5 text-xs px-1">
+            <BookOpen className="w-3 h-3" />
+            Đề bài
+          </TabsTrigger>
+          <TabsTrigger value="properties" className="gap-1.5 text-xs px-1">
             <Box className="w-3 h-3" />
             Properties
           </TabsTrigger>
         </TabsList>
+
+        <TabsContent value="problem" className="flex-1 p-0 m-0 min-h-0 data-[state=active]:flex flex-col">
+          <SolverContent creditNote="Mỗi lần giải tốn 1 lượt AI (1 credit)." />
+        </TabsContent>
 
         <TabsContent value="properties" className="flex-1 p-4">
           <ScrollArea className="h-full">

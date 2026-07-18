@@ -35,7 +35,9 @@ function useLastProblem(): string {
     q => (q.status === 'done' || q.status === 'processing') &&
          q.prompt && !q.prompt.startsWith('📷')
   );
-  return relevant.length > 0 ? relevant[0].prompt : '';
+  if (relevant.length > 0) return relevant[0].prompt;
+  // Hình được nạp lại (từ Lưu / URL) không có queue → lấy đề đã lưu kèm geometry.
+  return (ctx.state.geometry as any)?.llmPrompt || '';
 }
 
 // ─── Step card ───────────────────────────────────────────────────────────────
@@ -85,7 +87,7 @@ function StepCard({ step, index, total }: StepCardProps) {
 
 // ─── Panel content ────────────────────────────────────────────────────────────
 
-function PanelContent() {
+export function SolverContent({ creditNote }: { creditNote?: string } = {}) {
   const ctx         = useGeometryOptional();
   const camera      = useCameraOptional();
   const lastProblem = useLastProblem();
@@ -291,6 +293,11 @@ function PanelContent() {
             Cần vẽ hình trước
           </p>
         )}
+        {geometry && creditNote && (
+          <p className="text-[11px] text-muted-foreground text-center mt-1.5">
+            {creditNote}
+          </p>
+        )}
       </div>
     </div>
   );
@@ -308,7 +315,7 @@ export function SolverPanel() {
         </div>
       </div>
       <div className="flex-1 overflow-hidden">
-        <PanelContent />
+        <SolverContent />
       </div>
     </aside>
   );
@@ -342,7 +349,7 @@ export function MobileSolverPanel() {
           </div>
         </div>
         <div className="flex-1 overflow-hidden">
-          <PanelContent />
+          <SolverContent />
         </div>
       </SheetContent>
     </Sheet>
