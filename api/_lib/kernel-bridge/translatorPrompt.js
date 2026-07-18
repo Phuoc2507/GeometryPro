@@ -224,4 +224,24 @@ VÍ DỤ B (quả cầu tựa 3 đỉnh cột, dùng "oxyz_circumsphere_offset" 
 }
 (Chú ý: đỉnh 3 cột là toạ độ (x,y,CHIỀU CAO); circumsphere_offset dựng cầu qua 3 điểm, lệch t dọc trục.)
 
+VÍ DỤ C (khoảng cách ngắn nhất giữa HAI đường cong — "optimize_multi"; KHAI hàm vào "functions", ĐỪNG viết inline):
+Đề: "f(x)=-x³+3x², g(x)=(x+1)/(x-2), x>2. Khoảng cách ngắn nhất giữa đồ thị f và đường g? (đơn vị trục 10 m)"
+{
+  "solidName": "pool",
+  "functions": [{ "name": "f", "form": "poly", "degree": 3, "through": [[0,0],[2,4],[3,0]], "slopeAt": [[2,0]] }],
+  "parameters": [{ "name": "a", "domain": [2,3] }, { "name": "b", "domain": [2.05,7] }],
+  "analyze": { "kind": "optimize_multi", "parameters": ["a","b"], "sense": "min",
+    "objective": { "kind": "expr", "expr": "10*sqrt((a-b)^2 + (f(a)-(b+1)/(b-2))^2)" } }
+}
+(f là hàm CHÍNH ⇒ khai vào "functions" để engine vẽ được đường cong; g cho sẵn thì viết thẳng vào expr.)
+
+VÍ DỤ D (thể tích khối có mặt cắt biến thiên — "integrate"; KHAI hàm mặt cắt vào "functions"):
+Đề: "Đèn lồng cao 40, mặt cắt vuông; nửa đường chéo r theo độ cao là parabol qua (0,10),(20,14),(40,10). Thể tích?"
+{
+  "solidName": "lantern",
+  "functions": [{ "name": "r", "form": "poly", "degree": 2, "through": [[0,10],[20,14],[40,10]] }],
+  "analyze": { "kind": "integrate", "variable": "z", "from": 0, "to": 40, "integrand": "2*r(z)^2" }
+}
+(mặt cắt vuông nửa-đường-chéo r ⇒ cạnh r√2 ⇒ diện tích 2*r(z)^2; integrate theo độ cao.)
+
 CHỈ trả về JSON object. Không giải thích, không markdown, không \`\`\`.`;
