@@ -40,8 +40,6 @@ function CameraFitter({ geometry, is2D }: { geometry: any; is2D?: boolean }) {
     const cy = (minY + maxY) / 2;
     const cz = (minZ + maxZ) / 2;
     const size = Math.max(maxX - minX, maxY - minY, maxZ - minZ, 2);
-    const dist = size * 1.5 + 4;
-
     if (is2D) {
       // Look from underneath to make X right and Y up (due to coordinate handedness)
       camera.position.set(cx, -10, cz);
@@ -54,7 +52,17 @@ function CameraFitter({ geometry, is2D }: { geometry: any; is2D?: boolean }) {
         orthCamera.updateProjectionMatrix();
       }
     } else {
-      camera.position.set(cx + dist * 0.55, cy + dist * 0.55, cz + dist * 0.75);
+      // Ôm SÁT hình theo FOV + tỉ lệ khung nhìn để lấp đầy khung (màn dọc/mobile
+      // -> fit theo chiều hẹp), thay cho khoảng cách cố định cũ để bớt "trống".
+      const R = 0.5 * Math.hypot(maxX - minX, maxY - minY, maxZ - minZ) || 1;
+      const fov = (((camera as THREE.PerspectiveCamera).fov ?? 50) * Math.PI) / 180;
+      const aspect = Math.max(0.1, canvasSize.width / Math.max(1, canvasSize.height));
+      const distV = R / Math.tan(fov / 2);
+      const hFov = 2 * Math.atan(Math.tan(fov / 2) * aspect);
+      const distH = R / Math.tan(hFov / 2);
+      const dist = Math.max(distV, distH) * 1.2; // 1.2 = chừa lề nhỏ cho nhãn điểm
+      const dir = new THREE.Vector3(0.55, 0.55, 0.75).normalize();
+      camera.position.set(cx + dir.x * dist, cy + dir.y * dist, cz + dir.z * dist);
       camera.up.set(0, 1, 0);
       camera.lookAt(cx, cy, cz);
     }
