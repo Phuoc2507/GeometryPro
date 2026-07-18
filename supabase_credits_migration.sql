@@ -68,7 +68,9 @@ with check (
 
 -- 3) Bộ đếm quota (gói free) -----------------------------------------
 create table if not exists public.usage_counters (
-  user_id      uuid        not null references public.profiles(user_id) on delete cascade,
+  -- Tham chiếu auth.users(id) (PK, chắc chắn UNIQUE) thay vì profiles(user_id)
+  -- vì profiles.user_id không có ràng buộc unique. user_id = auth uid như nhau.
+  user_id      uuid        not null references auth.users(id) on delete cascade,
   feature      text        not null,   -- 'draw' | 'solve' | 'export_image' | 'export_tikz'
   window_start timestamptz not null default now(),
   used         integer     not null default 0,
@@ -81,7 +83,7 @@ create policy "usage readable by owner" on public.usage_counters for select usin
 -- 4) Sổ cái credit ---------------------------------------------------
 create table if not exists public.credit_ledger (
   id            uuid        primary key default gen_random_uuid(),
-  user_id       uuid        not null references public.profiles(user_id) on delete cascade,
+  user_id       uuid        not null references auth.users(id) on delete cascade,
   delta         integer     not null,   -- âm = tiêu, dương = cấp/mua/hoàn
   reason        text        not null,   -- 'draw_quick'|'draw_detailed'|'solve'|'export_video'|'plan_grant'|'purchase'|'refund'
   ref           text,                   -- order_code / request id ('refund:...' cho hoàn)
