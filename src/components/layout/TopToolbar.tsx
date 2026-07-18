@@ -47,7 +47,7 @@ export function TopToolbar() {
 
   return (
     <>
-      <div className="fixed top-4 left-1/2 -translate-x-1/2 z-40 flex items-center gap-1 sm:gap-2 glass rounded-xl px-1.5 sm:px-2 py-1.5 border border-border/50">
+      <div className="fixed top-4 left-1/2 -translate-x-1/2 z-40 flex items-center gap-1 sm:gap-2 glass rounded-xl px-1.5 sm:px-2 py-1.5 border border-border/50 max-w-[calc(100vw-1rem)] overflow-x-auto scrollbar-hide [&>*]:shrink-0">
         
         {/* VIEW DROPDOWN */}
         <DropdownMenu>
