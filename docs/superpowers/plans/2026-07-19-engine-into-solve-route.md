@@ -285,6 +285,49 @@ Expected: KHÔNG còn dòng nào (mọi tham chiếu DeepSeek cloud đã sạch)
 
 ---
 
+## Task 6 (tối ưu): Tái dùng đáp engine từ bước VẼ (bỏ engine chạy 2 lần)
+
+Route VẼ đã tính đáp engine. Gắn vào `geometry.engineAnswer` để `/solve` đọc lại, khỏi dịch+giải lần 2.
+
+**Files:**
+- Modify: `api/analyze-geometry.js` (2 chỗ engine PHỤC VỤ: sau `geometry.confidence = 1` ~dòng 166 và ~287)
+- Modify: `api/solve.js` (đọc `geometry.engineAnswer` trước khi gọi engine)
+
+- [ ] **Step 1: VẼ gắn đáp engine vào geometry** — sau `geometry.confidence = 1;` ở CẢ HAI chỗ engine phục vụ:
+
+```js
+const _ea = (k.answers || [])[0];
+if (_ea && Number.isFinite(_ea.approx)) {
+  geometry.engineAnswer = { text: _ea.text, approx: _ea.approx, verified: true }; // engine đã tự kiểm ở nhánh này
+}
+```
+
+- [ ] **Step 2: `/solve` ưu tiên đọc `geometry.engineAnswer`** — thay khối gọi engine trong solve.js:
+
+```js
+let eng = null;
+const ea = geometry.engineAnswer;
+if (ea && typeof ea.approx === 'number' && Number.isFinite(ea.approx)) {
+  // Tái dùng đáp từ bước VẼ — KHÔNG chạy engine lại (bỏ dịch+giải trùng)
+  eng = { ok: !!ea.verified, answers: [{ text: ea.text, approx: ea.approx }], violations: [] };
+} else {
+  try {
+    const { solveProblem } = await import('./_lib/kernel-bridge/solveWithKernel.js');
+    eng = await solveProblem(problem.trim());
+  } catch (e) { console.warn('[solve] engine không giải được, dùng lời giải LLM:', e?.message || e); }
+}
+const engAnswer = engineSolved(eng) ? eng.answers[0].text : null;
+```
+
+- [ ] **Step 3: node --check + suite** — `node --check api/analyze-geometry.js api/solve.js`; `npx vitest run` xanh.
+
+- [ ] **Step 4: E2E** — (a) geometry CÓ `engineAnswer` → solve trả verified=true, đáp đó, KHÔNG chạy solveProblem
+  (đo: nhanh hơn, không có log dịch lần 2); (b) geometry KHÔNG có → solve chạy engine như cũ. Ghi vào Findings.
+
+- [ ] **Step 5: Commit** — `feat(solve): tai dung dap engine tu buoc Ve (geometry.engineAnswer) - bo engine chay 2 lan`
+
+---
+
 ## Kiểm cuối + gộp
 
 - [ ] Toàn suite xanh; route VẼ không đổi; contract SolveResult y nguyên (UI không cần sửa).
