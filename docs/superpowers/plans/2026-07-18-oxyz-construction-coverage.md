@@ -278,4 +278,37 @@ Chỉ làm nếu Task 5 cho thấy flash-low vẫn là nút thắt dù đã few-
 
 ## Findings (Task 1)
 
-*(Điền khi thực thi Task 1: mỗi bài → dựng được / khe hở G1 thay-tham-số / thiếu op / đáp ngoài phạm vi.)*
+Probe: `api/_lib/kernel/analysis/__tests__/oxyz-construction-gate.test.ts` (3 case, đều PASS = ghi lại HIỆN TRẠNG).
+Chạy: `npx vitest run api/_lib/kernel/analysis/__tests__/oxyz-construction-gate.test.ts` → 3/3 passed.
+
+- **Câu 5 — DỰNG ĐƯỢC bằng op có sẵn; đáp là ĐƯỜNG ⇒ ngoài phạm vi "serve số".**
+  Plan `oxyz_point A → oxyz_line d(point_dir) → oxyz_foot F(A onto d) → oxyz_line T(two_points A,F)`
+  chạy qua `run()` thuần: `ok=true`, chân vuông góc **F=(2,1,1)** dựng đúng, đường Δ=T dựng được.
+  KHÔNG cần op mới, KHÔNG cần thay-tham-số. Nút thắt duy nhất: đáp bài là một **đường thẳng** (không
+  phải đại lượng số) nên engine không có gì để "serve"/tự-kiểm bằng assert ⇒ đây là vấn đề DỊCH/khuôn
+  đáp, không phải thiếu năng lực dựng. (few-shot Task 3 có thể dạy dịch; nhưng vẫn không có số để chấm.)
+
+- **Câu 1 — KHE HỞ G1: tham số không được thay vào `oxyz_plane` coeffs.**
+  Plan `oxyz_plane α = coeffs(1,−2,3, d='k')`, `M=α∩d1`, `N=α∩d2`, `analyze.solve k: dist(M,N)=√3`
+  qua `runAnalysis()` ⇒ `r.ok=false`, `r.errors=[{"message":"constraint lỗi tại tham số"}]`.
+  Nguyên nhân gốc (probe trực tiếp `run()` với plane coeffs d='k'):
+  `r.errors=[{"message":"Cannot parse rational from \"k\" (use \"p/q\" for fractions)"}]`.
+  Tức: `concreteOps()` (runAnalysis.ts) CHỈ thay tham số vào `oxyz_point.at` và `oxyz_circumsphere_offset.t`,
+  KHÔNG đụng `oxyz_plane` coeffs; chuỗi `'k'` sống sót tới `executeOxyzOp → planeFromCoeffs → parseScalar('k')`
+  và ném. Trong `runAnalysis`, lỗi này bị nuốt ở `evalQuery` (trả `null`) nên message hiển thị ra ngoài chỉ
+  là generic "constraint lỗi tại tham số" — root-cause phải dò bằng `run()` thuần (đã làm trong test).
+  ⇒ **Task 3 (thay-tham-số vào `oxyz_plane` coeffs) là BẮT BUỘC** để giải lớp bài "mp ∥ P offset ẩn".
+
+- **Câu 6-style — giao điểm dựng được; nhưng "điểm-trên-đường cách một điểm cho trước" chạm CÙNG khe hở G1 (mở rộng sang `oxyz_ratio.t`).**
+  Phần A: `I = oxyz_intersect(d, P)` qua `run()` thuần: `ok=true`, **I=(2,0,0)** dựng đúng (op có sẵn đủ).
+  Phần B: đặt K trên d cách I một đoạn cho trước bằng `oxyz_ratio{a:'I', b:'Q', t:'s'}` + `analyze.solve s: dist(I,K)=3`
+  ⇒ `r.ok=false` ("constraint lỗi tại tham số") vì `concreteOps()` cũng KHÔNG thay tham số vào `oxyz_ratio.t`.
+  ⇒ Không thiếu op để dựng cấu hình (intersect + ratio đã có); chỉ THIẾU thay-tham-số. Nếu muốn giải trực tiếp
+  qua tham số `t`, hoặc (a) mở rộng `concreteOps` sang `oxyz_ratio.t` (cùng lớp với Task 2/G1), hoặc (b) thêm op
+  tiện lợi `oxyz_point_on_line` (Task 4). KHÔNG cần op mới nếu chọn hướng (a). (Đáp Câu 6 thật là khoảng-cách SỐ
+  nên IN phạm vi — khác Câu 5.)
+
+**Kết luận đường đi:** G1 (thay-tham-số) là khe hở CHÍNH và bao trùm cả Câu 1 (coeffs) lẫn Câu 6 (ratio.t)
+⇒ Task 2 bắt buộc; nên cân nhắc mở rộng cùng lúc sang `oxyz_ratio.t`. Câu 5 KHÔNG cần engine mới (đáp là đường
+— vấn đề dịch/khuôn đáp). Few-shot (Task 3) vẫn cần cho khâu dịch. Task 4 (op `oxyz_point_on_line`) chỉ cần
+nếu KHÔNG mở rộng `concreteOps` sang `oxyz_ratio.t`.
