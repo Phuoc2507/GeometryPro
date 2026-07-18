@@ -279,6 +279,17 @@ export function runAnalysis(raw: unknown): AnalysisResult {
       }
       if (o.op === 'oxyz_point' && Array.isArray(o.at)) return { ...o, at: (o.at as (number | string)[]).map((c) => numify(c, env, paramNames)) };
       if (o.op === 'oxyz_circumsphere_offset') return { ...o, t: numify(o.t as number | string, env, paramNames) };
+      // mp (α) dạng hệ số ax+by+cz+d=0 với hệ số là THAM SỐ (vd d='k'): thay tham số vào a,b,c,d.
+      if (o.op === 'oxyz_plane' && (o.by as { form?: string })?.form === 'coeffs') {
+        const by = o.by as { form: 'coeffs'; a: number | string; b: number | string; c: number | string; d: number | string };
+        return { ...o, by: {
+          ...by,
+          a: numify(by.a, env, paramNames), b: numify(by.b, env, paramNames),
+          c: numify(by.c, env, paramNames), d: numify(by.d, env, paramNames),
+        } };
+      }
+      // Điểm chia K = a + t·(b−a) với t là THAM SỐ (vd t='s'): thay tham số vào t.
+      if (o.op === 'oxyz_ratio') return { ...o, t: numify(o.t as number | string, env, paramNames) };
       return op;
     });
   };

@@ -37,10 +37,9 @@ describe('Oxyz construction gate (Task 1) — dò op có sẵn', () => {
   // mp (α) ∥ (P): x−2y+3z−4=0, cắt d1,d2 tại M,N, MN=√3. Mô hình:
   //   α = coeffs(1,−2,3, d='k')   ← d là THAM SỐ (chuỗi 'k')
   //   M = α∩d1, N = α∩d2, solve k sao cho dist(M,N)=√3.
-  // HYPOTHESIS: THẤT BẠI (r.ok===false) vì concreteOps() của runAnalysis chỉ thay tham số vào
-  //   oxyz_point.at và oxyz_circumsphere_offset.t — KHÔNG thay vào oxyz_plane coeffs. Chuỗi 'k'
-  //   sống sót tới executeOxyzOp → parseScalar('k') ném → run() ok=false → evalQuery null cho mọi k.
-  it('Câu 1: mp tham số (coeffs d=k) hiện CHƯA giải được — khe hở G1 (k không được thay vào oxyz_plane)', () => {
+  // SAU FIX (Task 2): concreteOps thay tham số k vào oxyz_plane coeffs (a,b,c,d) trước khi gọi run()
+  //   ⇒ engine giải được. Nghiệm k=11 ⇒ M=(0,1,−3), N=(−1,2,−2), dist(M,N)=√3≈1.732.
+  it('Câu 1: mp tham số (coeffs d=k) GIẢI ĐƯỢC — k được thay vào oxyz_plane, dist(M,N)=√3', () => {
     const r = runAnalysis({
       solidName: 'c1',
       parameters: [{ name: 'k', domain: [-20, 20] }],
@@ -58,30 +57,43 @@ describe('Oxyz construction gate (Task 1) — dò op có sẵn', () => {
       },
     });
     // eslint-disable-next-line no-console
-    console.log('[Câu 1] ok=', r.ok, 'errors=', JSON.stringify(r.errors));
-    expect(r.ok).toBe(false);                    // ghi lại HIỆN TRẠNG (khe hở G1)
-    expect(r.errors.length).toBeGreaterThan(0);
+    console.log('[Câu 1] ok=', r.ok, 'k=', r.parameter.value, 'answer=', r.answer.approx, 'errors=', JSON.stringify(r.errors));
+    expect(r.ok).toBe(true);                          // sau fix: giải được
+    expect(Number.isFinite(r.parameter.value)).toBe(true); // tìm được offset k hữu hạn
+    expect(r.answer.approx).toBeCloseTo(Math.sqrt(3), 3);   // dist(M,N) ≈ √3
+  });
 
-    // Bằng chứng TRỰC TIẾP về nguyên nhân gốc: run() thuần với plane coeffs d='k' ném ngay ở
-    // parseScalar('k') (concreteOps không đụng vào coeffs kể cả khi đã có giá trị số cho k).
-    const direct = run({
-      solidName: 'c1-direct',
+  // ── oxyz_ratio.t (focused) ───────────────────────────────────────────────
+  // Bằng chứng TỐI THIỂU, TẤT ĐỊNH rằng tham số được thay vào oxyz_ratio.t sau fix:
+  //   A(0,0,0), B(10,0,0); K = A + t·(B−A); solve t sao cho dist(A,K)=6 ⇒ t=0.6, K=(6,0,0).
+  it('oxyz_ratio.t: tham số t được thay vào — solve t sao cho dist(A,K)=6 ⇒ t≈0.6, K=(6,0,0)', () => {
+    const r = runAnalysis({
+      solidName: 'ratio-t',
+      parameters: [{ name: 't', domain: [0, 1] }],
       ops: [
-        { op: 'oxyz_plane', name: 'alpha', by: { form: 'coeffs', a: 1, b: -2, c: 3, d: 'k' } },
+        { op: 'oxyz_point', name: 'A', at: [0, 0, 0] },
+        { op: 'oxyz_point', name: 'B', at: [10, 0, 0] },
+        { op: 'oxyz_ratio', name: 'K', a: 'A', b: 'B', t: 't' }, // t là THAM SỐ
       ],
+      analyze: {
+        kind: 'solve', parameter: 't',
+        constraint: { of: { kind: 'distance', a: 'A', b: 'K' }, equals: 6 },
+        report: { kind: 'point_coord', target: 'K', axis: 'x' },
+      },
     });
     // eslint-disable-next-line no-console
-    console.log('[Câu 1 root-cause] ok=', direct.ok, 'errors=', JSON.stringify(direct.errors));
-    expect(direct.ok).toBe(false);
-    expect(direct.errors.some((e) => /parse rational|"k"/i.test(e.message))).toBe(true);
+    console.log('[oxyz_ratio.t] ok=', r.ok, 't=', r.parameter.value, 'K.x=', r.answer.approx, 'errors=', JSON.stringify(r.errors));
+    expect(r.ok).toBe(true);
+    expect(r.parameter.value).toBeCloseTo(0.6, 3); // t=0.6
+    expect(r.answer.approx).toBeCloseTo(6, 3);      // K.x=6
   });
 
   // ── Câu 6 (tùy chọn) ─────────────────────────────────────────────────────
   // "Điểm trên đường ở khoảng cách cho trước từ một GIAO ĐIỂM tính được."
   // Phần A (thuần dựng): giao điểm I = d∩P dựng được bằng oxyz_intersect (op có sẵn).
-  // Phần B (khe hở): đặt điểm trên d cách I một đoạn cho trước cần solve tham số dùng trong
-  //   oxyz_ratio.t — mà concreteOps cũng KHÔNG thay vào oxyz_ratio.t ⇒ cùng lớp khe hở G1.
-  it('Câu 6-style: giao điểm I dựng được; nhưng "điểm-trên-đường cách I cho trước" cần thay tham số vào oxyz_ratio.t (khe hở)', () => {
+  // Phần B (sau fix): đặt điểm trên d cách I một đoạn cho trước — solve tham số dùng trong
+  //   oxyz_ratio.t; concreteOps NAY thay tham số vào oxyz_ratio.t ⇒ giải được.
+  it('Câu 6-style: giao điểm I dựng được; "điểm-trên-đường cách I cho trước" GIẢI ĐƯỢC (tham số vào oxyz_ratio.t)', () => {
     // Phần A: I = giao của d (trục Ox) với P (x=2) ⇒ I=(2,0,0).
     const buildI = run({
       solidName: 'c6a',
@@ -116,7 +128,10 @@ describe('Oxyz construction gate (Task 1) — dò op có sẵn', () => {
       },
     });
     // eslint-disable-next-line no-console
-    console.log('[Câu 6B] ok=', r.ok, 'errors=', JSON.stringify(r.errors));
-    expect(r.ok).toBe(false); // hiện trạng: khe hở thay-tham-số cũng chặn oxyz_ratio.t
+    console.log('[Câu 6B] ok=', r.ok, 's=', r.parameter.value, 'K.x=', r.answer.approx, 'errors=', JSON.stringify(r.errors));
+    // Sau fix: s được thay vào oxyz_ratio.t ⇒ giải được. dist(I,K)=2|s|=3 ⇒ |s|=1.5 (nghiệm đầu s=−1.5).
+    expect(r.ok).toBe(true);
+    expect(Number.isFinite(r.parameter.value)).toBe(true);
+    expect(Math.abs(r.parameter.value)).toBeCloseTo(1.5, 3);
   });
 });
