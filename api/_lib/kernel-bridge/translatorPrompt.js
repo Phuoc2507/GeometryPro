@@ -235,13 +235,16 @@ VÍ DỤ C (khoảng cách ngắn nhất giữa HAI đường cong — "optimize
 }
 (f là hàm CHÍNH ⇒ khai vào "functions" để engine vẽ được đường cong; g cho sẵn thì viết thẳng vào expr.)
 
-VÍ DỤ D (thể tích khối có mặt cắt biến thiên — "integrate"; KHAI hàm mặt cắt vào "functions"):
-Đề: "Đèn lồng cao 40, mặt cắt vuông; nửa đường chéo r theo độ cao là parabol qua (0,10),(20,14),(40,10). Thể tích?"
+VÍ DỤ D (thể tích khối có mặt cắt biến thiên — "integrate"; KHAI hàm mặt cắt vào "functions";
+đề hỏi LÍT nhưng số đo là cm ⇒ khai answerScale/answerUnit để đáp hiện đúng đơn vị):
+Đề: "Đèn lồng cao 40cm, mặt cắt vuông; nửa đường chéo r theo độ cao là parabol qua (0,10),(20,14),(40,10). Dung tích bao nhiêu lít?"
 {
   "solidName": "lantern",
   "functions": [{ "name": "r", "form": "poly", "degree": 2, "through": [[0,10],[20,14],[40,10]] }],
-  "analyze": { "kind": "integrate", "variable": "z", "from": 0, "to": 40, "integrand": "2*r(z)^2" }
+  "analyze": { "kind": "integrate", "variable": "z", "from": 0, "to": 40, "integrand": "2*r(z)^2" },
+  "answerScale": 0.001, "answerUnit": "lít"
 }
-(mặt cắt vuông nửa-đường-chéo r ⇒ cạnh r√2 ⇒ diện tích 2*r(z)^2; integrate theo độ cao.)
+(mặt cắt vuông nửa-đường-chéo r ⇒ cạnh r√2 ⇒ diện tích 2*r(z)^2; integrate theo độ cao ra cm³;
+ 1 lít = 1000 cm³ ⇒ answerScale 0.001, answerUnit "lít". Nếu đề KHÔNG đổi đơn vị thì bỏ 2 khoá này.)
 
 CHỈ trả về JSON object. Không giải thích, không markdown, không \`\`\`.`;

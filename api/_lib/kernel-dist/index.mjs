@@ -7045,7 +7045,12 @@ var AnalysisPlanSchema = RunPlanSchema.extend({
     slopeAt: external_exports.array(external_exports.tuple([NumOrExpr, NumOrExpr])).default([])
   })).default([]),
   solids: external_exports.array(SolidDeclSchema).default([]),
-  analyze: AnalyzeSchema
+  analyze: AnalyzeSchema,
+  // ĐƠN VỊ HIỂN THỊ (tuỳ chọn): engine tính theo đơn vị gốc của đề (vd cm³); nếu đề hỏi đáp theo đơn vị
+  // khác (vd "lít"), LLM khai answerScale (hệ số nhân, vd 0.001 cho cm³→lít) + answerUnit ("lít") để đáp
+  // hiện đúng đơn vị. Bỏ trống ⇒ hiện số trần. KHÔNG ảnh hưởng phép tính, chỉ khâu hiển thị cuối.
+  answerScale: NumOrExpr.optional(),
+  answerUnit: external_exports.string().optional()
 });
 function numify(c, env, params) {
   if (typeof c === "string" && params.some((p) => new RegExp(`\\b${p}\\b`).test(c))) return evalExpr(c, env);
@@ -7060,11 +7065,24 @@ function scalarOf(a) {
 function fail2(name, msg) {
   return { ok: false, parameter: { name, value: NaN }, answer: { approx: NaN, text: "(l\u1ED7i)", approximate: true }, violations: [], errors: [{ message: msg }] };
 }
+function fmtNum2(x) {
+  if (!Number.isFinite(x)) return "(l\u1ED7i)";
+  const digits = Math.abs(x) >= 1e3 ? 2 : 4;
+  return parseFloat(x.toFixed(digits)).toString();
+}
 function runAnalysis(raw) {
   const parsed = AnalysisPlanSchema.safeParse(raw);
   if (!parsed.success) return fail2("?", `Invalid analysis plan: ${parsed.error.issues[0]?.message ?? "schema"}`);
   const plan = parsed.data;
   const paramNames = plan.parameters.map((p) => p.name);
+  const answerScale = plan.answerScale != null ? evalExpr(String(plan.answerScale), {}) : 1;
+  const answerUnit = plan.answerUnit ? ` ${plan.answerUnit}` : "";
+  const mkAnswer = (val) => {
+    const display = Number.isFinite(val) ? val * answerScale : val;
+    const nice = Number.isFinite(display) ? recognizeConstant(display) : null;
+    const num2 = nice ? nice.text : fmtNum2(display);
+    return { approx: display, text: num2 + answerUnit, approximate: !nice };
+  };
   const fitAt = (env) => {
     const coeffs = {};
     const funcs = {};
@@ -7119,11 +7137,10 @@ function runAnalysis(raw) {
       const from = evalExpr(String(az.from), {}, funcs);
       const to = evalExpr(String(az.to), {}, funcs);
       const r = integrate((x) => evalExpr(az.integrand, { [az.variable]: x }, funcs), from, to);
-      const nice = recognizeConstant(r.value);
       return {
         ok: true,
         parameter: { name: az.variable, value: NaN },
-        answer: { approx: r.value, text: nice ? nice.text : r.value.toFixed(4), approximate: !nice },
+        answer: mkAnswer(r.value),
         violations: [],
         errors: [],
         geometry: buildAnalysisFigure(az.variable, buildFigureInput({}))
@@ -7139,11 +7156,10 @@ function runAnalysis(raw) {
       if (isSolidVolSrc(src)) val = solidVolumeAt({}, src);
       else if (isExprSrc(src)) val = evalExpr(src.expr, {}, fitAt({}).funcs);
       else return fail2("-", 'analyze.eval ch\u1EC9 nh\u1EADn ngu\u1ED3n "expr" ho\u1EB7c "solid_volume"');
-      const nice = recognizeConstant(val);
       return {
         ok: Number.isFinite(val),
         parameter: { name: "-", value: NaN },
-        answer: { approx: val, text: nice ? nice.text : val.toFixed(4), approximate: !nice },
+        answer: mkAnswer(val),
         violations: [],
         errors: [],
         geometry: buildAnalysisFigure(plan.solidName || "figure", buildFigureInput({}))
@@ -7170,7 +7186,6 @@ function runAnalysis(raw) {
         return evalExpr(src.expr, env, fitAt(env).funcs);
       };
       const best = optimizeMulti(objective, los, his, az.sense);
-      const nice = recognizeConstant(best.value);
       const envBest = {};
       az.parameters.forEach((nm, i) => {
         envBest[nm] = best.xs[i];
@@ -7178,7 +7193,7 @@ function runAnalysis(raw) {
       return {
         ok: Number.isFinite(best.value),
         parameter: { name: az.parameters.join(","), value: NaN },
-        answer: { approx: best.value, text: nice ? nice.text : best.value.toFixed(4), approximate: !nice },
+        answer: mkAnswer(best.value),
         violations: [],
         errors: [],
         geometry: buildAnalysisFigure(az.parameters.join(","), buildFigureInput(envBest))
@@ -7293,11 +7308,10 @@ function runAnalysis(raw) {
       errors = res.errors.map((e) => ({ message: e.message }));
       if (res.entities.points.size > 0) geometry = entityTableToGeometryData(res.entities, plan.solidName || "figure");
     }
-    const nice = Number.isFinite(val) ? recognizeConstant(val) : null;
     return {
       ok: violations.length === 0 && errors.length === 0 && Number.isFinite(val),
       parameter: { name: pname, value },
-      answer: { approx: val, text: nice ? nice.text : Number.isFinite(val) ? val.toFixed(4) : "(l\u1ED7i)", approximate: !nice },
+      answer: mkAnswer(val),
       violations,
       errors,
       geometry

@@ -62,6 +62,11 @@ export const AnalysisPlanSchema = RunPlanSchema.extend({
   })).default([]),
   solids: z.array(SolidDeclSchema).default([]),
   analyze: AnalyzeSchema,
+  // ĐƠN VỊ HIỂN THỊ (tuỳ chọn): engine tính theo đơn vị gốc của đề (vd cm³); nếu đề hỏi đáp theo đơn vị
+  // khác (vd "lít"), LLM khai answerScale (hệ số nhân, vd 0.001 cho cm³→lít) + answerUnit ("lít") để đáp
+  // hiện đúng đơn vị. Bỏ trống ⇒ hiện số trần. KHÔNG ảnh hưởng phép tính, chỉ khâu hiển thị cuối.
+  answerScale: NumOrExpr.optional(),
+  answerUnit: z.string().optional(),
 });
 export type AnalysisPlan = z.infer<typeof AnalysisPlanSchema>;
 
@@ -92,11 +97,32 @@ function fail(name: string, msg: string): AnalysisResult {
   return { ok: false, parameter: { name, value: NaN }, answer: { approx: NaN, text: '(lỗi)', approximate: true }, violations: [], errors: [{ message: msg }] };
 }
 
+// Số thập phân GỌN cho đáp không nhận dạng được: ít chữ số hơn khi trị lớn, cắt số 0 thừa.
+// 12949.3333→"12949.33"; 0.86602→"0.866"; 7.0→"7". Tránh ".toFixed(4)" cứng ra "12949.3333" xấu.
+function fmtNum(x: number): string {
+  if (!Number.isFinite(x)) return '(lỗi)';
+  // Trị LỚN (≥1000): 2 chữ số thập phân (12949.33) — 4 chữ số ở đây chỉ ra đuôi rác. Còn lại giữ 4 chữ
+  // số như cũ để không mất độ chính xác quen thuộc (7.0205 giữ nguyên). parseFloat cắt số 0 thừa.
+  const digits = Math.abs(x) >= 1000 ? 2 : 4;
+  return parseFloat(x.toFixed(digits)).toString();
+}
+
 export function runAnalysis(raw: unknown): AnalysisResult {
   const parsed = AnalysisPlanSchema.safeParse(raw);
   if (!parsed.success) return fail('?', `Invalid analysis plan: ${parsed.error.issues[0]?.message ?? 'schema'}`);
   const plan = parsed.data;
   const paramNames = plan.parameters.map((p) => p.name);
+
+  // Dựng đáp số THỐNG NHẤT: (1) nhân hệ số đơn vị nếu đề hỏi đơn vị khác, (2) nhận-dạng-căn-đẹp trên
+  // trị đã đổi đơn vị, (3) nếu không đẹp thì format thập phân gọn, (4) gắn đơn vị. approx = trị đã đổi.
+  const answerScale = plan.answerScale != null ? evalExpr(String(plan.answerScale), {}) : 1;
+  const answerUnit = plan.answerUnit ? ` ${plan.answerUnit}` : '';
+  const mkAnswer = (val: number) => {
+    const display = Number.isFinite(val) ? val * answerScale : val;
+    const nice = Number.isFinite(display) ? recognizeConstant(display) : null;
+    const num = nice ? nice.text : fmtNum(display);
+    return { approx: display, text: num + answerUnit, approximate: !nice };
+  };
 
   // Khớp mọi hàm khai báo tại env → map tên→hàm số để biểu thức gọi được (engine khớp, LLM không tính).
   const fitAt = (env: Env): { coeffs: Record<string, number[]>; funcs: Funcs } => {
@@ -163,10 +189,9 @@ export function runAnalysis(raw: unknown): AnalysisResult {
       const from = evalExpr(String(az.from), {}, funcs);
       const to = evalExpr(String(az.to), {}, funcs);
       const r = integrate((x) => evalExpr(az.integrand, { [az.variable]: x }, funcs), from, to);
-      const nice = recognizeConstant(r.value);
       return {
         ok: true, parameter: { name: az.variable, value: NaN },
-        answer: { approx: r.value, text: nice ? nice.text : r.value.toFixed(4), approximate: !nice },
+        answer: mkAnswer(r.value),
         violations: [], errors: [], geometry: buildAnalysisFigure(az.variable, buildFigureInput({})),
       };
     } catch (e) { return fail(az.variable, (e as Error).message); }
@@ -180,10 +205,9 @@ export function runAnalysis(raw: unknown): AnalysisResult {
       if (isSolidVolSrc(src)) val = solidVolumeAt({}, src);
       else if (isExprSrc(src)) val = evalExpr(src.expr, {}, fitAt({}).funcs);
       else return fail('-', 'analyze.eval chỉ nhận nguồn "expr" hoặc "solid_volume"');
-      const nice = recognizeConstant(val);
       return {
         ok: Number.isFinite(val), parameter: { name: '-', value: NaN },
-        answer: { approx: val, text: nice ? nice.text : val.toFixed(4), approximate: !nice },
+        answer: mkAnswer(val),
         violations: [], errors: [], geometry: buildAnalysisFigure(plan.solidName || 'figure', buildFigureInput({})),
       };
     } catch (e) { return fail('-', (e as Error).message); }
@@ -206,12 +230,11 @@ export function runAnalysis(raw: unknown): AnalysisResult {
         return evalExpr(src.expr, env, fitAt(env).funcs);
       };
       const best = optimizeMulti(objective, los, his, az.sense);
-      const nice = recognizeConstant(best.value);
       const envBest: Env = {};
       az.parameters.forEach((nm, i) => { envBest[nm] = best.xs[i]; });
       return {
         ok: Number.isFinite(best.value), parameter: { name: az.parameters.join(','), value: NaN },
-        answer: { approx: best.value, text: nice ? nice.text : best.value.toFixed(4), approximate: !nice },
+        answer: mkAnswer(best.value),
         violations: [], errors: [], geometry: buildAnalysisFigure(az.parameters.join(','), buildFigureInput(envBest)),
       };
     } catch (e) { return fail(az.parameters.join(','), (e as Error).message); }
@@ -302,11 +325,10 @@ export function runAnalysis(raw: unknown): AnalysisResult {
       violations = res.violations; errors = res.errors.map((e) => ({ message: e.message }));
       if (res.entities.points.size > 0) geometry = entityTableToGeometryData(res.entities, plan.solidName || 'figure');
     }
-    const nice = Number.isFinite(val) ? recognizeConstant(val) : null;
     return {
       ok: violations.length === 0 && errors.length === 0 && Number.isFinite(val),
       parameter: { name: pname, value },
-      answer: { approx: val, text: nice ? nice.text : (Number.isFinite(val) ? val.toFixed(4) : '(lỗi)'), approximate: !nice },
+      answer: mkAnswer(val),
       violations, errors, geometry,
     };
   };
