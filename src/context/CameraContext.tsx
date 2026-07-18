@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useRef, useMemo } from 'react';
+import React, { createContext, useContext, useState, useRef, useMemo, useCallback } from 'react';
 
 interface CameraState {
   position: [number, number, number];
@@ -17,6 +17,10 @@ interface CameraContextType {
   setHiddenLines: (lines: Map<string, boolean>) => void;
   highlightedIds: Set<string>;
   setHighlightedIds: (ids: Set<string>) => void;
+  /** Bumped each time a "reset view" is requested; CameraFitter re-fits when it changes. */
+  resetNonce: number;
+  /** Đặt lại góc nhìn về khung auto-fit ban đầu. */
+  resetCamera: () => void;
 }
 
 const CameraStateContext = createContext<CameraStateContextType | undefined>(undefined);
@@ -31,9 +35,11 @@ export function CameraProvider({ children }: { children: React.ReactNode }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [hiddenLines, setHiddenLines] = useState<Map<string, boolean>>(new Map());
   const [highlightedIds, setHighlightedIds] = useState<Set<string>>(new Set());
+  const [resetNonce, setResetNonce] = useState(0);
+  const resetCamera = useCallback(() => setResetNonce((n) => n + 1), []);
 
   const stateValue = useMemo(() => ({ cameraState, setCameraState }), [cameraState]);
-  const mainValue = useMemo(() => ({ canvasRef, hiddenLines, setHiddenLines, highlightedIds, setHighlightedIds }), [hiddenLines, highlightedIds]);
+  const mainValue = useMemo(() => ({ canvasRef, hiddenLines, setHiddenLines, highlightedIds, setHighlightedIds, resetNonce, resetCamera }), [hiddenLines, highlightedIds, resetNonce, resetCamera]);
 
   return (
     <CameraStateContext.Provider value={stateValue}>

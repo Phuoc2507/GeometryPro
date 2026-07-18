@@ -15,14 +15,20 @@ import { ErrorBoundary } from '@/components/ErrorBoundary';
 
 function CameraFitter({ geometry, is2D }: { geometry: any; is2D?: boolean }) {
   const { camera, size: canvasSize } = useThree();
-  const controlsRef = useRef<any>(null);
+  const cameraCtx = useCameraOptional();
+  const cameraStateCtx = useCameraStateOptional();
   const prevNameRef = useRef<string>('');
+  const resetNonce = cameraCtx?.resetNonce ?? 0;
+  const prevNonceRef = useRef<number>(resetNonce);
 
   useEffect(() => {
     if (!geometry?.points?.length) return;
     const name = geometry.name || '';
-    if (name === prevNameRef.current) return; // only fit on new geometry
+    const nonceChanged = resetNonce !== prevNonceRef.current;
+    // Fit khi có hình MỚI, hoặc khi người dùng bấm "Đặt lại góc nhìn" (R / menu View).
+    if (name === prevNameRef.current && !nonceChanged) return;
     prevNameRef.current = name;
+    prevNonceRef.current = resetNonce;
 
     // Bounding box in Three.js coords (math: z-up → three: y-up)
     let minX = Infinity, maxX = -Infinity;
@@ -67,7 +73,23 @@ function CameraFitter({ geometry, is2D }: { geometry: any; is2D?: boolean }) {
       camera.lookAt(cx, cy, cz);
     }
     camera.updateProjectionMatrix();
-  }, [geometry, camera, is2D, canvasSize]);
+
+    // Đồng bộ pose vào cameraState để CaptureModal/CameraTracker khớp góc nhìn.
+    // CameraTracker sẽ no-op vì camera đã ở đúng vị trí -> không lặp vô hạn.
+    if (cameraStateCtx) {
+      const pos = camera.position;
+      const targetVec = new THREE.Vector3(cx, cy, cz);
+      const zoom = (camera as any).isOrthographicCamera
+        ? (camera as any).zoom
+        : 10.59 / Math.max(0.1, pos.distanceTo(targetVec));
+      cameraStateCtx.setCameraState({
+        position: [pos.x, pos.y, pos.z],
+        target: [cx, cy, cz],
+        zoom,
+      });
+    }
+    // cameraStateCtx.setCameraState là setter ổn định của useState -> không cần vào deps.
+  }, [geometry, camera, is2D, canvasSize, resetNonce]);
 
   return null;
 }
@@ -293,11 +315,21 @@ export function GeometryCanvas() {
         } else if (geometryContext && geometryContext.state.manualTool) {
           geometryContext.setManualTool(null);
         }
+        return;
+      }
+      // "R" = đặt lại góc nhìn (bỏ qua khi đang gõ trong ô nhập, và khi có Ctrl/⌘ như Ctrl+R reload)
+      if ((e.key === 'r' || e.key === 'R') && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        const t = e.target as HTMLElement | null;
+        const typing = !!t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable);
+        if (!typing) {
+          e.preventDefault();
+          cameraContext?.resetCamera();
+        }
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [geometryContext]);
+  }, [geometryContext, cameraContext]);
 
   // Auto-scale large geometry coordinates to fit within standard [-8, 8] bounds
   const scaledGeometry = useMemo(() => {
