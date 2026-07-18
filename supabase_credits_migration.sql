@@ -242,10 +242,12 @@ end $$;
 
 -- 11) BẢO MẬT: chỉ service_role được gọi các hàm ghi. -----------------
 -- (Không thì user tự gọi refund_credits/grant_credits để tự cộng credit.)
-revoke all on function public.spend_credits(uuid,int,text,text)         from public;
-revoke all on function public.refund_credits(uuid,int,text)             from public;
-revoke all on function public.grant_credits(uuid,int,text,text,boolean) from public;
-revoke all on function public.consume_quota(uuid,text,int,int)          from public;
+-- Supabase mặc định grant execute cho anon + authenticated (không chỉ public),
+-- nên phải revoke CẢ HAI, nếu không user gọi thẳng grant/refund để tự cấp credit.
+revoke all on function public.spend_credits(uuid,int,text,text)         from public, anon, authenticated;
+revoke all on function public.refund_credits(uuid,int,text)             from public, anon, authenticated;
+revoke all on function public.grant_credits(uuid,int,text,text,boolean) from public, anon, authenticated;
+revoke all on function public.consume_quota(uuid,text,int,int)          from public, anon, authenticated;
 -- ...nhưng SERVER (service_role) BẮT BUỘC gọi được — nếu không cả hệ credit chết
 -- vì revoke from public đã lấy luôn quyền của service_role.
 grant execute on function public.spend_credits(uuid,int,text,text)         to service_role;
