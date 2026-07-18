@@ -94,7 +94,7 @@ export function AnimatedPoint({ point, delay, isBuilding, highlighted = false }:
         <meshBasicMaterial color={pointColor} />
       </mesh>
 
-        <Html position={[0, 0, 0]} center distanceFactor={12} zIndexRange={[100, 0]} style={{ pointerEvents: 'none' }}>
+        <Html position={[0, 0, 0]} center distanceFactor={12} zIndexRange={[30, 0]} style={{ pointerEvents: 'none' }}>
           <div style={{
             transform: `translate(15px, -20px)`, // offset to top-right
             opacity: textProgress,

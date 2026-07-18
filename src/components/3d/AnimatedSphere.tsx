@@ -130,7 +130,7 @@ export function AnimatedSphere({ sphere, delay, isBuilding }: AnimatedSphereProp
 
       {/* Label at center */}
       {label && (
-        <Html position={[0, 0, 0]} center distanceFactor={12} zIndexRange={[100, 0]} style={{ pointerEvents: 'none' }}>
+        <Html position={[0, 0, 0]} center distanceFactor={12} zIndexRange={[30, 0]} style={{ pointerEvents: 'none' }}>
           <span className="math-label" style={{
             color: labelColor,
             fontSize: '16px',

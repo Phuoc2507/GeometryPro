@@ -233,7 +233,7 @@ export function DraggablePoint({ point, allPoints, allLines, delay, isBuilding }
 
       {/* Label */}
       {point.label && (
-        <Html position={[0, 0, 0]} center distanceFactor={12} zIndexRange={[100, 0]} style={{ pointerEvents: 'none' }}>
+        <Html position={[0, 0, 0]} center distanceFactor={12} zIndexRange={[30, 0]} style={{ pointerEvents: 'none' }}>
           <div 
             style={{
               transform: `translate(15px, -20px)`,
