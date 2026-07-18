@@ -35,7 +35,7 @@ export default async function handler(req, res) {
       // 1. Tìm user_id dựa vào order_code
       const { data: order, error: fetchError } = await supabase
         .from('orders')
-        .select('user_id, status, plan_code')
+        .select('user_id, status, plan_code, amount')
         .eq('order_code', orderCode)
         .maybeSingle();
         
@@ -48,7 +48,21 @@ export default async function handler(req, res) {
           .update({ status: 'paid', updated_at: new Date().toISOString() })
           .eq('order_code', orderCode);
 
-        // 3. Kích hoạt gói đã mua theo plan_code.
+        // 3. Đơn NẠP CREDIT LẺ (plan_code null) hay MUA GÓI (plan_code có giá trị).
+        if (!order.plan_code) {
+          const { data: pc } = await supabase
+            .from('pricing_config').select('value').eq('key', 'credit_price_vnd').maybeSingle();
+          const creditPrice = pc?.value || 500;
+          const n = Math.round((order.amount || 0) / creditPrice);
+          if (n > 0) {
+            const { error: grantErr } = await supabase.rpc('grant_credits', {
+              p_user_id: order.user_id, p_amount: n, p_reason: 'purchase',
+              p_ref: String(orderCode), p_to_purchased: true,
+            });
+            if (grantErr) console.error(`Lỗi nạp credit đơn ${orderCode}:`, grantErr.message);
+            else console.log(`Đơn ${orderCode} OK — user ${order.user_id} nạp +${n} credit lẻ.`);
+          }
+        } else {
         const { data: plan } = await supabase
           .from('plans')
           .select('code, tier, duration_days, credits_per_cycle')
@@ -98,6 +112,7 @@ export default async function handler(req, res) {
             });
             console.log(`Đơn ${orderCode} OK — user ${order.user_id} lên ${plan.tier} tới ${expiryDate}, +${plan.credits_per_cycle} credit.`);
           }
+        }
         }
       } else {
         console.log(`Đơn hàng ${orderCode} đã được xử lý trước đó.`);

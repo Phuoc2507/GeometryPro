@@ -22,8 +22,8 @@ export default async function handler(req, res) {
   try {
     // planCode xác định gói + giá. KHÔNG nhận giá từ client. Mặc định 'pro_1m'
     // để giữ tương thích với nút "Nâng cấp" cũ (chưa gửi planCode).
-    const { returnUrl, cancelUrl, planCode } = req.body || {};
-    const code = planCode || 'pro_1m';
+    const { returnUrl, cancelUrl, planCode, creditPack } = req.body || {};
+    const isCreditPack = creditPack != null && planCode == null;
 
     if (!supabase) {
       return res.status(500).json({ error: 'Supabase credentials are not configured correctly' });
@@ -51,20 +51,35 @@ export default async function handler(req, res) {
 
     const payos = new PayOS({ clientId, apiKey, checksumKey });
 
-    // Tra gói + GIÁ từ DB (nguồn sự thật). Giá client gửi lên bị bỏ qua.
-    const { data: plan, error: planError } = await supabase
-      .from('plans')
-      .select('code, name, price_vnd, active')
-      .eq('code', code)
-      .maybeSingle();
-
-    if (planError || !plan || plan.active === false) {
-      return res.status(400).json({ error: `Gói không hợp lệ: ${code}` });
+    // GIÁ tính ở server (nguồn sự thật). Giá client gửi lên luôn bị bỏ qua.
+    let finalAmount, orderPlanCode, description;
+    if (isCreditPack) {
+      // Nạp credit lẻ: số credit × đơn giá trong DB. plan_code = null để webhook
+      // biết đây là đơn NẠP CREDIT (không phải mua gói).
+      const n = parseInt(creditPack, 10);
+      if (!Number.isInteger(n) || n < 10 || n > 10000) {
+        return res.status(400).json({ error: 'Số credit không hợp lệ (10–10000)' });
+      }
+      const { data: pc } = await supabase
+        .from('pricing_config').select('value').eq('key', 'credit_price_vnd').maybeSingle();
+      const creditPrice = pc?.value || 500;
+      finalAmount = n * creditPrice;
+      orderPlanCode = null;
+      description = `Geo3D +${n}cr`.slice(0, 25);
+    } else {
+      const code = planCode || 'pro_1m';
+      const { data: plan, error: planError } = await supabase
+        .from('plans').select('code, name, price_vnd, active').eq('code', code).maybeSingle();
+      if (planError || !plan || plan.active === false) {
+        return res.status(400).json({ error: `Gói không hợp lệ: ${code}` });
+      }
+      finalAmount = plan.price_vnd;
+      orderPlanCode = code;
+      description = `Geo3D ${code}`.slice(0, 25);
     }
 
     // Tạo mã đơn hàng duy nhất (số nguyên < 2147483647)
     const orderCode = Math.floor(Math.random() * 900000) + 100000;
-    const finalAmount = plan.price_vnd;
 
     // orders.user_id FKs to profiles(user_id), so a missing profile makes the
     // insert below fail. Signup normally creates it via the on_auth_user_created
@@ -83,7 +98,7 @@ export default async function handler(req, res) {
       order_code: orderCode,
       user_id: userId,
       amount: finalAmount,
-      plan_code: code,
+      plan_code: orderPlanCode,
       status: 'pending'
     });
 
@@ -98,7 +113,7 @@ export default async function handler(req, res) {
     const requestData = {
       orderCode: orderCode,
       amount: finalAmount,
-      description: `Geo3D ${code}`.slice(0, 25),
+      description,
       returnUrl: returnUrl || `${baseUrl}/?payment=success`,
       cancelUrl: cancelUrl || baseUrl
     };

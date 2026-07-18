@@ -38,6 +38,7 @@ export function UpgradeModal({ open, onOpenChange }: UpgradeModalProps) {
   const { toast } = useToast();
   const [plans, setPlans] = useState<Plan[]>(FALLBACK_PLANS);
   const [buying, setBuying] = useState<string | null>(null);
+  const [creditPrice, setCreditPrice] = useState(500);
 
   // Đọc bảng giá trực tiếp từ Supabase (RLS cho phép SELECT). Lỗi -> giữ fallback.
   useEffect(() => {
@@ -50,15 +51,17 @@ export function UpgradeModal({ open, onOpenChange }: UpgradeModalProps) {
         .neq("code", "free")
         .order("price_vnd", { ascending: true });
       if (!error && data && data.length) setPlans(data as Plan[]);
+      const { data: pc } = await supabase.from("pricing_config").select("value").eq("key", "credit_price_vnd").maybeSingle();
+      if (pc?.value) setCreditPrice(pc.value);
     })();
   }, [open]);
 
-  const handleBuy = async (planCode: string) => {
+  const startCheckout = async (body: Record<string, unknown>, buyingKey: string) => {
     if (!user) {
-      toast({ title: "Vui lòng đăng nhập", description: "Bạn cần đăng nhập để mua gói.", variant: "destructive" });
+      toast({ title: "Vui lòng đăng nhập", description: "Bạn cần đăng nhập để mua.", variant: "destructive" });
       return;
     }
-    setBuying(planCode);
+    setBuying(buyingKey);
     try {
       const { data: sessionData } = await supabase.auth.getSession();
       const token = sessionData.session?.access_token;
@@ -68,7 +71,7 @@ export function UpgradeModal({ open, onOpenChange }: UpgradeModalProps) {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({
-          planCode,
+          ...body,
           returnUrl: window.location.href.split("?")[0] + "?payment=success",
           cancelUrl: window.location.href.split("?")[0],
         }),
@@ -82,6 +85,8 @@ export function UpgradeModal({ open, onOpenChange }: UpgradeModalProps) {
       setBuying(null);
     }
   };
+  const handleBuy = (planCode: string) => startCheckout({ planCode }, planCode);
+  const handleBuyCredit = (n: number) => startCheckout({ creditPack: n }, `cr_${n}`);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -153,9 +158,37 @@ export function UpgradeModal({ open, onOpenChange }: UpgradeModalProps) {
           })}
         </div>
 
-        <p className="text-[11px] text-muted-foreground text-center">
-          Credit gói reset mỗi chu kỳ. Cần thêm? Mua credit lẻ 500đ/credit (không hết hạn) — sắp có.
-        </p>
+        {/* Nạp credit lẻ — không hết hạn */}
+        <div className="rounded-xl border border-border/60 bg-secondary/20 p-3">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-sm font-semibold flex items-center gap-1.5">
+              <Sparkles className="w-4 h-4 text-primary" /> Nạp credit lẻ
+            </span>
+            <span className="text-[11px] text-muted-foreground">{fmtVnd(creditPrice)}/credit · không hết hạn</span>
+          </div>
+          <div className="grid grid-cols-4 gap-2">
+            {[50, 100, 200, 500].map((n) => (
+              <Button
+                key={n}
+                variant="outline"
+                size="sm"
+                className="h-auto py-2 flex-col gap-0.5"
+                disabled={buying !== null}
+                onClick={() => handleBuyCredit(n)}
+              >
+                {buying === `cr_${n}` ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <>
+                    <span className="text-sm font-bold">+{n}</span>
+                    <span className="text-[10px] text-muted-foreground">{fmtVnd(n * creditPrice)}</span>
+                  </>
+                )}
+              </Button>
+            ))}
+          </div>
+        </div>
+        <p className="text-[11px] text-muted-foreground text-center">Credit gói reset mỗi chu kỳ; credit nạp lẻ không hết hạn.</p>
       </DialogContent>
     </Dialog>
   );
