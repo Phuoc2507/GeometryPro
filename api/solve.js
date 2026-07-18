@@ -70,11 +70,17 @@ export default async function handler(req, res) {
 
   // Engine tất định giải trước → đáp số + verified THẬT. Có thể ném (abstain/schema) ⇒ bọc try/catch.
   let eng = null;
-  try {
-    const { solveProblem } = await import('./_lib/kernel-bridge/solveWithKernel.js');
-    eng = await solveProblem(problem.trim());
-  } catch (e) {
-    console.warn('[solve] engine không giải được, dùng lời giải LLM:', e?.message || e);
+  const ea = geometry.engineAnswer;
+  if (ea && typeof ea.approx === 'number' && Number.isFinite(ea.approx)) {
+    // Tái dùng đáp engine từ bước VẼ — KHÔNG chạy engine lại (bỏ dịch+giải trùng)
+    eng = { ok: !!ea.verified, answers: [{ text: ea.text, approx: ea.approx }], violations: [] };
+  } else {
+    try {
+      const { solveProblem } = await import('./_lib/kernel-bridge/solveWithKernel.js');
+      eng = await solveProblem(problem.trim());
+    } catch (e) {
+      console.warn('[solve] engine không giải được, dùng lời giải LLM:', e?.message || e);
+    }
   }
   const engAnswer = engineSolved(eng) ? eng.answers[0].text : null;
 

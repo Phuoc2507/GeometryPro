@@ -164,6 +164,10 @@ export default async function handler(req, res) {
         if (usable) {
           const geometry = normalizeGeometryData(k.geometry);
           geometry.confidence = 1; // engine đã tự kiểm mọi assert của đề
+          const _ea = (k.answers || [])[0];
+          if (_ea && Number.isFinite(_ea.approx)) {
+            geometry.engineAnswer = { text: _ea.text, approx: _ea.approx, verified: true }; // engine đã tự kiểm ở nhánh phục vụ này
+          }
           const answersLog = (k.answers || [])
             .map((a) => `${a.kind}: ${a.text}${a.approximate ? ' (xấp xỉ)' : ''}`)
             .join('; ');
@@ -285,6 +289,10 @@ Hãy:
           if (usable) {
             const geometry = normalizeGeometryData(k.geometry);
             geometry.confidence = 1;
+            const _ea = (k.answers || [])[0];
+            if (_ea && Number.isFinite(_ea.approx)) {
+              geometry.engineAnswer = { text: _ea.text, approx: _ea.approx, verified: true }; // engine đã tự kiểm ở nhánh phục vụ này
+            }
             const answersLog = (k.answers || [])
               .map((a) => `${a.kind}: ${a.text}${a.approximate ? ' (xấp xỉ)' : ''}`).join('; ');
             const enginePayload = {
