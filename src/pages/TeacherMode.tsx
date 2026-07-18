@@ -3,7 +3,7 @@ import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { Home } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { GeometryProvider, useGeometryOptional } from '@/context/GeometryContext';
-import { CameraProvider, useCamera } from '@/context/CameraContext';
+import { CameraProvider } from '@/context/CameraContext';
 import { LeftSidebar, MobileSidebar } from '@/components/layout/LeftSidebar';
 import { RightPanel, MobileRightPanel } from '@/components/layout/RightPanel';
 import { TopToolbar } from '@/components/layout/TopToolbar';
@@ -16,34 +16,6 @@ import { VideoExportPanel } from '@/components/layout/VideoExportPanel';
 import { GeometryData } from '@/types/geometry';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
-
-// ─── Camera preset buttons ────────────────────────────────────────────────────
-
-const CAMERA_PRESETS = [
-  { label: 'Mặc định', position: [6, 5, 8] as [number, number, number],  target: [0, 1.5, 0] as [number, number, number] },
-  { label: 'Đáy',      position: [0, 10, 0.1] as [number, number, number], target: [0, 0, 0] as [number, number, number] },
-  { label: 'Cạnh',     position: [10, 2, 0] as [number, number, number],  target: [0, 2, 0] as [number, number, number] },
-  { label: 'Nghiêng',  position: [5, 4, 7] as [number, number, number],   target: [0, 0, 0] as [number, number, number] },
-] as const;
-
-function CameraPresets() {
-  const { setCameraState } = useCamera();
-  return (
-    <div className="absolute bottom-24 left-4 z-30 flex flex-col gap-1.5">
-      {CAMERA_PRESETS.map((p) => (
-        <Button
-          key={p.label}
-          variant="outline"
-          size="sm"
-          className="glass border-border/50 text-xs h-7 px-2.5"
-          onClick={() => setCameraState({ position: p.position, target: p.target })}
-        >
-          {p.label}
-        </Button>
-      ))}
-    </div>
-  );
-}
 
 // ─── Geometry loader (same as Index) ─────────────────────────────────────────
 
@@ -169,9 +141,6 @@ const TeacherModeContent = () => {
 
         {/* Timeline UI */}
         <TimelineContainer />
-
-        {/* Camera preset buttons (bottom-left of canvas) */}
-        {!isVideoMode && <CameraPresets />}
 
         {/* Drop Zone (Empty State) */}
         <DropZone />
