@@ -12,9 +12,13 @@ interface AnimatedPlane3DProps {
   plane: Plane3D;
   delay: number;
   isBuilding: boolean;
+  /** Advance mode: hệ số nhân opacity (dim → 0.25). Mặc định 1 = hành vi cũ. */
+  opacityFactor?: number;
+  /** Advance mode: mặt mới ở câu hiện tại → viền dày hơn chút. */
+  emphasize?: boolean;
 }
 
-export function AnimatedPlane3D({ plane, delay, isBuilding }: AnimatedPlane3DProps) {
+export function AnimatedPlane3D({ plane, delay, isBuilding, opacityFactor = 1, emphasize = false }: AnimatedPlane3DProps) {
   const [visible, setVisible] = useState(false);
   const [opacity, setOpacity] = useState(0);
   const [matrix, setMatrix] = useState(() => new THREE.Matrix4());
@@ -142,7 +146,7 @@ export function AnimatedPlane3D({ plane, delay, isBuilding }: AnimatedPlane3DPro
 
   if (!visible || !vertices || !edgePoints) return null;
 
-  const finalOpacity = (plane.opacity ?? 0.2) * opacity;
+  const finalOpacity = (plane.opacity ?? 0.2) * opacity * opacityFactor;
 
   return (
     <group matrixAutoUpdate={false} matrix={matrix}>
@@ -197,9 +201,9 @@ export function AnimatedPlane3D({ plane, delay, isBuilding }: AnimatedPlane3DPro
       <Line
         points={edgePoints}
         color={displayColor}
-        lineWidth={isHighlighted ? 3 : 1.5}
+        lineWidth={isHighlighted ? 3 : (emphasize ? 2.5 : 1.5)}
         transparent
-        opacity={isHighlighted ? 1 : opacity * 0.6}
+        opacity={isHighlighted ? 1 : opacity * 0.6 * opacityFactor}
       />
     </group>
   );

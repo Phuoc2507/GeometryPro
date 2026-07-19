@@ -15,9 +15,13 @@ interface AnimatedLineProps {
   isBuilding: boolean;
   dynamicHidden?: boolean;
   highlighted?: boolean;
+  /** Advance mode: opacity hiển thị (dim → 0.25). Mặc định 1 = hành vi cũ. */
+  opacity?: number;
+  /** Advance mode: đường mới ở câu hiện tại → dày hơn chút. */
+  emphasize?: boolean;
 }
 
-export function AnimatedLine({ line, points, delay, isBuilding, dynamicHidden = false, highlighted = false }: AnimatedLineProps) {
+export function AnimatedLine({ line, points, delay, isBuilding, dynamicHidden = false, highlighted = false, opacity = 1, emphasize = false }: AnimatedLineProps) {
   const [visible, setVisible] = useState(true);
   const [progress, setProgress] = useState(1);
   const [targetProgress, setTargetProgress] = useState(1);
@@ -109,12 +113,14 @@ export function AnimatedLine({ line, points, delay, isBuilding, dynamicHidden = 
           [current.x, current.y, current.z],
         ]}
         color={lineColor}
-        lineWidth={isHighlighted ? 5 : (isDashed ? 1.5 : 3)}
+        lineWidth={isHighlighted ? 5 : (isDashed ? 1.5 : (emphasize ? 4 : 3))}
         dashed={isDashed && !isHighlighted}
         dashSize={0.3}
         dashScale={1}
         gapSize={0.4}
         frustumCulled={false}
+        transparent={opacity < 1}
+        opacity={opacity}
       />
       {/* Invisible hitbox for easier clicking/hovering */}
       {distance > 0 && (

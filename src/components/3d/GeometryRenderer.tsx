@@ -1,7 +1,8 @@
 import React, { useEffect } from 'react';
 import { useCameraOptional } from '@/context/CameraContext';
 import { useGeometryOptional } from '@/context/GeometryContext';
-import { GeometryData } from '@/types/geometry';
+import { GeometryData, Plane3D } from '@/types/geometry';
+import { projectScene } from '@/lib/advanceProject';
 import { AnimatedPoint } from './AnimatedPoint';
 import { DraggablePoint } from './DraggablePoint';
 import { AnimatedLine } from './AnimatedLine';
@@ -33,10 +34,28 @@ import { DynamicCrossSection } from './DynamicCrossSection';
 import { DynamicUnfolding } from './DynamicUnfolding';
 import { useToolMode } from '@/context/ToolModeContext';
 
-export function GeometryRenderer({ geometry, isBuilding }: GeometryRendererProps) {
+// Advance mode: cờ dim → mờ (giữ ngữ cảnh câu trước), highlight/không cờ → đầy.
+const DIM_OPACITY = 0.25;
+
+export function GeometryRenderer({ geometry: geometryProp, isBuilding }: GeometryRendererProps) {
   const cameraContext = useCameraOptional();
   const geometryContext = useGeometryOptional();
   const animCtx = useAnimationOptional();
+
+  // ═══ Advance mode (đa-câu) ═══
+  // Khi có advanceScene: render "hình dẫn xuất" của câu hiện tại = base + cờ
+  // hidden/dim/highlight per phần tử (projectScene). Ta chiếu cờ lên chính
+  // geometry đã scale (prop) để GIỮ toạ độ đã co giãn — SET_ADVANCE_SCENE đặt
+  // state.geometry = base nên prop chính là base (đã scale, cùng id).
+  const advanceScene = geometryContext?.state.advanceScene ?? null;
+  const currentStep = geometryContext?.state.currentStep ?? 0;
+  const geometry = React.useMemo(() => {
+    if (advanceScene && geometryProp) {
+      return projectScene(geometryProp, advanceScene.steps, currentStep);
+    }
+    return geometryProp;
+  }, [advanceScene, currentStep, geometryProp]);
+
   const hiddenLines = useHiddenLineDetection(geometry);
   const isManualMode = geometryContext?.state.manualMode ?? false;
   const highlightedIds = cameraContext?.highlightedIds ?? new Set<string>();
@@ -139,8 +158,9 @@ export function GeometryRenderer({ geometry, isBuilding }: GeometryRendererProps
       {timeline && <AnimatedWater tracks={timeline.tracks} />}
       
 
-      {points.map((point, index) => (
-        isManualMode ? (
+      {points.map((point, index) => {
+        if (point.hidden) return null; // advance: phần tử ẩn ở câu này → không render
+        return isManualMode ? (
           <DraggablePoint
             key={point.id}
             point={point}
@@ -156,21 +176,28 @@ export function GeometryRenderer({ geometry, isBuilding }: GeometryRendererProps
             delay={index * pointDelay}
             isBuilding={effectiveIsBuilding}
             highlighted={highlightedIds.has(point.id) || highlightedIds.has(point.label)}
+            opacity={point.dim ? DIM_OPACITY : 1}
+            emphasize={!!point.highlight}
           />
-        )
-      ))}
+        );
+      })}
 
-      {lines.map((line, index) => (
-        <AnimatedLine
-          key={line.id}
-          line={line}
-          points={points}
-          delay={lineStartDelay + index * lineDelay}
-          isBuilding={effectiveIsBuilding}
-          dynamicHidden={hiddenLines.get(line.id) ?? false}
-          highlighted={highlightedIds.has(line.id)}
-        />
-      ))}
+      {lines.map((line, index) => {
+        if (line.hidden) return null; // advance: đường ẩn ở câu này → không render
+        return (
+          <AnimatedLine
+            key={line.id}
+            line={line}
+            points={points}
+            delay={lineStartDelay + index * lineDelay}
+            isBuilding={effectiveIsBuilding}
+            dynamicHidden={hiddenLines.get(line.id) ?? false}
+            highlighted={highlightedIds.has(line.id)}
+            opacity={line.dim ? DIM_OPACITY : 1}
+            emphasize={!!line.highlight}
+          />
+        );
+      })}
 
       {/* Render shapes only if we are NOT in cut/unfold mode */}
       {mode === 'none' && allShapes.map((shape, index) => {
@@ -184,8 +211,11 @@ export function GeometryRenderer({ geometry, isBuilding }: GeometryRendererProps
             return <AnimatedCylinder key={`cyl-${shape.data.id}`} cylinder={shape.data as any} delay={d} isBuilding={effectiveIsBuilding} />;
           case 'cone':
             return <AnimatedCone key={`cone-${shape.data.id}`} cone={shape.data as any} delay={d} isBuilding={effectiveIsBuilding} />;
-          case 'plane':
-            return <AnimatedPlane3D key={`plane-${shape.data.id}`} plane={shape.data as any} delay={d} isBuilding={effectiveIsBuilding} />;
+          case 'plane': {
+            const pl = shape.data as Plane3D;
+            if (pl.hidden) return null; // advance: mặt ẩn ở câu này → không render
+            return <AnimatedPlane3D key={`plane-${pl.id}`} plane={pl} delay={d} isBuilding={effectiveIsBuilding} opacityFactor={pl.dim ? DIM_OPACITY : 1} emphasize={!!pl.highlight} />;
+          }
         }
       })}
 

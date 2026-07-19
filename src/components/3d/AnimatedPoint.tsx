@@ -30,9 +30,13 @@ interface AnimatedPointProps {
   delay: number;
   isBuilding: boolean;
   highlighted?: boolean;
+  /** Advance mode: opacity hiển thị (dim → 0.25). Mặc định 1 = hành vi cũ. */
+  opacity?: number;
+  /** Advance mode: điểm mới ở câu hiện tại → nổi nhẹ (to hơn, sáng hơn). */
+  emphasize?: boolean;
 }
 
-export function AnimatedPoint({ point, delay, isBuilding, highlighted = false }: AnimatedPointProps) {
+export function AnimatedPoint({ point, delay, isBuilding, highlighted = false, opacity = 1, emphasize = false }: AnimatedPointProps) {
   const meshRef = useRef<THREE.Mesh>(null);
   const glowRef = useRef<THREE.Mesh>(null);
   const [visible, setVisible] = useState(true);
@@ -73,8 +77,8 @@ export function AnimatedPoint({ point, delay, isBuilding, highlighted = false }:
     }
   });
 
-  const pointColor = highlighted ? '#f97316' : '#60a5fa';
-  const pointRadius = highlighted ? 0.12 : 0.08;
+  const pointColor = highlighted ? '#f97316' : emphasize ? '#93c5fd' : '#60a5fa';
+  const pointRadius = highlighted ? 0.12 : emphasize ? 0.1 : 0.08;
 
   if (shouldHide) return null;
 
@@ -91,13 +95,13 @@ export function AnimatedPoint({ point, delay, isBuilding, highlighted = false }:
       {/* Main point sphere */}
       <mesh ref={meshRef}>
         <sphereGeometry args={[pointRadius, 16, 16]} />
-        <meshBasicMaterial color={pointColor} />
+        <meshBasicMaterial color={pointColor} transparent={opacity < 1} opacity={opacity} />
       </mesh>
 
         <Html position={[0, 0, 0]} center distanceFactor={12} zIndexRange={[30, 0]} style={{ pointerEvents: 'none' }}>
           <div style={{
             transform: `translate(15px, -20px)`, // offset to top-right
-            opacity: textProgress,
+            opacity: textProgress * opacity,
             pointerEvents: 'none',
           }}>
             <span className="math-label" style={{

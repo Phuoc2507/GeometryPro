@@ -16,6 +16,7 @@ export interface Line3D {
   to: string; // Point ID
   style?: 'solid' | 'dashed';
   color?: string;
+  hidden?: boolean;     // ∉ visibleIds ở câu hiện tại → không vẽ
   dim?: boolean;        // ∈ visibleIds nhưng thuộc câu trước → mờ
   highlight?: boolean;  // mới ở câu hiện tại → nổi
 }
@@ -62,6 +63,7 @@ export interface Plane3D {
   points: { x: number; y: number; z: number }[]; // 3-4 corner points defining the plane
   color?: string;
   opacity?: number;
+  hidden?: boolean;     // ∉ visibleIds ở câu hiện tại → không vẽ
   dim?: boolean;        // ∈ visibleIds nhưng thuộc câu trước → mờ
   highlight?: boolean;  // mới ở câu hiện tại → nổi
 }
