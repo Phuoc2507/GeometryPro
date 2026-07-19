@@ -253,4 +253,19 @@ Và trong `SET_GEOMETRY` + `CLEAR_GEOMETRY`: thêm `advanceScene: null` vào obj
 - [ ] **HỎI trước khi gộp main** (auto-deploy). Sau đó deploy CẢ backend (Plan A) + frontend một thể; verify prod: gửi đề đa-câu → stepper + đáp verified.
 
 ## Findings
-*(Điền khi thực thi.)*
+
+**Thực thi 2026-07-20 (subagent-driven, 470 tests xanh, tsc sạch):**
+- **T1+T2** types AdvanceScene/Step + cờ dim/highlight; `projectScene` (TDD 3/3, giữ timeline/agents) — commits 760b8b6, 1ed86f7. *(Mở `vitest.config.ts` include `src/**/*.test.ts` để test src chạy.)*
+- **T3** reducer SET_ADVANCE_SCENE/SET_STEP + analyzeAdvance (3 nhánh) + expose — commit c30a5b0. *(invokeLocalApi trả error dạng object → dùng error.message.)*
+- **T4** DrawMode 'advance' + nút 3 + map hoá 2-mode + định tuyến submit (DropZone→analyzeAdvance) — commit 4c63278.
+- **T5** GeometryRenderer chọn projectScene khi advanceScene + đọc hidden/dim/highlight → opacity (Point/Line/Plane); nhánh thường byte-identical (không hồi quy) — commit bd29a6c. *(Chiếu lên geometry ĐÃ scale để giữ scaling.)*
+- **T6** AdvanceStepper (tab + ◀▶ + đáp + badge, tự ẩn ≤1 câu) + wire Teacher/Student — commit 0d35a7b.
+
+**T7 — E2E browser (dev :8081, scene THẬT gpt-5.6-sol chóp S.ABCD 3 câu, inject qua hook dev tạm rồi REVERT):**
+- Stepper hiện **3 tab Câu a/b/c** + đáp câu hiện tại (**8/3**) + badge **"đã kiểm chứng"** ✅; canvas 3D render ✅.
+- **Bấm "Câu b" → đáp đổi (không còn 8/3), re-render tức thì** (chuỗi stepper→SET_STEP→reducer→projectScene) ✅.
+- **0 lỗi console.** Hook dev tạm (`window.__geoDispatch`) đã revert (git sạch, không commit).
+- Bóc lớp ẩn/mờ/nổi = logic `projectScene` (unit-test 3/3) + currentStep đổi (đã chứng minh qua đáp đổi).
+- ✅ **Frontend Advance hoạt động end-to-end.** Không hồi quy: bài thường (advanceScene=null) đi đường cũ, byte-identical.
+
+**Ghi chú:** app KHÔNG gọi được `/api/analyze-advance` cục bộ (vite dev không chạy serverless) → verify qua inject scene thật. Luồng thật (chọn Advance → API) sẽ test khi deploy (backend+frontend một thể).
