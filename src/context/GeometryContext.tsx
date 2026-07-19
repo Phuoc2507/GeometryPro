@@ -633,8 +633,10 @@ export function GeometryProvider({ children }: { children: React.ReactNode }) {
       if (error) throw new Error(error.message || String(error));
       if (data?.mode === 'advance' && data.scene) {
         dispatch({ type: 'SET_ADVANCE_SCENE', scene: data.scene });
+        refreshProfile?.();   // Advance tốn credit (server đã trừ) → cập nhật số dư hiển thị
       } else if (data?.geometry) {
         dispatch({ type: 'SET_GEOMETRY', geometry: data.geometry });
+        refreshProfile?.();   // nhánh tụt-hạng vẫn tốn credit (đã hoàn về mức Vẽ kỹ ở server)
       } else {
         toast({ title: 'Chưa dựng được hình cho đề này', variant: 'destructive' });
       }
@@ -643,7 +645,7 @@ export function GeometryProvider({ children }: { children: React.ReactNode }) {
     } finally {
       dispatch({ type: 'STOP_SCANNING' });
     }
-  }, []);
+  }, [refreshProfile]);
 
   const queueAnalyzeText = useCallback((prompt: string, mode: DrawMode = 'detailed') => {
     const id = `q_${Date.now()}_${++queueIdCounter}`;
