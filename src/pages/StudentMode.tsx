@@ -17,6 +17,7 @@ import { ScanningOverlay } from '@/components/ScanningOverlay';
 import { FloatingPromptBar } from '@/components/FloatingPromptBar';
 import { GeometryCanvas } from '@/components/3d/GeometryCanvas';
 import { TimelinePlayer } from '@/components/layout/TimelinePlayer';
+import { AdvanceStepper } from '@/components/layout/AdvanceStepper';
 import { VideoExportPanel } from '@/components/layout/VideoExportPanel';
 import { SolverPanel, MobileSolverPanel } from '@/components/SolverPanel';
 import { GeometryData } from '@/types/geometry';
@@ -135,6 +136,9 @@ const StudentModeContent = () => {
           <GeometryCanvas />
           
           <TimelineContainer />
+
+          {/* Advance mode — bộ chuyển câu (tự ẩn khi không phải bài đa-câu) */}
+          <AdvanceStepper />
 
           <DropZone />
           <ScanningOverlay />
