@@ -40,6 +40,12 @@ const AnalyzeSchema = z.union([
   z.object({ kind: z.literal('integrate'), variable: z.string(), from: NumOrExpr, to: NumOrExpr, integrand: z.string() }),
   z.object({ kind: z.literal('eval'), of: ScalarSource }),
   z.object({ kind: z.literal('optimize_multi'), parameters: z.array(z.string()).min(2), sense: z.enum(['max', 'min']), objective: ScalarSource }),
+  z.object({
+    kind: z.literal('solve_multi'),
+    parameters: z.array(z.string()).min(2),
+    constraints: z.array(z.object({ of: ScalarSource, equals: NumOrExpr })).min(1),
+    report: ScalarSource,
+  }),
 ]);
 
 // Op TẦNG HÀM: chỉ tồn tại ở lớp analysis — concreteOps hạ chúng thành op hình học SỐ trước khi gọi run().
@@ -264,6 +270,52 @@ export function runAnalysis(raw: unknown): AnalysisResult {
         ok: Number.isFinite(best.value), parameter: { name: az.parameters.join(','), value: NaN },
         answer: mkAnswer(best.value),
         violations: [], errors: [], geometry: buildAnalysisFigure(az.parameters.join(','), buildFigureInput(envBest)),
+      };
+    } catch (e) { return fail(az.parameters.join(','), (e as Error).message); }
+  }
+
+  // ---- solve_multi: giải N-ẩn M-ràng-buộc hình học bằng bình-phương-tối-thiểu (min tổng residual²) ----
+  // rồi CỔNG residual: nếu nghiệm không thỏa mọi ràng buộc (residual > tol) ⇒ ok=false (không serve-sai).
+  if (plan.analyze.kind === 'solve_multi') {
+    const az = plan.analyze;
+    const decls = az.parameters.map((nm) => plan.parameters.find((p) => p.name === nm));
+    const missing = az.parameters.find((nm, i) => !decls[i]);
+    if (missing) return fail(az.parameters.join(','), `parameter "${missing}" chưa khai báo`);
+    try {
+      const los = decls.map((d) => evalExpr(String(d!.domain[0]), {}));
+      const his = decls.map((d) => evalExpr(String(d!.domain[1]), {}));
+      const envOf = (xs: number[]): Env => { const env: Env = {}; az.parameters.forEach((nm, i) => { env[nm] = xs[i]; }); return env; };
+      const residOf = (env: Env, c: { of: unknown; equals: number | string }): number | null => {
+        const q = evalQueryEnv(env, c.of);
+        if (q === null || !Number.isFinite(q)) return null;
+        return q - evalExpr(String(c.equals), env);
+      };
+      const objective = (xs: number[]): number => {
+        const env = envOf(xs); let sum = 0;
+        for (const c of az.constraints) { const r = residOf(env, c); if (r === null) return Number.POSITIVE_INFINITY; sum += r * r; }
+        return sum;
+      };
+      // Lưới/rounds NHỎ hơn optimize_multi mặc định: objective ở đây gọi run() (dựng hình) mỗi eval nên
+      // rất đắt; lưới 40/rounds 60 sẽ tốn ~vài phút. 14/8/2 đủ hội tụ cho hệ điều-kiện-tốt, nhanh (~vài giây).
+      const best = optimizeMulti(objective, los, his, 'min', 14, 8, 2);
+      const envBest = envOf(best.xs);
+      const RESID_TOL = 1e-4;
+      let maxResid = 0;
+      for (const c of az.constraints) { const r = residOf(envBest, c); if (r === null) return fail(az.parameters.join(','), 'ràng buộc không đánh giá được tại nghiệm'); maxResid = Math.max(maxResid, Math.abs(r)); }
+      if (maxResid > RESID_TOL) return fail(az.parameters.join(','), `không giải được (residual ${maxResid.toExponential(2)})`);
+      let violations: unknown[] = [], errors: { message: string }[] = [], geometry: unknown = null;
+      try {
+        const res = run({ solidName: plan.solidName, ops: concreteOpsEnv(envBest), asserts: plan.asserts, queries: [] });
+        violations = res.violations; errors = res.errors.map((e) => ({ message: e.message }));
+        if (res.entities.points.size > 0) geometry = entityTableToGeometryData(res.entities, plan.solidName || 'figure');
+      } catch (e) { errors = [{ message: (e as Error).message }]; }
+      const rep = evalQueryEnv(envBest, az.report);
+      const val = rep === null ? NaN : rep;
+      return {
+        ok: violations.length === 0 && errors.length === 0 && Number.isFinite(val),
+        parameter: { name: az.parameters.join(','), value: NaN },
+        answer: mkAnswer(val), violations, errors,
+        geometry: geometry ?? buildAnalysisFigure(az.parameters.join(','), buildFigureInput(envBest)),
       };
     } catch (e) { return fail(az.parameters.join(','), (e as Error).message); }
   }
