@@ -134,7 +134,9 @@ export const AssertOpSchema = z
   .object({
     relation: z.enum(['perp', 'parallel', 'coplanar', 'on', 'dist', 'angle']),
     args: z.array(z.string().min(1)).min(1),
-    value: z.number().optional(),
+    // Số HOẶC biểu thức căn ("sqrt(3)", "2*sqrt(3)/3"): LLM khai chính xác, engine eval khi kiểm —
+    // tránh bắt LLM tự tính số thập phân thô (mất căn đẹp + rủi ro ảo giác). verifyE.ts resolve.
+    value: z.union([z.number(), z.string()]).optional(),
     tolerance: z.number().positive().optional(),
   })
   .superRefine((val, ctx) => {

@@ -8,9 +8,16 @@ import { computeDistance } from './compute/distance';
 import { computeAngle } from './compute/angle';
 import { computeRelativePosition } from './compute/relative';
 import { type ComputeOutcome, coplanarityProblem, EPS } from './compute/answer';
+import { parseScalar } from './dialects/oxyzInput';
 
 const DIST_TOL = 1e-6;
 const ANGLE_TOL = 1e-3;
+
+// Giá trị assert (dist/angle) có thể là SỐ hoặc BIỂU THỨC CĂN ("sqrt(3)", "2*sqrt(3)/3"): LLM khai
+// CHÍNH XÁC, engine eval — tránh LLM tự tính số thập phân thô (mất căn đẹp + rủi ro ảo giác).
+function assertValueNum(v: number | string): number {
+  return typeof v === 'number' ? v : parseScalar(v).approx;
+}
 
 function fail(relation: string, args: string[], message: string): Violation {
   return { kind: 'assert_failed', relation, args, message };
@@ -46,7 +53,7 @@ export function verifyAssertE(assert: AssertOp, et: EntityTable): Violation | nu
     case 'dist': {
       const ans = mustOk(computeDistance(resolveEntityE(args[0], et), resolveEntityE(args[1], et)));
       const tol = assert.tolerance ?? DIST_TOL;
-      return Math.abs(ans.approx - assert.value!) < tol ? null : fail('dist', args, `dist(${args[0]},${args[1]})=${ans.approx.toFixed(6)}, expected ${assert.value}`);
+      return Math.abs(ans.approx - assertValueNum(assert.value!)) < tol ? null : fail('dist', args, `dist(${args[0]},${args[1]})=${ans.approx.toFixed(6)}, expected ${assert.value}`);
     }
     case 'perp': {
       const ans = mustOk(computeAngle(resolveEntityE(args[0], et), resolveEntityE(args[1], et)));
@@ -61,7 +68,7 @@ export function verifyAssertE(assert: AssertOp, et: EntityTable): Violation | nu
     case 'angle': {
       const ans = mustOk(computeAngle(resolveEntityE(args[0], et), resolveEntityE(args[1], et)));
       const tol = assert.tolerance ?? ANGLE_TOL;
-      return Math.abs(ans.degrees - assert.value!) < tol ? null : fail('angle', args, `angle(${args[0]},${args[1]})=${ans.degrees.toFixed(4)}°, expected ${assert.value}°`);
+      return Math.abs(ans.degrees - assertValueNum(assert.value!)) < tol ? null : fail('angle', args, `angle(${args[0]},${args[1]})=${ans.degrees.toFixed(4)}°, expected ${assert.value}°`);
     }
     case 'coplanar': {
       const pts = args.map((t) => resolveEntityE(t, et));

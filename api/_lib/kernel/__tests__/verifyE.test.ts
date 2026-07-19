@@ -30,6 +30,12 @@ describe('verifyAssertE', () => {
     expect(verifyAssertE({ relation: 'dist', args: ['S', 'A'], value: 3 } as AssertOp, scene())).toBeNull();
     expect(verifyAssertE({ relation: 'dist', args: ['S', 'A'], value: 99 } as AssertOp, scene())).not.toBeNull();
   });
+  it('dist với BIỂU THỨC CĂN: value "sqrt(3)" kiểm đúng (LLM khai chính xác, engine eval)', () => {
+    const et = scene();
+    et.points.set('M', pointFromCoords(ratVec(1n, 1n, 1n))); // dist(A,M) = √3
+    expect(verifyAssertE({ relation: 'dist', args: ['A', 'M'], value: 'sqrt(3)' } as AssertOp, et)).toBeNull();
+    expect(verifyAssertE({ relation: 'dist', args: ['A', 'M'], value: 'sqrt(2)' } as AssertOp, et)).not.toBeNull();
+  });
   it('coplanar: A,B,S,và điểm phẳng → tuỳ; A,B,(0,1,0) đồng phẳng z=0', () => {
     const et = scene();
     et.points.set('C', pointFromCoords(ratVec(0n, 1n, 0n)));
