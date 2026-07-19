@@ -202,6 +202,11 @@ export function runAnalysis(raw: unknown): AnalysisResult {
       if (o.op === 'oxyz_circumsphere_offset') return { ...o, t: numify(o.t as number | string, env, paramNames) };
       if (o.op === 'oxyz_plane' && (o.by as { form?: string })?.form === 'coeffs') { const by = o.by as { form: 'coeffs'; a: number|string; b: number|string; c: number|string; d: number|string }; return { ...o, by: { ...by, a: numify(by.a, env, paramNames), b: numify(by.b, env, paramNames), c: numify(by.c, env, paramNames), d: numify(by.d, env, paramNames) } }; }
       if (o.op === 'oxyz_ratio') return { ...o, t: numify(o.t as number | string, env, paramNames) };
+      // Đường point_dir với base/dir chứa THAM SỐ (vd chỉ phương (a,b,1)): thay tham số vào từng thành phần.
+      if (o.op === 'oxyz_line' && (o.by as { form?: string })?.form === 'point_dir') {
+        const by = o.by as { form: 'point_dir'; base: (number | string)[]; dir: (number | string)[] };
+        return { ...o, by: { ...by, base: by.base.map((c) => numify(c, env, paramNames)), dir: by.dir.map((c) => numify(c, env, paramNames)) } };
+      }
       return op;
     });
   };

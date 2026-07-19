@@ -56,4 +56,28 @@ describe('solve_multi', () => {
     expect(r.ok).toBe(false);
     expect(r.violations.length).toBeGreaterThan(0);
   }, 20000);
+
+  // Bài THẬT (Câu 4): đường Δ qua A(1,2,3) chỉ phương (a,b,1) cắt cả d1 & d2 → a+b. Cần thay tham số vào
+  // oxyz_line point_dir. Ràng buộc: dist(Δ,d1)=0 và dist(Δ,d2)=0 (đường gặp đường ⇒ khoảng cách 0).
+  it('Cau4: duong qua A cat 2 duong (dir tham so) -> a+b=5', () => {
+    const r = runAnalysis({
+      solidName: 'c4', parameters: [{ name: 'a', domain: [-10, 10] }, { name: 'b', domain: [-10, 10] }],
+      ops: [
+        { op: 'oxyz_point', name: 'A', at: [1, 2, 3] },
+        { op: 'oxyz_line', name: 'T', by: { form: 'point_dir', base: [1, 2, 3], dir: ['a', 'b', 1] } },
+        { op: 'oxyz_line', name: 'D', by: { form: 'point_dir', base: [3, 7, 3], dir: [1, -3, 1] } },
+        { op: 'oxyz_line', name: 'E', by: { form: 'point_dir', base: [-2, 0, 2], dir: [2, -1, 0] } },
+      ],
+      analyze: {
+        kind: 'solve_multi', parameters: ['a', 'b'],
+        constraints: [
+          { of: { kind: 'distance', a: 'T', b: 'D' }, equals: 0 },
+          { of: { kind: 'distance', a: 'T', b: 'E' }, equals: 0 },
+        ],
+        report: { kind: 'expr', expr: 'a+b' },
+      },
+    });
+    expect(r.ok).toBe(true);
+    expect(r.answer.approx).toBeCloseTo(5, 2);
+  }, 20000);
 });
