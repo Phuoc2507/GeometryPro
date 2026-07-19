@@ -18,6 +18,14 @@ describe('splitProblem (Pass 0)', () => {
     const r = await splitProblem('Cho chóp S.ABCD SA=2a canh 3. a) V.', {});
     expect(r.type).toBe('single');
   });
+  it('≥2 part nhưng nuốt token (5) → coverage gate → single + _coverageMissing', async () => {
+    callVilao.mockResolvedValue(JSON.stringify({ type: 'multi_question', setup: 'A(1;2), B(5;0)',
+      parts: [{ label: 'a', hoi: 'khoảng cách A(1;2) đến B', phan_tu_moi: [] },
+              { label: 'b', hoi: 'trung điểm M của AB', phan_tu_moi: ['M'] }] }));  // thiếu "5"
+    const r = await splitProblem('Cho A(1;2), B(5;0). a) d(A,B). b) M trung điểm AB.', {});
+    expect(r.type).toBe('single');
+    expect(r._coverageMissing).toContain('5');
+  });
   it('LLM ném/JSON hỏng → single (an toàn)', async () => {
     callVilao.mockRejectedValue(new Error('boom'));
     const r = await splitProblem('...', {});
