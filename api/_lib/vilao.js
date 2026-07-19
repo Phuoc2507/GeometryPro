@@ -41,6 +41,12 @@ async function sleepMs(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+export function resolveApiKey(options = {}, envKey = process.env.VILAO_API_KEY) {
+  const key = options.apiKey || envKey;
+  if (!key) throw new Error('Vilao API key is not set (opts.apiKey or VILAO_API_KEY)');
+  return key;
+}
+
 export async function callVilao(systemPrompt, userPrompt, options = {}) {
   const {
     maxTokens = 4096,
@@ -50,6 +56,7 @@ export async function callVilao(systemPrompt, userPrompt, options = {}) {
     useReasoning = false,
     onStream = null,
     model = null,
+    apiKey = null,
   } = options;
 
   let modelToUse = VILAO_MODEL;
@@ -66,10 +73,7 @@ export async function callVilao(systemPrompt, userPrompt, options = {}) {
     modelToUse = model;
   }
 
-  const currentApiKey = process.env.VILAO_API_KEY;
-  if (!currentApiKey) {
-    throw new Error('VILAO_API_KEY is not set in environment variables');
-  }
+  const currentApiKey = resolveApiKey({ apiKey }, process.env.VILAO_API_KEY);
 
   const messages = [];
   if (systemPrompt) {
