@@ -137,6 +137,28 @@ export function runAnalysis(raw: unknown): AnalysisResult {
 
   const paramNames = plan.parameters.map((p) => p.name);
 
+  // Gắn ANIMATION cho vật chuyển động vào geometry: agents[] (vị trí đầu = from) + timeline parametric_path.
+  // Trong path string, t là GIÂY trên [0,durationSec] ⇒ vận tốc = (to−from)/dur (khớp demo Câu 3 mà frontend
+  // đã animate). Chỉ chạy khi có mover; không mover ⇒ geometry giữ nguyên (không thêm agents/timeline).
+  const attachMoverAnimation = (geo: unknown, mv: NonNullable<typeof plan.mover>, et: import('../entityTable').EntityTable): unknown => {
+    const coord = (name: string): [number, number, number] | null => {
+      const p = et.points.get(name); if (!p) return null;
+      return [p.p.x.approx, p.p.y.approx, p.p.z.approx];
+    };
+    const from = coord(mv.from), to = coord(mv.to);
+    if (!geo || !from || !to) return geo;
+    const dur = mv.durationSec ?? 10;
+    const id = mv.agentId ?? mv.point;
+    const fmt = (n: number) => parseFloat(n.toFixed(6)).toString();
+    const v: [number, number, number] = [(to[0] - from[0]) / dur, (to[1] - from[1]) / dur, (to[2] - from[2]) / dur];
+    const axis = (i: number, name: string) => `${name}(t) = ${fmt(from[i])} + ${fmt(v[i])}*t`;
+    const path = `${axis(0, 'x')}, ${axis(1, 'y')}, ${axis(2, 'z')}`;
+    return { ...(geo as object),
+      agents: [{ id, label: mv.label ?? id, initialPosition: from, color: mv.color ?? '#FFA500', radius: mv.radius ?? 0.1 }],
+      timeline: { duration: dur, tracks: [{ id: 'mv', start: 0, end: dur, type: 'parametric_path', targetId: id, params: { path } }] },
+    };
+  };
+
   // Dựng đáp số THỐNG NHẤT: (1) nhân hệ số đơn vị nếu đề hỏi đơn vị khác, (2) nhận-dạng-căn-đẹp trên
   // trị đã đổi đơn vị, (3) nếu không đẹp thì format thập phân gọn, (4) gắn đơn vị. approx = trị đã đổi.
   const answerScale = plan.answerScale != null ? evalExpr(String(plan.answerScale), {}) : 1;
@@ -382,6 +404,7 @@ export function runAnalysis(raw: unknown): AnalysisResult {
       try { if (res.answers.length > 0) val = scalarOf(res.answers[0]); } catch { /* không trả số */ }
       violations = res.violations; errors = res.errors.map((e) => ({ message: e.message }));
       if (res.entities.points.size > 0) geometry = entityTableToGeometryData(res.entities, plan.solidName || 'figure');
+      if (plan.mover && geometry) geometry = attachMoverAnimation(geometry, plan.mover, res.entities);
     }
     return {
       ok: violations.length === 0 && errors.length === 0 && Number.isFinite(val),
