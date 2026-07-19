@@ -13,6 +13,7 @@
 export const CREDIT_COST = {
   draw_quick: 1,
   draw_detailed: 2,
+  draw_advance: 3,    // mode "Advance": tách đề đa-câu + ráp cảnh bóc lớp (nặng hơn Vẽ kỹ)
   modify: 0.2,        // sửa hình bằng AI (chat tự do) — rẻ vì thao tác nhỏ
   solve: 2,
   export_video: 5,
