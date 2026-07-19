@@ -6690,6 +6690,60 @@ function solveParam(f, target, lo, hi, grid = 800) {
   const x = roots[0];
   return { x, residual: Math.abs(f(x) - target) };
 }
+function nelderMead(g, x0, los, his, step, maxIter, overDeadline) {
+  const n = x0.length;
+  const clamp = (xs) => xs.map((x, d) => Math.max(los[d], Math.min(his[d], x)));
+  const ev = (xs) => g(clamp(xs));
+  const simplex = [];
+  const p0 = clamp(x0.slice());
+  simplex.push({ xs: p0, v: ev(p0) });
+  for (let d = 0; d < n; d++) {
+    const p = p0.slice();
+    p[d] += step[d] || 1e-3;
+    const pc = clamp(p);
+    simplex.push({ xs: pc, v: ev(pc) });
+  }
+  const alpha = 1, gamma = 2, rho = 0.5, sigma = 0.5;
+  for (let it = 0; it < maxIter; it++) {
+    if (overDeadline()) break;
+    simplex.sort((A, B) => A.v - B.v);
+    let dia = 0;
+    for (let d = 0; d < n; d++) {
+      let mn = Infinity, mx = -Infinity;
+      for (const s of simplex) {
+        mn = Math.min(mn, s.xs[d]);
+        mx = Math.max(mx, s.xs[d]);
+      }
+      dia = Math.max(dia, mx - mn);
+    }
+    if (dia < 1e-10) break;
+    const worst = simplex[n];
+    const cen = new Array(n).fill(0);
+    for (let i = 0; i < n; i++) for (let d = 0; d < n; d++) cen[d] += simplex[i].xs[d] / n;
+    const reflect = cen.map((c, d) => c + alpha * (c - worst.xs[d]));
+    const vr = ev(reflect);
+    if (vr < simplex[0].v) {
+      const expand = cen.map((c, d) => c + gamma * (c - worst.xs[d]));
+      const ve = ev(expand);
+      simplex[n] = ve < vr ? { xs: clamp(expand), v: ve } : { xs: clamp(reflect), v: vr };
+    } else if (vr < simplex[n - 1].v) {
+      simplex[n] = { xs: clamp(reflect), v: vr };
+    } else {
+      const contract = cen.map((c, d) => c + rho * (worst.xs[d] - c));
+      const vc = ev(contract);
+      if (vc < worst.v) {
+        simplex[n] = { xs: clamp(contract), v: vc };
+      } else {
+        for (let i = 1; i <= n; i++) {
+          const xs = clamp(simplex[0].xs.map((b, d) => b + sigma * (simplex[i].xs[d] - b)));
+          simplex[i] = { xs, v: ev(xs) };
+        }
+      }
+    }
+  }
+  simplex.sort((A, B) => A.v - B.v);
+  return simplex[0].xs;
+}
 function optimizeMulti(f, los, his, sense, gridPerDim = 40, rounds = 60, restarts = 5, deadlineMs) {
   const n = los.length;
   const sign = sense === "max" ? 1 : -1;
@@ -6745,6 +6799,15 @@ function optimizeMulti(f, los, his, sense, gridPerDim = 40, rounds = 60, restart
     if (overDeadline()) break;
     const cand = refine(starts[s].xs);
     if (sign * cand.value > sign * best.value) best = cand;
+  }
+  const g = (xs) => -sign * f(xs);
+  const nmStep = los.map((lo, d) => (his[d] - lo) / gridPerDim);
+  const nmStarts = [best.xs, ...starts.slice(0, 3).map((s) => s.xs)];
+  for (const st of nmStarts) {
+    if (overDeadline()) break;
+    const nmXs = nelderMead(g, st, los, his, nmStep, 200, overDeadline);
+    const fv = f(nmXs);
+    if (sign * fv > sign * best.value) best = { xs: nmXs, value: fv };
   }
   return best;
 }

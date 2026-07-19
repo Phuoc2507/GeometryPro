@@ -67,9 +67,66 @@ export function solveParam(
   return { x, residual: Math.abs(f(x) - target) };
 }
 
+// Nelder–Mead (đơn hình) — tối thiểu hoá g KHÔNG cần đạo hàm; xử lý tốt "thung lũng chéo/cong" mà
+// hạ-toạ-độ (coordinate descent) hay KẸT (vd hệ giao tuyến của solve_multi). Dùng để ĐÁNH BÓNG nghiệm
+// sau lưới. Giữ trong hộp [los,his] bằng cách kẹp mọi điểm trước khi đánh giá.
+function nelderMead(
+  g: (xs: number[]) => number, x0: number[], los: number[], his: number[],
+  step: number[], maxIter: number, overDeadline: () => boolean,
+): number[] {
+  const n = x0.length;
+  const clamp = (xs: number[]): number[] => xs.map((x, d) => Math.max(los[d], Math.min(his[d], x)));
+  const ev = (xs: number[]): number => g(clamp(xs));
+  const simplex: { xs: number[]; v: number }[] = [];
+  const p0 = clamp(x0.slice());
+  simplex.push({ xs: p0, v: ev(p0) });
+  for (let d = 0; d < n; d++) {
+    const p = p0.slice(); p[d] += step[d] || 1e-3;
+    const pc = clamp(p); simplex.push({ xs: pc, v: ev(pc) });
+  }
+  const alpha = 1, gamma = 2, rho = 0.5, sigma = 0.5;
+  for (let it = 0; it < maxIter; it++) {
+    if (overDeadline()) break;
+    simplex.sort((A, B) => A.v - B.v);
+    // hội tụ: đơn hình đủ nhỏ (đường kính theo toạ độ)
+    let dia = 0;
+    for (let d = 0; d < n; d++) {
+      let mn = Infinity, mx = -Infinity;
+      for (const s of simplex) { mn = Math.min(mn, s.xs[d]); mx = Math.max(mx, s.xs[d]); }
+      dia = Math.max(dia, mx - mn);
+    }
+    if (dia < 1e-10) break;
+    const worst = simplex[n];
+    const cen = new Array(n).fill(0);
+    for (let i = 0; i < n; i++) for (let d = 0; d < n; d++) cen[d] += simplex[i].xs[d] / n;
+    const reflect = cen.map((c, d) => c + alpha * (c - worst.xs[d]));
+    const vr = ev(reflect);
+    if (vr < simplex[0].v) {
+      const expand = cen.map((c, d) => c + gamma * (c - worst.xs[d]));
+      const ve = ev(expand);
+      simplex[n] = ve < vr ? { xs: clamp(expand), v: ve } : { xs: clamp(reflect), v: vr };
+    } else if (vr < simplex[n - 1].v) {
+      simplex[n] = { xs: clamp(reflect), v: vr };
+    } else {
+      const contract = cen.map((c, d) => c + rho * (worst.xs[d] - c));
+      const vc = ev(contract);
+      if (vc < worst.v) {
+        simplex[n] = { xs: clamp(contract), v: vc };
+      } else {
+        for (let i = 1; i <= n; i++) {
+          const xs = clamp(simplex[0].xs.map((b, d) => b + sigma * (simplex[i].xs[d] - b)));
+          simplex[i] = { xs, v: ev(xs) };
+        }
+      }
+    }
+  }
+  simplex.sort((A, B) => A.v - B.v);
+  return simplex[0].xs;
+}
+
 // Tối ưu NHIỀU biến trên hộp [los,his]: quét lưới thô, rồi HẠ TOẠ ĐỘ (golden-section từng chiều)
-// từ K Ô TỐT NHẤT (đa-điểm-xuất-phát), lấy kết quả tốt nhất. Đa-điểm-xuất-phát chống kẹt cực trị
-// địa phương khi ô lưới tốt nhất không nằm trong "lòng chảo" của cực trị toàn cục.
+// từ K Ô TỐT NHẤT (đa-điểm-xuất-phát), rồi ĐÁNH BÓNG bằng Nelder–Mead (chống kẹt thung lũng chéo).
+// Đa-điểm-xuất-phát chống kẹt cực trị địa phương khi ô lưới tốt nhất không nằm trong "lòng chảo".
 // (Lưu ý: cực trị NHỌN hẹp hơn bước lưới vẫn có thể lọt — cần tăng gridPerDim.)
 export function optimizeMulti(
   f: (xs: number[]) => number, los: number[], his: number[], sense: 'max' | 'min',
@@ -129,6 +186,18 @@ export function optimizeMulti(
     if (overDeadline()) break;
     const cand = refine(starts[s].xs);
     if (sign * cand.value > sign * best.value) best = cand;
+  }
+
+  // ĐÁNH BÓNG bằng Nelder–Mead từ nghiệm tốt nhất + vài ô lưới đầu — nhả khỏi thung lũng chéo mà
+  // hạ-toạ-độ kẹt (cần cho solve_multi giao tuyến). g = −sign·f (tối thiểu g == tối đa sign·f).
+  const g = (xs: number[]): number => -sign * f(xs);
+  const nmStep = los.map((lo, d) => (his[d] - lo) / gridPerDim);
+  const nmStarts = [best.xs, ...starts.slice(0, 3).map((s) => s.xs)];
+  for (const st of nmStarts) {
+    if (overDeadline()) break;
+    const nmXs = nelderMead(g, st, los, his, nmStep, 200, overDeadline);
+    const fv = f(nmXs);
+    if (sign * fv > sign * best.value) best = { xs: nmXs, value: fv };
   }
   return best;
 }
