@@ -73,16 +73,20 @@ export function solveParam(
 // (Lưu ý: cực trị NHỌN hẹp hơn bước lưới vẫn có thể lọt — cần tăng gridPerDim.)
 export function optimizeMulti(
   f: (xs: number[]) => number, los: number[], his: number[], sense: 'max' | 'min',
-  gridPerDim = 40, rounds = 60, restarts = 5,
+  gridPerDim = 40, rounds = 60, restarts = 5, deadlineMs?: number,
 ): { xs: number[]; value: number } {
   const n = los.length;
   const sign = sense === 'max' ? 1 : -1;
   const gr = (Math.sqrt(5) - 1) / 2;
+  // Cắt thời gian: objective có thể gọi run() (dựng hình) mỗi eval ⇒ rất đắt. Khi quá hạn, DỪNG SỚM và
+  // trả nghiệm tốt-nhất-đến-giờ. Bên gọi (solve_multi) kiểm residual: chưa hội tụ ⇒ rơi về (chống timeout).
+  const overDeadline = (): boolean => deadlineMs !== undefined && Date.now() > deadlineMs;
 
   // Quét lưới, thu mọi ô kèm giá trị.
   const cells: { xs: number[]; v: number }[] = [];
   const total = Math.pow(gridPerDim + 1, n);
   for (let t = 0; t < total; t++) {
+    if (overDeadline()) break;
     let rem = t;
     const xs: number[] = [];
     for (let d = 0; d < n; d++) {
@@ -92,6 +96,7 @@ export function optimizeMulti(
     }
     cells.push({ xs, v: sign * f(xs) });
   }
+  if (cells.length === 0) { const xs = los.slice(); return { xs, value: f(xs) }; } // quá hạn trước ô đầu
   cells.sort((A, B) => B.v - A.v); // tốt nhất (theo sign) lên đầu
   const starts = cells.slice(0, Math.max(1, restarts));
 
@@ -99,6 +104,7 @@ export function optimizeMulti(
   const refine = (start: number[]): { xs: number[]; value: number } => {
     const xs = start.slice();
     for (let r = 0; r < rounds; r++) {
+      if (overDeadline()) break;
       for (let d = 0; d < n; d++) {
         const h = (his[d] - los[d]) / gridPerDim;
         let a = Math.max(los[d], xs[d] - h);
@@ -110,7 +116,7 @@ export function optimizeMulti(
           const xe = xs.slice(); xe[d] = e;
           if (sign * f(xc) > sign * f(xe)) b = e; else a = c;
           c = b - gr * (b - a); e = a + gr * (b - a);
-          if (b - a < 1e-13) break;
+          if (b - a < 1e-9) break; // 1e-9 đủ chính xác (đáp cần ~6 chữ số), nhanh hơn 1e-13
         }
         xs[d] = (a + b) / 2;
       }
@@ -120,6 +126,7 @@ export function optimizeMulti(
 
   let best = refine(starts[0].xs);
   for (let s = 1; s < starts.length; s++) {
+    if (overDeadline()) break;
     const cand = refine(starts[s].xs);
     if (sign * cand.value > sign * best.value) best = cand;
   }

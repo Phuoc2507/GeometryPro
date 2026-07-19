@@ -300,9 +300,11 @@ export function runAnalysis(raw: unknown): AnalysisResult {
         for (const c of az.constraints) { const r = residOf(env, c); if (r === null) return Number.POSITIVE_INFINITY; sum += r * r; }
         return sum;
       };
-      // Lưới/rounds NHỎ hơn optimize_multi mặc định: objective ở đây gọi run() (dựng hình) mỗi eval nên
-      // rất đắt; lưới 40/rounds 60 sẽ tốn ~vài phút. 14/8/2 đủ hội tụ cho hệ điều-kiện-tốt, nhanh (~vài giây).
-      const best = optimizeMulti(objective, los, his, 'min', 14, 8, 2);
+      // Lưới/rounds NHỎ + CẮT THỜI GIAN: objective gọi run() (dựng hình) mỗi eval nên rất đắt. 12/6/2 +
+      // deadline 15s ⇒ nếu quá chậm (CPU serverless), optimizeMulti dừng sớm, residual chưa đạt ⇒ rơi về
+      // (chống chờ 40s+ / timeout 500). Bài điều-kiện-tốt vẫn hội tụ trong ngân sách.
+      const SOLVE_MULTI_BUDGET_MS = 20000;
+      const best = optimizeMulti(objective, los, his, 'min', 12, 6, 2, Date.now() + SOLVE_MULTI_BUDGET_MS);
       const envBest = envOf(best.xs);
       const RESID_TOL = 1e-4;
       let maxResid = 0;

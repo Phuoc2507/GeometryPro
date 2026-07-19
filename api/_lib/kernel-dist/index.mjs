@@ -6690,13 +6690,15 @@ function solveParam(f, target, lo, hi, grid = 800) {
   const x = roots[0];
   return { x, residual: Math.abs(f(x) - target) };
 }
-function optimizeMulti(f, los, his, sense, gridPerDim = 40, rounds = 60, restarts = 5) {
+function optimizeMulti(f, los, his, sense, gridPerDim = 40, rounds = 60, restarts = 5, deadlineMs) {
   const n = los.length;
   const sign = sense === "max" ? 1 : -1;
   const gr = (Math.sqrt(5) - 1) / 2;
+  const overDeadline = () => deadlineMs !== void 0 && Date.now() > deadlineMs;
   const cells = [];
   const total = Math.pow(gridPerDim + 1, n);
   for (let t = 0; t < total; t++) {
+    if (overDeadline()) break;
     let rem = t;
     const xs = [];
     for (let d = 0; d < n; d++) {
@@ -6706,11 +6708,16 @@ function optimizeMulti(f, los, his, sense, gridPerDim = 40, rounds = 60, restart
     }
     cells.push({ xs, v: sign * f(xs) });
   }
+  if (cells.length === 0) {
+    const xs = los.slice();
+    return { xs, value: f(xs) };
+  }
   cells.sort((A, B) => B.v - A.v);
   const starts = cells.slice(0, Math.max(1, restarts));
   const refine = (start) => {
     const xs = start.slice();
     for (let r = 0; r < rounds; r++) {
+      if (overDeadline()) break;
       for (let d = 0; d < n; d++) {
         const h = (his[d] - los[d]) / gridPerDim;
         let a = Math.max(los[d], xs[d] - h);
@@ -6726,7 +6733,7 @@ function optimizeMulti(f, los, his, sense, gridPerDim = 40, rounds = 60, restart
           else a = c;
           c = b - gr * (b - a);
           e = a + gr * (b - a);
-          if (b - a < 1e-13) break;
+          if (b - a < 1e-9) break;
         }
         xs[d] = (a + b) / 2;
       }
@@ -6735,6 +6742,7 @@ function optimizeMulti(f, los, his, sense, gridPerDim = 40, rounds = 60, restart
   };
   let best = refine(starts[0].xs);
   for (let s = 1; s < starts.length; s++) {
+    if (overDeadline()) break;
     const cand = refine(starts[s].xs);
     if (sign * cand.value > sign * best.value) best = cand;
   }
@@ -7313,7 +7321,8 @@ function runAnalysis(raw) {
         }
         return sum;
       };
-      const best = optimizeMulti(objective, los, his, "min", 14, 8, 2);
+      const SOLVE_MULTI_BUDGET_MS = 2e4;
+      const best = optimizeMulti(objective, los, his, "min", 12, 6, 2, Date.now() + SOLVE_MULTI_BUDGET_MS);
       const envBest = envOf(best.xs);
       const RESID_TOL = 1e-4;
       let maxResid = 0;
