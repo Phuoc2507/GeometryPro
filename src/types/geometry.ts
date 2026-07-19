@@ -6,6 +6,8 @@ export interface Point3D {
   z: number;
   color?: string;
   hidden?: boolean;
+  dim?: boolean;        // ∈ visibleIds nhưng thuộc câu trước → mờ
+  highlight?: boolean;  // mới ở câu hiện tại → nổi
 }
 
 export interface Line3D {
@@ -14,6 +16,8 @@ export interface Line3D {
   to: string; // Point ID
   style?: 'solid' | 'dashed';
   color?: string;
+  dim?: boolean;        // ∈ visibleIds nhưng thuộc câu trước → mờ
+  highlight?: boolean;  // mới ở câu hiện tại → nổi
 }
 
 export interface Sphere3D {
@@ -58,6 +62,8 @@ export interface Plane3D {
   points: { x: number; y: number; z: number }[]; // 3-4 corner points defining the plane
   color?: string;
   opacity?: number;
+  dim?: boolean;        // ∈ visibleIds nhưng thuộc câu trước → mờ
+  highlight?: boolean;  // mới ở câu hiện tại → nổi
 }
 
 // ═══ Annotation types (Phase 1 Pro) ═══
@@ -157,6 +163,22 @@ export interface AnimationTimeline {
   tracks: AnimationTrack[];
 }
 
+// ═══ Advance mode — hình dẫn xuất theo từng câu ═══
+
+export interface AdvanceStep {
+  id: string;
+  label: string;
+  visibleIds: string[];
+  highlightIds?: string[];
+  answer?: { text?: string; approx?: number; verified: boolean };
+  timeline?: AnimationTimeline;
+}
+
+export interface AdvanceScene {
+  base: GeometryData;
+  steps: AdvanceStep[];
+}
+
 export interface Agent3D {
   id: string;
   label: string;
@@ -249,6 +271,8 @@ export interface GeometryState {
   useReasoning: boolean;
   streamingText?: string;
   selectedIds: string[];
+  advanceScene?: AdvanceScene | null;
+  currentStep: number;
 }
 
 export type GeometryAction =
@@ -284,4 +308,6 @@ export type GeometryAction =
   | { type: 'SET_FREE_CAMERA_MODE'; enabled: boolean }
   | { type: 'SET_SELECTED_IDS'; ids: string[] }
   | { type: 'TOGGLE_SELECTION'; id: string }
-  | { type: 'CLEAR_SELECTION' };
+  | { type: 'CLEAR_SELECTION' }
+  | { type: 'SET_ADVANCE_SCENE'; scene: AdvanceScene }
+  | { type: 'SET_STEP'; index: number };

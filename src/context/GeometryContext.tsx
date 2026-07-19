@@ -124,6 +124,8 @@ const initialState: GeometryState = {
   useReasoning: false,
   streamingText: '',
   selectedIds: [],
+  advanceScene: null,
+  currentStep: 0,
 };
 
 function ensureGeometry(state: GeometryState): GeometryData {
