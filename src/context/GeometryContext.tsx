@@ -554,7 +554,7 @@ export function GeometryProvider({ children }: { children: React.ReactNode }) {
       let progress = 0;
       let statusIndex = 0;
       const totalStatuses = SCAN_STATUSES.length;
-      const speedMultiplier = mode === 'quick' ? 1 : 0.5;
+      const speedMultiplier = ({ quick: 1, detailed: 0.5, advance: 0.4 } as Record<string, number>)[mode] ?? 0.5;
 
       const progressInterval = setInterval(() => {
         if (scanSessionRef.current !== sessionId) { clearInterval(progressInterval); return; }
@@ -647,7 +647,7 @@ export function GeometryProvider({ children }: { children: React.ReactNode }) {
 
   const queueAnalyzeText = useCallback((prompt: string, mode: DrawMode = 'detailed') => {
     const id = `q_${Date.now()}_${++queueIdCounter}`;
-    const modeLabels: Record<string, string> = { quick: 'Nhanh', detailed: 'Kỹ' };
+    const modeLabels: Record<string, string> = { quick: 'Nhanh', detailed: 'Kỹ', advance: 'Advance' };
 
     const item: QueueItem = {
       id,
@@ -763,7 +763,7 @@ export function GeometryProvider({ children }: { children: React.ReactNode }) {
 
   const queueAnalyzeImage = useCallback((imageBase64: string, mode: DrawMode = 'quick') => {
     const id = `q_${Date.now()}_${++queueIdCounter}`;
-    const modeLabels: Record<string, string> = { quick: 'Nhanh', detailed: 'Kỹ' };
+    const modeLabels: Record<string, string> = { quick: 'Nhanh', detailed: 'Kỹ', advance: 'Advance' };
 
     const item: QueueItem = {
       id,

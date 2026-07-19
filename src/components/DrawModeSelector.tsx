@@ -3,7 +3,7 @@ import { cn, formatCredits } from '@/lib/utils';
 import { useAuth } from '@/context/AuthContext';
 import { getGuestQuotaRemaining } from '@/lib/quota';
 
-export type DrawMode = 'quick' | 'detailed';
+export type DrawMode = 'quick' | 'detailed' | 'advance';
 
 interface DrawModeSelectorProps {
   value: DrawMode;
@@ -26,6 +26,14 @@ const modes = [
     time: '~10s',
     desc: '2 lần gọi AI',
     credits: 2,
+  },
+  {
+    id: 'advance' as DrawMode,
+    label: 'Advance',
+    icon: Sparkles,
+    time: '~30s',
+    desc: 'đa-câu / động',
+    credits: 3,
   },
 ];
 

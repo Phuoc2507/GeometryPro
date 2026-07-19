@@ -38,6 +38,7 @@ const modeIcons: Record<string, typeof Zap> = {
 const modeLabels: Record<string, string> = {
   quick: 'Nhanh',
   detailed: 'Kỹ',
+  advance: 'Advance',
   precise: 'Chính xác',
 };
 

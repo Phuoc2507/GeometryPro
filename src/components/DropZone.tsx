@@ -133,7 +133,11 @@ export function DropZone() {
     }
 
     // Instead of opening modal, directly call context
-    context.queueAnalyzeText(textPrompt.trim(), drawMode);
+    if (drawMode === 'advance') {
+      context.analyzeAdvance(textPrompt.trim());
+    } else {
+      context.queueAnalyzeText(textPrompt.trim(), drawMode);
+    }
     setTextPrompt('');
   }, [textPrompt, context, drawMode]);
 
