@@ -33,15 +33,16 @@ export function extractTokens(text) {
   return [...new Set([...nums, ...pts])];
 }
 
-// LƯU Ý: soi cả `setup` (phần dựng hình chung) LẪN `parts` — kích thước/toạ độ của đề
+// LƯU Ý 1: soi cả `setup` (phần dựng hình chung) LẪN `parts` — kích thước/toạ độ của đề
 // thường nằm ở setup, không trong câu hỏi. Chỉ soi parts sẽ loại oan (vd "cạnh 2a" ở setup).
+// LƯU Ý 2: so khớp theo TẬP TOKEN (không phải substring). Substring có lỗ hổng: token "2" bị nuốt
+// vẫn "được phủ" nếu "12" xuất hiện ở nơi khác → serve bài đa-cảnh thiếu ràng buộc → engine có thể
+// bịa đáp verified-sai. Tách haystack thành cùng loại token rồi kiểm THÀNH VIÊN TẬP.
 export function coverageCheck(originalText, parts, setup = '') {
-  const blob = noAccent(
-    [String(setup || '')]
-      .concat((parts || []).map((p) => `${p.hoi || ''} ${JSON.stringify(p.phan_tu_moi || [])}`))
-      .join(' '),
-  );
-  const nblob = blob.replace(/,/g, '.');
-  const missing = extractTokens(originalText).filter((tok) => !nblob.includes(tok));
+  const blob = [String(setup || '')]
+    .concat((parts || []).map((p) => `${p.hoi || ''} ${JSON.stringify(p.phan_tu_moi || [])}`))
+    .join(' ');
+  const have = new Set(extractTokens(blob));
+  const missing = extractTokens(originalText).filter((tok) => !have.has(tok));
   return { ok: missing.length === 0, missing };
 }

@@ -385,6 +385,21 @@ nhận thêm `setup` (soi cả setup + parts); `splitProblem` truyền `parsed.s
 - đáp engine **cả 3 câu verified**: a) thể tích `8/3`, b) k/c M→(ABCD) `1`, c) k/c A→(SBC) `√2`.
 - ✅ Pipeline backend Advance hoạt động end-to-end với model thật.
 
+**Final code review (subagent) → CHANGES_NEEDED → đã sửa 2 must-fix (commit sau):**
+- **C1 (Critical, ĐÃ SỬA):** `coverageCheck` dùng SUBSTRING → token bị nuốt vẫn lọt nếu chữ số nằm trong số
+  khác ("2" ⊂ "12") → lỗ hổng bịa đáp verified-sai. Sửa: so khớp TẬP TOKEN (`extractTokens` cả haystack) + test.
+- **I1 (Important-safety, ĐÃ SỬA):** `planFromProblem`/`solveProblem` NÉM khi translator abstain (out-of-catalog)
+  → `buildAdvanceScene` chỉ bắt `ok:false` → 500. Sửa: bọc try/catch base-translate → null; `assembleAdvance`
+  bọc fallback solveProblem → `{degraded, ok:false, abstained}` sạch (không 500) + test.
+
+**Hoãn (degrade an toàn, KHÔNG bịa — follow-up/Plan B):**
+- **I2:** `nameOf` lấy chữ đầu descriptor → "trung điểm M của SC" ra "t" thay vì "M" ⇒ reveal cộng-dồn sập về
+  "hiện hết". (e2e vẫn chạy vì few-shot bias phrasing chữ-trước; prompt "I là trung điểm AB".) Fix: rút point-id
+  xuất hiện làm token trong descriptor ∩ allIds. Cũng: mặt/đường ("(SBC)") chưa reveal (points-only).
+- **I3:** giải-từng-câu chỉ có setup+câu đó (mất ngữ cảnh câu trước) ⇒ câu phụ thuộc câu trước → abstain (an toàn).
+- **I4:** chưa cap N≤6, chưa SSE stream, base chưa normalize, envelope degraded khác shape route vẽ (Plan B lo).
+- Nits: N1 dead `?? res.answer`; N2 key wiring nửa vời (base vẫn VILAO_API_KEY); N4 coverage bỏ dấu ±; N5 all-false vẫn full giá.
+
 **Ghi chú wiring:** Pass 1 (base) hiện dùng gemini (TRANSLATOR_MODEL), Pass 0 (split) dùng gpt-5.6-sol (ADVANCE_MODEL).
 Đây là "model mạnh ở điểm yếu (split, không engine gác)", gemini rẻ cho base (engine gác) — hợp benchmark. Nếu muốn
 gpt-sol cho cả base: cần cho `planFromProblem` nhận opts.model (follow-up nhỏ). Handler HTTP (auth/credit) chưa

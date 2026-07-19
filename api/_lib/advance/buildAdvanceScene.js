@@ -27,8 +27,15 @@ export async function buildAdvanceScene(problem, split, opts = {}) {
   const solveQuestion = opts.solveQuestion || defaultSolveQuestion;
   // Dịch BASE một lần: setup + hợp mọi câu hỏi → 1 hệ toạ độ (tránh trôi toạ độ giữa các câu).
   const baseProblem = `${split.setup}\n` + split.parts.map((p, i) => `${p.label || i + 1}) ${p.hoi}`).join('\n');
-  const basePlan = await planFromProblem(baseProblem, opts);
-  const baseRes = solvePlan(basePlan);
+  // planFromProblem NÉM khi translator abstain / JSON hỏng / schema-fail (ca out-of-catalog phổ biến).
+  // Bắt để trả null (base fail) ⇒ route rơi về bài đơn an toàn, KHÔNG để 500 xuyên lên handler.
+  let baseRes;
+  try {
+    const basePlan = await planFromProblem(baseProblem, opts);
+    baseRes = solvePlan(basePlan);
+  } catch {
+    return null;
+  }
   if (!baseRes?.ok || !(baseRes.geometry?.points?.length)) return null; // base fail → route rơi về bài đơn
   const base = baseRes.geometry;
 

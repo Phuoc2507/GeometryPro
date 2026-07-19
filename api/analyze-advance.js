@@ -28,23 +28,30 @@ export async function assembleAdvance(problem, deps, opts = {}) {
     if (scene) return { mode: 'advance', scene };
     // scene=null (base dựng hỏng) → rơi xuống fallback bài đơn.
   } else if (split.type === 'continuous_animation') {
-    const out = await deps.solveProblem(problem, opts);
-    if (out?.ok && out.geometry) {
-      const g = out.geometry;
-      return {
-        mode: 'advance',
-        scene: {
-          base: g,
-          steps: [{ id: 'main', label: '', visibleIds: (g.points || []).map((p) => p.id), timeline: g.timeline }],
-        },
-      };
-    }
+    try {
+      const out = await deps.solveProblem(problem, opts);
+      if (out?.ok && out.geometry) {
+        const g = out.geometry;
+        return {
+          mode: 'advance',
+          scene: {
+            base: g,
+            steps: [{ id: 'main', label: '', visibleIds: (g.points || []).map((p) => p.id), timeline: g.timeline }],
+          },
+        };
+      }
+    } catch { /* solveProblem ném → rơi xuống fallback bài đơn */ }
     // engine chịu animation → rơi xuống fallback bài đơn.
   }
 
   // single / build-fail / animation-fail → FALLBACK: xử bài đơn, đánh dấu degraded để handler hoàn credit.
-  const out = await deps.solveProblem(problem, opts);
-  return { mode: 'kernel', degraded: true, ...out };
+  // solveProblem NÉM khi translator abstain → trả degraded sạch (KHÔNG để 500 xuyên lên handler).
+  try {
+    const out = await deps.solveProblem(problem, opts);
+    return { mode: 'kernel', degraded: true, ...out };
+  } catch (e) {
+    return { mode: 'kernel', degraded: true, ok: false, abstained: true, error: String(e?.message || e).slice(0, 120) };
+  }
 }
 
 export default async function handler(req, res) {

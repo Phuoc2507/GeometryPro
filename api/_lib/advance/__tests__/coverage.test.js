@@ -26,4 +26,13 @@ describe('coverage gate', () => {
     expect(coverageCheck(orig, parts).ok).toBe(false);            // chỉ soi parts → loại oan
     expect(coverageCheck(orig, parts, setup).ok).toBe(true);      // soi cả setup → đúng
   });
+  it('C1: token bị nuốt KHÔNG lọt vì "2" ⊂ "12" (khớp tập token, không substring)', () => {
+    // "SA=2a" bị nuốt khỏi cả setup lẫn parts; "2" chỉ còn xuất hiện DÍNH trong "12" ở nơi khác.
+    const orig = 'Cho chóp S.ABCD đáy vuông AB=12, SA=2a. a) thể tích. b) k/c A đến (SBC).';
+    const setup = 'chóp S.ABCD đáy vuông AB=12';
+    const parts = [{ hoi: 'thể tích' }, { hoi: 'k/c A đến (SBC)' }];
+    const r = coverageCheck(orig, parts, setup);
+    expect(r.ok).toBe(false);              // KHÔNG được "12" che token "2"
+    expect(r.missing).toContain('2');
+  });
 });

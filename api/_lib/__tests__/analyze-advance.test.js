@@ -68,6 +68,19 @@ describe('assembleAdvance — 3 nhánh (không cần mạng)', () => {
     expect(r.mode).toBe('kernel');
     expect(r.degraded).toBe(true);
   });
+
+  it('I1: fallback solveProblem NÉM (translator abstain) → degraded sạch, KHÔNG ném (không 500)', async () => {
+    const deps = {
+      splitProblem: vi.fn().mockResolvedValue({ type: 'single' }),
+      buildAdvanceScene: vi.fn(),
+      solveProblem: vi.fn().mockRejectedValue(new Error('translator abstained')),
+    };
+    const r = await assembleAdvance('...', deps);
+    expect(r.mode).toBe('kernel');
+    expect(r.degraded).toBe(true);
+    expect(r.ok).toBe(false);
+    expect(r.abstained).toBe(true);
+  });
 });
 
 // Step 1: phí credit cho Advance. CREDIT_COST khai ở entitlements.js (credits.js dùng lại
