@@ -178,19 +178,25 @@ function rawGeometryReducer(state: GeometryState, action: GeometryAction): Geome
     case 'UPDATE_SCAN_PROGRESS':
       return { ...state, scanProgress: action.progress, scanStatus: action.status };
     case 'SET_GEOMETRY':
-      return { 
-        ...state, 
-        geometry: action.geometry, 
+      return {
+        ...state,
+        geometry: action.geometry,
         undoStack: [],
         redoStack: [],
         isScanning: false,
+        advanceScene: null,
       };
+    case 'SET_ADVANCE_SCENE':
+      return { ...state, advanceScene: action.scene, currentStep: 0,
+               geometry: action.scene.base, undoStack: [], redoStack: [] };
+    case 'SET_STEP':
+      return { ...state, currentStep: Math.max(0, Math.min(action.index, (state.advanceScene?.steps.length ?? 1) - 1)) };
     case 'START_BUILDING':
       return { ...state, isBuilding: true };
     case 'FINISH_BUILDING':
       return { ...state, isBuilding: false };
     case 'CLEAR_GEOMETRY':
-      return { ...state, geometry: null, undoStack: [], redoStack: [], isScanning: false, isBuilding: false, scanProgress: 0, scanStatus: '', activeQueueId: null, manualMode: false, manualTool: null, videoMode: false, selectedIds: [] };
+      return { ...state, geometry: null, advanceScene: null, undoStack: [], redoStack: [], isScanning: false, isBuilding: false, scanProgress: 0, scanStatus: '', activeQueueId: null, manualMode: false, manualTool: null, videoMode: false, selectedIds: [] };
     case 'QUEUE_ADD':
       return {
         ...state,
@@ -344,6 +350,8 @@ export interface GeometryContextType {
   startDemo: (type?: 'pyramid' | 'satellite') => void;
   analyzeImage: (imageBase64: string) => Promise<void>;
   analyzeText: (prompt: string, mode?: DrawMode) => Promise<void>;
+  analyzeAdvance: (prompt: string) => Promise<void>;
+  setStep: (i: number) => void;
   queueAnalyzeText: (prompt: string, mode?: DrawMode, tags?: string[], detailLevel?: import('@/types/geometry').DetailLevel, offset?: [number, number, number]) => void;
   queueAnalyzeImage: (imageBase64: string, mode?: DrawMode, tags?: string[], detailLevel?: import('@/types/geometry').DetailLevel) => void;
   modifyGeometry: (prompt: string, opts?: { aiMode?: boolean }) => Promise<void>;
@@ -617,6 +625,25 @@ export function GeometryProvider({ children }: { children: React.ReactNode }) {
       dispatch({ type: 'CLEAR_GEOMETRY' });
     }
   }, [finishWithGeometry]);
+
+  const analyzeAdvance = useCallback(async (prompt: string) => {
+    dispatch({ type: 'START_SCANNING' });
+    try {
+      const { data, error } = await invokeLocalApi('/api/analyze-advance', { prompt });
+      if (error) throw new Error(error.message || String(error));
+      if (data?.mode === 'advance' && data.scene) {
+        dispatch({ type: 'SET_ADVANCE_SCENE', scene: data.scene });
+      } else if (data?.geometry) {
+        dispatch({ type: 'SET_GEOMETRY', geometry: data.geometry });
+      } else {
+        toast({ title: 'Chưa dựng được hình cho đề này', variant: 'destructive' });
+      }
+    } catch (e) {
+      toast({ title: 'Lỗi Advance', description: String((e as Error).message), variant: 'destructive' });
+    } finally {
+      dispatch({ type: 'STOP_SCANNING' });
+    }
+  }, []);
 
   const queueAnalyzeText = useCallback((prompt: string, mode: DrawMode = 'detailed') => {
     const id = `q_${Date.now()}_${++queueIdCounter}`;
@@ -1077,10 +1104,11 @@ export function GeometryProvider({ children }: { children: React.ReactNode }) {
 
   const toggleSelection = useCallback((id: string) => dispatch({ type: 'TOGGLE_SELECTION', id }), []);
   const clearSelection = useCallback(() => dispatch({ type: 'CLEAR_SELECTION' }), []);
+  const setStep = useCallback((i: number) => dispatch({ type: 'SET_STEP', index: i }), []);
 
   return (
     <GeometryContext.Provider value={{
-      state, startDemo, analyzeImage, analyzeText, queueAnalyzeText, queueAnalyzeImage,
+      state, startDemo, analyzeImage, analyzeText, analyzeAdvance, setStep, queueAnalyzeText, queueAnalyzeImage,
       modifyGeometry, loadGeometry, clearGeometry, stopScanning, viewQueueItem, removeQueueItem, clearActiveQueue,
       updateDynamicPoint, addPoint, addLine, addMidpoint, addPlane, addPlaneFromEquation, removeElement,
       updatePoint, setManualMode, setManualTool, setVideoMode, toggleVideoMode, setSelectedIds, setAutoRotate, togglePoints, toggleAutoColor,
