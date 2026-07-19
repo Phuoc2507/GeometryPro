@@ -135,7 +135,7 @@ export function normalizeGeometryData(data) {
     });
   }
 
-  const annotationArrays = ['vectors', 'angles', 'rightAngles', 'equalMarks', 'parallelMarks', 'dynamicPoints', 'surfaces', 'curves'];
+  const annotationArrays = ['vectors', 'angles', 'rightAngles', 'equalMarks', 'parallelMarks', 'dynamicPoints', 'surfaces', 'curves', 'agents', 'measurements'];
   for (const key of annotationArrays) {
     if (Array.isArray(data[key]) && data[key].length > 0) {
       normalized[key] = data[key];
@@ -143,7 +143,7 @@ export function normalizeGeometryData(data) {
   }
 
   // Remove empty optional arrays
-  const optionalKeys = ['spheres', 'circles', 'cylinders', 'cones', 'planes', 'vectors', 'angles', 'rightAngles', 'equalMarks', 'parallelMarks', 'dynamicPoints', 'surfaces', 'curves'];
+  const optionalKeys = ['spheres', 'circles', 'cylinders', 'cones', 'planes', 'vectors', 'angles', 'rightAngles', 'equalMarks', 'parallelMarks', 'dynamicPoints', 'surfaces', 'curves', 'agents', 'measurements'];
   for (const key of optionalKeys) {
     if (Array.isArray(normalized[key]) && normalized[key].length === 0) delete normalized[key];
   }
@@ -151,6 +151,12 @@ export function normalizeGeometryData(data) {
   // Pass-through verification metadata nếu có
   if (typeof data.confidence === 'number') normalized.confidence = data.confidence;
   if (Array.isArray(data.constraints) && data.constraints.length > 0) normalized.constraints = data.constraints;
+
+  // Animation + hiển thị pass-through (KHÔNG được cắt — frontend cần để animate/vẽ)
+  if (data.timeline && Array.isArray(data.timeline.tracks) && data.timeline.tracks.length > 0) {
+    normalized.timeline = data.timeline;
+  }
+  if (typeof data.latexCode === 'string' && data.latexCode) normalized.latexCode = data.latexCode;
 
   return normalized;
 }
