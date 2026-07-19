@@ -67,6 +67,14 @@ export const AnalysisPlanSchema = RunPlanSchema.extend({
     slopeAt: z.array(z.tuple([NumOrExpr, NumOrExpr])).default([]),
   })).default([]),
   solids: z.array(SolidDeclSchema).default([]),
+  // Vật CHUYỂN ĐỘNG (kinematic): M(t)=from+t·(to−from). Chỉ khai báo — engine tự tiêm oxyz_ratio để
+  // optimize/solve tính (không bắt LLM tính toạ độ M). Các trường agentId/label/color/radius/durationSec
+  // dành cho lớp trình bày/timeline (Task sau), không ảnh hưởng phép tính.
+  mover: z.object({
+    point: z.string(), from: z.string(), to: z.string(),
+    agentId: z.string().optional(), label: z.string().optional(),
+    color: z.string().optional(), radius: z.number().optional(), durationSec: z.number().optional(),
+  }).optional(),
   analyze: AnalyzeSchema,
   // ĐƠN VỊ HIỂN THỊ (tuỳ chọn): engine tính theo đơn vị gốc của đề (vd cm³); nếu đề hỏi đáp theo đơn vị
   // khác (vd "lít"), LLM khai answerScale (hệ số nhân, vd 0.001 cho cm³→lít) + answerUnit ("lít") để đáp
@@ -117,6 +125,16 @@ export function runAnalysis(raw: unknown): AnalysisResult {
   const parsed = AnalysisPlanSchema.safeParse(raw);
   if (!parsed.success) return fail('?', `Invalid analysis plan: ${parsed.error.issues[0]?.message ?? 'schema'}`);
   const plan = parsed.data;
+
+  // Vật chuyển động M(t)=from+t·(to−from) = oxyz_ratio; tiêm để optimize/solve tính được (không bắt LLM tính toạ độ M).
+  if (plan.mover && 'parameter' in plan.analyze) {
+    const mv = plan.mover;
+    const exists = plan.ops.some((o) => (o as { name?: string }).name === mv.point);
+    if (!exists) {
+      plan.ops = [...plan.ops, { op: 'oxyz_ratio', name: mv.point, a: mv.from, b: mv.to, t: plan.analyze.parameter } as unknown as (typeof plan.ops)[number]];
+    }
+  }
+
   const paramNames = plan.parameters.map((p) => p.name);
 
   // Dựng đáp số THỐNG NHẤT: (1) nhân hệ số đơn vị nếu đề hỏi đơn vị khác, (2) nhận-dạng-căn-đẹp trên
