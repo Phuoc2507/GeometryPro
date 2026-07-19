@@ -4,7 +4,14 @@
 --
 -- Đổi 4 cột credit từ integer -> numeric(12,2) và 3 RPC spend/refund/grant sang
 -- nhận numeric. Gói nạp (50/100/200/500) vẫn nguyên; chỉ phần TRỪ mới có số lẻ.
+--
+-- Bọc trong 1 transaction: lỗi giữa chừng -> KHÔNG áp gì (tránh để hở policy ví).
 -- ═══════════════════════════════════════════════════════════════════════════
+begin;
+
+-- 0) Bỏ tạm policy chống-client-tự-sửa-ví (nó tham chiếu plan_credits/purchased_
+--    credits nên ALTER TYPE có thể bị chặn nếu không gỡ trước). Tạo lại y hệt sau. -
+drop policy if exists "Users can update non-plan fields" on public.profiles;
 
 -- 1) Nới cột sang numeric (integer -> numeric là ép rộng, số cũ giữ nguyên) -----
 alter table public.profiles
@@ -15,16 +22,29 @@ alter table public.credit_ledger
   alter column delta         type numeric(12,2),
   alter column balance_after type numeric(12,2);
 
+-- 1b) Tạo lại policy ví — GIỮ NGUYÊN logic bản gốc (chặn user tự đổi gói/ví) ----
+create policy "Users can update non-plan fields" on public.profiles
+for update using (auth.uid() = user_id)
+with check (
+  auth.uid() = user_id
+  and plan_type         is not distinct from (select p.plan_type         from public.profiles p where p.user_id = auth.uid())
+  and plan_tier         is not distinct from (select p.plan_tier         from public.profiles p where p.user_id = auth.uid())
+  and plan_code         is not distinct from (select p.plan_code         from public.profiles p where p.user_id = auth.uid())
+  and plan_expires_at   is not distinct from (select p.plan_expires_at   from public.profiles p where p.user_id = auth.uid())
+  and plan_credits      is not distinct from (select p.plan_credits      from public.profiles p where p.user_id = auth.uid())
+  and purchased_credits is not distinct from (select p.purchased_credits from public.profiles p where p.user_id = auth.uid())
+);
+
 -- 2) Bỏ RPC chữ ký int cũ (create-or-replace KHÔNG đổi được kiểu tham số,
 --    nó tạo overload mới -> nhập nhằng; nên phải DROP trước). ------------------
 drop function if exists public.spend_credits(uuid, int, text, text);
 drop function if exists public.refund_credits(uuid, int, text);
 drop function if exists public.grant_credits(uuid, int, text, text, boolean);
 
--- 3) Tạo lại — tham số + biến nội bộ dùng numeric ----------------------------
+-- 3) Tạo lại — tham số + biến nội bộ dùng numeric (create OR REPLACE -> re-run OK)
 
 -- 3a) Trừ credit — ATOMIC (khoá hàng), refill lười, hạ gói hết hạn
-create function public.spend_credits(
+create or replace function public.spend_credits(
   p_user_id uuid, p_cost numeric, p_reason text, p_ref text default null
 ) returns jsonb
 language plpgsql security definer set search_path = public as $$
@@ -75,7 +95,7 @@ begin
 end $$;
 
 -- 3b) Hoàn credit khi AI lỗi (ref riêng 'refund:...' để không đụng unique)
-create function public.refund_credits(
+create or replace function public.refund_credits(
   p_user_id uuid, p_amount numeric, p_ref text
 ) returns jsonb
 language plpgsql security definer set search_path = public as $$
@@ -93,7 +113,7 @@ begin
 end $$;
 
 -- 3c) Cấp credit khi mua gói / nạp lẻ (idempotent theo ref = order_code)
-create function public.grant_credits(
+create or replace function public.grant_credits(
   p_user_id uuid, p_amount numeric, p_reason text, p_ref text, p_to_purchased boolean default true
 ) returns jsonb
 language plpgsql security definer set search_path = public as $$
@@ -130,3 +150,5 @@ revoke all on function public.grant_credits(uuid,numeric,text,text,boolean) from
 grant execute on function public.spend_credits(uuid,numeric,text,text)         to service_role;
 grant execute on function public.refund_credits(uuid,numeric,text)             to service_role;
 grant execute on function public.grant_credits(uuid,numeric,text,text,boolean) to service_role;
+
+commit;
