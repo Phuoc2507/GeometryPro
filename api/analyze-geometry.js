@@ -145,6 +145,14 @@ export default async function handler(req, res) {
     }
 
     if (cachedResponse) {
+      // Serve-từ-cache = KHÔNG gọi LLM ⇒ mình tốn 0đ ⇒ HOÀN lại credit vừa trừ (công bằng với user).
+      // Cổng hết-credit vẫn chặt vì đã gate + trừ TRƯỚC khi tới đây. Chỉ hoàn credit trả phí; quota free
+      // KHÔNG hoàn (là bộ đếm ngày). creditCharge=null để catch ngoài cùng không hoàn lần 2.
+      if (creditCharge && userId) {
+        try { await refund(userId, creditCharge.cost, creditCharge.reqId); }
+        catch (e) { console.warn('Hoàn credit cache-hit lỗi:', e?.message); }
+        creditCharge = null;
+      }
       sendEvent('Lấy kết quả từ bộ nhớ đệm (Cache)...', 100);
       if (isStream) {
         res.write(`data: ${JSON.stringify({ status: 'done', data: cachedResponse })}\n\n`);
