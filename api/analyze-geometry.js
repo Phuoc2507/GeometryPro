@@ -16,6 +16,7 @@ import { BASE_PROMPT } from './_prompts/prompts/base.js';
 import { LEVEL_STATIC, LEVEL_CINEMATIC } from './_prompts/prompts/levels.js';
 import { STEP1_PARSE_PROMPT } from './_prompts/prompts/classifier.js';
 import { getDescriptionsForTags } from './_lib/tagDescriptions.js';
+import { logEngineDecision } from './_lib/engineDecisionLog.js';
 import { createClient } from '@supabase/supabase-js';
 import crypto from 'crypto';
 import { creditsConfigured, checkAndConsume, refund } from './_lib/credits.js';
@@ -171,7 +172,9 @@ export default async function handler(req, res) {
         sendEvent('Đang thử engine tất định...', 25);
         // Nạp ĐỘNG: nếu kernel-dist chưa được build thì ném ở đây và rơi êm về luồng LLM cũ.
         const { solveProblem } = await import('./_lib/kernel-bridge/solveWithKernel.js');
+        const _kt0 = Date.now();
         const k = await solveProblem(trimmedPrompt);
+        const _kms = Date.now() - _kt0;
         const usable = k.ok
           && k.geometry
           && Array.isArray(k.geometry.points) && k.geometry.points.length > 0
@@ -180,6 +183,10 @@ export default async function handler(req, res) {
         if (usable) {
           const geometry = normalizeGeometryData(k.geometry);
           geometry.confidence = 1; // engine đã tự kiểm mọi assert của đề
+          const _ea = (k.answers || [])[0];
+          if (_ea && Number.isFinite(_ea.approx)) {
+            geometry.engineAnswer = { text: _ea.text, approx: _ea.approx, verified: true }; // engine đã tự kiểm ở nhánh phục vụ này
+          }
           const answersLog = (k.answers || [])
             .map((a) => `${a.kind}: ${a.text}${a.approximate ? ' (xấp xỉ)' : ''}`)
             .join('; ');
@@ -208,6 +215,7 @@ export default async function handler(req, res) {
             }]).then(({ error }) => { if (error) console.warn('Lỗi lưu cache (kernel):', error.message); });
           }
           console.log('[kernel] phục vụ:', trimmedPrompt.substring(0, 60));
+          logEngineDecision({ mode: 'quick', served: true, reason: '', ms: _kms, promptLen: trimmedPrompt.length, approx: (k.answers || []).some((a) => a.approximate) });
           sendEvent('Hoàn tất (engine)!', 100);
           if (isStream) {
             res.write(`data: ${JSON.stringify({ status: 'done', data: enginePayload })}\n\n`);
@@ -218,8 +226,14 @@ export default async function handler(req, res) {
         console.log('[kernel] không dùng được → rơi về LLM:', JSON.stringify({
           ok: k.ok, violations: k.violations?.length ?? 0, errors: k.errors?.length ?? 0,
         }));
+        logEngineDecision({
+          mode: 'quick', served: false,
+          reason: `unusable:ok=${k.ok},v=${k.violations?.length ?? 0},e=${k.errors?.length ?? 0}`,
+          ms: _kms, promptLen: trimmedPrompt.length,
+        });
       } catch (e) {
         console.warn('[kernel] lỗi → rơi về LLM:', e?.message);
+        logEngineDecision({ mode: 'quick', served: false, reason: `error:${e?.message || ''}`, ms: 0, promptLen: trimmedPrompt.length });
       }
     }
     // ===== Hết KERNEL MODE — từ đây là luồng LLM cũ, KHÔNG đổi =====
@@ -286,12 +300,18 @@ Hãy:
         try {
           sendEvent('Đang thử engine tất định...', 50);
           const { solveProblem } = await import('./_lib/kernel-bridge/solveWithKernel.js');
+          const _kt0 = Date.now();
           const k = await solveProblem(trimmedPrompt);
+          const _kms = Date.now() - _kt0;
           const usable = k.ok && k.geometry && Array.isArray(k.geometry.points) && k.geometry.points.length > 0
             && (k.violations?.length ?? 0) === 0 && (k.errors?.length ?? 0) === 0;
           if (usable) {
             const geometry = normalizeGeometryData(k.geometry);
             geometry.confidence = 1;
+            const _ea = (k.answers || [])[0];
+            if (_ea && Number.isFinite(_ea.approx)) {
+              geometry.engineAnswer = { text: _ea.text, approx: _ea.approx, verified: true }; // engine đã tự kiểm ở nhánh phục vụ này
+            }
             const answersLog = (k.answers || [])
               .map((a) => `${a.kind}: ${a.text}${a.approximate ? ' (xấp xỉ)' : ''}`).join('; ');
             const enginePayload = {
@@ -319,6 +339,7 @@ Hãy:
               }]).then(({ error }) => { if (error) console.warn('Lỗi lưu cache (kernel/detailed):', error.message); });
             }
             console.log('[kernel] phục vụ (detailed/static):', trimmedPrompt.substring(0, 60));
+            logEngineDecision({ mode: 'detailed', served: true, reason: '', ms: _kms, promptLen: trimmedPrompt.length, approx: (k.answers || []).some((a) => a.approximate) });
             sendEvent('Hoàn tất (engine)!', 100);
             if (isStream) {
               res.write(`data: ${JSON.stringify({ status: 'done', data: enginePayload })}\n\n`);
@@ -329,8 +350,14 @@ Hãy:
           console.log('[kernel] detailed/static không dùng được → LLM:', JSON.stringify({
             ok: k.ok, violations: k.violations?.length ?? 0, errors: k.errors?.length ?? 0,
           }));
+          logEngineDecision({
+            mode: 'detailed', served: false,
+            reason: `unusable:ok=${k.ok},v=${k.violations?.length ?? 0},e=${k.errors?.length ?? 0}`,
+            ms: _kms, promptLen: trimmedPrompt.length,
+          });
         } catch (e) {
           console.warn('[kernel] detailed/static lỗi → LLM:', e?.message);
+          logEngineDecision({ mode: 'detailed', served: false, reason: `error:${e?.message || ''}`, ms: 0, promptLen: trimmedPrompt.length });
         }
       }
       // ===== Hết KERNEL detailed — dưới đây là luồng LLM cũ, KHÔNG đổi =====

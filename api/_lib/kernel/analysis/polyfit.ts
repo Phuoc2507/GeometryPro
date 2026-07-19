@@ -2,7 +2,7 @@
 // Tầng HÀM SỐ cho engine giải tích: khớp đa thức qua điểm (có thể ghim hệ số bậc cao nhất = tham số
 // tự do), tính giá trị, đạo hàm, và tìm cực trị. Tất cả bằng SỐ — engine làm, LLM không phải đạo hàm.
 // Hệ số luôn theo thứ tự [c0, c1, ..., cn] ứng với c0 + c1·x + ... + cn·xⁿ.
-import { solveParam } from './paramsolve';
+import { solveAllParam } from './paramsolve';
 
 // Khử Gauss có chọn trụ (hệ nhỏ, n ≤ 6). Ném nếu suy biến.
 function solveLinear(A: number[][], b: number[]): number[] {
@@ -66,10 +66,19 @@ export function derivPoly(c: number[]): number[] {
   return d.length ? d : [0];
 }
 
-// Cực trị = nghiệm f'(x)=0 trong [lo,hi] (dùng bộ giải số sẵn có). null nếu không có.
-export function extremumOfPoly(c: number[], lo: number, hi: number): { x: number; y: number } | null {
-  const d = derivPoly(c);
-  const r = solveParam((x) => evalPoly(d, x), 0, lo, hi);
-  if (!r) return null;
-  return { x: r.x, y: evalPoly(c, r.x) };
+// Cực trị = nghiệm f'(x)=0 trong [lo,hi] MÀ f''≠0 (loại điểm uốn — trước đây tính nhầm cả điểm uốn
+// là cực trị). `sense` để chọn cực đại (f''<0) hoặc cực tiểu (f''>0); bỏ trống ⇒ cực trị thật đầu tiên.
+export function extremumOfPoly(
+  c: number[], lo: number, hi: number, sense?: 'max' | 'min',
+): { x: number; y: number } | null {
+  const d1 = derivPoly(c);
+  const d2 = derivPoly(d1);
+  const extrema = solveAllParam((x) => evalPoly(d1, x), 0, lo, hi)
+    .map((x) => ({ x, y: evalPoly(c, x), curv: evalPoly(d2, x) }))
+    .filter((e) => Math.abs(e.curv) > 1e-9); // f''≠0 ⇒ cực trị THẬT, không phải điểm uốn
+  const pick = sense === 'max' ? extrema.filter((e) => e.curv < 0)
+    : sense === 'min' ? extrema.filter((e) => e.curv > 0)
+    : extrema;
+  if (pick.length === 0) return null;
+  return { x: pick[0].x, y: pick[0].y };
 }

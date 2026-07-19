@@ -69,4 +69,53 @@ describe('runAnalysis', () => {
     expect(r.ok).toBe(true);
     expect(r.violations).toHaveLength(0);
   });
+
+  it('trả HÌNH tại nghiệm (để route vẽ hiện được cả hình lẫn số)', () => {
+    const r = runAnalysis({
+      solidName: 'x', parameters: [{ name: 't', domain: [0, 10] }],
+      ops: [
+        { op: 'oxyz_point', name: 'O', at: [0, 0, 0] },
+        { op: 'oxyz_point', name: 'P', at: ['t', 0, 0] },
+      ],
+      analyze: {
+        kind: 'solve', parameter: 't',
+        constraint: { of: { kind: 'distance', a: 'O', b: 'P' }, equals: 3 },
+        report: { kind: 'distance', a: 'O', b: 'P' },
+      },
+    });
+    expect(r.ok).toBe(true);
+    expect(r.geometry).not.toBeNull();
+    const g = r.geometry as { points: { id: string; x: number }[] };
+    expect(g.points.length).toBe(2);
+    // P dựng tại nghiệm t=3 ⇒ P.x = 3
+    expect(g.points.find((p) => p.id === 'P').x).toBeCloseTo(3, 6);
+  });
+
+  it('eval solid_volume (2 trụ) → trả HÌNH khung dây (points>0)', () => {
+    const r = runAnalysis({
+      solidName: 'x',
+      solids: [
+        { name: 'A', kind: 'cylinder', center: [0, 0], radius: 2, from: 0, to: 4 },
+        { name: 'B', kind: 'cylinder', center: [1, 0], radius: 2, from: 0, to: 4 },
+      ],
+      analyze: { kind: 'eval', of: { kind: 'solid_volume', of: ['A', 'B'], mode: 'intersection' } },
+    });
+    expect(r.ok).toBe(true);
+    expect(r.geometry).not.toBeNull();
+    const g = r.geometry as { points: unknown[] };
+    expect(g.points.length).toBeGreaterThan(0);
+  });
+
+  it('optimize_multi (1 function) → trả HÌNH có curve (curves>0)', () => {
+    const r = runAnalysis({
+      solidName: 'x',
+      parameters: [{ name: 'a', domain: [0, 4] }, { name: 'b', domain: [0, 4] }],
+      functions: [{ name: 'f', form: 'poly', degree: 2, through: [[0, 0], [1, 1], [2, 4]] }],
+      analyze: { kind: 'optimize_multi', parameters: ['a', 'b'], sense: 'min', objective: { kind: 'expr', expr: '(a-1)^2 + (b-2)^2' } },
+    });
+    expect(r.ok).toBe(true);
+    expect(r.geometry).not.toBeNull();
+    const g = r.geometry as { curves: unknown[] };
+    expect(g.curves.length).toBeGreaterThan(0);
+  });
 });

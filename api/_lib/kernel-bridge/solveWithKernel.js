@@ -4,6 +4,7 @@
 import { runAny, RunPlanSchema, AnalysisPlanSchema, entityTableToGeometryData } from '../kernel-dist/index.mjs';
 import { callVilao } from '../vilao.js';
 import { TRANSLATOR_PROMPT } from './translatorPrompt.js';
+import { answersAgree } from '../answerCompare.js';
 
 // Gỡ hàng rào ```json nếu model lỡ thêm dù đã dặn.
 function extractJson(raw) {
@@ -30,6 +31,11 @@ export async function planFromProblem(problem, options = {}) {
     json = JSON.parse(extractJson(raw));
   } catch {
     throw new Error('Translator returned non-JSON output');
+  }
+  // Bộ dịch TỰ KHƯỚC TỪ khi đề thiếu số liệu / ngoài danh mục (chống "phục vụ sai"). Ném ⇒ route
+  // rơi về luồng LLM cũ, thay vì để engine trả đáp tự tin cho một bài không nên trả.
+  if (json && typeof json === 'object' && json.abstain === true) {
+    throw new Error('translator abstained: ' + (json.abstain_reason || 'thiếu số liệu / ngoài danh mục'));
   }
   // Plan có khối `analyze` (bài tham số/tối ưu/hàm số) dùng schema analysis; còn lại là plan hình học thuần.
   const schema = json && typeof json === 'object' && 'analyze' in json ? AnalysisPlanSchema : RunPlanSchema;
@@ -59,11 +65,13 @@ export function solvePlan(plan) {
   const result = runAny(plan);
   // Nhánh analysis: runAnalysis trả { parameter, answer } và KHÔNG có entities ⇒ chưa dựng được hình.
   if (!('entities' in result)) {
+    // Nhánh analysis: runAnalysis nay trả THÊM hình dựng tại nghiệm (optimize/solve có op hình học)
+    // ⇒ route vẽ hiện được cả hình lẫn đáp số. Gắn `kind` để calculation_log của route định dạng gọn.
     return jsonSafe({
       ok: result.ok,
-      geometry: null,
+      geometry: result.geometry ?? null,
       parameter: result.parameter,
-      answers: result.ok ? [result.answer] : [],
+      answers: result.ok ? [{ kind: 'kết quả', ...result.answer }] : [],
       violations: result.violations,
       errors: result.errors,
     });
@@ -80,5 +88,25 @@ export function solvePlan(plan) {
 
 export async function solveProblem(problem, options = {}) {
   const plan = await planFromProblem(problem, options);
-  return { plan, ...solvePlan(plan) };
+  const result = { plan, ...solvePlan(plan) };
+
+  // A1 — ĐỐI CHIẾU 2 ĐƯỜNG (gated qua env KERNEL_CROSSCHECK='on'; mặc định TẮT ⇒ không tốn thêm).
+  // Dịch đề LẦN 2 độc lập rồi so ĐÁP SỐ. Lệch ⇒ engine không đủ tin ⇒ đánh dấu ok=false để route
+  // rơi về luồng LLM cũ (thay vì phục vụ một đáp có thể sai). Trùng ⇒ tin cao. Đây là lưới chống #1.
+  if (String(process.env.KERNEL_CROSSCHECK || '').trim() === 'on' && result.ok && result.answers?.length) {
+    try {
+      const r2 = solvePlan(await planFromProblem(problem, options));
+      const a1text = result.answers[0]?.text;
+      const a2num = r2.answers?.[0]?.approx;
+      const agree = a2num != null && Number.isFinite(a2num) ? answersAgree(a1text, a2num, 1e-3) : null;
+      if (agree === false) {
+        return {
+          ...result, ok: false, crossCheck: 'disagree',
+          errors: [...(result.errors || []), { message: `cross-check lệch: "${a1text}" vs "${r2.answers?.[0]?.text}"` }],
+        };
+      }
+      result.crossCheck = agree === true ? 'agree' : 'unverified';
+    } catch { /* lỗi khi đối chiếu ⇒ giữ kết quả gốc, không chặn */ }
+  }
+  return result;
 }

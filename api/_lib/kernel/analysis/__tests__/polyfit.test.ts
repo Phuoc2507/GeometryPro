@@ -54,4 +54,22 @@ describe('polyfit', () => {
   it('tổng ràng buộc sai số lượng → ném', () => {
     expect(() => fitPoly(3, [[0, 0], [2, 4]], undefined, [[2, 0]])).toThrow(); // 3 ràng buộc cho 4 ẩn
   });
+
+  it('extremumOfPoly LOẠI điểm uốn: x³ trên [−1,1] → null (f\'(0)=0 nhưng f\'\'(0)=0, là điểm uốn)', () => {
+    expect(extremumOfPoly([0, 0, 0, 1], -1, 1)).toBeNull();
+  });
+
+  it('extremumOfPoly chọn đúng max/min: f=x³−3x có cực đại tại x=−1, cực tiểu tại x=1', () => {
+    const c = [0, -3, 0, 1]; // -3x + x³
+    const mx = extremumOfPoly(c, -2, 2, 'max');
+    const mn = extremumOfPoly(c, -2, 2, 'min');
+    expect(mx!.x).toBeCloseTo(-1, 6); expect(mx!.y).toBeCloseTo(2, 6);   // f(−1)=2
+    expect(mn!.x).toBeCloseTo(1, 6); expect(mn!.y).toBeCloseTo(-2, 6);   // f(1)=−2
+  });
+
+  it('extremumOfPoly parabola (Câu 1) không đổi: đỉnh tại x=4, y=16/3', () => {
+    const r = extremumOfPoly([0, 8 / 3, -1 / 3], 0, 8);
+    expect(r!.x).toBeCloseTo(4, 6);
+    expect(r!.y).toBeCloseTo(16 / 3, 6);
+  });
 });

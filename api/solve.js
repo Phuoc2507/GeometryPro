@@ -1,7 +1,8 @@
 import { createClient } from '@supabase/supabase-js';
 import { callVilao } from './_lib/vilao.js';
 import { parseJsonResponse, repairTruncatedJson } from './_lib/jsonHelpers.js';
-import { SOLVE_SYSTEM_PROMPT, buildSolveUserMessage, buildCoordPreamble } from './_lib/solvePrompts.js';
+import { SOLVE_SYSTEM_PROMPT, buildSolveUserMessage } from './_lib/solvePrompts.js';
+import { engineSolved, assembleSolveResult } from './_lib/solveAssemble.js';
 
 function parseSolveResponse(raw) {
   const text = raw
@@ -26,17 +27,6 @@ function parseSolveResponse(raw) {
   if (typeof parsed.final_answer !== 'string') return null;
 
   return parsed;
-}
-
-function normalizeSteps(steps) {
-  return steps.map((s, i) => ({
-    id:          s.id          || `s${i + 1}`,
-    title:       s.title       || `Bước ${i + 1}`,
-    explanation: s.explanation || '',
-    formula:     s.formula     || null,
-    highlight:   Array.isArray(s.highlight) ? s.highlight : [],
-    view_mode:   s.view_mode === '2d' ? '2d' : '3d',
-  }));
 }
 
 export default async function handler(req, res) {
@@ -78,7 +68,23 @@ export default async function handler(req, res) {
     });
   }
 
-  const userMessage = buildSolveUserMessage(problem.trim(), geometry, tags);
+  // Engine tất định giải trước → đáp số + verified THẬT. Có thể ném (abstain/schema) ⇒ bọc try/catch.
+  let eng = null;
+  const ea = geometry.engineAnswer;
+  if (ea && typeof ea.approx === 'number' && Number.isFinite(ea.approx)) {
+    // Tái dùng đáp engine từ bước VẼ — KHÔNG chạy engine lại (bỏ dịch+giải trùng)
+    eng = { ok: !!ea.verified, answers: [{ text: ea.text, approx: ea.approx }], violations: [] };
+  } else {
+    try {
+      const { solveProblem } = await import('./_lib/kernel-bridge/solveWithKernel.js');
+      eng = await solveProblem(problem.trim());
+    } catch (e) {
+      console.warn('[solve] engine không giải được, dùng lời giải LLM:', e?.message || e);
+    }
+  }
+  const engAnswer = engineSolved(eng) ? eng.answers[0].text : null;
+
+  const userMessage = buildSolveUserMessage(problem.trim(), geometry, tags, engAnswer);
 
   let raw;
   try {
@@ -100,22 +106,6 @@ export default async function handler(req, res) {
     });
   }
 
-  const steps = normalizeSteps(parsed.steps);
-  const finalAnswer = parsed.final_answer;
-  const answerValue = typeof parsed.answer_value === 'number' ? parsed.answer_value : null;
-
-  // On Vercel we don't have local Python execution.
-  // We assume the LLM result is correct without local python sandbox verification.
-  const verified = true;
-  const verifyError = null;
-  const sandboxValue = answerValue;
-
-  return res.json({
-    steps,
-    final_answer:  finalAnswer,
-    answer_value:  sandboxValue,
-    verified,
-    verify_error:  verifyError,
-    geometry,
-  });
+  const out = assembleSolveResult(eng, parsed);
+  return res.json({ ...out, geometry });
 }

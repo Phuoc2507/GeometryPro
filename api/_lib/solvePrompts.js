@@ -22,12 +22,9 @@ QUY TẮC
 1. Dùng đúng toạ độ đã cho, KHÔNG tính lại toạ độ.
 2. Mỗi bước giải thích bằng tiếng Việt tự nhiên, súc tích.
 3. "highlight" chứa các ID điểm/đường CÓ TRONG geometry (ví dụ "A","B","S","AB").
-4. solve_python: viết code Python tính đáp số cuối, in ra "SOLVE_RESULT:<số thực>".
-   Các biến điểm (A, B, C, S, ...) đã được định nghĩa sẵn là tuple (x,y,z).
-   Các hàm helper đã có sẵn: vsub(a,b), vadd(a,b), vdot(a,b), vcross(a,b), vnorm(a), math.sqrt.
-   Không cần import gì thêm, không định nghĩa lại toạ độ.
-5. answer_value: số thực xấp xỉ đáp số (làm tròn 6 chữ số).
-6. view_mode: luôn là "3d" (chức năng 2D sẽ thêm sau).
+4. answer_value: số thực xấp xỉ đáp số (làm tròn 6 chữ số).
+5. view_mode: luôn là "3d" (chức năng 2D sẽ thêm sau).
+6. Nếu được cung cấp "ĐÁP SỐ ĐÚNG (đã xác minh)", PHẢI trình bày các bước DẪN TỚI ĐÚNG đáp số đó, và "final_answer" PHẢI khớp đáp đó. TUYỆT ĐỐI không đưa ra đáp số khác.
 
 ═══════════════════════════════════════════════════════
 OUTPUT FORMAT — chỉ trả về JSON, không giải thích thêm
@@ -44,8 +41,7 @@ OUTPUT FORMAT — chỉ trả về JSON, không giải thích thêm
     }
   ],
   "final_answer": "Văn bản đáp số cuối (ví dụ: d(M, (SBC)) = √17/2)",
-  "answer_value": 2.0616,
-  "solve_python": "# Code SymPy — toạ độ đã có sẵn\\nSB = B - S\\n...\\nprint(f\\"SOLVE_RESULT:{float(result):.6f}\\")"
+  "answer_value": 2.0616
 }`;
 
 // ─── Few-shot example appended to user message ────────────────────────────────
@@ -80,21 +76,21 @@ JSON trả về:
     }
   ],
   "final_answer": "d(A, (SBC)) = 2√2 ≈ 2.83",
-  "answer_value": 2.828427,
-  "solve_python": "SB = vsub(B,S)\\nSC = vsub(C,S)\\nn = vcross(SB,SC)\\nSA_vec = vsub(A,S)\\nd = abs(vdot(SA_vec,n)) / vnorm(n)\\nprint(f\\"SOLVE_RESULT:{d:.6f}\\")"
+  "answer_value": 2.828427
 }`;
 
 /**
  * Build the user message for /api/solve
- * @param {string} problemText - original problem statement
- * @param {Object} geometry    - GeometryData from analyze-geometry
- * @param {string[]} tags      - Tags classified by the user or AI
+ * @param {string} problemText   - original problem statement
+ * @param {Object} geometry      - GeometryData from analyze-geometry
+ * @param {string[]} tags        - Tags classified by the user or AI
+ * @param {string|null} engineAnswer - verified answer from the deterministic engine (narrate toward it)
  */
-export function buildSolveUserMessage(problemText, geometry, tags = []) {
-  const coordLines = (geometry.points || [])
-    .map(p => `${p.id}=(${p.x},${p.y},${p.z})`)
-    .join('  ');
-
+export function buildSolveUserMessage(problemText, geometry, tags = [], engineAnswer = null) {
+  const coordLines = (geometry.points || []).map(p => `${p.id}=(${p.x},${p.y},${p.z})`).join('  ');
+  const answerBlock = engineAnswer
+    ? `\n\n⚠️ ĐÁP SỐ ĐÚNG (đã xác minh bằng engine tất định): ${engineAnswer}\nHãy viết các bước DẪN TỚI đúng đáp số này; "final_answer" phải khớp.`
+    : '';
   return `${FEW_SHOT_EXAMPLE}
 
 ═══════════════════════════════════════════════════════
@@ -103,34 +99,7 @@ BÀI CẦN GIẢI
 Đề bài: ${problemText}
 Phân loại (Tags): ${tags && tags.length > 0 ? tags.join(', ') : 'Không có'}
 
-Toạ độ các điểm: ${coordLines}
+Toạ độ các điểm: ${coordLines}${answerBlock}
 
 Hãy giải từng bước và trả về JSON đúng format.`;
-}
-
-/**
- * Build the Python preamble injected before LLM's solve_python.
- *
- * Uses only stdlib `math` — no SymPy — to avoid sandbox import-chain issues.
- * Provides helper functions + point coordinates as (x, y, z) tuples.
- * LLM is instructed to use these helpers (see few-shot in buildSolveUserMessage).
- *
- * @param {Object} geometry - GeometryData
- * @returns {string} Python code string
- */
-export function buildCoordPreamble(geometry) {
-  const lines = [
-    'import math',
-    '# ── vector helpers ──',
-    'def vadd(a,b): return tuple(x+y for x,y in zip(a,b))',
-    'def vsub(a,b): return tuple(x-y for x,y in zip(a,b))',
-    'def vdot(a,b): return sum(x*y for x,y in zip(a,b))',
-    'def vcross(a,b): return (a[1]*b[2]-a[2]*b[1], a[2]*b[0]-a[0]*b[2], a[0]*b[1]-a[1]*b[0])',
-    'def vnorm(a): return math.sqrt(vdot(a,a))',
-    '# ── point coordinates (x, y, z) ──',
-  ];
-  for (const p of (geometry.points || [])) {
-    lines.push(`${p.id} = (${p.x}, ${p.y}, ${p.z})`);
-  }
-  return lines.join('\n');
 }

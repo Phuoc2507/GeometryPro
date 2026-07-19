@@ -6644,14 +6644,23 @@ function optimizeParam(f, lo, hi, sense, grid = 400) {
   const x = (a + b) / 2;
   return { x, value: f(x) };
 }
-function solveParam(f, target, lo, hi, grid = 800) {
+function solveAllParam(f, target, lo, hi, grid = 800) {
   const g = (x) => f(x) - target;
+  const roots = [];
+  const push = (x) => {
+    if (roots.length === 0 || Math.abs(x - roots[roots.length - 1]) > 1e-9) roots.push(x);
+  };
   let x0 = lo, g0 = g(lo);
-  if (g0 === 0) return { x: lo, residual: 0 };
+  if (g0 === 0) push(lo);
   for (let i = 1; i <= grid; i++) {
     const x1 = lo + (hi - lo) * i / grid;
     const g1 = g(x1);
-    if (g1 === 0) return { x: x1, residual: 0 };
+    if (g1 === 0) {
+      push(x1);
+      x0 = x1;
+      g0 = g1;
+      continue;
+    }
     if (g0 * g1 < 0) {
       let a = x0, b = x1, ga = g0;
       for (let k = 0; k < 200; k++) {
@@ -6663,60 +6672,86 @@ function solveParam(f, target, lo, hi, grid = 800) {
         }
         if (b - a < 1e-13) break;
       }
-      const x = (a + b) / 2;
-      return { x, residual: Math.abs(g(x)) };
+      push((a + b) / 2);
     }
     x0 = x1;
     g0 = g1;
   }
-  return null;
+  return roots;
 }
-function optimizeMulti(f, los, his, sense, gridPerDim = 40, rounds = 60) {
+function solveParam(f, target, lo, hi, grid = 800) {
+  const roots = solveAllParam(f, target, lo, hi, grid);
+  if (roots.length === 0) return null;
+  const x = roots[0];
+  return { x, residual: Math.abs(f(x) - target) };
+}
+function optimizeMulti(f, los, his, sense, gridPerDim = 40, rounds = 60, restarts = 5) {
   const n = los.length;
   const sign = sense === "max" ? 1 : -1;
-  let best = { xs: los.slice(), v: -Infinity };
+  const gr = (Math.sqrt(5) - 1) / 2;
+  const cells = [];
   const total = Math.pow(gridPerDim + 1, n);
   for (let t = 0; t < total; t++) {
     let rem = t;
-    const xs2 = [];
+    const xs = [];
     for (let d = 0; d < n; d++) {
       const i = rem % (gridPerDim + 1);
       rem = Math.floor(rem / (gridPerDim + 1));
-      xs2.push(los[d] + (his[d] - los[d]) * i / gridPerDim);
+      xs.push(los[d] + (his[d] - los[d]) * i / gridPerDim);
     }
-    const v = sign * f(xs2);
-    if (v > best.v) best = { xs: xs2, v };
+    cells.push({ xs, v: sign * f(xs) });
   }
-  const xs = best.xs.slice();
-  const gr = (Math.sqrt(5) - 1) / 2;
-  for (let r = 0; r < rounds; r++) {
-    for (let d = 0; d < n; d++) {
-      const h = (his[d] - los[d]) / gridPerDim;
-      let a = Math.max(los[d], xs[d] - h);
-      let b = Math.min(his[d], xs[d] + h);
-      let c = b - gr * (b - a);
-      let e = a + gr * (b - a);
-      for (let k = 0; k < 80; k++) {
-        const xc = xs.slice();
-        xc[d] = c;
-        const xe = xs.slice();
-        xe[d] = e;
-        if (sign * f(xc) > sign * f(xe)) b = e;
-        else a = c;
-        c = b - gr * (b - a);
-        e = a + gr * (b - a);
-        if (b - a < 1e-13) break;
+  cells.sort((A, B) => B.v - A.v);
+  const starts = cells.slice(0, Math.max(1, restarts));
+  const refine = (start) => {
+    const xs = start.slice();
+    for (let r = 0; r < rounds; r++) {
+      for (let d = 0; d < n; d++) {
+        const h = (his[d] - los[d]) / gridPerDim;
+        let a = Math.max(los[d], xs[d] - h);
+        let b = Math.min(his[d], xs[d] + h);
+        let c = b - gr * (b - a);
+        let e = a + gr * (b - a);
+        for (let k = 0; k < 80; k++) {
+          const xc = xs.slice();
+          xc[d] = c;
+          const xe = xs.slice();
+          xe[d] = e;
+          if (sign * f(xc) > sign * f(xe)) b = e;
+          else a = c;
+          c = b - gr * (b - a);
+          e = a + gr * (b - a);
+          if (b - a < 1e-13) break;
+        }
+        xs[d] = (a + b) / 2;
       }
-      xs[d] = (a + b) / 2;
     }
+    return { xs, value: f(xs) };
+  };
+  let best = refine(starts[0].xs);
+  for (let s = 1; s < starts.length; s++) {
+    const cand = refine(starts[s].xs);
+    if (sign * cand.value > sign * best.value) best = cand;
   }
-  return { xs, value: f(xs) };
+  return best;
 }
 
 // api/_lib/kernel/analysis/recognize.ts
-var EPS4 = 1e-9;
-var SQUAREFREE = [2, 3, 5, 6, 7, 10, 11, 13, 14, 15, 17, 19, 21, 22, 23, 26, 29, 30, 31, 33, 34, 35, 37, 38, 39, 41, 42, 43, 46, 47];
-var MAX_DEN = 64;
+var EPS4 = 1e-10;
+function isSquareFree(n) {
+  if (n < 2) return false;
+  for (let d = 2; d * d <= n; d++) {
+    if (n % (d * d) === 0) return false;
+  }
+  return true;
+}
+function squareFreeUpTo(n) {
+  const out = [];
+  for (let k = 2; k <= n; k++) if (isSquareFree(k)) out.push(k);
+  return out;
+}
+var SQUAREFREE = squareFreeUpTo(400);
+var MAX_DEN = 200;
 function gcd2(a, b) {
   a = Math.abs(a);
   b = Math.abs(b);
@@ -6740,6 +6775,10 @@ function fmtRational(p, q) {
 }
 function fmtSurdTerm(num2, den, rad) {
   const coeff = num2 === 1 ? `\u221A${rad}` : `${num2}\u221A${rad}`;
+  return den === 1 ? coeff : `${coeff}/${den}`;
+}
+function fmtPiTerm(num2, den) {
+  const coeff = num2 === 1 ? "\u03C0" : `${num2}\u03C0`;
   return den === 1 ? coeff : `${coeff}/${den}`;
 }
 function recognizeConstant(x) {
@@ -6772,6 +6811,30 @@ function recognizeConstant(x) {
           const op = qn < 0 ? "-" : "+";
           return { text: `${fmtRational(p.p, p.q)} ${op} ${surd}`, value: val };
         }
+      }
+    }
+  }
+  const rp = asRational(x / Math.PI, 64);
+  if (rp && rp.p !== 0) {
+    const val = rp.p / rp.q * Math.PI;
+    if (Math.abs(val - x) < EPS4) {
+      const sign = rp.p < 0 ? "-" : "";
+      return { text: sign + fmtPiTerm(Math.abs(rp.p), rp.q), value: val };
+    }
+  }
+  for (let qd = 1; qd <= 8; qd++) {
+    for (let qn = -8; qn <= 8; qn++) {
+      if (qn === 0) continue;
+      const qv = qn / qd;
+      const p = asRational(x - qv * Math.PI, 16);
+      if (!p || p.p === 0) continue;
+      const val = p.p / p.q + qv * Math.PI;
+      if (Math.abs(val - x) < EPS4) {
+        const qAbsNum = Math.abs(qn);
+        const g = gcd2(qAbsNum, qd);
+        const piTerm = fmtPiTerm(qAbsNum / g, qd / g);
+        const op = qn < 0 ? "-" : "+";
+        return { text: `${fmtRational(p.p, p.q)} ${op} ${piTerm}`, value: val };
       }
     }
   }
@@ -6828,11 +6891,13 @@ function derivPoly(c) {
   for (let k = 1; k < c.length; k++) d.push(k * c[k]);
   return d.length ? d : [0];
 }
-function extremumOfPoly(c, lo, hi) {
-  const d = derivPoly(c);
-  const r = solveParam((x) => evalPoly(d, x), 0, lo, hi);
-  if (!r) return null;
-  return { x: r.x, y: evalPoly(c, r.x) };
+function extremumOfPoly(c, lo, hi, sense) {
+  const d1 = derivPoly(c);
+  const d2 = derivPoly(d1);
+  const extrema = solveAllParam((x) => evalPoly(d1, x), 0, lo, hi).map((x) => ({ x, y: evalPoly(c, x), curv: evalPoly(d2, x) })).filter((e) => Math.abs(e.curv) > 1e-9);
+  const pick = sense === "max" ? extrema.filter((e) => e.curv < 0) : sense === "min" ? extrema.filter((e) => e.curv > 0) : extrema;
+  if (pick.length === 0) return null;
+  return { x: pick[0].x, y: pick[0].y };
 }
 
 // api/_lib/kernel/analysis/solids.ts
@@ -6869,6 +6934,74 @@ function intersectionVolume(a, b) {
     return lensArea(d1.r, d2.r, Math.hypot(d1.cx - d2.cx, d1.cy - d2.cy));
   };
   return integrate(f, lo, hi);
+}
+
+// api/_lib/kernel/analysis/analysisFigure.ts
+var RING = 16;
+var CURVE_SAMPLES = 24;
+function effectiveDegree(coeffs) {
+  let deg = coeffs.length - 1;
+  while (deg > 0 && Math.abs(coeffs[deg]) < 1e-12) deg--;
+  return deg;
+}
+function polyCurve(id, coeffs, xMin, xMax) {
+  const deg = effectiveDegree(coeffs);
+  const c = (k) => coeffs[k] ?? 0;
+  if (deg <= 2) {
+    return { id, type: "parabola", params: { a: c(2), b: c(1), c: c(0), xMin, xMax } };
+  }
+  if (deg === 3) {
+    return { id, type: "cubic", params: { a: c(3), b: c(2), c: c(1), d: c(0), xMin, xMax } };
+  }
+  return { id, type: "poly", params: { coeffs: [...coeffs], xMin, xMax } };
+}
+function buildAnalysisFigure(name, inp) {
+  const points = [];
+  const lines = [];
+  const curves = [];
+  for (const p of inp.points) {
+    points.push({ id: p.id, label: p.id, x: p.x, y: p.y, z: p.z });
+  }
+  for (const [fnName, coeffs] of Object.entries(inp.polys)) {
+    const [xMin, xMax] = inp.polyDomains[fnName] ?? [0, 10];
+    curves.push(polyCurve(`curve_${fnName}`, coeffs, xMin, xMax));
+    for (let k = 0; k <= CURVE_SAMPLES; k++) {
+      const x = xMin + (xMax - xMin) * k / CURVE_SAMPLES;
+      const y = evalPoly(coeffs, x);
+      const id = `${fnName}_s${k}`;
+      points.push({ id, label: "", x, y, z: 0 });
+    }
+  }
+  for (const [solidName, s] of Object.entries(inp.solids)) {
+    const ringPoints = (cx, cy, r, z, tag) => {
+      const ids = [];
+      for (let k = 0; k < RING; k++) {
+        const theta = 2 * Math.PI * k / RING;
+        const id = `${solidName}_${tag}${k}`;
+        points.push({ id, label: "", x: cx + r * Math.cos(theta), y: cy + r * Math.sin(theta), z });
+        ids.push(id);
+      }
+      for (let k = 0; k < RING; k++) {
+        lines.push({ id: `${solidName}_${tag}L${k}`, from: ids[k], to: ids[(k + 1) % RING], style: "solid" });
+      }
+      return ids;
+    };
+    if (s.kind === "cylinder") {
+      const bottom = ringPoints(s.cx, s.cy, s.radius, Math.min(s.from, s.to), "b");
+      const top = ringPoints(s.cx, s.cy, s.radius, Math.max(s.from, s.to), "t");
+      for (let k = 0; k < RING; k += 4) {
+        lines.push({ id: `${solidName}_g${k}`, from: bottom[k], to: top[k], style: "solid" });
+      }
+    } else {
+      const base = ringPoints(s.cx, s.cy, s.baseRadius, s.baseZ, "b");
+      const apexId = `${solidName}_apex`;
+      points.push({ id: apexId, label: apexId, x: s.cx, y: s.cy, z: s.apexZ });
+      for (let k = 0; k < RING; k += 4) {
+        lines.push({ id: `${solidName}_e${k}`, from: base[k], to: apexId, style: "solid" });
+      }
+    }
+  }
+  return { name, points, lines, curves, spheres: [], planes: [] };
 }
 
 // api/_lib/kernel/analysis/runAnalysis.ts
@@ -6912,7 +7045,12 @@ var AnalysisPlanSchema = RunPlanSchema.extend({
     slopeAt: external_exports.array(external_exports.tuple([NumOrExpr, NumOrExpr])).default([])
   })).default([]),
   solids: external_exports.array(SolidDeclSchema).default([]),
-  analyze: AnalyzeSchema
+  analyze: AnalyzeSchema,
+  // ĐƠN VỊ HIỂN THỊ (tuỳ chọn): engine tính theo đơn vị gốc của đề (vd cm³); nếu đề hỏi đáp theo đơn vị
+  // khác (vd "lít"), LLM khai answerScale (hệ số nhân, vd 0.001 cho cm³→lít) + answerUnit ("lít") để đáp
+  // hiện đúng đơn vị. Bỏ trống ⇒ hiện số trần. KHÔNG ảnh hưởng phép tính, chỉ khâu hiển thị cuối.
+  answerScale: NumOrExpr.optional(),
+  answerUnit: external_exports.string().optional()
 });
 function numify(c, env, params) {
   if (typeof c === "string" && params.some((p) => new RegExp(`\\b${p}\\b`).test(c))) return evalExpr(c, env);
@@ -6927,11 +7065,24 @@ function scalarOf(a) {
 function fail2(name, msg) {
   return { ok: false, parameter: { name, value: NaN }, answer: { approx: NaN, text: "(l\u1ED7i)", approximate: true }, violations: [], errors: [{ message: msg }] };
 }
+function fmtNum2(x) {
+  if (!Number.isFinite(x)) return "(l\u1ED7i)";
+  const digits = Math.abs(x) >= 1e3 ? 2 : 4;
+  return parseFloat(x.toFixed(digits)).toString();
+}
 function runAnalysis(raw) {
   const parsed = AnalysisPlanSchema.safeParse(raw);
   if (!parsed.success) return fail2("?", `Invalid analysis plan: ${parsed.error.issues[0]?.message ?? "schema"}`);
   const plan = parsed.data;
   const paramNames = plan.parameters.map((p) => p.name);
+  const answerScale = plan.answerScale != null ? evalExpr(String(plan.answerScale), {}) : 1;
+  const answerUnit = plan.answerUnit ? ` ${plan.answerUnit}` : "";
+  const mkAnswer = (val) => {
+    const display = Number.isFinite(val) ? val * answerScale : val;
+    const nice = Number.isFinite(display) ? recognizeConstant(display) : null;
+    const num2 = nice ? nice.text : fmtNum2(display);
+    return { approx: display, text: num2 + answerUnit, approximate: !nice };
+  };
   const fitAt = (env) => {
     const coeffs = {};
     const funcs = {};
@@ -6953,6 +7104,23 @@ function runAnalysis(raw) {
     }
     return out;
   };
+  const buildFigureInput = (env) => {
+    const polys = fitAt(env).coeffs;
+    const polyDomains = {};
+    for (const fd of plan.functions) {
+      const xs = fd.through.map(([px]) => evalExpr(String(px), env));
+      if (xs.length > 0) polyDomains[fd.name] = [Math.min(...xs), Math.max(...xs)];
+    }
+    const points = [];
+    for (const op of plan.ops) {
+      const o = op;
+      if (o.op === "oxyz_point" && Array.isArray(o.at)) {
+        const at = o.at.map((c) => evalExpr(String(c), env));
+        points.push({ id: String(o.name), x: at[0], y: at[1], z: at[2] ?? 0 });
+      }
+    }
+    return { polys, polyDomains, points, solids: buildSolids(env) };
+  };
   const isExprSrc = (s) => !!s && typeof s === "object" && s.kind === "expr";
   const isSolidVolSrc = (s) => !!s && typeof s === "object" && s.kind === "solid_volume";
   const solidVolumeAt = (env, src) => {
@@ -6969,13 +7137,13 @@ function runAnalysis(raw) {
       const from = evalExpr(String(az.from), {}, funcs);
       const to = evalExpr(String(az.to), {}, funcs);
       const r = integrate((x) => evalExpr(az.integrand, { [az.variable]: x }, funcs), from, to);
-      const nice = recognizeConstant(r.value);
       return {
         ok: true,
         parameter: { name: az.variable, value: NaN },
-        answer: { approx: r.value, text: nice ? nice.text : r.value.toFixed(4), approximate: !nice },
+        answer: mkAnswer(r.value),
         violations: [],
-        errors: []
+        errors: [],
+        geometry: buildAnalysisFigure(az.variable, buildFigureInput({}))
       };
     } catch (e) {
       return fail2(az.variable, e.message);
@@ -6988,13 +7156,13 @@ function runAnalysis(raw) {
       if (isSolidVolSrc(src)) val = solidVolumeAt({}, src);
       else if (isExprSrc(src)) val = evalExpr(src.expr, {}, fitAt({}).funcs);
       else return fail2("-", 'analyze.eval ch\u1EC9 nh\u1EADn ngu\u1ED3n "expr" ho\u1EB7c "solid_volume"');
-      const nice = recognizeConstant(val);
       return {
         ok: Number.isFinite(val),
         parameter: { name: "-", value: NaN },
-        answer: { approx: val, text: nice ? nice.text : val.toFixed(4), approximate: !nice },
+        answer: mkAnswer(val),
         violations: [],
-        errors: []
+        errors: [],
+        geometry: buildAnalysisFigure(plan.solidName || "figure", buildFigureInput({}))
       };
     } catch (e) {
       return fail2("-", e.message);
@@ -7018,13 +7186,17 @@ function runAnalysis(raw) {
         return evalExpr(src.expr, env, fitAt(env).funcs);
       };
       const best = optimizeMulti(objective, los, his, az.sense);
-      const nice = recognizeConstant(best.value);
+      const envBest = {};
+      az.parameters.forEach((nm, i) => {
+        envBest[nm] = best.xs[i];
+      });
       return {
         ok: Number.isFinite(best.value),
         parameter: { name: az.parameters.join(","), value: NaN },
-        answer: { approx: best.value, text: nice ? nice.text : best.value.toFixed(4), approximate: !nice },
+        answer: mkAnswer(best.value),
         violations: [],
-        errors: []
+        errors: [],
+        geometry: buildAnalysisFigure(az.parameters.join(","), buildFigureInput(envBest))
       };
     } catch (e) {
       return fail2(az.parameters.join(","), e.message);
@@ -7065,6 +7237,17 @@ function runAnalysis(raw) {
       }
       if (o.op === "oxyz_point" && Array.isArray(o.at)) return { ...o, at: o.at.map((c) => numify(c, env, paramNames)) };
       if (o.op === "oxyz_circumsphere_offset") return { ...o, t: numify(o.t, env, paramNames) };
+      if (o.op === "oxyz_plane" && o.by?.form === "coeffs") {
+        const by = o.by;
+        return { ...o, by: {
+          ...by,
+          a: numify(by.a, env, paramNames),
+          b: numify(by.b, env, paramNames),
+          c: numify(by.c, env, paramNames),
+          d: numify(by.d, env, paramNames)
+        } };
+      }
+      if (o.op === "oxyz_ratio") return { ...o, t: numify(o.t, env, paramNames) };
       return op;
     });
   };
@@ -7103,6 +7286,7 @@ function runAnalysis(raw) {
     let violations = [];
     let errors = [];
     let val = NaN;
+    let geometry = null;
     if (isExprSrc(src) || isSolidVolSrc(src)) {
       try {
         val = isSolidVolSrc(src) ? solidVolumeAt(env, src) : evalExpr(src.expr, env, fitAt(env).funcs);
@@ -7114,6 +7298,7 @@ function runAnalysis(raw) {
           const res = run({ solidName: plan.solidName, ops: concreteOps(value), asserts: plan.asserts, queries: [] });
           violations = res.violations;
           errors = res.errors.map((e) => ({ message: e.message }));
+          if (res.entities.points.size > 0) geometry = entityTableToGeometryData(res.entities, plan.solidName || "figure");
         } catch (e) {
           errors = [{ message: e.message }];
         }
@@ -7132,14 +7317,15 @@ function runAnalysis(raw) {
       }
       violations = res.violations;
       errors = res.errors.map((e) => ({ message: e.message }));
+      if (res.entities.points.size > 0) geometry = entityTableToGeometryData(res.entities, plan.solidName || "figure");
     }
-    const nice = Number.isFinite(val) ? recognizeConstant(val) : null;
     return {
       ok: violations.length === 0 && errors.length === 0 && Number.isFinite(val),
       parameter: { name: pname, value },
-      answer: { approx: val, text: nice ? nice.text : Number.isFinite(val) ? val.toFixed(4) : "(l\u1ED7i)", approximate: !nice },
+      answer: mkAnswer(val),
       violations,
-      errors
+      errors,
+      geometry
     };
   };
   if (plan.analyze.kind === "optimize") {

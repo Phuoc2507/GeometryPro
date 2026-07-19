@@ -12,6 +12,8 @@ import { optimizeParam, solveParam, optimizeMulti } from './paramsolve';
 import { recognizeConstant } from './recognize';
 import { fitPoly, evalPoly, derivPoly, extremumOfPoly } from './polyfit';
 import { intersectionVolume, type Solid } from './solids';
+import { entityTableToGeometryData } from '../entityToGeometry';
+import { buildAnalysisFigure, type FigureInput } from './analysisFigure';
 
 const NumOrExpr = z.union([z.number(), z.string()]);
 
@@ -60,6 +62,11 @@ export const AnalysisPlanSchema = RunPlanSchema.extend({
   })).default([]),
   solids: z.array(SolidDeclSchema).default([]),
   analyze: AnalyzeSchema,
+  // ĐƠN VỊ HIỂN THỊ (tuỳ chọn): engine tính theo đơn vị gốc của đề (vd cm³); nếu đề hỏi đáp theo đơn vị
+  // khác (vd "lít"), LLM khai answerScale (hệ số nhân, vd 0.001 cho cm³→lít) + answerUnit ("lít") để đáp
+  // hiện đúng đơn vị. Bỏ trống ⇒ hiện số trần. KHÔNG ảnh hưởng phép tính, chỉ khâu hiển thị cuối.
+  answerScale: NumOrExpr.optional(),
+  answerUnit: z.string().optional(),
 });
 export type AnalysisPlan = z.infer<typeof AnalysisPlanSchema>;
 
@@ -69,6 +76,7 @@ export type AnalysisResult = {
   answer: { approx: number; text: string; approximate: boolean };
   violations: unknown[];
   errors: { message: string }[];
+  geometry?: unknown; // hình DỰNG TẠI NGHIỆM (để route vẽ hiện được), null nếu bài không có hình
 };
 
 // Số hoá một entry toạ độ/tham số: nếu là chuỗi CÓ chứa tên tham số → evalExpr; ngược lại giữ nguyên.
@@ -89,11 +97,32 @@ function fail(name: string, msg: string): AnalysisResult {
   return { ok: false, parameter: { name, value: NaN }, answer: { approx: NaN, text: '(lỗi)', approximate: true }, violations: [], errors: [{ message: msg }] };
 }
 
+// Số thập phân GỌN cho đáp không nhận dạng được: ít chữ số hơn khi trị lớn, cắt số 0 thừa.
+// 12949.3333→"12949.33"; 0.86602→"0.866"; 7.0→"7". Tránh ".toFixed(4)" cứng ra "12949.3333" xấu.
+function fmtNum(x: number): string {
+  if (!Number.isFinite(x)) return '(lỗi)';
+  // Trị LỚN (≥1000): 2 chữ số thập phân (12949.33) — 4 chữ số ở đây chỉ ra đuôi rác. Còn lại giữ 4 chữ
+  // số như cũ để không mất độ chính xác quen thuộc (7.0205 giữ nguyên). parseFloat cắt số 0 thừa.
+  const digits = Math.abs(x) >= 1000 ? 2 : 4;
+  return parseFloat(x.toFixed(digits)).toString();
+}
+
 export function runAnalysis(raw: unknown): AnalysisResult {
   const parsed = AnalysisPlanSchema.safeParse(raw);
   if (!parsed.success) return fail('?', `Invalid analysis plan: ${parsed.error.issues[0]?.message ?? 'schema'}`);
   const plan = parsed.data;
   const paramNames = plan.parameters.map((p) => p.name);
+
+  // Dựng đáp số THỐNG NHẤT: (1) nhân hệ số đơn vị nếu đề hỏi đơn vị khác, (2) nhận-dạng-căn-đẹp trên
+  // trị đã đổi đơn vị, (3) nếu không đẹp thì format thập phân gọn, (4) gắn đơn vị. approx = trị đã đổi.
+  const answerScale = plan.answerScale != null ? evalExpr(String(plan.answerScale), {}) : 1;
+  const answerUnit = plan.answerUnit ? ` ${plan.answerUnit}` : '';
+  const mkAnswer = (val: number) => {
+    const display = Number.isFinite(val) ? val * answerScale : val;
+    const nice = Number.isFinite(display) ? recognizeConstant(display) : null;
+    const num = nice ? nice.text : fmtNum(display);
+    return { approx: display, text: num + answerUnit, approximate: !nice };
+  };
 
   // Khớp mọi hàm khai báo tại env → map tên→hàm số để biểu thức gọi được (engine khớp, LLM không tính).
   const fitAt = (env: Env): { coeffs: Record<string, number[]>; funcs: Funcs } => {
@@ -121,6 +150,25 @@ export function runAnalysis(raw: unknown): AnalysisResult {
     }
     return out;
   };
+  // Dựng FigureInput cho bài giải tích thuần tại env: hàm→coeffs (+miền x từ through), điểm oxyz_point, khối.
+  const buildFigureInput = (env: Env): FigureInput => {
+    const polys = fitAt(env).coeffs;
+    const polyDomains: Record<string, [number, number]> = {};
+    for (const fd of plan.functions) {
+      const xs = fd.through.map(([px]) => evalExpr(String(px), env));
+      if (xs.length > 0) polyDomains[fd.name] = [Math.min(...xs), Math.max(...xs)];
+    }
+    const points: { id: string; x: number; y: number; z: number }[] = [];
+    for (const op of plan.ops) {
+      const o = op as Record<string, unknown>;
+      if (o.op === 'oxyz_point' && Array.isArray(o.at)) {
+        const at = (o.at as (number | string)[]).map((c) => evalExpr(String(c), env));
+        points.push({ id: String(o.name), x: at[0], y: at[1], z: at[2] ?? 0 });
+      }
+    }
+    return { polys, polyDomains, points, solids: buildSolids(env) };
+  };
+
   const isExprSrc = (s: unknown): s is { kind: 'expr'; expr: string } =>
     !!s && typeof s === 'object' && (s as { kind?: string }).kind === 'expr';
   const isSolidVolSrc = (s: unknown): s is { kind: 'solid_volume'; of: [string, string]; mode: 'intersection' } =>
@@ -141,11 +189,10 @@ export function runAnalysis(raw: unknown): AnalysisResult {
       const from = evalExpr(String(az.from), {}, funcs);
       const to = evalExpr(String(az.to), {}, funcs);
       const r = integrate((x) => evalExpr(az.integrand, { [az.variable]: x }, funcs), from, to);
-      const nice = recognizeConstant(r.value);
       return {
         ok: true, parameter: { name: az.variable, value: NaN },
-        answer: { approx: r.value, text: nice ? nice.text : r.value.toFixed(4), approximate: !nice },
-        violations: [], errors: [],
+        answer: mkAnswer(r.value),
+        violations: [], errors: [], geometry: buildAnalysisFigure(az.variable, buildFigureInput({})),
       };
     } catch (e) { return fail(az.variable, (e as Error).message); }
   }
@@ -158,11 +205,10 @@ export function runAnalysis(raw: unknown): AnalysisResult {
       if (isSolidVolSrc(src)) val = solidVolumeAt({}, src);
       else if (isExprSrc(src)) val = evalExpr(src.expr, {}, fitAt({}).funcs);
       else return fail('-', 'analyze.eval chỉ nhận nguồn "expr" hoặc "solid_volume"');
-      const nice = recognizeConstant(val);
       return {
         ok: Number.isFinite(val), parameter: { name: '-', value: NaN },
-        answer: { approx: val, text: nice ? nice.text : val.toFixed(4), approximate: !nice },
-        violations: [], errors: [],
+        answer: mkAnswer(val),
+        violations: [], errors: [], geometry: buildAnalysisFigure(plan.solidName || 'figure', buildFigureInput({})),
       };
     } catch (e) { return fail('-', (e as Error).message); }
   }
@@ -184,11 +230,12 @@ export function runAnalysis(raw: unknown): AnalysisResult {
         return evalExpr(src.expr, env, fitAt(env).funcs);
       };
       const best = optimizeMulti(objective, los, his, az.sense);
-      const nice = recognizeConstant(best.value);
+      const envBest: Env = {};
+      az.parameters.forEach((nm, i) => { envBest[nm] = best.xs[i]; });
       return {
         ok: Number.isFinite(best.value), parameter: { name: az.parameters.join(','), value: NaN },
-        answer: { approx: best.value, text: nice ? nice.text : best.value.toFixed(4), approximate: !nice },
-        violations: [], errors: [],
+        answer: mkAnswer(best.value),
+        violations: [], errors: [], geometry: buildAnalysisFigure(az.parameters.join(','), buildFigureInput(envBest)),
       };
     } catch (e) { return fail(az.parameters.join(','), (e as Error).message); }
   }
@@ -232,6 +279,17 @@ export function runAnalysis(raw: unknown): AnalysisResult {
       }
       if (o.op === 'oxyz_point' && Array.isArray(o.at)) return { ...o, at: (o.at as (number | string)[]).map((c) => numify(c, env, paramNames)) };
       if (o.op === 'oxyz_circumsphere_offset') return { ...o, t: numify(o.t as number | string, env, paramNames) };
+      // mp (α) dạng hệ số ax+by+cz+d=0 với hệ số là THAM SỐ (vd d='k'): thay tham số vào a,b,c,d.
+      if (o.op === 'oxyz_plane' && (o.by as { form?: string })?.form === 'coeffs') {
+        const by = o.by as { form: 'coeffs'; a: number | string; b: number | string; c: number | string; d: number | string };
+        return { ...o, by: {
+          ...by,
+          a: numify(by.a, env, paramNames), b: numify(by.b, env, paramNames),
+          c: numify(by.c, env, paramNames), d: numify(by.d, env, paramNames),
+        } };
+      }
+      // Điểm chia K = a + t·(b−a) với t là THAM SỐ (vd t='s'): thay tham số vào t.
+      if (o.op === 'oxyz_ratio') return { ...o, t: numify(o.t as number | string, env, paramNames) };
       return op;
     });
   };
@@ -258,6 +316,7 @@ export function runAnalysis(raw: unknown): AnalysisResult {
     let violations: unknown[] = [];
     let errors: { message: string }[] = [];
     let val = NaN;
+    let geometry: unknown = null;
     if (isExprSrc(src) || isSolidVolSrc(src)) {
       try {
         val = isSolidVolSrc(src) ? solidVolumeAt(env, src) : evalExpr(src.expr, env, fitAt(env).funcs);
@@ -266,6 +325,7 @@ export function runAnalysis(raw: unknown): AnalysisResult {
         try {
           const res = run({ solidName: plan.solidName, ops: concreteOps(value), asserts: plan.asserts, queries: [] });
           violations = res.violations; errors = res.errors.map((e) => ({ message: e.message }));
+          if (res.entities.points.size > 0) geometry = entityTableToGeometryData(res.entities, plan.solidName || 'figure');
         } catch (e) { errors = [{ message: (e as Error).message }]; }
       }
     } else {
@@ -274,13 +334,13 @@ export function runAnalysis(raw: unknown): AnalysisResult {
       const res = run({ solidName: plan.solidName, ops, asserts: plan.asserts, queries: [src] });
       try { if (res.answers.length > 0) val = scalarOf(res.answers[0]); } catch { /* không trả số */ }
       violations = res.violations; errors = res.errors.map((e) => ({ message: e.message }));
+      if (res.entities.points.size > 0) geometry = entityTableToGeometryData(res.entities, plan.solidName || 'figure');
     }
-    const nice = Number.isFinite(val) ? recognizeConstant(val) : null;
     return {
       ok: violations.length === 0 && errors.length === 0 && Number.isFinite(val),
       parameter: { name: pname, value },
-      answer: { approx: val, text: nice ? nice.text : (Number.isFinite(val) ? val.toFixed(4) : '(lỗi)'), approximate: !nice },
-      violations, errors,
+      answer: mkAnswer(val),
+      violations, errors, geometry,
     };
   };
 
