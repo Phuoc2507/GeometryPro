@@ -161,4 +161,26 @@ if (plan.mover && geometry) geometry = attachMoverAnimation(geometry, plan.mover
 - [ ] **HỎI trước khi gộp main** (auto-deploy). Verify prod: Câu 3 serve + animate.
 
 ## Findings
-*(Điền khi thực thi: Câu 3 serve/đáp/agents; animate trên browser OK?)*
+
+**KIN-T1 (mover schema + tiêm oxyz_ratio):** DONE (80487d2). Plan có `mover{point,from,to}` ⇒ engine tiêm
+`oxyz_ratio(M, from, to, t)`; optimize min distance(O,M) với D(4,0,0)→E(0,4,0) cho **2√2 ≈ 2.828** (t=0.5). 435 test xanh.
+
+**KIN-T2 (agents + timeline):** DONE (9f55536). Helper `attachMoverAnimation` đọc toạ độ from/to từ entities,
+velocity=(to−from)/durSec, xuất `agents:[{id,label,initialPosition:from,color,radius}]` +
+`timeline{duration, tracks:[{type:'parametric_path', targetId, params:{path}}]}`. Bài KHÔNG mover ⇒ không có
+agents/timeline (không hồi quy). 437 test xanh.
+
+**KIN-T3 (few-shot + e2e + browser):**
+- *Hand-plan Câu 3* (Radar O(0,0,0), máy bay D(2,0,0.9)→E(0,1.6,1.2), dur 10s): engine serve **min-dist=1.6486**,
+  agent tại D, path `x(t)=2 + -0.2*t, y(t)=0 + 0.16*t, z(t)=0.9 + 0.03*t` (velocity=(E−D)/10). ✅
+- *E2E (LLM thật)* 2/2: LLM khai `mover`, engine SERVE 1.6486 + agents + timeline. ✅
+- *Frontend parser (deterministic replication)*: chạy ĐÚNG code `AnimatedAgent.tsx` (split ',' → split '=' →
+  `new Function`) trên path engine ⇒ M(0)=D(2,0,0.9), M(5)=mid(1,0.8,1.05), M(10)=E(0,1.6,1.2). Quirk `+ -0.2`
+  là JS hợp lệ. ✅
+- *Browser live* (`/teacher?id=local_kin`, inject localStorage): route load, WebGL render, nhãn "May bay" trong
+  DOM, **0 lỗi**; dispatch `playAnimation` quét t=0→10s ⇒ **0 lỗi eval parametric-path** mỗi frame. ✅
+  (Không chụp được pixel chuyển động: WebGL screenshot treo + r3f mesh không với tới qua fiber — nhưng chuỗi
+  bằng chứng deterministic đã đủ.)
+
+**Kết luận:** Module kinematic hoạt động trọn: engine TÍNH đúng đại lượng + XUẤT animation engine-computed;
+frontend animate sạch. Câu 3 serve 1.6486 + máy bay bay D→E.

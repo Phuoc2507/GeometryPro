@@ -7064,6 +7064,19 @@ var AnalysisPlanSchema = RunPlanSchema.extend({
     slopeAt: external_exports.array(external_exports.tuple([NumOrExpr, NumOrExpr])).default([])
   })).default([]),
   solids: external_exports.array(SolidDeclSchema).default([]),
+  // Vật CHUYỂN ĐỘNG (kinematic): M(t)=from+t·(to−from). Chỉ khai báo — engine tự tiêm oxyz_ratio để
+  // optimize/solve tính (không bắt LLM tính toạ độ M). Các trường agentId/label/color/radius/durationSec
+  // dành cho lớp trình bày/timeline (Task sau), không ảnh hưởng phép tính.
+  mover: external_exports.object({
+    point: external_exports.string(),
+    from: external_exports.string(),
+    to: external_exports.string(),
+    agentId: external_exports.string().optional(),
+    label: external_exports.string().optional(),
+    color: external_exports.string().optional(),
+    radius: external_exports.number().optional(),
+    durationSec: external_exports.number().optional()
+  }).optional(),
   analyze: AnalyzeSchema,
   // ĐƠN VỊ HIỂN THỊ (tuỳ chọn): engine tính theo đơn vị gốc của đề (vd cm³); nếu đề hỏi đáp theo đơn vị
   // khác (vd "lít"), LLM khai answerScale (hệ số nhân, vd 0.001 cho cm³→lít) + answerUnit ("lít") để đáp
@@ -7093,7 +7106,34 @@ function runAnalysis(raw) {
   const parsed = AnalysisPlanSchema.safeParse(raw);
   if (!parsed.success) return fail2("?", `Invalid analysis plan: ${parsed.error.issues[0]?.message ?? "schema"}`);
   const plan = parsed.data;
+  if (plan.mover && "parameter" in plan.analyze) {
+    const mv = plan.mover;
+    const exists = plan.ops.some((o) => o.name === mv.point);
+    if (!exists) {
+      plan.ops = [...plan.ops, { op: "oxyz_ratio", name: mv.point, a: mv.from, b: mv.to, t: plan.analyze.parameter }];
+    }
+  }
   const paramNames = plan.parameters.map((p) => p.name);
+  const attachMoverAnimation = (geo, mv, et) => {
+    const coord = (name) => {
+      const p = et.points.get(name);
+      if (!p) return null;
+      return [p.p.x.approx, p.p.y.approx, p.p.z.approx];
+    };
+    const from = coord(mv.from), to = coord(mv.to);
+    if (!geo || !from || !to) return geo;
+    const dur = mv.durationSec ?? 10;
+    const id = mv.agentId ?? mv.point;
+    const fmt = (n) => parseFloat(n.toFixed(6)).toString();
+    const v = [(to[0] - from[0]) / dur, (to[1] - from[1]) / dur, (to[2] - from[2]) / dur];
+    const axis = (i, name) => `${name}(t) = ${fmt(from[i])} + ${fmt(v[i])}*t`;
+    const path = `${axis(0, "x")}, ${axis(1, "y")}, ${axis(2, "z")}`;
+    return {
+      ...geo,
+      agents: [{ id, label: mv.label ?? id, initialPosition: from, color: mv.color ?? "#FFA500", radius: mv.radius ?? 0.1 }],
+      timeline: { duration: dur, tracks: [{ id: "mv", start: 0, end: dur, type: "parametric_path", targetId: id, params: { path } }] }
+    };
+  };
   const answerScale = plan.answerScale != null ? evalExpr(String(plan.answerScale), {}) : 1;
   const answerUnit = plan.answerUnit ? ` ${plan.answerUnit}` : "";
   const mkAnswer = (val) => {
@@ -7399,6 +7439,7 @@ function runAnalysis(raw) {
       violations = res.violations;
       errors = res.errors.map((e) => ({ message: e.message }));
       if (res.entities.points.size > 0) geometry = entityTableToGeometryData(res.entities, plan.solidName || "figure");
+      if (plan.mover && geometry) geometry = attachMoverAnimation(geometry, plan.mover, res.entities);
     }
     return {
       ok: violations.length === 0 && errors.length === 0 && Number.isFinite(val),
