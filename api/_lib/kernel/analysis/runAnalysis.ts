@@ -181,6 +181,34 @@ export function runAnalysis(raw: unknown): AnalysisResult {
     return intersectionVolume(a, b).value;
   };
 
+  // Hạ op (hàm→hình học) + thay THAM SỐ (điểm/coeffs/ratio.t…) từ env NHIỀU BIẾN. Dùng cho cả 1-biến lẫn đa-biến.
+  const concreteOpsEnv = (env: Env): unknown[] => {
+    const fitted = fitAt(env).coeffs;
+    const needFn = (name: string): number[] => {
+      const c = fitted[name]; if (!c) throw new Error(`Hàm "${name}" chưa khai báo trong functions`); return c;
+    };
+    return plan.ops.map((op) => {
+      const o = op as Record<string, unknown>;
+      if (o.op === 'curve_point') { const c = needFn(o.f as string); const x = evalExpr(String(o.x), env); return { op: 'oxyz_point', name: o.name, at: [x, evalPoly(c, x), 0] }; }
+      if (o.op === 'tangent_line') { const c = needFn(o.f as string); const x = evalExpr(String(o.x), env); const slope = evalPoly(derivPoly(c), x); return { op: 'oxyz_line', name: o.name, by: { form: 'point_dir', base: [x, evalPoly(c, x), 0], dir: [1, slope, 0] } }; }
+      if (o.op === 'curve_extremum') { const c = needFn(o.f as string); const dom = o.domain as [number | string, number | string]; const ex = extremumOfPoly(c, evalExpr(String(dom[0]), env), evalExpr(String(dom[1]), env)); if (!ex) throw new Error(`curve_extremum: hàm "${o.f as string}" không có cực trị trong miền`); return { op: 'oxyz_point', name: o.name, at: [ex.x, ex.y, 0] }; }
+      if (o.op === 'oxyz_point' && Array.isArray(o.at)) return { ...o, at: (o.at as (number | string)[]).map((c) => numify(c, env, paramNames)) };
+      if (o.op === 'oxyz_circumsphere_offset') return { ...o, t: numify(o.t as number | string, env, paramNames) };
+      if (o.op === 'oxyz_plane' && (o.by as { form?: string })?.form === 'coeffs') { const by = o.by as { form: 'coeffs'; a: number|string; b: number|string; c: number|string; d: number|string }; return { ...o, by: { ...by, a: numify(by.a, env, paramNames), b: numify(by.b, env, paramNames), c: numify(by.c, env, paramNames), d: numify(by.d, env, paramNames) } }; }
+      if (o.op === 'oxyz_ratio') return { ...o, t: numify(o.t as number | string, env, paramNames) };
+      return op;
+    });
+  };
+  // Đánh giá nguồn số tại env NHIỀU BIẾN (không kèm asserts). null nếu lỗi.
+  const evalQueryEnv = (env: Env, src: unknown): number | null => {
+    if (isExprSrc(src)) { try { return evalExpr(src.expr, env, fitAt(env).funcs); } catch { return null; } }
+    if (isSolidVolSrc(src)) { try { return solidVolumeAt(env, src); } catch { return null; } }
+    let ops: unknown[]; try { ops = concreteOpsEnv(env); } catch { return null; }
+    const res = run({ solidName: plan.solidName, ops, asserts: [], queries: [src] });
+    if (!res.ok || res.answers.length === 0) return null;
+    try { return scalarOf(res.answers[0]); } catch { return null; }
+  };
+
   // ---- integrate: thuần hàm số, không cần tham số/hình học ----
   if (plan.analyze.kind === 'integrate') {
     const az = plan.analyze;
@@ -246,69 +274,11 @@ export function runAnalysis(raw: unknown): AnalysisResult {
   const lo = evalExpr(String(decl.domain[0]), {});
   const hi = evalExpr(String(decl.domain[1]), {});
 
-  // Thay tham số bằng số trong các op (điểm/mặt-cầu-lệch).
-  const concreteOps = (value: number): unknown[] => {
-    const env = { [pname]: value };
-    // 1) Khớp hàm tại giá trị tham số hiện tại (engine tự khớp — LLM không tính).
-    const fitted = fitAt(env).coeffs;
-    const needFn = (name: string): number[] => {
-      const c = fitted[name];
-      if (!c) throw new Error(`Hàm "${name}" chưa khai báo trong functions`);
-      return c;
-    };
-    // 2) Hạ op hàm → op hình học SỐ; thay tham số trong op hình học thường.
-    return plan.ops.map((op) => {
-      const o = op as Record<string, unknown>;
-      if (o.op === 'curve_point') {
-        const c = needFn(o.f as string);
-        const x = evalExpr(String(o.x), env);
-        return { op: 'oxyz_point', name: o.name, at: [x, evalPoly(c, x), 0] };
-      }
-      if (o.op === 'tangent_line') {
-        const c = needFn(o.f as string);
-        const x = evalExpr(String(o.x), env);
-        const slope = evalPoly(derivPoly(c), x);
-        return { op: 'oxyz_line', name: o.name, by: { form: 'point_dir', base: [x, evalPoly(c, x), 0], dir: [1, slope, 0] } };
-      }
-      if (o.op === 'curve_extremum') {
-        const c = needFn(o.f as string);
-        const dom = o.domain as [number | string, number | string];
-        const ex = extremumOfPoly(c, evalExpr(String(dom[0]), env), evalExpr(String(dom[1]), env));
-        if (!ex) throw new Error(`curve_extremum: hàm "${o.f as string}" không có cực trị trong miền`);
-        return { op: 'oxyz_point', name: o.name, at: [ex.x, ex.y, 0] };
-      }
-      if (o.op === 'oxyz_point' && Array.isArray(o.at)) return { ...o, at: (o.at as (number | string)[]).map((c) => numify(c, env, paramNames)) };
-      if (o.op === 'oxyz_circumsphere_offset') return { ...o, t: numify(o.t as number | string, env, paramNames) };
-      // mp (α) dạng hệ số ax+by+cz+d=0 với hệ số là THAM SỐ (vd d='k'): thay tham số vào a,b,c,d.
-      if (o.op === 'oxyz_plane' && (o.by as { form?: string })?.form === 'coeffs') {
-        const by = o.by as { form: 'coeffs'; a: number | string; b: number | string; c: number | string; d: number | string };
-        return { ...o, by: {
-          ...by,
-          a: numify(by.a, env, paramNames), b: numify(by.b, env, paramNames),
-          c: numify(by.c, env, paramNames), d: numify(by.d, env, paramNames),
-        } };
-      }
-      // Điểm chia K = a + t·(b−a) với t là THAM SỐ (vd t='s'): thay tham số vào t.
-      if (o.op === 'oxyz_ratio') return { ...o, t: numify(o.t as number | string, env, paramNames) };
-      return op;
-    });
-  };
+  // Thay tham số bằng số trong các op (điểm/mặt-cầu-lệch). Bọc mỏng concreteOpsEnv với env 1-biến.
+  const concreteOps = (value: number): unknown[] => concreteOpsEnv({ [pname]: value });
 
   // Đánh giá nguồn số tại giá trị tham số (KHÔNG kèm asserts — dùng khi quét/giải). null nếu lỗi.
-  const evalQuery = (value: number, src: unknown): number | null => {
-    const env = { [pname]: value };
-    if (isExprSrc(src)) {
-      try { return evalExpr(src.expr, env, fitAt(env).funcs); } catch { return null; }
-    }
-    if (isSolidVolSrc(src)) {
-      try { return solidVolumeAt(env, src); } catch { return null; }
-    }
-    let ops: unknown[];
-    try { ops = concreteOps(value); } catch { return null; }
-    const res = run({ solidName: plan.solidName, ops, asserts: [], queries: [src] });
-    if (!res.ok || res.answers.length === 0) return null;
-    try { return scalarOf(res.answers[0]); } catch { return null; }
-  };
+  const evalQuery = (value: number, src: unknown): number | null => evalQueryEnv({ [pname]: value }, src);
 
   // Tại nghiệm cuối: lấy đáp số + kiểm asserts (nếu có hình học) để tự kiểm mô hình.
   const finalize = (value: number, src: unknown): AnalysisResult => {
