@@ -18,4 +18,12 @@ describe('coverage gate', () => {
     expect(r.ok).toBe(false);
     expect(r.missing).toContain('5');
   });
+  it('ok khi token (kích thước 2a) nằm ở SETUP, không trong câu hỏi', () => {
+    // đề: kích thước "2a" ở phần dựng hình chung; câu hỏi chỉ "thể tích"/"khoảng cách"
+    const orig = 'Cho chóp S.ABCD cạnh 2a, SA=2a. a) thể tích. b) khoảng cách A đến (SBC).';
+    const setup = 'chóp S.ABCD cạnh 2a, SA=2a';
+    const parts = [{ hoi: 'thể tích khối chóp' }, { hoi: 'khoảng cách A đến (SBC)' }];
+    expect(coverageCheck(orig, parts).ok).toBe(false);            // chỉ soi parts → loại oan
+    expect(coverageCheck(orig, parts, setup).ok).toBe(true);      // soi cả setup → đúng
+  });
 });

@@ -18,8 +18,9 @@ describe('splitProblem (Pass 0)', () => {
     const r = await splitProblem('Cho chóp S.ABCD SA=2a canh 3. a) V.', {});
     expect(r.type).toBe('single');
   });
-  it('≥2 part nhưng nuốt token (5) → coverage gate → single + _coverageMissing', async () => {
-    callVilao.mockResolvedValue(JSON.stringify({ type: 'multi_question', setup: 'A(1;2), B(5;0)',
+  it('≥2 part nhưng nuốt token (5) khỏi CẢ setup lẫn parts → coverage gate → single', async () => {
+    // setup + parts đều KHÔNG chứa "5" (toạ độ B(5;0) của đề gốc bị nuốt) → gate phải chặn.
+    callVilao.mockResolvedValue(JSON.stringify({ type: 'multi_question', setup: 'A(1;2), B',
       parts: [{ label: 'a', hoi: 'khoảng cách A(1;2) đến B', phan_tu_moi: [] },
               { label: 'b', hoi: 'trung điểm M của AB', phan_tu_moi: ['M'] }] }));  // thiếu "5"
     const r = await splitProblem('Cho A(1;2), B(5;0). a) d(A,B). b) M trung điểm AB.', {});

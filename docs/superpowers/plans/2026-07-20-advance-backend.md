@@ -365,4 +365,27 @@ it('câu engine giải được → verified=true; chịu → verified=false', a
 - [ ] **HỎI trước khi gộp main** (auto-deploy). Sau đó → **Plan B (frontend: mode + player)**.
 
 ## Findings
-*(Điền khi thực thi.)*
+
+**Thực thi 2026-07-20 (subagent-driven, 463 tests xanh):**
+- **T1** callVilao apiKey per-call (resolveApiKey) — commit 05a76bf.
+- **T2** coverage.js (extractTokens + coverageCheck) — commit 3028fee. *(Implementer bắt lỗi `indexOf` trong code mẫu → sửa bằng regex.exec; sửa vitest.config include cho advance/__tests__.)*
+- **T3** splitPrompt + splitProblem (mọi đường lỗi → single) — commit cbfed0f + 58185ac (thêm test chứng minh nhánh coverage-gate bằng mutation).
+- **T4** buildAdvanceScene (base 1 lần + visibleIds cumulative + base-fail→null) — commit 5130ddb.
+- **T5** đáp từng câu + verified flag (chống-bịa 2 lớp) — commit 8f271a6.
+- **T6** route /api/analyze-advance + assembleAdvance (5 test nhánh) + credit `draw_advance:3` (ở entitlements.js) + fallback refund tụt-hạng + nạp động — commit c1c51a3.
+- **T7** e2e đo thật + fix.
+
+**🐛 E2E bắt được bug thật (coverage quá gắt):** `coverageCheck` chỉ soi `parts`, KHÔNG soi `setup` → kích thước
+đề ("cạnh 2a", "SA=2a") ở setup bị coi là "thiếu" → loại oan MỌI bài đa-câu về single. **Fix:** `coverageCheck`
+nhận thêm `setup` (soi cả setup + parts); `splitProblem` truyền `parsed.setup`. + regression test.
+
+**E2E kết quả (gpt-5.6-sol split + gemini base, chóp S.ABCD 2a 3 câu, 2/2 lần):**
+- split → `multi_question`, 3 parts; câu b nhận đúng "M trung điểm SC" là phần tử mới.
+- base dựng 1 lần (6 điểm, 1 hệ toạ độ); 3 steps; visibleIds **cumulative đúng** (câu b ⊇ câu a).
+- đáp engine **cả 3 câu verified**: a) thể tích `8/3`, b) k/c M→(ABCD) `1`, c) k/c A→(SBC) `√2`.
+- ✅ Pipeline backend Advance hoạt động end-to-end với model thật.
+
+**Ghi chú wiring:** Pass 1 (base) hiện dùng gemini (TRANSLATOR_MODEL), Pass 0 (split) dùng gpt-5.6-sol (ADVANCE_MODEL).
+Đây là "model mạnh ở điểm yếu (split, không engine gác)", gemini rẻ cho base (engine gác) — hợp benchmark. Nếu muốn
+gpt-sol cho cả base: cần cho `planFromProblem` nhận opts.model (follow-up nhỏ). Handler HTTP (auth/credit) chưa
+unit-test (theo pattern route cũ). Free-tier quota không hoàn khi tụt-hạng (theo tiền lệ analyze-geometry).

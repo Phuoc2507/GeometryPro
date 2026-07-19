@@ -46,8 +46,9 @@ export async function splitProblem(problem, opts = {}) {
     return { type: 'single' };
   }
 
-  // Lưới tất định: LLM có nuốt mất số/điểm nào của đề gốc không?
-  const cov = coverageCheck(problem, parsed.parts);
+  // Lưới tất định: LLM có nuốt mất số/điểm nào của đề gốc không? (soi cả setup lẫn parts —
+  // kích thước/toạ độ thường ở setup, không trong câu hỏi.)
+  const cov = coverageCheck(problem, parsed.parts, parsed.setup || '');
   if (!cov.ok) return { type: 'single', _coverageMissing: cov.missing };
 
   return { type: 'multi_question', setup: parsed.setup || '', parts: parsed.parts };

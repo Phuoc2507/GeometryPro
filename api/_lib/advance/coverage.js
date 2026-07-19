@@ -33,10 +33,12 @@ export function extractTokens(text) {
   return [...new Set([...nums, ...pts])];
 }
 
-export function coverageCheck(originalText, parts) {
+// LƯU Ý: soi cả `setup` (phần dựng hình chung) LẪN `parts` — kích thước/toạ độ của đề
+// thường nằm ở setup, không trong câu hỏi. Chỉ soi parts sẽ loại oan (vd "cạnh 2a" ở setup).
+export function coverageCheck(originalText, parts, setup = '') {
   const blob = noAccent(
-    (parts || [])
-      .map((p) => `${p.hoi || ''} ${JSON.stringify(p.phan_tu_moi || [])}`)
+    [String(setup || '')]
+      .concat((parts || []).map((p) => `${p.hoi || ''} ${JSON.stringify(p.phan_tu_moi || [])}`))
       .join(' '),
   );
   const nblob = blob.replace(/,/g, '.');
