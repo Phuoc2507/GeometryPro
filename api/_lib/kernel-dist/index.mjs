@@ -7030,7 +7030,13 @@ var AnalyzeSchema = external_exports.union([
   }),
   external_exports.object({ kind: external_exports.literal("integrate"), variable: external_exports.string(), from: NumOrExpr, to: NumOrExpr, integrand: external_exports.string() }),
   external_exports.object({ kind: external_exports.literal("eval"), of: ScalarSource }),
-  external_exports.object({ kind: external_exports.literal("optimize_multi"), parameters: external_exports.array(external_exports.string()).min(2), sense: external_exports.enum(["max", "min"]), objective: ScalarSource })
+  external_exports.object({ kind: external_exports.literal("optimize_multi"), parameters: external_exports.array(external_exports.string()).min(2), sense: external_exports.enum(["max", "min"]), objective: ScalarSource }),
+  external_exports.object({
+    kind: external_exports.literal("solve_multi"),
+    parameters: external_exports.array(external_exports.string()).min(2),
+    constraints: external_exports.array(external_exports.object({ of: ScalarSource, equals: NumOrExpr })).min(1),
+    report: ScalarSource
+  })
 ]);
 var FunctionOpSchema = external_exports.union([
   external_exports.object({ op: external_exports.literal("curve_point"), name: external_exports.string(), f: external_exports.string(), x: NumOrExpr }),
@@ -7135,6 +7141,76 @@ function runAnalysis(raw) {
     if (!b) throw new Error(`Kh\u1ED1i "${src.of[1]}" ch\u01B0a khai b\xE1o trong solids`);
     return intersectionVolume(a, b).value;
   };
+  const concreteOpsEnv = (env) => {
+    const fitted = fitAt(env).coeffs;
+    const needFn = (name) => {
+      const c = fitted[name];
+      if (!c) throw new Error(`H\xE0m "${name}" ch\u01B0a khai b\xE1o trong functions`);
+      return c;
+    };
+    return plan.ops.map((op) => {
+      const o = op;
+      if (o.op === "curve_point") {
+        const c = needFn(o.f);
+        const x = evalExpr(String(o.x), env);
+        return { op: "oxyz_point", name: o.name, at: [x, evalPoly(c, x), 0] };
+      }
+      if (o.op === "tangent_line") {
+        const c = needFn(o.f);
+        const x = evalExpr(String(o.x), env);
+        const slope = evalPoly(derivPoly(c), x);
+        return { op: "oxyz_line", name: o.name, by: { form: "point_dir", base: [x, evalPoly(c, x), 0], dir: [1, slope, 0] } };
+      }
+      if (o.op === "curve_extremum") {
+        const c = needFn(o.f);
+        const dom = o.domain;
+        const ex = extremumOfPoly(c, evalExpr(String(dom[0]), env), evalExpr(String(dom[1]), env));
+        if (!ex) throw new Error(`curve_extremum: h\xE0m "${o.f}" kh\xF4ng c\xF3 c\u1EF1c tr\u1ECB trong mi\u1EC1n`);
+        return { op: "oxyz_point", name: o.name, at: [ex.x, ex.y, 0] };
+      }
+      if (o.op === "oxyz_point" && Array.isArray(o.at)) return { ...o, at: o.at.map((c) => numify(c, env, paramNames)) };
+      if (o.op === "oxyz_circumsphere_offset") return { ...o, t: numify(o.t, env, paramNames) };
+      if (o.op === "oxyz_plane" && o.by?.form === "coeffs") {
+        const by = o.by;
+        return { ...o, by: { ...by, a: numify(by.a, env, paramNames), b: numify(by.b, env, paramNames), c: numify(by.c, env, paramNames), d: numify(by.d, env, paramNames) } };
+      }
+      if (o.op === "oxyz_ratio") return { ...o, t: numify(o.t, env, paramNames) };
+      if (o.op === "oxyz_line" && o.by?.form === "point_dir") {
+        const by = o.by;
+        return { ...o, by: { ...by, base: by.base.map((c) => numify(c, env, paramNames)), dir: by.dir.map((c) => numify(c, env, paramNames)) } };
+      }
+      return op;
+    });
+  };
+  const evalQueryEnv = (env, src) => {
+    if (isExprSrc(src)) {
+      try {
+        return evalExpr(src.expr, env, fitAt(env).funcs);
+      } catch {
+        return null;
+      }
+    }
+    if (isSolidVolSrc(src)) {
+      try {
+        return solidVolumeAt(env, src);
+      } catch {
+        return null;
+      }
+    }
+    let ops;
+    try {
+      ops = concreteOpsEnv(env);
+    } catch {
+      return null;
+    }
+    const res = run({ solidName: plan.solidName, ops, asserts: [], queries: [src] });
+    if (!res.ok || res.answers.length === 0) return null;
+    try {
+      return scalarOf(res.answers[0]);
+    } catch {
+      return null;
+    }
+  };
   if (plan.analyze.kind === "integrate") {
     const az = plan.analyze;
     try {
@@ -7207,85 +7283,76 @@ function runAnalysis(raw) {
       return fail2(az.parameters.join(","), e.message);
     }
   }
+  if (plan.analyze.kind === "solve_multi") {
+    const az = plan.analyze;
+    const decls = az.parameters.map((nm) => plan.parameters.find((p) => p.name === nm));
+    const missing = az.parameters.find((nm, i) => !decls[i]);
+    if (missing) return fail2(az.parameters.join(","), `parameter "${missing}" ch\u01B0a khai b\xE1o`);
+    try {
+      const los = decls.map((d) => evalExpr(String(d.domain[0]), {}));
+      const his = decls.map((d) => evalExpr(String(d.domain[1]), {}));
+      const envOf = (xs) => {
+        const env = {};
+        az.parameters.forEach((nm, i) => {
+          env[nm] = xs[i];
+        });
+        return env;
+      };
+      const residOf = (env, c) => {
+        const q = evalQueryEnv(env, c.of);
+        if (q === null || !Number.isFinite(q)) return null;
+        return q - evalExpr(String(c.equals), env);
+      };
+      const objective = (xs) => {
+        const env = envOf(xs);
+        let sum = 0;
+        for (const c of az.constraints) {
+          const r = residOf(env, c);
+          if (r === null) return Number.POSITIVE_INFINITY;
+          sum += r * r;
+        }
+        return sum;
+      };
+      const best = optimizeMulti(objective, los, his, "min", 14, 8, 2);
+      const envBest = envOf(best.xs);
+      const RESID_TOL = 1e-4;
+      let maxResid = 0;
+      for (const c of az.constraints) {
+        const r = residOf(envBest, c);
+        if (r === null) return fail2(az.parameters.join(","), "r\xE0ng bu\u1ED9c kh\xF4ng \u0111\xE1nh gi\xE1 \u0111\u01B0\u1EE3c t\u1EA1i nghi\u1EC7m");
+        maxResid = Math.max(maxResid, Math.abs(r));
+      }
+      if (maxResid > RESID_TOL) return fail2(az.parameters.join(","), `kh\xF4ng gi\u1EA3i \u0111\u01B0\u1EE3c (residual ${maxResid.toExponential(2)})`);
+      let violations = [], errors = [], geometry = null;
+      try {
+        const res = run({ solidName: plan.solidName, ops: concreteOpsEnv(envBest), asserts: plan.asserts, queries: [] });
+        violations = res.violations;
+        errors = res.errors.map((e) => ({ message: e.message }));
+        if (res.entities.points.size > 0) geometry = entityTableToGeometryData(res.entities, plan.solidName || "figure");
+      } catch (e) {
+        errors = [{ message: e.message }];
+      }
+      const rep = evalQueryEnv(envBest, az.report);
+      const val = rep === null ? NaN : rep;
+      return {
+        ok: violations.length === 0 && errors.length === 0 && Number.isFinite(val),
+        parameter: { name: az.parameters.join(","), value: NaN },
+        answer: mkAnswer(val),
+        violations,
+        errors,
+        geometry: geometry ?? buildAnalysisFigure(az.parameters.join(","), buildFigureInput(envBest))
+      };
+    } catch (e) {
+      return fail2(az.parameters.join(","), e.message);
+    }
+  }
   const pname = plan.analyze.parameter;
   const decl = plan.parameters.find((p) => p.name === pname);
   if (!decl) return fail2(pname, `parameter "${pname}" ch\u01B0a khai b\xE1o`);
   const lo = evalExpr(String(decl.domain[0]), {});
   const hi = evalExpr(String(decl.domain[1]), {});
-  const concreteOps = (value) => {
-    const env = { [pname]: value };
-    const fitted = fitAt(env).coeffs;
-    const needFn = (name) => {
-      const c = fitted[name];
-      if (!c) throw new Error(`H\xE0m "${name}" ch\u01B0a khai b\xE1o trong functions`);
-      return c;
-    };
-    return plan.ops.map((op) => {
-      const o = op;
-      if (o.op === "curve_point") {
-        const c = needFn(o.f);
-        const x = evalExpr(String(o.x), env);
-        return { op: "oxyz_point", name: o.name, at: [x, evalPoly(c, x), 0] };
-      }
-      if (o.op === "tangent_line") {
-        const c = needFn(o.f);
-        const x = evalExpr(String(o.x), env);
-        const slope = evalPoly(derivPoly(c), x);
-        return { op: "oxyz_line", name: o.name, by: { form: "point_dir", base: [x, evalPoly(c, x), 0], dir: [1, slope, 0] } };
-      }
-      if (o.op === "curve_extremum") {
-        const c = needFn(o.f);
-        const dom = o.domain;
-        const ex = extremumOfPoly(c, evalExpr(String(dom[0]), env), evalExpr(String(dom[1]), env));
-        if (!ex) throw new Error(`curve_extremum: h\xE0m "${o.f}" kh\xF4ng c\xF3 c\u1EF1c tr\u1ECB trong mi\u1EC1n`);
-        return { op: "oxyz_point", name: o.name, at: [ex.x, ex.y, 0] };
-      }
-      if (o.op === "oxyz_point" && Array.isArray(o.at)) return { ...o, at: o.at.map((c) => numify(c, env, paramNames)) };
-      if (o.op === "oxyz_circumsphere_offset") return { ...o, t: numify(o.t, env, paramNames) };
-      if (o.op === "oxyz_plane" && o.by?.form === "coeffs") {
-        const by = o.by;
-        return { ...o, by: {
-          ...by,
-          a: numify(by.a, env, paramNames),
-          b: numify(by.b, env, paramNames),
-          c: numify(by.c, env, paramNames),
-          d: numify(by.d, env, paramNames)
-        } };
-      }
-      if (o.op === "oxyz_ratio") return { ...o, t: numify(o.t, env, paramNames) };
-      return op;
-    });
-  };
-  const evalQuery = (value, src) => {
-    const env = { [pname]: value };
-    if (isExprSrc(src)) {
-      try {
-        return evalExpr(src.expr, env, fitAt(env).funcs);
-      } catch {
-        return null;
-      }
-    }
-    if (isSolidVolSrc(src)) {
-      try {
-        return solidVolumeAt(env, src);
-      } catch {
-        return null;
-      }
-    }
-    let ops;
-    try {
-      ops = concreteOps(value);
-    } catch {
-      return null;
-    }
-    const res = run({ solidName: plan.solidName, ops, asserts: [], queries: [src] });
-    if (!res.ok || res.answers.length === 0) return null;
-    try {
-      return scalarOf(res.answers[0]);
-    } catch {
-      return null;
-    }
-  };
+  const concreteOps = (value) => concreteOpsEnv({ [pname]: value });
+  const evalQuery = (value, src) => evalQueryEnv({ [pname]: value }, src);
   const finalize = (value, src) => {
     const env = { [pname]: value };
     let violations = [];

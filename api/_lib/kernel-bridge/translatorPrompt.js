@@ -325,4 +325,26 @@ IM=9. Tính khoảng cách từ M đến (P)." (đáp SỐ = 8.)
 (B = base+dir của d là 1 điểm mốc trên d; M = I + t·(B−I) trượt dọc d; dist(I,M) ĐƠN ĐIỆU theo t ⇒ solve chắc
 ăn; report là khoảng cách điểm→mặt d(M,(P)). assert IM=9 số nguyên, để nguyên.)
 
+VÍ DỤ G (DỰNG HÌNH đa-ràng-buộc — "solve_multi": ≥2 ẩn + ≥2 ràng buộc hình học ĐỒNG THỜI; đáp VÔ HƯỚNG):
+Đề: "Đường thẳng Δ qua A(1;2;3) có vectơ chỉ phương (a;b;1), cắt cả d1: (x-3)/1=(y-7)/(-3)=(z-3)/1 và d2: x=-2+2t, y=-t, z=2. Tính a+b."
+{
+  "solidName": "line-meet",
+  "parameters": [{ "name": "a", "domain": [-10, 10] }, { "name": "b", "domain": [-10, 10] }],
+  "ops": [
+    { "op": "oxyz_point", "name": "A", "at": [1, 2, 3] },
+    { "op": "oxyz_line", "name": "T", "by": { "form": "point_dir", "base": [1, 2, 3], "dir": ["a", "b", 1] } },
+    { "op": "oxyz_line", "name": "D", "by": { "form": "point_dir", "base": [3, 7, 3], "dir": [1, -3, 1] } },
+    { "op": "oxyz_line", "name": "E", "by": { "form": "point_dir", "base": [-2, 0, 2], "dir": [2, -1, 0] } }
+  ],
+  "analyze": { "kind": "solve_multi", "parameters": ["a", "b"],
+    "constraints": [
+      { "of": { "kind": "distance", "a": "T", "b": "D" }, "equals": 0 },
+      { "of": { "kind": "distance", "a": "T", "b": "E" }, "equals": 0 }
+    ],
+    "report": { "kind": "expr", "expr": "a+b" } }
+}
+(solve_multi khi ≥2 ẩn + ≥2 ràng buộc hình học đồng thời. Mỗi ràng buộc = {of: truy vấn hình học, equals: giá trị};
+"đường gặp đường" ⇒ dist=0; "vuông góc" ⇒ angle=90. report là biểu thức trên tham số (vd "a+b"). ĐÁP PHẢI
+VÔ HƯỚNG — đề hỏi điểm/vectơ/phương trình thì KHÔNG mô hình, để rơi về.)
+
 CHỈ trả về JSON object. Không giải thích, không markdown, không \`\`\`.`;
