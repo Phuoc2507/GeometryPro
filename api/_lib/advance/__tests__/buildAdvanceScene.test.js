@@ -51,3 +51,45 @@ it('câu engine giải được → verified=true; câu engine chịu → verifi
   expect(scene.steps[1].answer.verified).toBe(false);
   expect(scene.steps[1].answer.text).toBeUndefined();   // không bịa số
 });
+
+// #3 — reveal đúng khi điểm mới KHÔNG đứng đầu mô tả ("trung điểm M của SC" → M, không phải "t").
+it('#3 reveal mô tả không-chữ-trước: "trung điểm M của SC" → M lộ ở câu b, không ở câu a', async () => {
+  planFromProblem.mockResolvedValue({ solidName: 'x' });
+  solvePlan.mockReturnValue({ ok: true, geometry: { name: 'x',
+    points: [{ id: 'S' }, { id: 'A' }, { id: 'B' }, { id: 'C' }, { id: 'D' }, { id: 'M' }], lines: [] },
+    answers: [] });
+  const split = { type: 'multi_question', setup: 'chóp S.ABCD',
+    parts: [{ label: 'Câu a', hoi: 'thể tích', phan_tu_moi: [] },
+            { label: 'Câu b', hoi: 'góc', phan_tu_moi: ['trung điểm M của SC'] }] };
+  const scene = await buildAdvanceScene('...', split, {});
+  expect(scene.steps[0].visibleIds).not.toContain('M');   // câu a chưa có M
+  expect(scene.steps[1].visibleIds).toContain('M');        // câu b cumulative có M
+});
+
+// #1 — giải SONG SONG nhưng đáp vẫn gán ĐÚNG câu dù thứ tự resolve bị đảo.
+it('#1 song song: đáp gán đúng câu dù resolve đảo thứ tự', async () => {
+  planFromProblem.mockResolvedValue({ solidName: 'x' });
+  solvePlan.mockReturnValue({ ok: true, geometry: { name: 'x', points: [{ id: 'A' }], lines: [] }, answers: [] });
+  // q3 xong trước, q1 xong sau → bắt lỗi gán nhầm câu nếu dùng thứ tự resolve thay vì index.
+  const solveQ = vi.fn().mockImplementation(async (hoi) => {
+    const delay = hoi === 'q1' ? 30 : hoi === 'q2' ? 15 : 0;
+    await new Promise((r) => setTimeout(r, delay));
+    return { ok: true, text: `ans-${hoi}`, approx: 0 };
+  });
+  const split = { type: 'multi_question', setup: 's', parts: [
+    { label: 'a', hoi: 'q1', phan_tu_moi: [] },
+    { label: 'b', hoi: 'q2', phan_tu_moi: [] },
+    { label: 'c', hoi: 'q3', phan_tu_moi: [] }] };
+  const scene = await buildAdvanceScene('...', split, { solveQuestion: solveQ });
+  expect(scene.steps.map((s) => s.answer.text)).toEqual(['ans-q1', 'ans-q2', 'ans-q3']);
+});
+
+// #1 — cap N ≤ 6: đề 8 câu → chỉ dựng 6 step đầu.
+it('#1 cap N≤6: split 8 câu → chỉ 6 step', async () => {
+  planFromProblem.mockResolvedValue({ solidName: 'x' });
+  solvePlan.mockReturnValue({ ok: true, geometry: { name: 'x', points: [{ id: 'A' }], lines: [] }, answers: [] });
+  const parts = Array.from({ length: 8 }, (_, i) => ({ label: `c${i}`, hoi: `q${i}`, phan_tu_moi: [] }));
+  const split = { type: 'multi_question', setup: 's', parts };
+  const scene = await buildAdvanceScene('...', split, {});
+  expect(scene.steps).toHaveLength(6);
+});

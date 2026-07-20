@@ -6,8 +6,12 @@
 
 import { planFromProblem, solvePlan } from '../kernel-bridge/solveWithKernel.js';
 
-// Tên phần tử mới trong 1 part (chuỗi mô tả) → id điểm (chữ cái đầu, có thể có phẩy/số).
-const nameOf = (s) => String(s).trim().match(/^[A-Za-z]'?[0-9]?/)?.[0] || String(s).trim();
+// #3 — Điểm MỚI của 1 mô tả = id ĐẦU TIÊN (IN HOA, có thể phẩy/số) xuất hiện trong mô tả VÀ có trong allIds.
+// KHÔNG lấy chữ-cái-đầu-chuỗi: điểm được ĐỊNH NGHĨA thường đứng TRƯỚC điểm tham chiếu →
+// "M là trung điểm SC", "trung điểm M của SC" đều → M; "hình chiếu H của A" → H; "Gọi N trung điểm BC" → N.
+const firstIdInAllIds = (desc, ids) => (String(desc).match(/[A-Z]'?[0-9]?/g) || []).find((t) => ids.has(t));
+// id mới do 1 part khai (đã lọc rỗng — mô tả không chứa id nào của base thì bỏ).
+const newIdsOf = (part, ids) => (part.phan_tu_moi || []).map((d) => firstIdInAllIds(d, ids)).filter(Boolean);
 
 // Task 5 — GIẢI MỘT CÂU bằng engine (tách riêng để test inject được, không gọi LLM thật).
 // Dịch "setup + hỏi" qua planFromProblem + solvePlan; lấy đáp số đầu tiên (answers[0], rồi answer).
@@ -25,8 +29,10 @@ async function defaultSolveQuestion(hoi, setup, opts = {}) {
 
 export async function buildAdvanceScene(problem, split, opts = {}) {
   const solveQuestion = opts.solveQuestion || defaultSolveQuestion;
+  // #1 — cap N ≤ 6: bài 7-8 câu chỉ dựng 6 câu đầu (tránh timeout). Dùng `parts` (đã cap) từ đây.
+  const parts = (split.parts || []).slice(0, 6);
   // Dịch BASE một lần: setup + hợp mọi câu hỏi → 1 hệ toạ độ (tránh trôi toạ độ giữa các câu).
-  const baseProblem = `${split.setup}\n` + split.parts.map((p, i) => `${p.label || i + 1}) ${p.hoi}`).join('\n');
+  const baseProblem = `${split.setup}\n` + parts.map((p, i) => `${p.label || i + 1}) ${p.hoi}`).join('\n');
   // planFromProblem NÉM khi translator abstain / JSON hỏng / schema-fail (ca out-of-catalog phổ biến).
   // Bắt để trả null (base fail) ⇒ route rơi về bài đơn an toàn, KHÔNG để 500 xuyên lên handler.
   let baseRes;
@@ -39,25 +45,30 @@ export async function buildAdvanceScene(problem, split, opts = {}) {
   if (!baseRes?.ok || !(baseRes.geometry?.points?.length)) return null; // base fail → route rơi về bài đơn
   const base = baseRes.geometry;
 
-  const allIds = new Set(base.points.map((p) => p.id));
-  const introduced = new Set(split.parts.flatMap((p) => (p.phan_tu_moi || []).map(nameOf)));
+  const allIds = new Set(base.points.map((p) => p.id));   // id điểm base — cần TRƯỚC khi dùng newIdsOf/baseline
+  const introduced = new Set(parts.flatMap((p) => newIdsOf(p, allIds)));
   const baseline = [...allIds].filter((id) => !introduced.has(id));  // id không câu nào khai là "mới"
 
+  // pha 1: visibleIds cumulative theo THỨ TỰ (đồng bộ, không await — câu sau ⊇ câu trước).
   const cumulative = new Set();
-  const steps = [];
-  for (const p of split.parts) {
-    for (const nm of (p.phan_tu_moi || []).map(nameOf)) if (allIds.has(nm)) cumulative.add(nm);
-    // Task 5 — thử engine giải CÂU này. Giải được ⇒ verified:true (đã tự kiểm). Engine chịu ⇒
-    // verified:false ("chưa kiểm chứng"), TUYỆT ĐỐI KHÔNG bịa số (để trống text ở v1).
-    const q = await solveQuestion(p.hoi, split.setup, opts);
-    steps.push({
-      id: p.label || `câu ${steps.length + 1}`,
-      label: p.label || `Câu ${steps.length + 1}`,
-      visibleIds: [...new Set([...baseline, ...cumulative])],
+  const metas = parts.map((p, i) => {
+    for (const nm of newIdsOf(p, allIds)) cumulative.add(nm);
+    return { p, i, visibleIds: [...new Set([...baseline, ...cumulative])] };
+  });
+  // pha 2: giải đáp SONG SONG (Promise.all giữ đúng thứ tự index → answers[i] khớp câu i).
+  // Task 5 — thử engine giải CÂU này. Giải được ⇒ verified:true (đã tự kiểm). Engine chịu ⇒
+  // verified:false ("chưa kiểm chứng"), TUYỆT ĐỐI KHÔNG bịa số (để trống text ở v1).
+  const answers = await Promise.all(parts.map((p) => solveQuestion(p.hoi, split.setup, opts)));
+  const steps = metas.map((m) => {
+    const q = answers[m.i];
+    return {
+      id: m.p.label || `câu ${m.i + 1}`,
+      label: m.p.label || `Câu ${m.i + 1}`,
+      visibleIds: m.visibleIds,
       answer: q?.ok && q.text !== undefined
         ? { text: q.text, approx: q.approx, verified: true }
         : { verified: false },
-    });
-  }
+    };
+  });
   return { base, steps };
 }
