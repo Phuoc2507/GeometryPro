@@ -138,6 +138,15 @@
     @apply bg-card/80 backdrop-blur-xl border border-glass-border;
   }
 
+  /* Ẩn thanh cuộn nhưng vẫn cuộn được (plugin tailwind-scrollbar-hide không cài) */
+  .scrollbar-hide {
+    -ms-overflow-style: none;   /* IE/Edge cũ */
+    scrollbar-width: none;      /* Firefox */
+  }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;              /* Chrome/Safari/Edge */
+  }
+
   .gradient-text {
     @apply bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent;
   }
