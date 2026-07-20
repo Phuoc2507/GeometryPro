@@ -159,21 +159,21 @@ export function DropZone() {
 
   return (
     <div className="absolute inset-0 flex items-center justify-center z-10 pointer-events-none p-4">
-      <div 
-        className={`glass rounded-2xl p-6 sm:p-8 border-2 border-dashed max-w-md w-full pointer-events-auto transition-all duration-300 ${
-          isDragging 
-            ? 'border-primary bg-primary/10 scale-105' 
+      <div
+        className={`glass rounded-2xl p-4 sm:p-6 border-2 border-dashed max-w-md w-full pointer-events-auto transition-all duration-300 max-h-[calc(100dvh-2rem)] overflow-y-auto scrollbar-hide ${
+          isDragging
+            ? 'border-primary bg-primary/10 scale-105'
             : 'border-border/50 animate-pulse-border'
         }`}
         onDrop={handleDrop}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
       >
-        <div className="flex flex-col items-center text-center space-y-4 sm:space-y-6">
+        <div className="flex flex-col items-center text-center space-y-3 sm:space-y-4">
           {/* Abstract Geometric Icon */}
           <div className="relative">
-            <div className="p-4 sm:p-6 rounded-2xl bg-gradient-to-br from-primary/20 to-accent/20 glow-primary">
-              <Hexagon className="w-12 h-12 sm:w-16 sm:h-16 text-primary" strokeWidth={1.5} />
+            <div className="p-3 sm:p-4 rounded-2xl bg-gradient-to-br from-primary/20 to-accent/20 glow-primary">
+              <Hexagon className="w-10 h-10 sm:w-14 sm:h-14 text-primary" strokeWidth={1.5} />
             </div>
             <div className="absolute -top-2 -right-2 p-1.5 sm:p-2 rounded-full bg-accent/20">
               <Sparkles className="w-4 h-4 sm:w-5 sm:h-5 text-accent" />
