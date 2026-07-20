@@ -158,9 +158,9 @@ export function DropZone() {
   }
 
   return (
-    <div className="absolute inset-0 flex items-center justify-center z-10 pointer-events-none p-4">
+    <div className="absolute inset-0 flex items-center justify-center z-10 pointer-events-none px-4 pb-4 pt-20">
       <div
-        className={`glass rounded-2xl p-4 sm:p-6 border-2 border-dashed max-w-md w-full pointer-events-auto transition-all duration-300 max-h-[calc(100dvh-2rem)] overflow-y-auto scrollbar-hide ${
+        className={`glass rounded-2xl p-4 sm:p-6 border-2 border-dashed max-w-md w-full pointer-events-auto transition-all duration-300 max-h-[calc(100dvh-6rem)] overflow-y-auto scrollbar-hide ${
           isDragging
             ? 'border-primary bg-primary/10 scale-105'
             : 'border-border/50 animate-pulse-border'
