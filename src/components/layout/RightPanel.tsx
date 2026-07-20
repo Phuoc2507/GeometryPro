@@ -96,10 +96,16 @@ function PanelContent() {
 
   if (!state.geometry) {
     return (
-      <div className="h-full flex items-center justify-center">
-        <p className="text-muted-foreground text-sm text-center px-6">
-          Load a geometry to view properties
-        </p>
+      <div className="h-full flex flex-col items-center justify-center text-center px-6 gap-3">
+        <div className="p-4 rounded-2xl bg-secondary/30 border border-border/40">
+          <Box className="w-8 h-8 text-muted-foreground/60" strokeWidth={1.5} />
+        </div>
+        <div className="space-y-1">
+          <p className="text-sm font-medium text-foreground/80">Chưa có hình nào</p>
+          <p className="text-xs text-muted-foreground max-w-[200px] leading-relaxed">
+            Vẽ hoặc nhập đề ở khung chính để xem thuộc tính và xuất hình tại đây.
+          </p>
+        </div>
       </div>
     );
   }
@@ -127,7 +133,7 @@ function PanelContent() {
           </TabsTrigger>
           <TabsTrigger value="properties" className="gap-1.5 text-xs px-1">
             <Box className="w-3 h-3" />
-            Properties
+            Thuộc tính
           </TabsTrigger>
         </TabsList>
 
