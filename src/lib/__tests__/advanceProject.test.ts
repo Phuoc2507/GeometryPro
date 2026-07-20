@@ -30,3 +30,28 @@ it('GIỮ timeline + agents (bài lai câu-động)', () => {
   expect(g.timeline).toBeDefined();
   expect(g.agents).toHaveLength(1);
 });
+
+// ═══ Bóc-lớp cho phần tử ngoài điểm/đường/mặt (mặt cầu, đường tròn, trụ, nón, đường cong) ═══
+describe('projectScene — cờ cho mặt cầu (và các shape có id)', () => {
+  const baseS = {
+    name: 'g',
+    points: [{ id: 'A', label: 'A', x: 0, y: 0, z: 0 }],
+    lines: [],
+    spheres: [{ id: 'sph', center: { x: 0, y: 0, z: 0 }, radius: 1 }],
+  } as any;
+  const stepsS = [
+    { id: 'a', label: 'Câu a', visibleIds: ['A'] },        // chưa có 'sph'
+    { id: 'b', label: 'Câu b', visibleIds: ['A', 'sph'] }, // mặt cầu xuất hiện
+  ] as any;
+
+  it('câu 0: mặt cầu chưa tới câu → hidden', () => {
+    const g = projectScene(baseS, stepsS, 0);
+    expect(g.spheres[0].hidden).toBe(true);
+  });
+
+  it('câu 1: mặt cầu xuất hiện → không ẩn + nổi (highlight)', () => {
+    const g = projectScene(baseS, stepsS, 1);
+    expect(g.spheres[0].hidden).toBeFalsy();
+    expect(g.spheres[0].highlight).toBe(true);
+  });
+});

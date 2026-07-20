@@ -24,9 +24,11 @@ interface AnimatedSphereProps {
   sphere: Sphere3D;
   delay: number;
   isBuilding: boolean;
+  /** Advance mode: hệ số nhân opacity (dim → 0.25). Mặc định 1 = hành vi cũ. */
+  opacityFactor?: number;
 }
 
-export function AnimatedSphere({ sphere, delay, isBuilding }: AnimatedSphereProps) {
+export function AnimatedSphere({ sphere, delay, isBuilding, opacityFactor = 1 }: AnimatedSphereProps) {
   const [visible, setVisible] = useState(false);
   const [scale, setScale] = useState(0);
 
@@ -110,7 +112,7 @@ export function AnimatedSphere({ sphere, delay, isBuilding }: AnimatedSphereProp
           color={sphereColor}
           wireframe
           transparent
-          opacity={0.3}
+          opacity={0.3 * opacityFactor}
           depthWrite={false}
         />
       </Sphere>
@@ -120,7 +122,7 @@ export function AnimatedSphere({ sphere, delay, isBuilding }: AnimatedSphereProp
         <meshStandardMaterial
           color={sphereColor}
           transparent
-          opacity={0.3}
+          opacity={0.3 * opacityFactor}
           roughness={0.2}
           depthWrite={false}
           polygonOffset

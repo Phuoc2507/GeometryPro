@@ -11,9 +11,11 @@ interface AnimatedCircleProps {
   circle: Circle3D;
   delay: number;
   isBuilding: boolean;
+  /** Advance mode: hệ số nhân opacity (dim → 0.25). Mặc định 1 = hành vi cũ. */
+  opacityFactor?: number;
 }
 
-export function AnimatedCircle({ circle, delay, isBuilding }: AnimatedCircleProps) {
+export function AnimatedCircle({ circle, delay, isBuilding, opacityFactor = 1 }: AnimatedCircleProps) {
   const [visible, setVisible] = useState(false);
   const [scale, setScale] = useState(0);
   const color = useMemo(() => circle.color || getCssHslVar('--primary'), [circle.color]);
@@ -128,6 +130,8 @@ export function AnimatedCircle({ circle, delay, isBuilding }: AnimatedCircleProp
         points={scaledPoints}
         color={color}
         lineWidth={hovered ? 4 : 2}
+        transparent={opacityFactor < 1}
+        opacity={opacityFactor}
       />
       {/* Invisible hitbox for the outline */}
       <mesh position={[circle.center.x, circle.center.z, circle.center.y]} rotation={[-Math.PI / 2, 0, 0]}>

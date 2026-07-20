@@ -10,9 +10,11 @@ interface AnimatedConeProps {
   cone: Cone3D;
   delay: number;
   isBuilding: boolean;
+  /** Advance mode: hệ số nhân opacity (dim → 0.25). Mặc định 1 = hành vi cũ. */
+  opacityFactor?: number;
 }
 
-export function AnimatedCone({ cone, delay, isBuilding }: AnimatedConeProps) {
+export function AnimatedCone({ cone, delay, isBuilding, opacityFactor = 1 }: AnimatedConeProps) {
   const [visible, setVisible] = useState(false);
   const [scale, setScale] = useState(0);
   const color = useMemo(() => cone.color || getCssHslVar('--primary'), [cone.color]);
@@ -111,19 +113,19 @@ export function AnimatedCone({ cone, delay, isBuilding }: AnimatedConeProps) {
       {/* Semi-transparent fill (Frosted Glass) */}
       <mesh>
         <coneGeometry args={[currentRadius, currentHeight, 32, 1, true]} />
-        <meshStandardMaterial color={color} transparent opacity={0.3} roughness={0.2} side={THREE.DoubleSide} depthWrite={false} />
+        <meshStandardMaterial color={color} transparent opacity={0.3 * opacityFactor} roughness={0.2} side={THREE.DoubleSide} depthWrite={false} />
       </mesh>
 
       {/* Base cap to replace native cap, avoiding Z-fighting */}
       <mesh position={[0, -currentHeight / 2 + 0.002, 0]} rotation={[Math.PI / 2, 0, 0]}>
         <circleGeometry args={[currentRadius, 32]} />
-        <meshStandardMaterial color={color} transparent opacity={0.3} roughness={0.2} side={THREE.DoubleSide} depthWrite={false} />
+        <meshStandardMaterial color={color} transparent opacity={0.3 * opacityFactor} roughness={0.2} side={THREE.DoubleSide} depthWrite={false} />
       </mesh>
 
       {/* Base ring outline - slightly offset to avoid z-fighting with the base cap */}
       <mesh position={[0, -currentHeight / 2 - 0.005, 0]} rotation={[Math.PI / 2, 0, 0]}>
         <ringGeometry args={[currentRadius * 0.98, currentRadius, 32]} />
-        <meshBasicMaterial color={color} transparent opacity={0.6} />
+        <meshBasicMaterial color={color} transparent opacity={0.6 * opacityFactor} />
       </mesh>
     </group>
   );

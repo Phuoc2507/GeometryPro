@@ -10,9 +10,11 @@ interface AnimatedCylinderProps {
   cylinder: Cylinder3D;
   delay: number;
   isBuilding: boolean;
+  /** Advance mode: hệ số nhân opacity (dim → 0.25). Mặc định 1 = hành vi cũ. */
+  opacityFactor?: number;
 }
 
-export function AnimatedCylinder({ cylinder, delay, isBuilding }: AnimatedCylinderProps) {
+export function AnimatedCylinder({ cylinder, delay, isBuilding, opacityFactor = 1 }: AnimatedCylinderProps) {
   const [visible, setVisible] = useState(false);
   const [scale, setScale] = useState(0);
   const color = useMemo(() => cylinder.color || getCssHslVar('--primary'), [cylinder.color]);
@@ -111,27 +113,27 @@ export function AnimatedCylinder({ cylinder, delay, isBuilding }: AnimatedCylind
       {/* Semi-transparent fill (Frosted Glass) */}
       <mesh>
         <cylinderGeometry args={[currentRadius, currentRadius, currentHeight, 32, 1, true]} />
-        <meshStandardMaterial color={color} transparent opacity={0.3} roughness={0.2} side={THREE.DoubleSide} depthWrite={false} />
+        <meshStandardMaterial color={color} transparent opacity={0.3 * opacityFactor} roughness={0.2} side={THREE.DoubleSide} depthWrite={false} />
       </mesh>
 
       {/* Top cap */}
       <mesh position={[0, currentHeight / 2 - 0.001, 0]} rotation={[-Math.PI / 2, 0, 0]}>
         <circleGeometry args={[currentRadius, 32]} />
-        <meshStandardMaterial color={color} transparent opacity={0.3} roughness={0.2} side={THREE.DoubleSide} depthWrite={false} />
+        <meshStandardMaterial color={color} transparent opacity={0.3 * opacityFactor} roughness={0.2} side={THREE.DoubleSide} depthWrite={false} />
       </mesh>
       <mesh position={[0, currentHeight / 2 + 0.005, 0]} rotation={[-Math.PI / 2, 0, 0]}>
         <ringGeometry args={[currentRadius * 0.98, currentRadius, 32]} />
-        <meshBasicMaterial color={color} transparent opacity={0.6} />
+        <meshBasicMaterial color={color} transparent opacity={0.6 * opacityFactor} />
       </mesh>
 
       {/* Bottom cap */}
       <mesh position={[0, -currentHeight / 2 + 0.001, 0]} rotation={[Math.PI / 2, 0, 0]}>
         <circleGeometry args={[currentRadius, 32]} />
-        <meshStandardMaterial color={color} transparent opacity={0.3} roughness={0.2} side={THREE.DoubleSide} depthWrite={false} />
+        <meshStandardMaterial color={color} transparent opacity={0.3 * opacityFactor} roughness={0.2} side={THREE.DoubleSide} depthWrite={false} />
       </mesh>
       <mesh position={[0, -currentHeight / 2 - 0.005, 0]} rotation={[Math.PI / 2, 0, 0]}>
         <ringGeometry args={[currentRadius * 0.98, currentRadius, 32]} />
-        <meshBasicMaterial color={color} transparent opacity={0.6} />
+        <meshBasicMaterial color={color} transparent opacity={0.6 * opacityFactor} />
       </mesh>
     </group>
   );

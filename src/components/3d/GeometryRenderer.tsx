@@ -202,19 +202,22 @@ export function GeometryRenderer({ geometry: geometryProp, isBuilding }: Geometr
       {/* Render shapes only if we are NOT in cut/unfold mode */}
       {mode === 'none' && allShapes.map((shape, index) => {
         const d = shapeStartDelay + index * shapeDelay;
+        // advance: phần tử ẩn ở câu này → không render; dim → mờ (giữ ngữ cảnh câu trước).
+        const f = shape.data as { hidden?: boolean; dim?: boolean };
+        if (f.hidden) return null;
+        const opacityFactor = f.dim ? DIM_OPACITY : 1;
         switch (shape.type) {
           case 'sphere':
-            return <AnimatedSphere key={`sphere-${shape.data.id}`} sphere={shape.data as any} delay={d} isBuilding={effectiveIsBuilding} />;
+            return <AnimatedSphere key={`sphere-${shape.data.id}`} sphere={shape.data as any} delay={d} isBuilding={effectiveIsBuilding} opacityFactor={opacityFactor} />;
           case 'circle':
-            return <AnimatedCircle key={`circle-${shape.data.id}`} circle={shape.data as any} delay={d} isBuilding={effectiveIsBuilding} />;
+            return <AnimatedCircle key={`circle-${shape.data.id}`} circle={shape.data as any} delay={d} isBuilding={effectiveIsBuilding} opacityFactor={opacityFactor} />;
           case 'cylinder':
-            return <AnimatedCylinder key={`cyl-${shape.data.id}`} cylinder={shape.data as any} delay={d} isBuilding={effectiveIsBuilding} />;
+            return <AnimatedCylinder key={`cyl-${shape.data.id}`} cylinder={shape.data as any} delay={d} isBuilding={effectiveIsBuilding} opacityFactor={opacityFactor} />;
           case 'cone':
-            return <AnimatedCone key={`cone-${shape.data.id}`} cone={shape.data as any} delay={d} isBuilding={effectiveIsBuilding} />;
+            return <AnimatedCone key={`cone-${shape.data.id}`} cone={shape.data as any} delay={d} isBuilding={effectiveIsBuilding} opacityFactor={opacityFactor} />;
           case 'plane': {
             const pl = shape.data as Plane3D;
-            if (pl.hidden) return null; // advance: mặt ẩn ở câu này → không render
-            return <AnimatedPlane3D key={`plane-${pl.id}`} plane={pl} delay={d} isBuilding={effectiveIsBuilding} opacityFactor={pl.dim ? DIM_OPACITY : 1} emphasize={!!pl.highlight} />;
+            return <AnimatedPlane3D key={`plane-${pl.id}`} plane={pl} delay={d} isBuilding={effectiveIsBuilding} opacityFactor={opacityFactor} emphasize={!!pl.highlight} />;
           }
         }
       })}
@@ -261,9 +264,12 @@ export function GeometryRenderer({ geometry: geometryProp, isBuilding }: Geometr
       ))}
 
       {/* ═══ Curves ═══ */}
-      {curves.map((c, i) => (
-        <AnimatedCurve key={`curve-${c.id}`} curve={c} delay={shapeStartDelay + (allShapes.length + surfaces.length + i) * shapeDelay} isBuilding={effectiveIsBuilding} />
-      ))}
+      {curves.map((c, i) => {
+        if (c.hidden) return null; // advance: đường cong ẩn ở câu này → không render
+        return (
+          <AnimatedCurve key={`curve-${c.id}`} curve={c} delay={shapeStartDelay + (allShapes.length + surfaces.length + i) * shapeDelay} isBuilding={effectiveIsBuilding} opacityFactor={c.dim ? DIM_OPACITY : 1} />
+        );
+      })}
       </TimelineGroup>
     </group>
   );

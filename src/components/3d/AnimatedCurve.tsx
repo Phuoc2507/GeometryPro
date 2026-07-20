@@ -11,9 +11,11 @@ interface AnimatedCurveProps {
   curve: Curve3D;
   delay: number;
   isBuilding: boolean;
+  /** Advance mode: hệ số nhân opacity (dim → 0.25). Mặc định 1 = hành vi cũ. */
+  opacityFactor?: number;
 }
 
-export function AnimatedCurve({ curve, delay, isBuilding }: AnimatedCurveProps) {
+export function AnimatedCurve({ curve, delay, isBuilding, opacityFactor = 1 }: AnimatedCurveProps) {
   const [visible, setVisible] = useState(true);
   const [progress, setProgress] = useState(1);
   const [hovered, setHovered] = useState(false);
@@ -150,11 +152,11 @@ export function AnimatedCurve({ curve, delay, isBuilding }: AnimatedCurveProps) 
     >
       {shapeGeometry && (
         <mesh geometry={shapeGeometry}>
-          <meshBasicMaterial 
-            color={curve.color || defaultColor} 
-            transparent 
-            opacity={curve.fillOpacity || 0.2} 
-            side={THREE.DoubleSide} 
+          <meshBasicMaterial
+            color={curve.color || defaultColor}
+            transparent
+            opacity={(curve.fillOpacity || 0.2) * opacityFactor}
+            side={THREE.DoubleSide}
             depthWrite={false}
           />
         </mesh>
@@ -167,6 +169,8 @@ export function AnimatedCurve({ curve, delay, isBuilding }: AnimatedCurveProps) 
         dashed={curve.style === 'dashed'}
         dashSize={0.2}
         gapSize={0.1}
+        transparent={opacityFactor < 1}
+        opacity={opacityFactor}
       />
     </group>
   );

@@ -21,7 +21,14 @@ export interface Line3D {
   highlight?: boolean;  // mới ở câu hiện tại → nổi
 }
 
-export interface Sphere3D {
+// Cờ bóc-lớp (advance mode) dùng chung cho các shape có id: ẩn/mờ/nổi theo câu hiện tại.
+interface AdvanceFlags {
+  hidden?: boolean;     // ∉ visibleIds ở câu hiện tại → không vẽ
+  dim?: boolean;        // ∈ visibleIds nhưng thuộc câu trước → mờ
+  highlight?: boolean;  // mới ở câu hiện tại → nổi
+}
+
+export interface Sphere3D extends AdvanceFlags {
   id: string;
   label?: string;
   center: { x: number; y: number; z: number };
@@ -30,7 +37,7 @@ export interface Sphere3D {
   opacity?: number;
 }
 
-export interface Circle3D {
+export interface Circle3D extends AdvanceFlags {
   id: string;
   label?: string;
   center: { x: number; y: number; z: number };
@@ -39,7 +46,7 @@ export interface Circle3D {
   color?: string;
 }
 
-export interface Cylinder3D {
+export interface Cylinder3D extends AdvanceFlags {
   id: string;
   label?: string;
   center1: { x: number; y: number; z: number }; // bottom center
@@ -48,7 +55,7 @@ export interface Cylinder3D {
   color?: string;
 }
 
-export interface Cone3D {
+export interface Cone3D extends AdvanceFlags {
   id: string;
   label?: string;
   apex: { x: number; y: number; z: number };
@@ -189,7 +196,7 @@ export interface Agent3D {
   radius?: number;
 }
 
-export interface Curve3D {
+export interface Curve3D extends AdvanceFlags {
   id: string;
   type: 'parabola' | 'cubic' | 'rational';
   params: any; // e.g. {a, b, c, d, xMin, xMax}

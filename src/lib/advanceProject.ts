@@ -15,5 +15,12 @@ export function projectScene(base: GeometryData, steps: AdvanceStep[], cur: numb
     points: (base.points || []).map(flag),
     lines: (base.lines || []).map(flag),
     planes: (base.planes || []).map(flag as any),
+    // Bóc-lớp cho phần tử ngoài điểm/đường/mặt: mỗi phần tử đều có id.
+    // Chỉ map mảng nào TỒN TẠI trên base (giữ undefined nếu base không có).
+    spheres: (base.spheres || []).map(flag as any),
+    circles: (base.circles || []).map(flag as any),
+    cylinders: (base.cylinders || []).map(flag as any),
+    cones: (base.cones || []).map(flag as any),
+    curves: (base.curves || []).map(flag as any),
   };
 }
