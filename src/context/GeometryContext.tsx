@@ -969,7 +969,7 @@ export function GeometryProvider({ children }: { children: React.ReactNode }) {
     dispatch({ type: 'START_BUILDING' });
     setTimeout(() => {
       dispatch({ type: 'FINISH_BUILDING' });
-      toast({ title: "Đã tải hình!", description: `${geometry.name} với ${geometry.points.length} điểm` });
+      // (bỏ toast "Đã tải hình!" theo yêu cầu — vẽ/tải xong không cần báo)
     }, 1000);
   }, []);
 
