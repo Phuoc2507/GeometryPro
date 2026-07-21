@@ -10,6 +10,7 @@ import { GeometryData } from '@/types/geometry';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/context/AuthContext';
 import { checkAndIncrementGuestQuota } from '@/lib/quota';
+import type { ConstructSpec } from '@/lib/solveReveal';
 
 export interface SolveStep {
   id: string;
@@ -18,6 +19,8 @@ export interface SolveStep {
   formula?: string | null;
   highlight: string[];
   view_mode: '3d' | '2d';
+  /** Điểm mới bước này giới thiệu (luật dựng; toạ độ do frontend tính từ hình). */
+  construct?: ConstructSpec[];
 }
 
 export interface SolveResult {

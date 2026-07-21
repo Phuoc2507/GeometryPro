@@ -5,6 +5,15 @@ export function engineSolved(eng) {
     && (eng.violations?.length ?? 0) === 0);
 }
 
+// Chỉ giữ construct hợp lệ: có id(string) + rule.type(string). Toạ độ do frontend tự tính
+// từ hình, nên ở đây chỉ cần lọc rác, không cần validate sâu từng loại rule.
+function sanitizeConstruct(arr) {
+  if (!Array.isArray(arr)) return [];
+  return arr
+    .filter(c => c && typeof c.id === 'string' && c.rule && typeof c.rule.type === 'string')
+    .map(c => ({ id: c.id, label: typeof c.label === 'string' ? c.label : c.id, rule: c.rule }));
+}
+
 function normalizeSteps(steps) {
   return (Array.isArray(steps) ? steps : []).map((s, i) => ({
     id: s.id || `s${i + 1}`,
@@ -12,6 +21,7 @@ function normalizeSteps(steps) {
     explanation: s.explanation || '',
     formula: s.formula || null,
     highlight: Array.isArray(s.highlight) ? s.highlight : [],
+    construct: sanitizeConstruct(s.construct),
     view_mode: s.view_mode === '2d' ? '2d' : '3d',
   }));
 }

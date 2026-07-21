@@ -23,6 +23,7 @@ import { Badge }       from '@/components/ui/badge';
 import { useGeometryOptional } from '@/context/GeometryContext';
 import { useCameraOptional }   from '@/context/CameraContext';
 import { useSolver }   from '@/hooks/useSolver';
+import { buildSolveReveal, type SolveReveal } from '@/lib/solveReveal';
 import { cn }          from '@/lib/utils';
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
@@ -125,6 +126,7 @@ export function SolverContent({ creditNote }: { creditNote?: string } = {}) {
   const { solve, reset, result, loading, error, currentStep, setCurrentStep } = useSolver();
 
   const [problem, setProblem]     = useState('');
+  const [reveal, setReveal]       = useState<SolveReveal | null>(null);
   const textareaRef               = useRef<HTMLTextAreaElement>(null);
 
   // Pre-fill with last detected problem when geometry changes
@@ -134,16 +136,40 @@ export function SolverContent({ creditNote }: { creditNote?: string } = {}) {
     }
   }, [lastProblem, result]);
 
-  // Sync highlight to 3D canvas when step changes
+  // Khi có KẾT QUẢ: dựng toạ độ các điểm lời giải giới thiệu TỪ hình gốc, GHÉP vào hình
+  // (giữ lại — người dùng đã chọn), và lưu `reveal` để bóc-lớp theo bước.
+  // Deps CHỈ [result] để không lặp vô hạn khi commit làm đổi state.geometry.
+  useEffect(() => {
+    const base = ctx?.state.geometry;
+    if (!result || !base || !result.steps.some(s => s.construct && s.construct.length > 0)) {
+      setReveal(null);
+      return;
+    }
+    const rv = buildSolveReveal(base, result.steps);
+    setReveal(rv);
+    if (rv.newPoints.length > 0) {
+      ctx!.loadGeometry(rv.mergedGeometry, { silent: true });  // giữ điểm dựng vào hình
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [result]);
+
+  // Bóc-lớp + nhấn mạnh theo bước hiện tại.
   useEffect(() => {
     if (!camera) return;
-    if (result && result.steps[currentStep]) {
+    if (reveal && result) {
+      const visible = reveal.stepVisibleIds[currentStep] ?? reveal.stepVisibleIds[reveal.stepVisibleIds.length - 1] ?? [];
+      camera.setRevealVisibleIds(new Set(visible));
+      const constructedNow = reveal.stepConstructIds[currentStep] ?? [];
+      camera.setHighlightedIds(new Set([...(result.steps[currentStep]?.highlight ?? []), ...constructedNow]));
+    } else if (result && result.steps[currentStep]) {
       camera.setHighlightedIds(new Set(result.steps[currentStep].highlight ?? []));
+      camera.setRevealVisibleIds(null);
     } else {
       camera.setHighlightedIds(new Set());
+      camera.setRevealVisibleIds(null);
     }
-    return () => { camera.setHighlightedIds(new Set()); };
-  }, [result, currentStep, camera]);
+    return () => { camera.setHighlightedIds(new Set()); camera.setRevealVisibleIds(null); };
+  }, [result, currentStep, camera, reveal]);
 
   const geometry = ctx?.state.geometry ?? null;
   const canSolve = !!geometry && problem.trim().length >= 10 && !loading;
@@ -156,7 +182,10 @@ export function SolverContent({ creditNote }: { creditNote?: string } = {}) {
   const handleReset = () => {
     reset();
     setProblem(lastProblem);
+    setReveal(null);
+    // Giữ điểm đã dựng trong hình (người dùng chọn "giữ lại"); chỉ tắt lớp bóc theo bước.
     camera?.setHighlightedIds(new Set());
+    camera?.setRevealVisibleIds(null);
   };
 
   const step    = result ? result.steps[currentStep] : null;

@@ -355,7 +355,7 @@ export interface GeometryContextType {
   queueAnalyzeText: (prompt: string, mode?: DrawMode, tags?: string[], detailLevel?: import('@/types/geometry').DetailLevel, offset?: [number, number, number]) => void;
   queueAnalyzeImage: (imageBase64: string, mode?: DrawMode, tags?: string[], detailLevel?: import('@/types/geometry').DetailLevel) => void;
   modifyGeometry: (prompt: string, opts?: { aiMode?: boolean }) => Promise<void>;
-  loadGeometry: (geometry: GeometryData) => void;
+  loadGeometry: (geometry: GeometryData, opts?: { silent?: boolean }) => void;
   clearGeometry: () => void;
   stopScanning: () => void;
   viewQueueItem: (id: string) => void;
@@ -962,8 +962,10 @@ export function GeometryProvider({ children }: { children: React.ReactNode }) {
     window.dispatchEvent(new Event('geometryCleared'));
   }, []);
 
-  const loadGeometry = useCallback((geometry: GeometryData) => {
+  const loadGeometry = useCallback((geometry: GeometryData, opts?: { silent?: boolean }) => {
     dispatch({ type: 'SET_GEOMETRY', geometry });
+    // silent: dùng khi ghép thêm điểm dựng của lời giải vào hình — không toast, không animation.
+    if (opts?.silent) return;
     dispatch({ type: 'START_BUILDING' });
     setTimeout(() => {
       dispatch({ type: 'FINISH_BUILDING' });

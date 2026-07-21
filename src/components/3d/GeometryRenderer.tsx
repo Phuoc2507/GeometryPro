@@ -49,12 +49,24 @@ export function GeometryRenderer({ geometry: geometryProp, isBuilding }: Geometr
   // state.geometry = base nên prop chính là base (đã scale, cùng id).
   const advanceScene = geometryContext?.state.advanceScene ?? null;
   const currentStep = geometryContext?.state.currentStep ?? 0;
+  // Bóc-lớp theo bước LỜI GIẢI: ẩn các điểm dựng CHƯA tới bước hiện tại. Nhấn mạnh
+  // điểm vừa dựng đi qua kênh highlightedIds sẵn có (không đụng dim của advance).
+  const revealVisibleIds = cameraContext?.revealVisibleIds ?? null;
   const geometry = React.useMemo(() => {
     if (advanceScene && geometryProp) {
       return projectScene(geometryProp, advanceScene.steps, currentStep);
     }
+    if (revealVisibleIds && geometryProp) {
+      const vis = (id: string) => revealVisibleIds.has(id);
+      return {
+        ...geometryProp,
+        points: (geometryProp.points || []).map(p => (vis(p.id) ? p : { ...p, hidden: true })),
+        lines: (geometryProp.lines || []).map(l =>
+          (vis(l.id) && vis(l.from) && vis(l.to)) ? l : { ...l, hidden: true }),
+      };
+    }
     return geometryProp;
-  }, [advanceScene, currentStep, geometryProp]);
+  }, [advanceScene, currentStep, geometryProp, revealVisibleIds]);
 
   const hiddenLines = useHiddenLineDetection(geometry);
   const isManualMode = geometryContext?.state.manualMode ?? false;

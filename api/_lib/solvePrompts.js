@@ -25,6 +25,14 @@ QUY TẮC
 4. answer_value: số thực xấp xỉ đáp số (làm tròn 6 chữ số).
 5. view_mode: luôn là "3d" (chức năng 2D sẽ thêm sau).
 6. Nếu được cung cấp "ĐÁP SỐ ĐÚNG (đã xác minh)", PHẢI trình bày các bước DẪN TỚI ĐÚNG đáp số đó, và "final_answer" PHẢI khớp đáp đó. TUYỆT ĐỐI không đưa ra đáp số khác.
+7. Nếu một bước GIỚI THIỆU điểm MỚI (trung điểm, trọng tâm, điểm chia đoạn, chân đường vuông góc, giao điểm...), khai trong "construct" bằng LUẬT DỰNG tham chiếu các id ĐÃ CÓ trong geometry — TUYỆT ĐỐI KHÔNG ghi toạ độ (giữ nguyên quy tắc 1; toạ độ do hệ thống tự tính). Mỗi phần tử: {"id":"F","label":"F","rule":{...}}. Đặt "id" theo tên điểm trong đề. Bước không tạo điểm mới → "construct": []. Các loại rule hợp lệ:
+   - {"type":"midpoint","of":["S","A"]}  → trung điểm SA
+   - {"type":"centroid","of":["S","A","B"]}  → trọng tâm tam giác SAB (dùng cho cả tứ diện: liệt kê 4 đỉnh)
+   - {"type":"section","seg":["A","D"],"ratio":[2,1]}  → điểm P trên AD sao cho AP:PD = 2:1
+   - {"type":"foot_line","from":"S","line":["A","B"]}  → chân vuông góc hạ từ S xuống đường AB
+   - {"type":"foot_plane","from":"S","plane":["A","B","C"]}  → chân vuông góc hạ từ S xuống mp(ABC)
+   - {"type":"intersect_line_plane","line":["D","N"],"plane":["S","B","C"]}  → giao điểm của đường DN với mp(SBC)
+   - {"type":"intersect_line_line","line1":["A","M"],"line2":["B","D"]}  → giao 2 đường (nếu cắt nhau)
 
 ═══════════════════════════════════════════════════════
 OUTPUT FORMAT — chỉ trả về JSON, không giải thích thêm
@@ -37,6 +45,7 @@ OUTPUT FORMAT — chỉ trả về JSON, không giải thích thêm
       "explanation": "Giải thích chi tiết bằng tiếng Việt...",
       "formula": "công thức hoặc kết quả trung gian (LaTeX inline, ví dụ: SA = 2\\\\sqrt{3})",
       "highlight": ["A", "B"],
+      "construct": [],
       "view_mode": "3d"
     }
   ],
@@ -61,9 +70,10 @@ JSON trả về:
     {
       "id": "s1",
       "title": "Xác định vectơ pháp tuyến mặt phẳng (SBC)",
-      "explanation": "Tính vectơ SB = B - S = (4,0,-4) và SC = C - S = (4,4,-4). Pháp tuyến n = SB × SC.",
+      "explanation": "Gọi M là trung điểm BC. Tính vectơ SB = B - S = (4,0,-4) và SC = C - S = (4,4,-4). Pháp tuyến n = SB × SC.",
       "formula": "\\\\vec{n} = \\\\vec{SB} \\\\times \\\\vec{SC} = (16, 0, 16)",
       "highlight": ["S","B","C"],
+      "construct": [{"id":"M","label":"M","rule":{"type":"midpoint","of":["B","C"]}}],
       "view_mode": "3d"
     },
     {
@@ -72,6 +82,7 @@ JSON trả về:
       "explanation": "Dùng công thức d = |SA⃗ · n⃗| / |n⃗|, với SA⃗ = A - S = (0,0,-4).",
       "formula": "d = \\\\frac{|\\\\vec{SA} \\\\cdot \\\\vec{n}|}{|\\\\vec{n}|} = \\\\frac{64}{16\\\\sqrt{2}} = 2\\\\sqrt{2}",
       "highlight": ["S","A","B","C"],
+      "construct": [],
       "view_mode": "3d"
     }
   ],
