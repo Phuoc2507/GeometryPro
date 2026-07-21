@@ -58,4 +58,20 @@
 - [ ] Commit — `feat(advance-fe): tinh chinh camera dong bo theo phan hoi`
 
 ## Findings
-*(Điền khi thực thi + phản hồi visual của user.)*
+
+**C1 (fd5febc) — CameraFlyer.** Component `src/components/3d/CameraFlyer.tsx` + wire OrbitControls `ref` trong GeometryCanvas. Lerp `camera.position` + `controls.target` bằng `useFrame`, smoothstep ~0.6s, giữ hướng nhìn hiện tại (đỡ chóng mặt). Xong bay → `anim=null` trả quyền OrbitControls. Không ghi cameraState giữa/khi xong (theo spec) → CameraTracker không giật.
+
+**Đổi so với plan gốc: focus TOẠ ĐỘ thay vì ids.** CameraFlyer nhận `geometry = scaledGeometry` (chỉ base, KHÔNG có điểm dựng của lời giải — điểm dựng chỉ ghép trong GeometryRenderer). Nếu focus theo id điểm dựng → tra không thấy. Nên đổi payload sang `{ pts:{x,y,z}[], nonce }` (toạ độ math). Orchestrator (GeometryRenderer, có sẵn `reveal.mergedGeometry` đủ toạ độ đã-scale) tự giải id→toạ độ. CameraFlyer hết phụ thuộc geometry nào đang render, hết rủi ro lệch id scaled/unscaled.
+
+**C2 (57d9a01) — orchestrator (1 effect trong GeometryRenderer, không đua).**
+- CameraContext thêm `cameraFocus {pts,nonce}` + `requestFocus(pts)` (useCallback ổn định) + `solutionStep`/`setSolutionStep`.
+- AdvanceSolutionPanel soi (mirror) `currentStep` (inner) → `setSolutionStep`.
+- GeometryRenderer: tách `reveal` memo (dùng lại cho render + focus). 1 effect: lần đầu mount KHÔNG bay (CameraFitter lo fit); đổi CÂU → bay tới `visibleIds[cau]\visibleIds[cau-1]` (rỗng → cả câu); cùng câu đổi BƯỚC → bay tới `reveal.stepConstructIds[sol]` (fallback: highlight của bước).
+- Chống double-fire khi đổi câu (inner reset 0): nhánh đổi-câu set `prevSolRef=0` rồi return trước nhánh inner.
+
+**Kiểm (đã xác minh độc lập):** tsc 0 lỗi; vitest 478/478; `npm run build` (build:kernel + vite) exit 0; origin/main FF sạch (0 behind). Bài thường + Giải-bài on-demand KHÔNG hồi quy (orchestrator return sớm khi advanceScene null → cameraFocus giữ null → CameraFlyer no-op).
+
+**Deploy:** 2026-07-22, FF `f459942 → 57d9a01` lên origin/main (Vercel auto-deploy).
+
+### C3 — chờ user xem prod
+Cần user mở Advance trên prod và kiểm: (1) đổi câu → camera có bay tới phần tử mới, mượt? (2) bấm bước lời giải → bay tới điểm dựng đúng? (3) không giật / không kẹt OrbitControls / không "nhảy" về giữa hình? Ghi phản hồi rồi tinh chỉnh (DURATION, ×1.6 lề, hướng, có nên bay khi lùi câu…).
