@@ -27,17 +27,35 @@ import { cn }          from '@/lib/utils';
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
-/** Return the most recent non-image problem prompt from the queue (done or processing) */
+const IMAGE_PLACEHOLDER = 'Đề bài từ ảnh';
+
+/**
+ * Đề bài để tự điền vào ô giải. Ưu tiên:
+ *   1. Đề gõ tay: prompt hàng đợi gần nhất (không phải ảnh) — sạch, đầy đủ.
+ *   2. Đề từ ảnh / hình nạp lại: geometry.llmPrompt (đề AI đã đọc từ ảnh, đầy đủ).
+ *   3. Fallback cuối: nhãn hàng đợi ảnh đã cắt (bỏ "📷" và "…").
+ */
 function useLastProblem(): string {
   const ctx = useGeometryOptional();
   if (!ctx) return '';
-  const relevant = ctx.state.queue.filter(
-    q => (q.status === 'done' || q.status === 'processing') &&
-         q.prompt && !q.prompt.startsWith('📷')
+
+  const last = [...ctx.state.queue].reverse().find(
+    q => (q.status === 'done' || q.status === 'processing') && q.prompt
   );
-  if (relevant.length > 0) return relevant[0].prompt;
-  // Hình được nạp lại (từ Lưu / URL) không có queue → lấy đề đã lưu kèm geometry.
-  return (ctx.state.geometry as any)?.llmPrompt || '';
+
+  // 1) Đề gõ tay (không phải ảnh) → prompt hàng đợi là đề sạch, đầy đủ.
+  if (last && !last.prompt.startsWith('📷')) return last.prompt;
+
+  // 2) Đề từ ảnh hoặc hình nạp lại (Lưu / URL) → đề đã đọc lưu ở geometry.llmPrompt.
+  const fromGeom = ((ctx.state.geometry as any)?.llmPrompt || '').trim();
+  if (fromGeom && fromGeom !== IMAGE_PLACEHOLDER) return fromGeom;
+
+  // 3) Fallback: hình cũ chưa có llmPrompt → dùng tạm text đã cắt trong nhãn hàng đợi ảnh.
+  if (last) {
+    const cleaned = last.prompt.replace(/^📷\s*/, '').replace(/…$|\.{3}$/, '').trim();
+    if (cleaned && cleaned !== 'Đang nhận dạng ảnh') return cleaned;
+  }
+  return '';
 }
 
 // ─── Step card ───────────────────────────────────────────────────────────────
@@ -267,14 +285,17 @@ export function SolverContent({ creditNote }: { creditNote?: string } = {}) {
       </div>
 
       {/* Problem input */}
-      <div className="flex-1 px-4 py-3">
+      <div className="flex-1 px-4 py-3 flex flex-col gap-2 min-h-0">
         <Textarea
           ref={textareaRef}
           value={problem}
           onChange={e => setProblem(e.target.value)}
           placeholder="Dán đề bài vào đây..."
-          className="h-full min-h-[120px] resize-none text-sm bg-secondary/30 border-border/50 focus-visible:ring-primary/50"
+          className="flex-1 min-h-[120px] resize-none text-sm bg-secondary/30 border-border/50 focus-visible:ring-primary/50"
         />
+        <p className="text-[11px] text-muted-foreground leading-relaxed shrink-0">
+          💡 Nếu vẽ hình từ ảnh, đề sẽ được tự điền sẵn — hãy <strong className="text-foreground/80">kiểm tra và thêm câu hỏi</strong> nếu ảnh chưa có (vd: "Tính thể tích khối chóp", "Tính khoảng cách từ A đến (SBD)").
+        </p>
       </div>
 
       {/* Solve button */}

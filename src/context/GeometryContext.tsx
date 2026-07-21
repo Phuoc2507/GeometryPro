@@ -895,7 +895,8 @@ export function GeometryProvider({ children }: { children: React.ReactNode }) {
     // Luôn thử lệnh local trước (tất định, nhanh, miễn phí).
     const localResult = tryLocalCommand(prompt, state.geometry);
     if (localResult) {
-      dispatch({ type: 'SET_GEOMETRY', geometry: localResult.geometry });
+      // Giữ lại đề bài đã đọc (llmPrompt) — lệnh sửa chỉ đổi hình, không được mất đề để ô "Giải" còn tự điền.
+      dispatch({ type: 'SET_GEOMETRY', geometry: { ...localResult.geometry, llmPrompt: (localResult.geometry as any).llmPrompt ?? (state.geometry as any)?.llmPrompt } });
       dispatch({ type: 'START_BUILDING' });
 
       setTimeout(() => {
@@ -932,7 +933,8 @@ export function GeometryProvider({ children }: { children: React.ReactNode }) {
       }
 
       if (data?.geometry) {
-        dispatch({ type: 'SET_GEOMETRY', geometry: data.geometry });
+        // Giữ đề bài đã đọc qua lần sửa bằng AI (server trả hình mới, không kèm llmPrompt).
+        dispatch({ type: 'SET_GEOMETRY', geometry: { ...data.geometry, llmPrompt: data.geometry.llmPrompt ?? (state.geometry as any)?.llmPrompt } });
         dispatch({ type: 'START_BUILDING' });
 
         setTimeout(() => {
