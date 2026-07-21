@@ -22,11 +22,14 @@ export function UserMenu() {
   const navigate = useNavigate();
   const { user, profile, isPro, tier, credits, signOut, openUpgradeModal } = useAuth();
 
+  // Người dùng có gói trả phí còn hiệu lực (tier hạ về 'free' khi hết hạn).
+  const hasPlan = tier !== 'free';
+
   const daysLeft = useMemo(() => {
-    if (!isPro || !profile?.plan_expires_at) return null;
+    if (!hasPlan || !profile?.plan_expires_at) return null;
     const ms = new Date(profile.plan_expires_at).getTime() - Date.now();
     return Math.max(0, Math.ceil(ms / DAY_MS));
-  }, [isPro, profile?.plan_expires_at]);
+  }, [hasPlan, profile?.plan_expires_at]);
 
   const expiringSoon = daysLeft !== null && daysLeft <= RENEW_THRESHOLD_DAYS;
 
@@ -116,29 +119,24 @@ export function UserMenu() {
         </div>
         <DropdownMenuSeparator />
 
-        {!isPro && (
+        {!hasPlan && (
           <DropdownMenuItem onClick={() => openUpgradeModal()} className="text-primary font-medium focus:text-primary focus:bg-primary/10">
             <Sparkles className="w-4 h-4 mr-2" />
             Nâng cấp Pro
           </DropdownMenuItem>
         )}
 
-        {isPro && expiringSoon && (
-          <DropdownMenuItem onClick={() => openUpgradeModal()} className="text-amber-500 font-medium focus:text-amber-500 focus:bg-amber-500/10">
-            <Sparkles className="w-4 h-4 mr-2" />
-            <span className="flex-1">Gia hạn Pro</span>
-            <span className="text-[10px] text-muted-foreground ml-2">
-              {daysLeft === 0 ? 'hết hạn hôm nay' : `còn ${daysLeft} ngày`}
-            </span>
-          </DropdownMenuItem>
-        )}
-
-        {isPro && !expiringSoon && (
-          <DropdownMenuItem onClick={() => navigate('/settings')}>
+        {hasPlan && (
+          <DropdownMenuItem
+            onClick={() => openUpgradeModal()}
+            className={expiringSoon ? 'text-amber-500 font-medium focus:text-amber-500 focus:bg-amber-500/10' : undefined}
+          >
             <Crown className="w-4 h-4 mr-2 text-amber-500" />
-            <span className="flex-1">Gói Pro</span>
+            <span className="flex-1">Quản lý gói</span>
             {daysLeft !== null && (
-              <span className="text-[10px] text-muted-foreground ml-2">còn {daysLeft} ngày</span>
+              <span className="text-[10px] text-muted-foreground ml-2">
+                {daysLeft === 0 ? 'hết hạn hôm nay' : `còn ${daysLeft} ngày`}
+              </span>
             )}
           </DropdownMenuItem>
         )}
