@@ -51,15 +51,17 @@ export function TopToolbar() {
       <div className="fixed top-4 left-1/2 -translate-x-1/2 z-40 flex items-center gap-1 sm:gap-2 glass rounded-xl px-1.5 sm:px-2 py-1.5 border border-border/50 max-w-[calc(100vw-1rem)] overflow-x-auto scrollbar-hide [&>*]:shrink-0">
 
         {/* VIEW DROPDOWN */}
-        <Tooltip>
         <DropdownMenu>
-          <TooltipTrigger asChild>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-8 w-8">
-                {state.showPoints ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4 text-blue-500" />}
-              </Button>
-            </DropdownMenuTrigger>
-          </TooltipTrigger>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-8 w-8">
+                  {state.showPoints ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4 text-blue-500" />}
+                </Button>
+              </DropdownMenuTrigger>
+            </TooltipTrigger>
+            <TooltipContent>Góc nhìn & Hiển thị</TooltipContent>
+          </Tooltip>
           <DropdownMenuContent align="start">
             <DropdownMenuLabel className="text-xs">Góc nhìn & Hiển thị</DropdownMenuLabel>
             <DropdownMenuItem onClick={() => {}}>
@@ -86,8 +88,6 @@ export function TopToolbar() {
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
-          <TooltipContent>Góc nhìn & Hiển thị</TooltipContent>
-        </Tooltip>
 
         <div className="w-px h-6 bg-border/50 mx-1" />
 
