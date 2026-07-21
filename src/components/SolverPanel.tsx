@@ -78,22 +78,63 @@ function useLastProblem(): string {
 
 // ─── Math rendering (KaTeX) ────────────────────────────────────────────────────
 
-/** Render đoạn văn có công thức inline $...$ (hoặc \( \)) — phần toán dùng KaTeX, còn lại là chữ. */
-function MathText({ text, className }: { text: string; className?: string }) {
-  // Tách theo $...$ và \(...\). Giữ delimiter trong nhóm bắt để nhận diện.
+const isUpperLetter = (c: string) =>
+  !!c && c.toLowerCase() !== c.toUpperCase() && c === c.toUpperCase();
+
+/**
+ * Tách văn xuôi thành từng CÂU (để mỗi câu xuống dòng cho dễ đọc). Ngắt tại dấu chấm + khoảng trắng
+ * mà câu sau bắt đầu bằng chữ HOA / số / công thức. TÔN TRỌNG $...$ (không ngắt trong công thức) và
+ * số thập phân (2.5 không bị ngắt), bỏ qua dấu ba chấm (...).
+ */
+function splitSentences(text: string): string[] {
+  const out: string[] = [];
+  let cur = '';
+  let inMath = false;
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    cur += ch;
+    if (ch === '$') inMath = !inMath;
+    if (!inMath && ch === '.' && text[i - 1] !== '.' && text[i + 1] !== '.') {
+      let j = i + 1;
+      while (j < text.length && /\s/.test(text[j])) j++;
+      const next = text[j];
+      if (j > i + 1 && next && (next === '$' || /[0-9]/.test(next) || isUpperLetter(next))) {
+        out.push(cur.trim());
+        cur = '';
+        i = j - 1; // nuốt khoảng trắng
+      }
+    }
+  }
+  if (cur.trim()) out.push(cur.trim());
+  return out.filter(Boolean);
+}
+
+/** Render một câu: phần $...$ / \(...\) dùng KaTeX, còn lại là chữ. */
+function renderInline(text: string, keyPrefix: string) {
   const parts = (text || '').split(/(\$[^$]+\$|\\\([^)]*?\\\))/g);
+  return parts.map((part, i) => {
+    const inline =
+      (part.startsWith('$') && part.endsWith('$') && part.length > 2) ? part.slice(1, -1) :
+      (part.startsWith('\\(') && part.endsWith('\\)')) ? part.slice(2, -2) : null;
+    if (inline != null) {
+      return <InlineMath key={keyPrefix + i} math={inline} renderError={() => <span>{part}</span>} />;
+    }
+    return <span key={keyPrefix + i} className="whitespace-pre-wrap">{part}</span>;
+  });
+}
+
+/** Đoạn văn có công thức inline: tách từng câu, mỗi câu một dòng cho dễ theo dõi. */
+function MathText({ text, className }: { text: string; className?: string }) {
+  const sentences = splitSentences(text || '');
+  if (sentences.length <= 1) {
+    return <p className={className}>{renderInline(text || '', 's0-')}</p>;
+  }
   return (
-    <p className={className}>
-      {parts.map((part, i) => {
-        const inline =
-          (part.startsWith('$') && part.endsWith('$') && part.length > 2) ? part.slice(1, -1) :
-          (part.startsWith('\\(') && part.endsWith('\\)')) ? part.slice(2, -2) : null;
-        if (inline != null) {
-          return <InlineMath key={i} math={inline} renderError={() => <span>{part}</span>} />;
-        }
-        return <span key={i} className="whitespace-pre-wrap">{part}</span>;
-      })}
-    </p>
+    <div className={cn(className, 'space-y-1.5')}>
+      {sentences.map((s, i) => (
+        <p key={i}>{renderInline(s, `s${i}-`)}</p>
+      ))}
+    </div>
   );
 }
 
