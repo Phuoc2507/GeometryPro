@@ -11,6 +11,7 @@
  * Mobile:  Sheet trigger at bottom-right
  */
 import { useState, useEffect, useRef } from 'react';
+import type { Dispatch, SetStateAction } from 'react';
 import {
   ChevronLeft, ChevronRight, Sparkles, Loader2,
   CheckCircle2, AlertTriangle, RotateCcw, BookOpen,
@@ -191,6 +192,112 @@ function StepCard({ step, index, total }: StepCardProps) {
   );
 }
 
+// ─── Reusable results view ─────────────────────────────────────────────────────
+// Tách từ nhánh `if (result)` của SolverContent để tái dùng cho Advance (lời giải
+// đã nạp sẵn, KHÔNG gọi API). `onReset` có → hiện nút "Giải lại" (luồng solve on-demand);
+// không có → ẩn nút (advance chỉ xem lời giải đã lưu).
+export function SolveResultView({
+  result, currentStep, setCurrentStep, onReset,
+}: {
+  result: import('@/hooks/useSolver').SolveResult;
+  currentStep: number;
+  setCurrentStep: Dispatch<SetStateAction<number>>;
+  onReset?: () => void;
+}) {
+  const step   = result.steps[currentStep] ?? null;
+  const nSteps  = result.steps.length;
+
+  return (
+    <div className="h-full flex flex-col">
+      {/* Final answer banner */}
+      <div className={cn(
+        "px-4 py-3 border-b flex items-start gap-2",
+        result.verified ? "bg-green-500/10 border-green-500/20" : "bg-yellow-500/10 border-yellow-500/20"
+      )}>
+        {result.verified ? (
+          <CheckCircle2 className="w-4 h-4 text-green-500 shrink-0 mt-0.5" />
+        ) : (
+          <AlertTriangle className="w-4 h-4 text-yellow-500 shrink-0 mt-0.5" />
+        )}
+        <div className="flex-1 min-w-0">
+          <p className="text-xs font-semibold text-foreground/70 mb-0.5">
+            {result.verified ? 'Kết quả đã xác minh' : 'Kết quả chưa xác minh'}
+          </p>
+          <MathText text={result.final_answer} className="text-sm font-semibold text-foreground break-words" />
+          {!result.verified && result.verify_error && (
+            <p className="text-xs text-yellow-600 dark:text-yellow-400 mt-0.5 break-all">
+              {result.verify_error}
+            </p>
+          )}
+        </div>
+      </div>
+
+      {/* Step navigation */}
+      <div className="flex items-center justify-between px-3 py-2 border-b gap-2">
+        <Button
+          variant="ghost" size="icon"
+          disabled={currentStep === 0}
+          onClick={() => setCurrentStep(s => s - 1)}
+          className="h-7 w-7"
+        >
+          <ChevronLeft className="w-4 h-4" />
+        </Button>
+
+        <span className="text-xs text-muted-foreground font-medium flex-1 text-center">
+          {nSteps > 0 ? `${currentStep + 1} / ${nSteps} bước` : 'Không có bước nào'}
+        </span>
+
+        <Button
+          variant="ghost" size="icon"
+          disabled={currentStep >= nSteps - 1}
+          onClick={() => setCurrentStep(s => s + 1)}
+          className="h-7 w-7"
+        >
+          <ChevronRight className="w-4 h-4" />
+        </Button>
+      </div>
+
+      {/* Step dots */}
+      {nSteps > 1 && (
+        <div className="flex justify-center gap-1 py-1.5">
+          {result.steps.map((_, i) => (
+            <button
+              key={i}
+              onClick={() => setCurrentStep(i)}
+              className={cn(
+                "rounded-full transition-all",
+                i === currentStep
+                  ? "bg-primary w-4 h-1.5"
+                  : "bg-muted-foreground/30 w-1.5 h-1.5 hover:bg-muted-foreground/60"
+              )}
+            />
+          ))}
+        </div>
+      )}
+
+      {/* Step content */}
+      {/* Ép child của viewport về block (Radix để display:table -> phình ngang theo công thức dài,
+          khiến overflow-x của khung công thức không kích hoạt). Chỉ áp cho ScrollArea này. */}
+      <ScrollArea className="flex-1 px-4 [&_[data-radix-scroll-area-viewport]>div]:!block [&_[data-radix-scroll-area-viewport]>div]:!min-w-0">
+        {step ? (
+          <StepCard step={step} index={currentStep} total={nSteps} />
+        ) : (
+          <p className="text-sm text-muted-foreground py-4 text-center">Không có bước nào.</p>
+        )}
+      </ScrollArea>
+
+      {/* Reset button (chỉ luồng solve on-demand) */}
+      {onReset && (
+        <div className="px-4 py-3 border-t">
+          <Button variant="outline" size="sm" onClick={onReset} className="w-full gap-1.5 h-8">
+            <RotateCcw className="w-3 h-3" /> Giải lại
+          </Button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Panel content ────────────────────────────────────────────────────────────
 
 export function SolverContent({ creditNote }: { creditNote?: string } = {}) {
@@ -290,9 +397,6 @@ export function SolverContent({ creditNote }: { creditNote?: string } = {}) {
     camera?.setRevealVisibleIds(null);
   };
 
-  const step    = result ? result.steps[currentStep] : null;
-  const nSteps  = result ? result.steps.length : 0;
-
   // ── No geometry yet ──────────────────────────────────────────────────────
   if (!geometry) {
     return (
@@ -331,91 +435,12 @@ export function SolverContent({ creditNote }: { creditNote?: string } = {}) {
   // ── Results ───────────────────────────────────────────────────────────────
   if (result) {
     return (
-      <div className="h-full flex flex-col">
-        {/* Final answer banner */}
-        <div className={cn(
-          "px-4 py-3 border-b flex items-start gap-2",
-          result.verified ? "bg-green-500/10 border-green-500/20" : "bg-yellow-500/10 border-yellow-500/20"
-        )}>
-          {result.verified ? (
-            <CheckCircle2 className="w-4 h-4 text-green-500 shrink-0 mt-0.5" />
-          ) : (
-            <AlertTriangle className="w-4 h-4 text-yellow-500 shrink-0 mt-0.5" />
-          )}
-          <div className="flex-1 min-w-0">
-            <p className="text-xs font-semibold text-foreground/70 mb-0.5">
-              {result.verified ? 'Kết quả đã xác minh' : 'Kết quả chưa xác minh'}
-            </p>
-            <MathText text={result.final_answer} className="text-sm font-semibold text-foreground break-words" />
-            {!result.verified && result.verify_error && (
-              <p className="text-xs text-yellow-600 dark:text-yellow-400 mt-0.5 break-all">
-                {result.verify_error}
-              </p>
-            )}
-          </div>
-        </div>
-
-        {/* Step navigation */}
-        <div className="flex items-center justify-between px-3 py-2 border-b gap-2">
-          <Button
-            variant="ghost" size="icon"
-            disabled={currentStep === 0}
-            onClick={() => setCurrentStep(s => s - 1)}
-            className="h-7 w-7"
-          >
-            <ChevronLeft className="w-4 h-4" />
-          </Button>
-
-          <span className="text-xs text-muted-foreground font-medium flex-1 text-center">
-            {nSteps > 0 ? `${currentStep + 1} / ${nSteps} bước` : 'Không có bước nào'}
-          </span>
-
-          <Button
-            variant="ghost" size="icon"
-            disabled={currentStep >= nSteps - 1}
-            onClick={() => setCurrentStep(s => s + 1)}
-            className="h-7 w-7"
-          >
-            <ChevronRight className="w-4 h-4" />
-          </Button>
-        </div>
-
-        {/* Step dots */}
-        {nSteps > 1 && (
-          <div className="flex justify-center gap-1 py-1.5">
-            {result.steps.map((_, i) => (
-              <button
-                key={i}
-                onClick={() => setCurrentStep(i)}
-                className={cn(
-                  "rounded-full transition-all",
-                  i === currentStep
-                    ? "bg-primary w-4 h-1.5"
-                    : "bg-muted-foreground/30 w-1.5 h-1.5 hover:bg-muted-foreground/60"
-                )}
-              />
-            ))}
-          </div>
-        )}
-
-        {/* Step content */}
-        {/* Ép child của viewport về block (Radix để display:table -> phình ngang theo công thức dài,
-            khiến overflow-x của khung công thức không kích hoạt). Chỉ áp cho ScrollArea này. */}
-        <ScrollArea className="flex-1 px-4 [&_[data-radix-scroll-area-viewport]>div]:!block [&_[data-radix-scroll-area-viewport]>div]:!min-w-0">
-          {step ? (
-            <StepCard step={step} index={currentStep} total={nSteps} />
-          ) : (
-            <p className="text-sm text-muted-foreground py-4 text-center">Không có bước nào.</p>
-          )}
-        </ScrollArea>
-
-        {/* Reset button */}
-        <div className="px-4 py-3 border-t">
-          <Button variant="outline" size="sm" onClick={handleReset} className="w-full gap-1.5 h-8">
-            <RotateCcw className="w-3 h-3" /> Giải lại
-          </Button>
-        </div>
-      </div>
+      <SolveResultView
+        result={result}
+        currentStep={currentStep}
+        setCurrentStep={setCurrentStep}
+        onReset={handleReset}
+      />
     );
   }
 

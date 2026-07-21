@@ -3,6 +3,7 @@ import { useCameraOptional } from '@/context/CameraContext';
 import { useGeometryOptional } from '@/context/GeometryContext';
 import { GeometryData, Plane3D } from '@/types/geometry';
 import { projectScene } from '@/lib/advanceProject';
+import { buildSolveReveal } from '@/lib/solveReveal';
 import { AnimatedPoint } from './AnimatedPoint';
 import { DraggablePoint } from './DraggablePoint';
 import { AnimatedLine } from './AnimatedLine';
@@ -54,6 +55,23 @@ export function GeometryRenderer({ geometry: geometryProp, isBuilding }: Geometr
   const revealVisibleIds = cameraContext?.revealVisibleIds ?? null;
   const geometry = React.useMemo(() => {
     if (advanceScene && geometryProp) {
+      // Câu hiện tại có LỜI GIẢI: dựng điểm mà lời giải giới thiệu TỪ chính hình đang render
+      // (geometryProp đã scale, cùng id với base) rồi ghép vào trước khi bóc-lớp. Điểm dựng của
+      // lời giải LUÔN hiện + nhấn mạnh (v1: cả câu; đồng bộ theo bước-trong-câu để Task C).
+      const solution = advanceScene.steps[currentStep]?.solution ?? null;
+      if (solution) {
+        const rv = buildSolveReveal(geometryProp, solution.steps);
+        const projected = projectScene(rv.mergedGeometry, advanceScene.steps, currentStep);
+        if (rv.newPoints.length > 0) {
+          const constructIds = new Set(rv.newPoints.map(p => p.id));
+          return {
+            ...projected,
+            points: projected.points.map(p =>
+              constructIds.has(p.id) ? { ...p, hidden: false, dim: false, highlight: true } : p),
+          };
+        }
+        return projected;
+      }
       return projectScene(geometryProp, advanceScene.steps, currentStep);
     }
     if (revealVisibleIds && geometryProp) {

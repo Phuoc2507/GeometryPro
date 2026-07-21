@@ -13,6 +13,7 @@ import { FloatingPromptBar } from '@/components/FloatingPromptBar';
 import { GeometryCanvas } from '@/components/3d/GeometryCanvas';
 import { TimelinePlayer } from '@/components/layout/TimelinePlayer';
 import { AdvanceStepper } from '@/components/layout/AdvanceStepper';
+import { AdvanceSolutionPanel } from '@/components/AdvanceSolutionPanel';
 import { VideoExportPanel } from '@/components/layout/VideoExportPanel';
 import { GeometryData } from '@/types/geometry';
 import { Button } from '@/components/ui/button';
@@ -145,6 +146,9 @@ const TeacherModeContent = () => {
 
         {/* Advance mode — bộ chuyển câu (tự ẩn khi không phải bài đa-câu) */}
         <AdvanceStepper />
+
+        {/* Advance mode — lời giải từng bước cho câu đang xem (tự ẩn khi câu không có lời giải) */}
+        <AdvanceSolutionPanel />
 
         {/* Drop Zone (Empty State) */}
         <DropZone />

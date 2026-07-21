@@ -181,6 +181,8 @@ export interface AdvanceStep {
   highlightIds?: string[];
   answer?: { text?: string; approx?: number; verified: boolean };
   timeline?: AnimationTimeline;
+  /** Lời giải từng bước cho câu này (B2 backend nạp). import type: bị erase, không tạo vòng lặp runtime. */
+  solution?: import('@/hooks/useSolver').SolveResult;
 }
 
 export interface AdvanceScene {
