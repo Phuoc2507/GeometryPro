@@ -25,6 +25,8 @@ import { useCameraOptional }   from '@/context/CameraContext';
 import { useSolver }   from '@/hooks/useSolver';
 import { buildSolveReveal, type SolveReveal } from '@/lib/solveReveal';
 import { cn }          from '@/lib/utils';
+import { InlineMath, BlockMath } from 'react-katex';
+import 'katex/dist/katex.min.css';
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -72,6 +74,40 @@ function useLastProblem(): string {
   return '';
 }
 
+// ─── Math rendering (KaTeX) ────────────────────────────────────────────────────
+
+/** Render đoạn văn có công thức inline $...$ (hoặc \( \)) — phần toán dùng KaTeX, còn lại là chữ. */
+function MathText({ text, className }: { text: string; className?: string }) {
+  // Tách theo $...$ và \(...\). Giữ delimiter trong nhóm bắt để nhận diện.
+  const parts = (text || '').split(/(\$[^$]+\$|\\\([^)]*?\\\))/g);
+  return (
+    <p className={className}>
+      {parts.map((part, i) => {
+        const inline =
+          (part.startsWith('$') && part.endsWith('$') && part.length > 2) ? part.slice(1, -1) :
+          (part.startsWith('\\(') && part.endsWith('\\)')) ? part.slice(2, -2) : null;
+        if (inline != null) {
+          return <InlineMath key={i} math={inline} renderError={() => <span>{part}</span>} />;
+        }
+        return <span key={i} className="whitespace-pre-wrap">{part}</span>;
+      })}
+    </p>
+  );
+}
+
+/** Công thức khối: bỏ $...$/\[...\] bao ngoài (nếu có) rồi render KaTeX display. */
+function FormulaBlock({ formula }: { formula: string }) {
+  let tex = formula.trim();
+  if (tex.startsWith('$$') && tex.endsWith('$$')) tex = tex.slice(2, -2);
+  else if (tex.startsWith('$') && tex.endsWith('$')) tex = tex.slice(1, -1);
+  else if (tex.startsWith('\\[') && tex.endsWith('\\]')) tex = tex.slice(2, -2);
+  return (
+    <div className="mt-1 rounded-lg bg-secondary/40 border border-border/40 px-3 py-2 overflow-x-auto">
+      <BlockMath math={tex} renderError={() => <span className="text-sm font-mono text-foreground/90 break-all">{formula}</span>} />
+    </div>
+  );
+}
+
 // ─── Step card ───────────────────────────────────────────────────────────────
 
 interface StepCardProps {
@@ -92,16 +128,10 @@ function StepCard({ step, index, total }: StepCardProps) {
       </div>
 
       {/* Explanation */}
-      <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap">
-        {step.explanation}
-      </p>
+      <MathText text={step.explanation} className="text-sm text-muted-foreground leading-relaxed" />
 
       {/* Formula (if any) */}
-      {step.formula && (
-        <div className="mt-1 rounded-lg bg-secondary/40 border border-border/40 px-3 py-2">
-          <p className="text-sm font-mono text-foreground/90 break-all">{step.formula}</p>
-        </div>
-      )}
+      {step.formula && <FormulaBlock formula={step.formula} />}
 
       {/* Highlighted elements hint */}
       {step.highlight && step.highlight.length > 0 && (
@@ -244,7 +274,7 @@ export function SolverContent({ creditNote }: { creditNote?: string } = {}) {
             <p className="text-xs font-semibold text-foreground/70 mb-0.5">
               {result.verified ? 'Kết quả đã xác minh' : 'Kết quả chưa xác minh'}
             </p>
-            <p className="text-sm font-semibold text-foreground break-words">{result.final_answer}</p>
+            <MathText text={result.final_answer} className="text-sm font-semibold text-foreground break-words" />
             {!result.verified && result.verify_error && (
               <p className="text-xs text-yellow-600 dark:text-yellow-400 mt-0.5 break-all">
                 {result.verify_error}

@@ -19,16 +19,22 @@ export function useGeometryHistory() {
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
-  const handleSupabaseError = useCallback((err: any, context: string) => {
+  const handleSupabaseError = useCallback(async (err: any, context: string) => {
     console.error(`Error ${context}:`, err);
-    if (err?.status === 401 || err?.code === '42501' || err?.message?.includes('JWT')) {
-      toast({
-        title: "Phiên đăng nhập đã hết hạn",
-        description: "Vui lòng đăng nhập lại để tiếp tục lưu lịch sử.",
-        variant: "destructive"
-      });
-      signOut();
-    }
+    // 42501 = RLS/insufficient_privilege (lỗi QUYỀN dữ liệu, KHÔNG phải hết phiên) -> KHÔNG đăng xuất.
+    const looksAuth = err?.status === 401 || (typeof err?.message === 'string' && err.message.includes('JWT'));
+    if (!looksAuth) return;
+    // Access token có thể chỉ HẾT HẠN TẠM và refresh được — thử refresh trước, chỉ đăng xuất khi refresh thất bại.
+    try {
+      const { data } = await supabase.auth.refreshSession();
+      if (data?.session) return; // refresh OK -> giữ phiên, không phiền người dùng
+    } catch { /* refresh lỗi -> rơi xuống đăng xuất */ }
+    toast({
+      title: "Phiên đăng nhập đã hết hạn",
+      description: "Vui lòng đăng nhập lại để tiếp tục lưu lịch sử.",
+      variant: "destructive"
+    });
+    signOut();
   }, [signOut, toast]);
 
   const fetchHistory = useCallback(async () => {
