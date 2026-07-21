@@ -101,7 +101,10 @@ export async function callVilao(systemPrompt, userPrompt, options = {}) {
     max_tokens: maxTokens,
   };
 
-  if (!useReasoning && modelToUse !== 'ox/o1-mini') {
+  // Ép JSON mode khi có ảnh (kể cả useReasoning): output ảnh luôn là JSON, và nếu tắt JSON mode
+  // thì phần transcription đề bài (free-text nhiều dòng) dễ chứa ký tự chưa escape làm hỏng cả JSON.
+  // useReasoning ở đây chỉ đổi cờ này chứ không đổi model, nên bật lại an toàn.
+  if ((!useReasoning || imageBase64) && modelToUse !== 'ox/o1-mini') {
     bodyObj.response_format = { type: 'json_object' };
   }
 

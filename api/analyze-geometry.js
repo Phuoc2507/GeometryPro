@@ -259,17 +259,19 @@ Hãy:
 3. Dùng cones/spheres/circles cho hình tròn xoay thay vì vẽ từng điểm
 4. Liệt kê CÁC CẠNH CHÍNH (≤20 lines)
 
+📸 NẾU có ảnh đính kèm: thêm trường "problemText" (chuỗi) ở CUỐI JSON, SAU "geometry" — chép LẠI NGUYÊN VĂN toàn bộ đề bài trong ảnh, BAO GỒM câu hỏi (vd "Tính thể tích…", "Chứng minh…"). Escape đúng JSON (xuống dòng = \\n, dấu " = \\"). Tối đa ~1200 ký tự. KHÔNG có ảnh thì BỎ QUA trường này. Luôn ưu tiên vẽ "geometry" đầy đủ trước.
+
 ⚠️ NGẮN GỌN: calculation_log tối đa 1 dòng. CHỈ JSON thuần, KHÔNG markdown.`;
 
       let rawContent;
       try {
-        const vilaoOpts = { maxTokens: 6144, timeoutMs: 180000, imageBase64, aiModel: 'low', useReasoning: false, onStream: (chunk) => sendEvent('streaming', 80, chunk) };
+        const vilaoOpts = { maxTokens: 8192, timeoutMs: 180000, imageBase64, aiModel: 'low', useReasoning: false, onStream: (chunk) => sendEvent('streaming', 80, chunk) };
         rawContent = await callVilao(SYSTEM_PROMPT, userMsg, vilaoOpts);
       } catch (firstErr) {
         console.warn('Quick mode first attempt failed:', firstErr.message);
         sendEvent('Đang thử lại (Fallback)...', 60);
         rawContent = await callVilao(SYSTEM_PROMPT,
-          `Đề bài: "${trimmedPrompt}"\n\nTrả về JSON ngắn gọn nhất. Chỉ các điểm chính và cạnh chính. calculation_log: 1 dòng.`,
+          `Đề bài: "${trimmedPrompt}"\n\nTrả về JSON ngắn gọn nhất. Chỉ các điểm chính và cạnh chính. calculation_log: 1 dòng. NẾU có ảnh: thêm "problemText" ở cuối JSON = nguyên văn đề bài trong ảnh (kèm câu hỏi), escape JSON.`,
           { maxTokens: 4096, timeoutMs: 180000, imageBase64 });
       }
 
@@ -385,13 +387,15 @@ Nhiệm vụ:
 1. Dựa vào constraints đã phân loại, thiết lập tọa độ 3D.
 2. Vẽ các điểm, đường, mặt cong, và timeline theo yêu cầu.
 
+📸 NẾU có ảnh đính kèm: thêm trường "problemText" (chuỗi) ở CUỐI JSON, SAU "geometry" — chép NGUYÊN VĂN toàn bộ đề bài trong ảnh, BAO GỒM câu hỏi. Escape đúng JSON. Tối đa ~1200 ký tự. KHÔNG có ảnh thì bỏ qua. Ưu tiên vẽ "geometry" đầy đủ trước.
+
 ⚠️ BẮT BUỘC trả về JSON thuần, KHÔNG kèm markdown theo cấu trúc đã quy định ở System Prompt. Không wrap bằng \`\`\`json.`;
 
       let rawContent;
       console.log('Running Pass 2: Geometry Generation...');
       sendEvent('Đang tính toán toạ độ hình học (Pass 2)...', 50);
       try {
-        const vilaoOpts = { maxTokens: 6144, timeoutMs: 300000, imageBase64, aiModel, useReasoning, onStream: (chunk) => sendEvent('streaming_pass2', 70, chunk) };
+        const vilaoOpts = { maxTokens: 8192, timeoutMs: 300000, imageBase64, aiModel, useReasoning, onStream: (chunk) => sendEvent('streaming_pass2', 70, chunk) };
         rawContent = await callVilao(SYSTEM_PROMPT, userMsgPass2, vilaoOpts);
       } catch (firstErr) {
         console.warn('Detailed mode Pass 2 attempt failed:', firstErr.message);
@@ -413,6 +417,16 @@ Nhiệm vụ:
     let normalizedGeometry = normalizeGeometryData(geometry);
     const step1Data = result._step1;
     let calculationLog = result.calculation_log || '';
+
+    // Đề bài chép từ ẢNH: model vision trả trường "problemText" (sibling của geometry) khi có ảnh.
+    // Chỉ nhận cho input ảnh + đủ dài (≥10 ký tự) — dùng làm step1.text để ô "Giải bài" tự điền
+    // đúng đề (thay placeholder "Đề bài trong ảnh được đính kèm."). normalizeGeometryData chỉ đụng
+    // geometry nên result.problemText còn nguyên ở đây; flat-3D regen bên dưới cũng không ghi đè result.
+    // Chấp nhận cả khi model lỡ lồng problemText vào trong geometry thay vì để top-level.
+    const rawProblemText = result?.problemText ?? result?.geometry?.problemText;
+    const imageProblemText = (imageBase64 && typeof rawProblemText === 'string' && rawProblemText.trim().length >= 10)
+      ? rawProblemText.trim()
+      : null;
 
     if (isLikely3DPrompt(trimmedPrompt) && isLikelyFlatGeometry(normalizedGeometry)) {
       console.warn('Flat geometry detected for 3D prompt, forcing 3D regeneration...');
@@ -484,7 +498,9 @@ KẾT QUẢ TRƯỚC BỊ PHẲNG (mọi điểm có z≈0). Hãy dựng lại h
     sendEvent('Hoàn tất!', 100);
     const finalPayload = {
       step1: {
-        text: step1Data?.text || trimmedPrompt,
+        // Ảnh mà không trích được đề -> dùng ĐÚNG placeholder (frontend lọc thành ô trống), KHÔNG
+        // dùng step1Data.text vì ở chế độ Kỹ nó là bản chuẩn-hoá của placeholder (Pass 1 không thấy ảnh).
+        text: imageProblemText || (imageBase64 ? trimmedPrompt : step1Data?.text) || trimmedPrompt,
         gemini_dsl: '',
         points_needed: step1Data?.points_needed || normalizedGeometry.points?.map((p) => p.id) || [],
         shape_type: step1Data?.shape_type || '',
