@@ -1,35 +1,11 @@
 import { createClient } from '@supabase/supabase-js';
 import { callVilao } from './_lib/vilao.js';
-import { parseJsonResponse, repairTruncatedJson } from './_lib/jsonHelpers.js';
 import { SOLVE_SYSTEM_PROMPT, buildSolveUserMessage } from './_lib/solvePrompts.js';
 import { engineSolved, assembleSolveResult } from './_lib/solveAssemble.js';
+// parseSolveResponse rút sang solveCore.js (dùng chung với solveSteps) — 1 nguồn sự thật.
+import { parseSolveResponse } from './_lib/solveCore.js';
 import { creditsConfigured, checkAndConsume, refund } from './_lib/credits.js';
 import crypto from 'crypto';
-
-function parseSolveResponse(raw) {
-  const text = raw
-    .replace(/^```(?:json)?\s*/i, '')
-    .replace(/\s*```\s*$/, '')
-    .trim();
-
-  let parsed = null;
-  // parseJsonResponse handles fence-stripping + first-JSON extraction, and throws on failure.
-  try {
-    parsed = parseJsonResponse(text);
-  } catch (_e) {
-    try {
-      parsed = parseJsonResponse(repairTruncatedJson(text));
-    } catch (_e2) {
-      return null;
-    }
-  }
-  if (!parsed) return null;
-
-  if (!Array.isArray(parsed.steps)) return null;
-  if (typeof parsed.final_answer !== 'string') return null;
-
-  return parsed;
-}
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
