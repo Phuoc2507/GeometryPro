@@ -2,6 +2,12 @@ import { describe, it, expect, vi } from 'vitest';
 vi.mock('../../kernel-bridge/solveWithKernel.js', () => ({
   planFromProblem: vi.fn(), solvePlan: vi.fn(),
 }));
+// Test CŨ không inject solveSteps → dùng default import từ solveCore.js. Mock ở đây để
+// (a) không gọi callVilao thật (mạng/timeout 120s nếu VILAO_API_KEY được set), (b) chạy nhanh.
+// Test B2 tự inject solveSteps qua opts → mock này KHÔNG dùng ở ca đó.
+vi.mock('../../solveCore.js', () => ({
+  solveSteps: vi.fn().mockResolvedValue({ steps: [], final_answer: '', verified: false }),
+}));
 import { planFromProblem, solvePlan } from '../../kernel-bridge/solveWithKernel.js';
 import { buildAdvanceScene } from '../buildAdvanceScene.js';
 
@@ -82,6 +88,22 @@ it('#1 song song: đáp gán đúng câu dù resolve đảo thứ tự', async (
     { label: 'c', hoi: 'q3', phan_tu_moi: [] }] };
   const scene = await buildAdvanceScene('...', split, { solveQuestion: solveQ });
   expect(scene.steps.map((s) => s.answer.text)).toEqual(['ans-q1', 'ans-q2', 'ans-q3']);
+});
+
+// B2 — mỗi câu có solution (lời giải từng bước), sinh SONG SONG, tái dùng engineAnswer.
+it('B2: mỗi câu có solution (song song, tái dùng engineAnswer)', async () => {
+  planFromProblem.mockResolvedValue({ solidName: 'x' });
+  solvePlan.mockReturnValue({ ok: true, geometry: { name: 'x', points: [{ id: 'A' }, { id: 'B' }], lines: [] }, answers: [] });
+  const solveQ = vi.fn().mockResolvedValue({ ok: true, text: '√2', approx: 1.4142 });
+  const solveStepsFn = vi.fn().mockImplementation(async (problem) => ({ steps: [{ id: 's', title: 't', explanation: problem, highlight: [] }], final_answer: 'x', verified: true }));
+  const split = { type: 'multi_question', setup: 's', parts: [
+    { label: 'a', hoi: 'q1', phan_tu_moi: [] }, { label: 'b', hoi: 'q2', phan_tu_moi: [] }] };
+  const scene = await buildAdvanceScene('...', split, { solveQuestion: solveQ, solveSteps: solveStepsFn });
+  expect(scene.steps[0].solution.steps.length).toBeGreaterThan(0);
+  expect(scene.steps[1].solution.steps.length).toBeGreaterThan(0);
+  expect(solveStepsFn).toHaveBeenCalledTimes(2);   // mỗi câu 1 lần
+  // reuse engineAnswer: solveSteps nhận eng={text:'√2',...} (câu giải được)
+  expect(solveStepsFn.mock.calls[0][2]).toMatchObject({ text: '√2', verified: true });
 });
 
 // #1 — cap N ≤ 6: đề 8 câu → chỉ dựng 6 step đầu.

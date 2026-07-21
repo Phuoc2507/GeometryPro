@@ -5,6 +5,7 @@
 // Một base = một hệ toạ độ. visibleIds của mỗi Step là CUMULATIVE (câu sau ⊇ câu trước).
 
 import { planFromProblem, solvePlan } from '../kernel-bridge/solveWithKernel.js';
+import { solveSteps } from '../solveCore.js';
 
 // #3 — Điểm MỚI của 1 mô tả = id ĐẦU TIÊN (IN HOA, có thể phẩy/số) xuất hiện trong mô tả VÀ có trong allIds.
 // KHÔNG lấy chữ-cái-đầu-chuỗi: điểm được ĐỊNH NGHĨA thường đứng TRƯỚC điểm tham chiếu →
@@ -29,6 +30,7 @@ async function defaultSolveQuestion(hoi, setup, opts = {}) {
 
 export async function buildAdvanceScene(problem, split, opts = {}) {
   const solveQuestion = opts.solveQuestion || defaultSolveQuestion;
+  const solveFn = opts.solveSteps || solveSteps;   // Task B2 — solveSteps injectable (test không gọi LLM).
   // #1 — cap N ≤ 6: bài 7-8 câu chỉ dựng 6 câu đầu (tránh timeout). Dùng `parts` (đã cap) từ đây.
   const parts = (split.parts || []).slice(0, 6);
   // Dịch BASE một lần: setup + hợp mọi câu hỏi → 1 hệ toạ độ (tránh trôi toạ độ giữa các câu).
@@ -59,6 +61,15 @@ export async function buildAdvanceScene(problem, split, opts = {}) {
   // Task 5 — thử engine giải CÂU này. Giải được ⇒ verified:true (đã tự kiểm). Engine chịu ⇒
   // verified:false ("chưa kiểm chứng"), TUYỆT ĐỐI KHÔNG bịa số (để trống text ở v1).
   const answers = await Promise.all(parts.map((p) => solveQuestion(p.hoi, split.setup, opts)));
+  // pha 3: sinh LỜI GIẢI từng bước SONG SONG (cùng lúc — không chạy engine lại). TÁI DÙNG engineAnswer:
+  // câu engine giải được (answers[i].ok + text) → eng={text,approx,verified:true} để solveSteps dẫn tới
+  // đúng đáp số; câu engine chịu → eng=null (lời giải LLM "chưa kiểm chứng"). solveSteps thuần/không throw,
+  // vẫn bọc .catch(→null) phòng inject lỗi. index giữ đúng thứ tự → solutions[i] khớp câu i.
+  const solutions = await Promise.all(parts.map((p, i) => {
+    const a = answers[i];
+    const eng = a?.ok && a.text !== undefined ? { text: a.text, approx: a.approx, verified: true } : null;
+    return Promise.resolve(solveFn(`${split.setup}\n${p.hoi}`, base, eng, opts)).catch(() => null);
+  }));
   const steps = metas.map((m) => {
     const q = answers[m.i];
     return {
@@ -68,6 +79,7 @@ export async function buildAdvanceScene(problem, split, opts = {}) {
       answer: q?.ok && q.text !== undefined
         ? { text: q.text, approx: q.approx, verified: true }
         : { verified: false },
+      solution: solutions[m.i] || null,
     };
   });
   return { base, steps };
