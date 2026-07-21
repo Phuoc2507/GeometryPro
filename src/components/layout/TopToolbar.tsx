@@ -3,7 +3,7 @@ import { RotateCcw, Maximize2, Grid3X3, Camera, Download, Save, PenTool, Youtube
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Toggle } from '@/components/ui/toggle';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '@/components/ui/tooltip';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -47,15 +47,19 @@ export function TopToolbar() {
 
   return (
     <>
+     <TooltipProvider delayDuration={150} skipDelayDuration={300}>
       <div className="fixed top-4 left-1/2 -translate-x-1/2 z-40 flex items-center gap-1 sm:gap-2 glass rounded-xl px-1.5 sm:px-2 py-1.5 border border-border/50 max-w-[calc(100vw-1rem)] overflow-x-auto scrollbar-hide [&>*]:shrink-0">
-        
+
         {/* VIEW DROPDOWN */}
+        <Tooltip>
         <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" className="h-8 w-8">
-              {state.showPoints ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4 text-blue-500" />}
-            </Button>
-          </DropdownMenuTrigger>
+          <TooltipTrigger asChild>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-8 w-8">
+                {state.showPoints ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4 text-blue-500" />}
+              </Button>
+            </DropdownMenuTrigger>
+          </TooltipTrigger>
           <DropdownMenuContent align="start">
             <DropdownMenuLabel className="text-xs">Góc nhìn & Hiển thị</DropdownMenuLabel>
             <DropdownMenuItem onClick={() => {}}>
@@ -82,6 +86,8 @@ export function TopToolbar() {
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
+          <TooltipContent>Góc nhìn & Hiển thị</TooltipContent>
+        </Tooltip>
 
         <div className="w-px h-6 bg-border/50 mx-1" />
 
@@ -246,6 +252,7 @@ export function TopToolbar() {
         <div className="w-px h-6 bg-border/50 mx-1" />
         <UserMenu />
       </div>
+     </TooltipProvider>
 
       {isManualMode && <ManualDrawToolbar />}
 
