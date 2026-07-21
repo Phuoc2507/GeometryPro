@@ -14,7 +14,8 @@ import { scaleGeometry } from '@/lib/geometry/scaleGeometry';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { CaptureModal } from '@/components/CaptureModal';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
-import { SolverContent } from '@/components/SolverPanel';
+import { SolverContent, ResizeHandle } from '@/components/SolverPanel';
+import { useResizableWidth } from '@/hooks/useResizableWidth';
 
 function PanelContent() {
   const [copied, setCopied] = useState(false);
@@ -847,6 +848,7 @@ export function MobileRightPanel() {
 export function RightPanel() {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const context = useGeometryOptional();
+  const { onPointerDown, reset } = useResizableWidth({ cssVar: '--rp-w', storageKey: 'right_panel_w', def: 320, min: 280, max: 720 });
 
   if (!context) return null;
 
@@ -859,10 +861,8 @@ export function RightPanel() {
         variant="ghost"
         size="icon"
         onClick={() => setIsCollapsed(!isCollapsed)}
-        className={cn(
-          "absolute top-1/2 -translate-y-1/2 rounded-full glass border border-border/50 z-50 h-6 w-6 bg-background shadow-sm hover:bg-secondary flex items-center justify-center transition-all duration-300",
-          isCollapsed ? "right-0 -translate-x-1/2" : "right-[320px] -translate-x-1/2"
-        )}
+        style={{ right: isCollapsed ? 0 : 'var(--rp-w, 20rem)' }}
+        className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 rounded-full glass border border-border/50 z-50 h-6 w-6 bg-background shadow-sm hover:bg-secondary flex items-center justify-center"
       >
         {isCollapsed ? (
           <ChevronLeft className="w-3.5 h-3.5 text-muted-foreground" />
@@ -872,12 +872,14 @@ export function RightPanel() {
       </Button>
 
       <aside
+        style={{ width: isCollapsed ? 0 : 'var(--rp-w, 20rem)' }}
         className={cn(
-          "h-full flex flex-col glass border-l border-border/50 sticky right-0 top-0 transition-all duration-300 bg-background/95 overflow-hidden",
-          isCollapsed ? "w-0 border-none" : "w-[320px]"
+          "h-full flex flex-col glass border-l border-border/50 sticky right-0 top-0 bg-background/95 overflow-hidden",
+          isCollapsed && "border-none"
         )}
       >
-        <div className="h-full w-[320px] flex flex-col relative">
+        {!isCollapsed && <ResizeHandle onPointerDown={onPointerDown} onReset={reset} />}
+        <div style={{ width: 'var(--rp-w, 20rem)' }} className="h-full flex flex-col relative">
           <ErrorBoundary>
             <PanelContent />
           </ErrorBoundary>

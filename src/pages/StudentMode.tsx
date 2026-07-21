@@ -130,7 +130,7 @@ const StudentModeContent = () => {
         <LeftSidebar />
         <MobileSidebar />
 
-        <main className="flex-1 lg:mr-80 relative radial-gradient-bg min-h-screen">
+        <main className="flex-1 lg:[margin-right:var(--solver-w,20rem)] relative radial-gradient-bg min-h-screen">
           <BackButton />
           <TopToolbar />
           <GeometryCanvas />

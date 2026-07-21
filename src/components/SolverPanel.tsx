@@ -24,6 +24,7 @@ import { useGeometryOptional } from '@/context/GeometryContext';
 import { useCameraOptional }   from '@/context/CameraContext';
 import { useSolver }   from '@/hooks/useSolver';
 import { useGeometryHistory } from '@/hooks/useGeometryHistory';
+import { useResizableWidth } from '@/hooks/useResizableWidth';
 import { buildSolveReveal, type SolveReveal } from '@/lib/solveReveal';
 import { cn }          from '@/lib/utils';
 import { InlineMath, BlockMath } from 'react-katex';
@@ -96,12 +97,53 @@ function MathText({ text, className }: { text: string; className?: string }) {
   );
 }
 
+// Các toán tử SUY RA / TƯƠNG ĐƯƠNG ở cấp ngoài cùng — chỗ xuống dòng tự nhiên của công thức dài.
+const BREAK_OPS = new Set(['Longleftrightarrow', 'Leftrightarrow', 'Longrightarrow', 'Rightarrow',
+  'Longleftarrow', 'Leftarrow', 'implies', 'impliedby', 'iff', 'longmapsto', 'longrightarrow', 'mapsto', 'to']);
+
+/**
+ * Tự xuống dòng công thức display dài: cắt tại các mũi tên suy ra (⇒, ⇔, →...) Ở CẤP NGOÀI CÙNG
+ * (không nằm trong {}, \left...\right), gói vào \begin{gathered} để KaTeX render nhiều dòng.
+ * Không cắt được thì trả nguyên (vẫn cuộn ngang được như cũ).
+ */
+function wrapTex(tex: string): string {
+  if (tex.includes('\\begin{')) return tex; // đã là môi trường nhiều dòng -> để yên
+  const s = tex;
+  let depth = 0;
+  const breaks: number[] = [];
+  let i = 0;
+  while (i < s.length) {
+    const c = s[i];
+    if (c === '{') { depth++; i++; continue; }
+    if (c === '}') { depth = Math.max(0, depth - 1); i++; continue; }
+    if (c === '\\') {
+      let j = i + 1;
+      while (j < s.length && /[a-zA-Z]/.test(s[j])) j++;
+      const name = s.slice(i + 1, j);
+      if (name === 'left') { depth++; i = j; continue; }
+      if (name === 'right') { depth = Math.max(0, depth - 1); i = j; continue; }
+      if (depth === 0 && BREAK_OPS.has(name)) breaks.push(i);
+      i = j; continue;
+    }
+    i++;
+  }
+  if (breaks.length === 0) return tex;
+  const segs: string[] = [];
+  let start = 0;
+  for (const b of breaks) { segs.push(s.slice(start, b).trim()); start = b; }
+  segs.push(s.slice(start).trim());
+  const lines = segs.filter(Boolean);
+  if (lines.length <= 1) return tex;
+  return `\\begin{gathered}${lines.join(' \\\\ ')}\\end{gathered}`;
+}
+
 /** Công thức khối: bỏ $...$/\[...\] bao ngoài (nếu có) rồi render KaTeX display. */
 function FormulaBlock({ formula }: { formula: string }) {
   let tex = formula.trim();
   if (tex.startsWith('$$') && tex.endsWith('$$')) tex = tex.slice(2, -2);
   else if (tex.startsWith('$') && tex.endsWith('$')) tex = tex.slice(1, -1);
   else if (tex.startsWith('\\[') && tex.endsWith('\\]')) tex = tex.slice(2, -2);
+  tex = wrapTex(tex);
   return (
     // Công thức dài không bị cắt: cuộn ngang (xử lý ở index.css cho .katex-display) + thu nhỏ chút.
     <div className="mt-1 rounded-lg bg-secondary/40 border border-border/40 px-3 py-2 overflow-x-auto [&_.katex]:text-[0.95rem]">
@@ -428,11 +470,32 @@ export function SolverContent({ creditNote }: { creditNote?: string } = {}) {
   );
 }
 
+// ─── Thanh kéo giãn ────────────────────────────────────────────────────────────
+
+/** Nắm kéo ở MÉP TRÁI của panel bên phải: kéo để chỉnh rộng, nhấn đúp để đặt lại. */
+export function ResizeHandle({ onPointerDown, onReset }: { onPointerDown: (e: React.PointerEvent) => void; onReset?: () => void }) {
+  return (
+    <div
+      onPointerDown={onPointerDown}
+      onDoubleClick={onReset}
+      title="Kéo để chỉnh rộng · nhấn đúp để đặt lại"
+      className="group absolute left-0 top-0 h-full w-2.5 -translate-x-1/2 cursor-col-resize z-50 flex items-center justify-center touch-none"
+    >
+      <div className="h-12 w-1 rounded-full bg-border/70 group-hover:bg-primary transition-colors" />
+    </div>
+  );
+}
+
 // ─── Desktop panel ────────────────────────────────────────────────────────────
 
 export function SolverPanel() {
+  const { onPointerDown, reset } = useResizableWidth({ cssVar: '--solver-w', storageKey: 'solver_panel_w', def: 320, min: 280, max: 720 });
   return (
-    <aside className="hidden lg:flex flex-col fixed right-0 top-0 bottom-0 w-80 border-l border-border/50 bg-background/95 backdrop-blur-sm z-40">
+    <aside
+      style={{ width: 'var(--solver-w, 20rem)' }}
+      className="hidden lg:flex flex-col fixed right-0 top-0 bottom-0 border-l border-border/50 bg-background/95 backdrop-blur-sm z-40"
+    >
+      <ResizeHandle onPointerDown={onPointerDown} onReset={reset} />
       <div className="px-4 py-3 border-b">
         <div className="flex items-center gap-2">
           <Sparkles className="w-4 h-4 text-primary" />
