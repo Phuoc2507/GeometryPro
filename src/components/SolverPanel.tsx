@@ -27,7 +27,9 @@ import { cn }          from '@/lib/utils';
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
-const IMAGE_PLACEHOLDER = 'Đề bài từ ảnh';
+// Các chuỗi placeholder khi vẽ từ ảnh (OCR tắt trên Vercel nên đề thật KHÔNG được trích) —
+// không auto-fill mấy chuỗi này vì chúng không phải đề bài, dễ khiến người dùng bấm giải nhầm.
+const IMAGE_PLACEHOLDERS = ['Đề bài từ ảnh', 'Đề bài trong ảnh được đính kèm.', 'Đang nhận dạng ảnh'];
 
 /**
  * Đề bài để tự điền vào ô giải. Ưu tiên:
@@ -48,12 +50,12 @@ function useLastProblem(): string {
 
   // 2) Đề từ ảnh hoặc hình nạp lại (Lưu / URL) → đề đã đọc lưu ở geometry.llmPrompt.
   const fromGeom = ((ctx.state.geometry as any)?.llmPrompt || '').trim();
-  if (fromGeom && fromGeom !== IMAGE_PLACEHOLDER) return fromGeom;
+  if (fromGeom && !IMAGE_PLACEHOLDERS.includes(fromGeom)) return fromGeom;
 
   // 3) Fallback: hình cũ chưa có llmPrompt → dùng tạm text đã cắt trong nhãn hàng đợi ảnh.
   if (last) {
     const cleaned = last.prompt.replace(/^📷\s*/, '').replace(/…$|\.{3}$/, '').trim();
-    if (cleaned && cleaned !== 'Đang nhận dạng ảnh') return cleaned;
+    if (cleaned && !IMAGE_PLACEHOLDERS.includes(cleaned)) return cleaned;
   }
   return '';
 }
@@ -294,7 +296,7 @@ export function SolverContent({ creditNote }: { creditNote?: string } = {}) {
           className="flex-1 min-h-[120px] resize-none text-sm bg-secondary/30 border-border/50 focus-visible:ring-primary/50"
         />
         <p className="text-[11px] text-muted-foreground leading-relaxed shrink-0">
-          💡 Nếu vẽ hình từ ảnh, đề sẽ được tự điền sẵn — hãy <strong className="text-foreground/80">kiểm tra và thêm câu hỏi</strong> nếu ảnh chưa có (vd: "Tính thể tích khối chóp", "Tính khoảng cách từ A đến (SBD)").
+          💡 Đề gõ bằng chữ sẽ tự điền sẵn ở đây. Nếu bạn <strong className="text-foreground/80">vẽ hình từ ảnh</strong>, hãy gõ hoặc dán lại đề (kèm <strong className="text-foreground/80">câu hỏi</strong>, vd: "Tính thể tích khối chóp") vào ô này rồi nhấn Giải.
         </p>
       </div>
 
