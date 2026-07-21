@@ -53,17 +53,24 @@ export function GeometryRenderer({ geometry: geometryProp, isBuilding }: Geometr
   // Bóc-lớp theo bước LỜI GIẢI: ẩn các điểm dựng CHƯA tới bước hiện tại. Nhấn mạnh
   // điểm vừa dựng đi qua kênh highlightedIds sẵn có (không đụng dim của advance).
   const revealVisibleIds = cameraContext?.revealVisibleIds ?? null;
+
+  // Lời giải + reveal của CÂU hiện tại — tách ra memo riêng để dùng lại cho cả
+  // render (geometry memo) lẫn orchestrator focus (đọc toạ độ điểm dựng đã scale).
+  const solution = advanceScene?.steps?.[currentStep]?.solution ?? null;
+  const reveal = React.useMemo(
+    () => (advanceScene && geometryProp && solution) ? buildSolveReveal(geometryProp, solution.steps) : null,
+    [advanceScene, geometryProp, solution]
+  );
+
   const geometry = React.useMemo(() => {
     if (advanceScene && geometryProp) {
       // Câu hiện tại có LỜI GIẢI: dựng điểm mà lời giải giới thiệu TỪ chính hình đang render
       // (geometryProp đã scale, cùng id với base) rồi ghép vào trước khi bóc-lớp. Điểm dựng của
       // lời giải LUÔN hiện + nhấn mạnh (v1: cả câu; đồng bộ theo bước-trong-câu để Task C).
-      const solution = advanceScene.steps[currentStep]?.solution ?? null;
-      if (solution) {
-        const rv = buildSolveReveal(geometryProp, solution.steps);
-        const projected = projectScene(rv.mergedGeometry, advanceScene.steps, currentStep);
-        if (rv.newPoints.length > 0) {
-          const constructIds = new Set(rv.newPoints.map(p => p.id));
+      if (reveal) {
+        const projected = projectScene(reveal.mergedGeometry, advanceScene.steps, currentStep);
+        if (reveal.newPoints.length > 0) {
+          const constructIds = new Set(reveal.newPoints.map(p => p.id));
           return {
             ...projected,
             points: projected.points.map(p =>
@@ -84,7 +91,65 @@ export function GeometryRenderer({ geometry: geometryProp, isBuilding }: Geometr
       };
     }
     return geometryProp;
-  }, [advanceScene, currentStep, geometryProp, revealVisibleIds]);
+  }, [advanceScene, currentStep, geometryProp, revealVisibleIds, reveal]);
+
+  // ═══ Orchestrator (Task C2): đồng bộ camera-fly theo CÂU (outer) + BƯỚC LỜI GIẢI (inner) ═══
+  // 1 effect duy nhất — không đua. Giải id → toạ độ math (base/merged đã scale, khớp thế giới
+  // CameraFlyer) rồi requestFocus. Bài thường (advanceScene null) → return sớm, không đụng camera.
+  const requestFocus = cameraContext?.requestFocus;
+  const solutionStep = cameraContext?.solutionStep ?? 0;
+
+  const prevCauRef = React.useRef<number | null>(null);
+  const prevSolRef = React.useRef<number>(0);
+
+  React.useEffect(() => {
+    if (!advanceScene || !requestFocus) return;
+    const steps = advanceScene.steps;
+
+    // giải id -> toạ độ math từ một geometry (base đã scale, hoặc merged đã scale)
+    const ptsFromIds = (ids: string[], geom: any) => {
+      const byId = new Map<string, any>((geom?.points || []).map((p: any) => [p.id, p]));
+      return ids.map((id) => byId.get(id)).filter(Boolean)
+        .map((p: any) => ({ x: Number(p.x), y: Number(p.y), z: Number(p.z) }))
+        .filter((p) => Number.isFinite(p.x) && Number.isFinite(p.y) && Number.isFinite(p.z));
+    };
+
+    const cau = currentStep;
+
+    // Lần đầu (mount / scene mới): KHÔNG bay — để CameraFitter fit ban đầu. Chỉ init refs.
+    if (prevCauRef.current === null) {
+      prevCauRef.current = cau;
+      prevSolRef.current = solutionStep;
+      return;
+    }
+
+    // Đổi CÂU → bay tới phần tử MỚI của câu (visibleIds[cau] \ visibleIds[cau-1]); rỗng → cả câu.
+    if (prevCauRef.current !== cau) {
+      prevCauRef.current = cau;
+      prevSolRef.current = 0; // đổi câu => inner reset về 0; đồng bộ để KHÔNG double-fire inner
+      const cur = steps[cau]?.visibleIds ?? [];
+      const prev = steps[cau - 1]?.visibleIds ?? [];
+      const prevSet = new Set(prev);
+      let ids = cur.filter((id: string) => !prevSet.has(id));
+      if (ids.length === 0) ids = cur;
+      const pts = ptsFromIds(ids, geometryProp);
+      if (pts.length) requestFocus(pts);
+      return;
+    }
+
+    // Cùng câu, đổi BƯỚC LỜI GIẢI → bay tới điểm dựng của bước đó (id trong reveal.mergedGeometry).
+    if (solutionStep !== prevSolRef.current) {
+      prevSolRef.current = solutionStep;
+      const constructIds = reveal?.stepConstructIds?.[solutionStep] ?? [];
+      let pts = reveal ? ptsFromIds(constructIds, reveal.mergedGeometry) : [];
+      if (pts.length === 0) {
+        // fallback: id highlight của bước (nếu là điểm base) — nếu vẫn rỗng thì thôi, không bay.
+        const hl = solution?.steps?.[solutionStep]?.highlight ?? [];
+        pts = ptsFromIds(hl, reveal?.mergedGeometry ?? geometryProp);
+      }
+      if (pts.length) requestFocus(pts);
+    }
+  }, [currentStep, solutionStep, advanceScene, reveal, solution, geometryProp, requestFocus]);
 
   const hiddenLines = useHiddenLineDetection(geometry);
   const isManualMode = geometryContext?.state.manualMode ?? false;

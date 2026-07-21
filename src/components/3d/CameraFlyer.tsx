@@ -5,9 +5,11 @@ import * as THREE from 'three';
 /**
  * CameraFlyer — bay (animate) camera mượt tới một tập điểm của hình.
  *
- * `focus`: { ids, nonce } | null. Mỗi khi `nonce` đổi, component sẽ tính pose
- * mục tiêu (ôm sát các điểm `ids`) rồi lerp vị trí camera + target của
- * OrbitControls trong ~0.6s (smoothstep). Xong thì trả quyền lại cho OrbitControls.
+ * `focus`: { pts, nonce } | null — `pts` là toạ độ math (x,y,z). Mỗi khi `nonce`
+ * đổi, component tính pose mục tiêu (ôm sát các điểm `pts`) rồi lerp vị trí camera
+ * + target của OrbitControls trong ~0.6s (smoothstep). Xong thì trả quyền lại cho
+ * OrbitControls. Nhận thẳng toạ độ (không tra geometry) nên độc lập với hình nào
+ * đang render — orchestrator (GeometryRenderer) tự giải id→toạ độ rồi truyền vào.
  *
  * Khi `focus == null` (bài thường / chưa nối nguồn) → KHÔNG làm gì: return null,
  * anim = null, camera giữ nguyên luồng CameraFitter + OrbitControls.
@@ -15,13 +17,11 @@ import * as THREE from 'three';
  * Hệ toạ độ khớp CameraFitter: three x = math x, three y = math z, three z = math y.
  */
 export function CameraFlyer({
-  geometry,
   controlsRef,
   focus,
 }: {
-  geometry: any;
   controlsRef: React.MutableRefObject<any>;
-  focus: { ids: string[]; nonce: number } | null;
+  focus: { pts: Array<{ x: number; y: number; z: number }>; nonce: number } | null;
 }) {
   const { camera, size } = useThree();
   const anim = useRef<null | {
@@ -37,7 +37,7 @@ export function CameraFlyer({
     if (!focus || focus.nonce === lastNonce.current) return;
     lastNonce.current = focus.nonce;
 
-    const pts = (geometry?.points || []).filter((p: any) => focus.ids.includes(p.id));
+    const pts = focus?.pts ?? [];
     if (pts.length === 0) return;
 
     // Bounding box in Three.js coords (three y = math z, three z = math y)
@@ -85,7 +85,7 @@ export function CameraFlyer({
       toTgt,
       t: 0,
     };
-    // Chỉ trigger khi nonce đổi; geometry/camera/size được đọc từ closure của
+    // Chỉ trigger khi nonce đổi; focus.pts/camera/size được đọc từ closure của
     // render hiện tại (đã fresh vì đổi focus kèm re-render).
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [focus?.nonce]);

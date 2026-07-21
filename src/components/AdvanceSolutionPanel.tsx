@@ -13,11 +13,13 @@
 import { useEffect } from 'react';
 import { Sparkles } from 'lucide-react';
 import { useGeometryOptional } from '@/context/GeometryContext';
+import { useCameraOptional } from '@/context/CameraContext';
 import { useSolver } from '@/hooks/useSolver';
 import { SolveResultView } from '@/components/SolverPanel';
 
 export function AdvanceSolutionPanel() {
   const ctx = useGeometryOptional();
+  const cameraCtx = useCameraOptional();
   const advanceScene = ctx?.state.advanceScene ?? null;
   const questionIndex = ctx?.state.currentStep ?? 0;               // CÂU đang xem
   const solution = advanceScene?.steps?.[questionIndex]?.solution ?? null;
@@ -28,6 +30,10 @@ export function AdvanceSolutionPanel() {
   useEffect(() => {
     if (solution) hydrate(solution);
   }, [solution, hydrate]);
+
+  // Soi (mirror) bước-trong-câu ra context để orchestrator (GeometryRenderer) bay
+  // camera tới điểm dựng của bước đó. Hydrate reset currentStep=0 → mirror đẩy 0.
+  useEffect(() => { cameraCtx?.setSolutionStep(currentStep); }, [currentStep, cameraCtx]);
 
   // Câu không có lời giải (hoặc chưa nạp) → không hiện panel.
   if (!advanceScene || !solution || !result) return null;

@@ -6,6 +6,8 @@ interface CameraState {
   zoom: number;
 }
 
+export interface CameraFocus { pts: Array<{ x: number; y: number; z: number }>; nonce: number }
+
 interface CameraStateContextType {
   cameraState: CameraState;
   setCameraState: (state: CameraState) => void;
@@ -24,6 +26,13 @@ interface CameraContextType {
   resetNonce: number;
   /** Đặt lại góc nhìn về khung auto-fit ban đầu. */
   resetCamera: () => void;
+  /** Điểm cần "bay tới" (toạ độ math). nonce đổi = trigger bay. null = không bay. */
+  cameraFocus: CameraFocus | null;
+  /** Yêu cầu bay camera tới ôm tập điểm (toạ độ math). Bỏ qua nếu rỗng. */
+  requestFocus: (pts: Array<{ x: number; y: number; z: number }>) => void;
+  /** Bước LỜI GIẢI (inner) đang xem của câu hiện tại — để orchestrator biết bay tới điểm dựng nào. */
+  solutionStep: number;
+  setSolutionStep: (n: number) => void;
 }
 
 const CameraStateContext = createContext<CameraStateContextType | undefined>(undefined);
@@ -41,9 +50,15 @@ export function CameraProvider({ children }: { children: React.ReactNode }) {
   const [revealVisibleIds, setRevealVisibleIds] = useState<Set<string> | null>(null);
   const [resetNonce, setResetNonce] = useState(0);
   const resetCamera = useCallback(() => setResetNonce((n) => n + 1), []);
+  const [cameraFocus, setCameraFocus] = useState<CameraFocus | null>(null);
+  const [solutionStep, setSolutionStep] = useState(0);
+  const requestFocus = useCallback((pts: Array<{ x: number; y: number; z: number }>) => {
+    if (!pts || pts.length === 0) return;
+    setCameraFocus((prev) => ({ pts, nonce: (prev?.nonce ?? 0) + 1 }));
+  }, []);
 
   const stateValue = useMemo(() => ({ cameraState, setCameraState }), [cameraState]);
-  const mainValue = useMemo(() => ({ canvasRef, hiddenLines, setHiddenLines, highlightedIds, setHighlightedIds, revealVisibleIds, setRevealVisibleIds, resetNonce, resetCamera }), [hiddenLines, highlightedIds, revealVisibleIds, resetNonce, resetCamera]);
+  const mainValue = useMemo(() => ({ canvasRef, hiddenLines, setHiddenLines, highlightedIds, setHighlightedIds, revealVisibleIds, setRevealVisibleIds, resetNonce, resetCamera, cameraFocus, requestFocus, solutionStep, setSolutionStep }), [hiddenLines, highlightedIds, revealVisibleIds, resetNonce, resetCamera, cameraFocus, requestFocus, solutionStep]);
 
   return (
     <CameraStateContext.Provider value={stateValue}>

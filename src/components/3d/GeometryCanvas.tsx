@@ -125,8 +125,8 @@ interface SceneProps {
   isBuilding: boolean;
   autoRotate?: boolean;
   is2D?: boolean;
-  /** Task C1: điểm cần "bay tới". nonce đổi = trigger bay mới. null = không bay (mặc định). */
-  focus?: { ids: string[]; nonce: number } | null;
+  /** Task C1/C2: điểm cần "bay tới" (toạ độ math). nonce đổi = trigger bay mới. null = không bay (mặc định). */
+  focus?: { pts: Array<{ x: number; y: number; z: number }>; nonce: number } | null;
 }
 
 function Scene({ geometry, isBuilding, autoRotate = false, is2D = false, focus = null }: SceneProps) {
@@ -227,7 +227,7 @@ function Scene({ geometry, isBuilding, autoRotate = false, is2D = false, focus =
       {/* Camera Tracker with Dynamic Target */}
       <CameraTracker />
       <CameraFitter geometry={geometry} is2D={is2D} />
-      <CameraFlyer geometry={geometry} controlsRef={controlsRef} focus={focus} />
+      <CameraFlyer controlsRef={controlsRef} focus={focus} />
 
       {/* Lighting with shadows */}
       <ambientLight intensity={0.4} />
@@ -302,7 +302,7 @@ function Scene({ geometry, isBuilding, autoRotate = false, is2D = false, focus =
 
 export function GeometryCanvas({
   focus = null,
-}: { focus?: { ids: string[]; nonce: number } | null } = {}) {
+}: { focus?: { pts: Array<{ x: number; y: number; z: number }>; nonce: number } | null } = {}) {
   const cameraContext = useCameraOptional();
   const geometryContext = useGeometryOptional();
   const state = geometryContext?.state;
@@ -384,7 +384,7 @@ export function GeometryCanvas({
           }}
           style={{ background: 'transparent' }}
         >
-          <Scene geometry={scaledGeometry} isBuilding={isBuilding} autoRotate={autoRotate} is2D={is2D} focus={focus} />
+          <Scene geometry={scaledGeometry} isBuilding={isBuilding} autoRotate={autoRotate} is2D={is2D} focus={cameraContext?.cameraFocus ?? focus} />
         </Canvas>
       </ErrorBoundary>
     </div>
