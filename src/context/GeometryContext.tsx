@@ -832,13 +832,14 @@ export function GeometryProvider({ children }: { children: React.ReactNode }) {
         dispatch({
           type: 'QUEUE_UPDATE',
           id,
-          updates: { 
-            status: 'done', 
-            progress: 100, 
-            statusText: 'Hoàn thành!', 
-            prompt: `📷 ${promptText.substring(0, 80)}...`, 
-            geometry, 
-            completedAt: Date.now() 
+          updates: {
+            status: 'done',
+            progress: 100,
+            statusText: 'Hoàn thành!',
+            prompt: `📷 ${promptText.substring(0, 80)}...`,   // nhãn hiển thị ngắn
+            problemText: promptText,                          // đề ĐẦY ĐỦ cho ô Giải
+            geometry,
+            completedAt: Date.now()
           },
         });
 

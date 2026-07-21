@@ -246,6 +246,8 @@ export type QueueItemStatus = 'pending' | 'processing' | 'done' | 'error';
 export interface QueueItem {
   id: string;
   prompt: string;
+  /** Đề bài ĐẦY ĐỦ (không cắt) — dùng cho ô Giải; `prompt` chỉ là nhãn hiển thị ngắn. */
+  problemText?: string;
   mode: string;
   status: QueueItemStatus;
   progress: number;
