@@ -1,5 +1,4 @@
 import { useRef, useEffect, useMemo, useCallback } from 'react';
-import { CameraFitter } from './CameraFitter';
 import { Hexagon } from 'lucide-react';
 import { Canvas, useThree } from '@react-three/fiber';
 import { OrbitControls, Grid, Environment, Html } from '@react-three/drei';
@@ -8,6 +7,7 @@ import { GeometryRenderer } from './GeometryRenderer';
 import { CoordinateGridPlanes } from './CoordinateGridPlanes';
 import { ClickToPlacePoint } from './ClickToPlacePoint';
 import { ToolPreviewRenderer } from './ToolPreviewRenderer';
+import { CameraFlyer } from './CameraFlyer';
 import { useGeometryOptional } from '@/context/GeometryContext';
 import { useCameraOptional, useCameraStateOptional } from '@/context/CameraContext';
 import { scaleGeometry } from '@/lib/geometry/scaleGeometry';
@@ -125,12 +125,18 @@ interface SceneProps {
   isBuilding: boolean;
   autoRotate?: boolean;
   is2D?: boolean;
+  /** Task C1: điểm cần "bay tới". nonce đổi = trigger bay mới. null = không bay (mặc định). */
+  focus?: { ids: string[]; nonce: number } | null;
 }
 
-function Scene({ geometry, isBuilding, autoRotate = false, is2D = false }: SceneProps) {
+function Scene({ geometry, isBuilding, autoRotate = false, is2D = false, focus = null }: SceneProps) {
   const geometryContext = useGeometryOptional();
   const { camera } = useThree();
   const cameraStateContext = useCameraStateOptional();
+
+  // Ref tới OrbitControls (three-stdlib instance) để CameraFlyer điều khiển
+  // controls.target trực tiếp trong lúc bay.
+  const controlsRef = useRef<any>(null);
 
   // Calculate the centroid (center of mass) of the geometry
   // and convert math coords (z=up) to Three.js (y=up)
@@ -221,6 +227,7 @@ function Scene({ geometry, isBuilding, autoRotate = false, is2D = false }: Scene
       {/* Camera Tracker with Dynamic Target */}
       <CameraTracker />
       <CameraFitter geometry={geometry} is2D={is2D} />
+      <CameraFlyer geometry={geometry} controlsRef={controlsRef} focus={focus} />
 
       {/* Lighting with shadows */}
       <ambientLight intensity={0.4} />
@@ -271,6 +278,7 @@ function Scene({ geometry, isBuilding, autoRotate = false, is2D = false }: Scene
 
       {/* Controls */}
       <OrbitControls
+        ref={controlsRef}
         enableDamping
         dampingFactor={0.05}
         target={centroid}
@@ -292,7 +300,9 @@ function Scene({ geometry, isBuilding, autoRotate = false, is2D = false }: Scene
   );
 }
 
-export function GeometryCanvas() {
+export function GeometryCanvas({
+  focus = null,
+}: { focus?: { ids: string[]; nonce: number } | null } = {}) {
   const cameraContext = useCameraOptional();
   const geometryContext = useGeometryOptional();
   const state = geometryContext?.state;
@@ -374,7 +384,7 @@ export function GeometryCanvas() {
           }}
           style={{ background: 'transparent' }}
         >
-          <Scene geometry={scaledGeometry} isBuilding={isBuilding} autoRotate={autoRotate} is2D={is2D} />
+          <Scene geometry={scaledGeometry} isBuilding={isBuilding} autoRotate={autoRotate} is2D={is2D} focus={focus} />
         </Canvas>
       </ErrorBoundary>
     </div>
