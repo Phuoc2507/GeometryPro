@@ -217,3 +217,21 @@
 .animate-build-in {
   animation: build-in 0.3s ease-out forwards;
 }
+
+/* Công thức KaTeX dạng khối (BlockMath): cho cuộn ngang khi quá dài thay vì bị CẮT.
+   Mặc định ".katex-display > .katex" là display:block (rộng bằng khung cha) nên overflow-x của
+   cha không bao giờ kích hoạt và phần thừa bị cắt. Ép inline-block để nó co theo NỘI DUNG -> cha
+   (.katex-display, overflow-x:auto) cuộn được. Bỏ margin mặc định 1em cho gọn trong khung nhỏ. */
+/* !important vì katex.min.css nạp SAU (lazy chunk của SolverPanel) nên đè rule cùng độ đặc hiệu. */
+.katex-display {
+  margin: 0 !important;
+  overflow-x: auto !important;
+  overflow-y: hidden !important;
+  padding: 2px 0 !important;
+}
+.katex-display > .katex {
+  display: inline-block !important;
+  white-space: nowrap !important;
+  text-align: left !important;
+  max-width: none !important;
+}

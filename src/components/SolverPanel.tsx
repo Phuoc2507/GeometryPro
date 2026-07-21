@@ -103,7 +103,8 @@ function FormulaBlock({ formula }: { formula: string }) {
   else if (tex.startsWith('$') && tex.endsWith('$')) tex = tex.slice(1, -1);
   else if (tex.startsWith('\\[') && tex.endsWith('\\]')) tex = tex.slice(2, -2);
   return (
-    <div className="mt-1 rounded-lg bg-secondary/40 border border-border/40 px-3 py-2 overflow-x-auto">
+    // Công thức dài không bị cắt: cuộn ngang (xử lý ở index.css cho .katex-display) + thu nhỏ chút.
+    <div className="mt-1 rounded-lg bg-secondary/40 border border-border/40 px-3 py-2 overflow-x-auto [&_.katex]:text-[0.95rem]">
       <BlockMath math={tex} renderError={() => <span className="text-sm font-mono text-foreground/90 break-all">{formula}</span>} />
     </div>
   );
@@ -356,7 +357,9 @@ export function SolverContent({ creditNote }: { creditNote?: string } = {}) {
         )}
 
         {/* Step content */}
-        <ScrollArea className="flex-1 px-4">
+        {/* Ép child của viewport về block (Radix để display:table -> phình ngang theo công thức dài,
+            khiến overflow-x của khung công thức không kích hoạt). Chỉ áp cho ScrollArea này. */}
+        <ScrollArea className="flex-1 px-4 [&_[data-radix-scroll-area-viewport]>div]:!block [&_[data-radix-scroll-area-viewport]>div]:!min-w-0">
           {step ? (
             <StepCard step={step} index={currentStep} total={nSteps} />
           ) : (
