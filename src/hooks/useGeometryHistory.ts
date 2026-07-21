@@ -125,6 +125,32 @@ export function useGeometryHistory() {
     return null;
   }, [user, handleSupabaseError]);
 
+  // Cập nhật geometry_data của một bản đã lưu (dùng để lưu KÈM lời giải + điểm dựng).
+  const updateGeometryData = useCallback(async (id: string, geometry: GeometryData) => {
+    if (!id) return;
+    try {
+      if (!user) {
+        const local = localStorage.getItem('geo3d_anonymous_history');
+        if (local) {
+          const prev = JSON.parse(local);
+          const newHistory = prev.map((h: any) => h.id === id ? { ...h, geometry_data: geometry } : h);
+          localStorage.setItem('geo3d_anonymous_history', JSON.stringify(newHistory));
+          triggerSync();
+        }
+        return;
+      }
+      const { error } = await supabase
+        .from('saved_geometries')
+        .update({ geometry_data: geometry as any })
+        .eq('id', id)
+        .eq('user_id', user.id);
+      if (error) throw error;
+      triggerSync();
+    } catch (err) {
+      handleSupabaseError(err, 'updating geometry data');
+    }
+  }, [user, handleSupabaseError]);
+
   const deleteHistoryItem = useCallback(async (id: string) => {
     try {
       if (!user) {
@@ -222,8 +248,8 @@ export function useGeometryHistory() {
     }
   }, [user, handleSupabaseError]);
 
-  return { 
-    history, isLoading, fetchHistory, addToHistory, 
-    deleteHistoryItem, clearHistory, renameHistoryItem, moveToProject 
+  return {
+    history, isLoading, fetchHistory, addToHistory, updateGeometryData,
+    deleteHistoryItem, clearHistory, renameHistoryItem, moveToProject
   };
 }

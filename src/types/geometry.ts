@@ -237,6 +237,8 @@ export interface GeometryData {
   tags?: string[];
   axisUnit?: string;
   detailLevel?: DetailLevel;
+  /** Lời giải đã lưu KÈM hình để tải lại không mất (đề + các bước). import type: không tạo vòng lặp runtime. */
+  solve?: { problem: string; result: import('@/hooks/useSolver').SolveResult };
 }
 
 export type DetailLevel = 'static' | 'cinematic' | 'step_by_step';

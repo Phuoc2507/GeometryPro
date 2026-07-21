@@ -90,5 +90,13 @@ export function useSolver() {
     setCurrentStep(0);
   }, []);
 
-  return { solve, reset, result, loading, error, currentStep, setCurrentStep };
+  // Nạp lại lời giải đã lưu (không gọi API) — dùng khi tải lại hình có kèm lời giải.
+  const hydrate = useCallback((r: SolveResult) => {
+    setResult(r);
+    setError(null);
+    setLoading(false);
+    setCurrentStep(0);
+  }, []);
+
+  return { solve, reset, hydrate, result, loading, error, currentStep, setCurrentStep };
 }

@@ -23,6 +23,7 @@ import { Badge }       from '@/components/ui/badge';
 import { useGeometryOptional } from '@/context/GeometryContext';
 import { useCameraOptional }   from '@/context/CameraContext';
 import { useSolver }   from '@/hooks/useSolver';
+import { useGeometryHistory } from '@/hooks/useGeometryHistory';
 import { buildSolveReveal, type SolveReveal } from '@/lib/solveReveal';
 import { cn }          from '@/lib/utils';
 import { InlineMath, BlockMath } from 'react-katex';
@@ -153,11 +154,14 @@ export function SolverContent({ creditNote }: { creditNote?: string } = {}) {
   const ctx         = useGeometryOptional();
   const camera      = useCameraOptional();
   const lastProblem = useLastProblem();
-  const { solve, reset, result, loading, error, currentStep, setCurrentStep } = useSolver();
+  const { solve, reset, hydrate, result, loading, error, currentStep, setCurrentStep } = useSolver();
+  const { updateGeometryData } = useGeometryHistory();
 
   const [problem, setProblem]     = useState('');
   const [reveal, setReveal]       = useState<SolveReveal | null>(null);
   const textareaRef               = useRef<HTMLTextAreaElement>(null);
+  const solvedProblemRef          = useRef('');   // đề của lần giải hiện tại (để lưu kèm)
+  const shouldSaveRef             = useRef(false); // true = kết quả GIẢI MỚI cần lưu (không phải khôi phục)
 
   // Pre-fill with last detected problem when geometry changes
   useEffect(() => {
@@ -166,19 +170,42 @@ export function SolverContent({ creditNote }: { creditNote?: string } = {}) {
     }
   }, [lastProblem, result]);
 
-  // Khi có KẾT QUẢ: dựng toạ độ các điểm lời giải giới thiệu TỪ hình gốc, GHÉP vào hình
-  // (giữ lại — người dùng đã chọn), và lưu `reveal` để bóc-lớp theo bước.
-  // Deps CHỈ [result] để không lặp vô hạn khi commit làm đổi state.geometry.
+  // Khôi phục lời giải đã LƯU kèm hình khi tải lại (không gọi API).
+  useEffect(() => {
+    const saved = (ctx?.state.geometry as any)?.solve;
+    if (saved?.result && !result && !loading) {
+      setProblem(saved.problem || '');
+      hydrate(saved.result);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ctx?.state.geometry]);
+
+  // Khi có KẾT QUẢ: (1) dựng điểm lời giải giới thiệu & ghép vào hình, (2) LƯU lời giải kèm hình
+  // để tải lại không mất. Deps CHỈ [result] để không lặp khi commit làm đổi state.geometry.
   useEffect(() => {
     const base = ctx?.state.geometry;
-    if (!result || !base || !result.steps.some(s => s.construct && s.construct.length > 0)) {
+    if (!result || !base) { setReveal(null); return; }
+
+    const hasConstruct = result.steps.some(s => s.construct && s.construct.length > 0);
+    let merged = base;
+    if (hasConstruct) {
+      const rv = buildSolveReveal(base, result.steps);
+      setReveal(rv);
+      if (rv.newPoints.length > 0) merged = rv.mergedGeometry;
+    } else {
       setReveal(null);
-      return;
     }
-    const rv = buildSolveReveal(base, result.steps);
-    setReveal(rv);
-    if (rv.newPoints.length > 0) {
-      ctx!.loadGeometry(rv.mergedGeometry, { silent: true });  // giữ điểm dựng vào hình
+
+    if (shouldSaveRef.current) {
+      // Kết quả GIẢI MỚI -> ghép điểm + đính lời giải vào hình rồi LƯU (update bản đã lưu theo ?id).
+      shouldSaveRef.current = false;
+      const withSolve = { ...merged, solve: { problem: solvedProblemRef.current, result } };
+      ctx!.loadGeometry(withSolve, { silent: true });
+      const id = new URLSearchParams(window.location.search).get('id');
+      if (id) void updateGeometryData(id, withSolve);
+    } else if (merged !== base) {
+      // Khôi phục mà hình thiếu điểm dựng (hiếm) -> ghép tạm, KHÔNG lưu lại.
+      ctx!.loadGeometry(merged, { silent: true });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [result]);
@@ -206,6 +233,8 @@ export function SolverContent({ creditNote }: { creditNote?: string } = {}) {
 
   const handleSolve = () => {
     if (!canSolve || !geometry) return;
+    solvedProblemRef.current = problem.trim();
+    shouldSaveRef.current = true;   // đánh dấu: kết quả sắp tới là GIẢI MỚI -> cần lưu kèm hình
     solve(problem.trim(), geometry, geometry.tags || []);
   };
 
