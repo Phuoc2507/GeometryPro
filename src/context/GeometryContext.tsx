@@ -627,9 +627,31 @@ export function GeometryProvider({ children }: { children: React.ReactNode }) {
   }, [finishWithGeometry]);
 
   const analyzeAdvance = useCallback(async (prompt: string, imageBase64?: string) => {
+    const sessionId = ++scanSessionRef.current;
     dispatch({ type: 'START_SCANNING' });
+    // Advance gọi 1 lần (KHÔNG stream) ~30-40s. Nếu không mô phỏng tiến trình thì overlay đứng
+    // hình ở 0% → trông như treo. Mô phỏng progress + hiện luôn "đề đang xử lý" vào ô streaming
+    // (đề chữ user gõ, hoặc ghi chú đang đọc ảnh) để người dùng thấy máy đang chạy.
+    dispatch({ type: 'APPEND_STREAMING_TEXT', text: imageBase64 ? '📷 Đang đọc đề từ ảnh…\n' : `📝 ${prompt}\n` });
+    let progress = 0;
+    let statusIndex = 0;
+    const totalStatuses = SCAN_STATUSES.length;
+    const progressInterval = setInterval(() => {
+      if (scanSessionRef.current !== sessionId) { clearInterval(progressInterval); return; }
+      // Advance chậm hơn vẽ thường (×0.4) cho khớp thời lượng thực (nhiều câu + lời giải).
+      const increment = (progress < 30 ? 5 : progress < 60 ? 3 : progress < 85 ? 1 : 0.5) * 0.4;
+      progress = Math.min(progress + increment, 95);
+      if (progress < 15) statusIndex = 0;
+      else if (progress < 30) statusIndex = 1;
+      else if (progress < 50) statusIndex = 2;
+      else if (progress < 75) statusIndex = 3;
+      else if (progress < 90) statusIndex = 4;
+      else statusIndex = 5;
+      dispatch({ type: 'UPDATE_SCAN_PROGRESS', progress, status: SCAN_STATUSES[Math.min(statusIndex, totalStatuses - 1)] });
+    }, 500);
     try {
       const { data, error } = await invokeLocalApi('/api/analyze-advance', imageBase64 ? { imageBase64, prompt: prompt || undefined } : { prompt });
+      if (scanSessionRef.current !== sessionId) return;   // đã huỷ / bắt đầu lượt mới → bỏ kết quả cũ
       if (error) throw new Error(error.message || String(error));
       if (data?.mode === 'advance' && data.scene) {
         dispatch({ type: 'SET_ADVANCE_SCENE', scene: data.scene });
@@ -641,9 +663,12 @@ export function GeometryProvider({ children }: { children: React.ReactNode }) {
         toast({ title: 'Chưa dựng được hình cho đề này', variant: 'destructive' });
       }
     } catch (e) {
-      toast({ title: 'Lỗi Advance', description: String((e as Error).message), variant: 'destructive' });
+      if (scanSessionRef.current === sessionId) {
+        toast({ title: 'Lỗi Advance', description: String((e as Error).message), variant: 'destructive' });
+      }
     } finally {
-      dispatch({ type: 'STOP_SCANNING' });
+      clearInterval(progressInterval);
+      if (scanSessionRef.current === sessionId) dispatch({ type: 'STOP_SCANNING' });
     }
   }, [refreshProfile]);
 
