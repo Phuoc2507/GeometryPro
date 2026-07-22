@@ -95,8 +95,22 @@ export function useGeometryHistory() {
         };
         const local = localStorage.getItem('geo3d_anonymous_history');
         const prev = local ? JSON.parse(local) : [];
-        const newHistory = [newItem, ...prev].slice(0, 50);
-        localStorage.setItem('geo3d_anonymous_history', JSON.stringify(newHistory));
+        // Mục Advance có thể lớn → localStorage (~5MB) có thể TRÀN. Trước đây QuotaExceededError bị
+        // nuốt (handleSupabaseError chỉ xử lỗi auth) ⇒ mục mới im lặng KHÔNG lưu, "chạy xong mất tiêu".
+        // Giờ: nếu tràn thì BỎ BỚT mục CŨ NHẤT (cuối mảng) rồi thử lại, để mục MỚI luôn lưu được.
+        let toStore = [newItem, ...prev].slice(0, 50);
+        let saved = false;
+        while (toStore.length >= 1) {
+          try {
+            localStorage.setItem('geo3d_anonymous_history', JSON.stringify(toStore));
+            saved = true;
+            break;
+          } catch {
+            if (toStore.length === 1) break;   // 1 mục vẫn tràn → chịu
+            toStore = toStore.slice(0, Math.max(1, toStore.length - Math.ceil(toStore.length / 4)));
+          }
+        }
+        if (!saved) return null;
         triggerSync();
         return newItem.id;
       }

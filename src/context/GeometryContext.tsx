@@ -657,8 +657,15 @@ export function GeometryProvider({ children }: { children: React.ReactNode }) {
         dispatch({ type: 'SET_ADVANCE_SCENE', scene: data.scene });
         // LƯU vào lịch sử để xem lại (trước đây Advance không lưu → "chạy xong là mất tiêu").
         // Nhúng cả cảnh vào geometry_data ⇒ mở lại khôi phục nguyên stepper + lời giải (xem loadGeometry).
+        // Chỉ nhúng scene MỘT lần (không spread base ra top-level) — khi mở lại loadGeometry dùng
+        // advanceScene.base, danh sách lịch sử chỉ dùng item.name; base ở top-level là thừa (gấp đôi cỡ).
         const label = (prompt && prompt.trim()) || data.scene.base?.name || '📷 Đề Advance (từ ảnh)';
-        const geometryForHistory: GeometryData = { ...data.scene.base, advanceScene: data.scene };
+        const geometryForHistory: GeometryData = {
+          name: data.scene.base?.name || label,
+          points: [],
+          lines: [],
+          advanceScene: data.scene,
+        };
         const historyId = await addToHistory(geometryForHistory, label);
         if (historyId) {
           const url = new URL(window.location.href);
