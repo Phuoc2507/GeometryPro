@@ -655,9 +655,27 @@ export function GeometryProvider({ children }: { children: React.ReactNode }) {
       if (error) throw new Error(error.message || String(error));
       if (data?.mode === 'advance' && data.scene) {
         dispatch({ type: 'SET_ADVANCE_SCENE', scene: data.scene });
+        // LƯU vào lịch sử để xem lại (trước đây Advance không lưu → "chạy xong là mất tiêu").
+        // Nhúng cả cảnh vào geometry_data ⇒ mở lại khôi phục nguyên stepper + lời giải (xem loadGeometry).
+        const label = (prompt && prompt.trim()) || data.scene.base?.name || '📷 Đề Advance (từ ảnh)';
+        const geometryForHistory: GeometryData = { ...data.scene.base, advanceScene: data.scene };
+        const historyId = await addToHistory(geometryForHistory, label);
+        if (historyId) {
+          const url = new URL(window.location.href);
+          url.searchParams.set('id', historyId);
+          window.history.replaceState({}, '', url.toString());
+        }
         refreshProfile?.();   // Advance tốn credit (server đã trừ) → cập nhật số dư hiển thị
       } else if (data?.geometry) {
         dispatch({ type: 'SET_GEOMETRY', geometry: data.geometry });
+        // Nhánh tụt-hạng vẫn ra 1 hình → cũng lưu lịch sử như Vẽ kỹ để xem lại.
+        const label = (prompt && prompt.trim()) || data.geometry.name || '📷 Đề (từ ảnh)';
+        const historyId = await addToHistory(data.geometry, label);
+        if (historyId) {
+          const url = new URL(window.location.href);
+          url.searchParams.set('id', historyId);
+          window.history.replaceState({}, '', url.toString());
+        }
         refreshProfile?.();   // nhánh tụt-hạng vẫn tốn credit (đã hoàn về mức Vẽ kỹ ở server)
       } else {
         toast({ title: 'Chưa dựng được hình cho đề này', variant: 'destructive' });
@@ -670,7 +688,7 @@ export function GeometryProvider({ children }: { children: React.ReactNode }) {
       clearInterval(progressInterval);
       if (scanSessionRef.current === sessionId) dispatch({ type: 'STOP_SCANNING' });
     }
-  }, [refreshProfile]);
+  }, [refreshProfile, addToHistory]);
 
   const queueAnalyzeText = useCallback((prompt: string, mode: DrawMode = 'detailed') => {
     const id = `q_${Date.now()}_${++queueIdCounter}`;
@@ -988,6 +1006,17 @@ export function GeometryProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const loadGeometry = useCallback((geometry: GeometryData, opts?: { silent?: boolean }) => {
+    // Lượt Advance đã lưu vào lịch sử nhúng cả cảnh (advanceScene) → mở lại KHÔI PHỤC nguyên
+    // stepper + lời giải + reveal, KHÔNG chỉ hiện hình base. Mọi đường mở lại (sidebar/URL ?id=)
+    // đều đi qua loadGeometry nên bắt tại đây là đủ.
+    const embedded = geometry?.advanceScene;
+    if (embedded && embedded.base && Array.isArray(embedded.steps)) {
+      dispatch({ type: 'SET_ADVANCE_SCENE', scene: embedded });
+      if (opts?.silent) return;
+      dispatch({ type: 'START_BUILDING' });
+      setTimeout(() => dispatch({ type: 'FINISH_BUILDING' }), 1000);
+      return;
+    }
     dispatch({ type: 'SET_GEOMETRY', geometry });
     // silent: dùng khi ghép thêm điểm dựng của lời giải vào hình — không toast, không animation.
     if (opts?.silent) return;

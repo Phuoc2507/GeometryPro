@@ -241,6 +241,9 @@ export interface GeometryData {
   detailLevel?: DetailLevel;
   /** Lời giải đã lưu KÈM hình để tải lại không mất (đề + các bước). import type: không tạo vòng lặp runtime. */
   solve?: { problem: string; result: import('@/hooks/useSolver').SolveResult };
+  /** Advance: nhúng CẢ cảnh (base + steps + lời giải) khi lưu 1 lượt Advance vào lịch sử,
+   *  để mở lại KHÔNG mất stepper/lời giải/reveal. loadGeometry phát hiện field này → SET_ADVANCE_SCENE. */
+  advanceScene?: AdvanceScene;
 }
 
 export type DetailLevel = 'static' | 'cinematic' | 'step_by_step';
