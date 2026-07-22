@@ -43,6 +43,12 @@ export async function planFromProblem(problem, options = {}) {
   if (!parsed.success) {
     throw new Error('Translator plan failed schema: ' + (parsed.error.issues[0]?.message || 'invalid'));
   }
+  // "scaleSymbol" (thang CHỮ): bài ĐO TUYỆT ĐỐI trên hình RẮN-tới-đồng-dạng, kích thước cho bằng một
+  // chữ duy nhất (vd cạnh 'a'). Engine toạ-độ-hoá tại a=1 rồi solvePlan ghép ×a^k vào đáp. Schema
+  // KHÔNG khai trường này nên safeParse loại bỏ ⇒ giữ lại từ json gốc. Chỉ nhận MỘT chữ cái.
+  if (typeof json.scaleSymbol === 'string' && /^[a-zA-Z]$/.test(json.scaleSymbol)) {
+    parsed.data.scaleSymbol = json.scaleSymbol;
+  }
   return parsed.data;
 }
 
@@ -59,6 +65,30 @@ function jsonSafe(v) {
     return out;
   }
   return v;
+}
+
+// Chú thích THANG CHỮ cho đáp đo tuyệt đối trên hình xác-định-tới-đồng-dạng (vd cạnh 'a').
+// Engine tính tại a=1 ⇒ đáp exact chính xác bằng (số thuần)·a^k. Ghép ×a^k vào .text để KHÔNG
+// hiển thị số trần gây hiểu nhầm là số tuyệt đối. k: khoảng-cách/độ-dài=1, diện-tích=2, thể-tích=3.
+// GÓC và TỈ SỐ bất biến theo cỡ (k=0) ⇒ KHÔNG có trong bảng ⇒ giữ nguyên, không ghép.
+const SCALE_EXP = { distance: 1, length: 1, area: 2, volume: 3 };
+function scaleText(text, sym, k) {
+  const t = String(text).trim();
+  const s = k === 1 ? sym : `${sym}${k === 2 ? '²' : k === 3 ? '³' : '^' + k}`;
+  if (t === '1') return s;                          // a·1 → a
+  if (/^\d+(?:\.\d+)?$/.test(t)) return `${t}${s}`; // 2 → 2a ; 13 → 13a
+  return `${s}·${t}`;                               // √3/3 → a·√3/3
+}
+function applyScaleSymbol(answers, sym) {
+  if (!sym || !Array.isArray(answers)) return answers;
+  return answers.map((a) => {
+    const k = SCALE_EXP[a && a.kind];
+    if (!k || a.text == null) return a;
+    const t = String(a.text).trim();
+    if (t === '' || t === '0' || a.approx === 0) return a; // đáp 0 (vd thẳng hàng ⇒ area 0): không ghép
+    // approx là giá trị tại a=1, sẽ gây hiểu nhầm nếu hiện dạng thập phân trần ⇒ bỏ.
+    return { ...a, text: scaleText(a.text, sym, k), approx: null, scaleSymbol: sym, scaleExp: k };
+  });
 }
 
 export function solvePlan(plan) {
@@ -79,7 +109,7 @@ export function solvePlan(plan) {
   return jsonSafe({
     ok: result.ok,
     geometry: entityTableToGeometryData(result.entities, plan.solidName || 'figure'),
-    answers: result.answers, // mỗi cái có .text (đáp số dạng exact) + .approximate
+    answers: applyScaleSymbol(result.answers, plan.scaleSymbol), // ghép ×a^k nếu là bài THANG CHỮ
     violations: result.violations,
     errors: result.errors,
     trace: result.trace,
