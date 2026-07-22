@@ -91,7 +91,7 @@ const Settings = () => {
 
   const planName = TIER_LABELS[tier] ?? 'Miễn phí';
   const planStatus = (() => {
-    if (!isPro) return 'Miễn phí';
+    if (tier === 'free') return 'Miễn phí';
     const exp = profile?.plan_expires_at ? new Date(profile.plan_expires_at) : null;
     if (!exp) return 'Đang kích hoạt';
     const days = Math.ceil((exp.getTime() - Date.now()) / 86400000);
