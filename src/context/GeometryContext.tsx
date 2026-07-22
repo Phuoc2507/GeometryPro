@@ -1,5 +1,6 @@
-import React, { createContext, useContext, useReducer, useCallback, useRef } from 'react';
+import React, { createContext, useContext, useReducer, useCallback, useRef, useEffect } from 'react';
 import { GeometryState, GeometryAction, GeometryData, QueueItem, Point3D, Line3D, Plane3D, ManualTool } from '@/types/geometry';
+import { loadPreferences, savePreferences } from '@/lib/preferences';
 import { PYRAMID_MOCK_DATA, SATELLITE_DEMO_DATA, SCAN_STATUSES } from '@/data/mockData';
 import { lod4DemoData } from '@/lib/lod4DemoData';
 import { toast } from '@/hooks/use-toast';
@@ -120,6 +121,7 @@ const initialState: GeometryState = {
   freeCameraMode: false,
   showPoints: true,
   autoColor: false,
+  showCoordinateGrid: true,
   aiModel: 'high',
   useReasoning: false,
   streamingText: '',
@@ -175,6 +177,8 @@ function rawGeometryReducer(state: GeometryState, action: GeometryAction): Geome
       return { ...state, showPoints: !state.showPoints };
     case 'TOGGLE_AUTO_COLOR':
       return { ...state, autoColor: !state.autoColor };
+    case 'TOGGLE_COORDINATE_GRID':
+      return { ...state, showCoordinateGrid: !state.showCoordinateGrid };
     case 'UPDATE_SCAN_PROGRESS':
       return { ...state, scanProgress: action.progress, scanStatus: action.status };
     case 'SET_GEOMETRY':
@@ -377,6 +381,7 @@ export interface GeometryContextType {
   setAutoRotate: (enabled: boolean) => void;
   togglePoints: () => void;
   toggleAutoColor: () => void;
+  toggleCoordinateGrid: () => void;
   setAiModel: (model: 'max' | 'high' | 'medium' | 'low') => void;
   setUseReasoning: (enabled: boolean) => void;
   toggleSelection: (id: string) => void;
@@ -392,10 +397,35 @@ const GeometryContext = createContext<GeometryContextType | undefined>(undefined
 let queueIdCounter = 0;
 
 export function GeometryProvider({ children }: { children: React.ReactNode }) {
-  const [state, dispatch] = useReducer(rawGeometryReducer, initialState);
+  const [state, dispatch] = useReducer(
+    rawGeometryReducer,
+    initialState,
+    (base): GeometryState => {
+      const prefs = loadPreferences();
+      return {
+        ...base,
+        showPoints: prefs.showPoints,
+        autoColor: prefs.autoColorPlanes,
+        autoRotate: prefs.autoRotate,
+        showCoordinateGrid: prefs.showCoordinateGrid,
+      };
+    },
+  );
   const stateRef = useRef(state);
   const scanSessionRef = useRef(0);
   const { addToHistory } = useGeometryHistory();
+
+  // Ghi ngược tuỳ chọn hiển thị vào localStorage khi đổi, để lần mount sau seed lại đúng.
+  // Merge `...loadPreferences()` để giữ các khoá chỉ-Settings (vd showIllustrationValues).
+  useEffect(() => {
+    savePreferences({
+      ...loadPreferences(),
+      showPoints: state.showPoints,
+      autoColorPlanes: state.autoColor,
+      autoRotate: state.autoRotate,
+      showCoordinateGrid: state.showCoordinateGrid,
+    });
+  }, [state.showPoints, state.autoColor, state.autoRotate, state.showCoordinateGrid]);
   const { user, openAuthModal, openUpgradeModal, refreshProfile } = useAuth();
   stateRef.current = state;
 
@@ -1162,6 +1192,10 @@ export function GeometryProvider({ children }: { children: React.ReactNode }) {
     dispatch({ type: 'TOGGLE_AUTO_COLOR' });
   }, []);
 
+  const toggleCoordinateGrid = useCallback(() => {
+    dispatch({ type: 'TOGGLE_COORDINATE_GRID' });
+  }, []);
+
   const setAiModel = useCallback((model: 'max' | 'high' | 'medium' | 'low') => {
     dispatch({ type: 'SET_AI_MODEL', model });
   }, []);
@@ -1179,7 +1213,7 @@ export function GeometryProvider({ children }: { children: React.ReactNode }) {
       state, startDemo, analyzeImage, analyzeText, analyzeAdvance, setStep, queueAnalyzeText, queueAnalyzeImage,
       modifyGeometry, loadGeometry, clearGeometry, stopScanning, viewQueueItem, removeQueueItem, clearActiveQueue,
       updateDynamicPoint, addPoint, addLine, addMidpoint, addPlane, addPlaneFromEquation, removeElement,
-      updatePoint, setManualMode, setManualTool, setVideoMode, toggleVideoMode, setSelectedIds, setAutoRotate, togglePoints, toggleAutoColor,
+      updatePoint, setManualMode, setManualTool, setVideoMode, toggleVideoMode, setSelectedIds, setAutoRotate, togglePoints, toggleAutoColor, toggleCoordinateGrid,
       setAiModel, setUseReasoning, toggleSelection, clearSelection, undo, redo, canUndo, canRedo
     }}>
       {children}

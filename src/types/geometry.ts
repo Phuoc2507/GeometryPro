@@ -285,6 +285,7 @@ export interface GeometryState {
   freeCameraMode: boolean;
   showPoints: boolean;
   autoColor: boolean;
+  showCoordinateGrid: boolean;
   aiModel: 'max' | 'high' | 'medium' | 'low';
   useReasoning: boolean;
   streamingText?: string;
@@ -300,6 +301,7 @@ export type GeometryAction =
   | { type: 'STOP_SCANNING' }
   | { type: 'TOGGLE_POINTS' }
   | { type: 'TOGGLE_AUTO_COLOR' }
+  | { type: 'TOGGLE_COORDINATE_GRID' }
   | { type: 'UPDATE_SCAN_PROGRESS'; progress: number; status: string }
   | { type: 'SET_GEOMETRY'; geometry: GeometryData }
   | { type: 'START_BUILDING' }
