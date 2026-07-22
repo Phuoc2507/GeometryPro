@@ -54,9 +54,12 @@ export function DropZone() {
         if (ctx) {
           ctx.drawImage(img, 0, 0, width, height);
           const compressedBase64 = canvas.toDataURL('image/jpeg', 0.8);
-          context.queueAnalyzeImage(compressedBase64, drawMode);
+          // Advance + ảnh → analyzeAdvance (Pass -1 chép đề ra chữ); còn lại → luồng ảnh thường.
+          if (drawMode === 'advance') context.analyzeAdvance('', compressedBase64);
+          else context.queueAnalyzeImage(compressedBase64, drawMode);
         } else {
-          context.queueAnalyzeImage(base64, drawMode);
+          if (drawMode === 'advance') context.analyzeAdvance('', base64);
+          else context.queueAnalyzeImage(base64, drawMode);
         }
       };
       img.src = base64;

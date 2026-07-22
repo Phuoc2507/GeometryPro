@@ -350,7 +350,7 @@ export interface GeometryContextType {
   startDemo: (type?: 'pyramid' | 'satellite') => void;
   analyzeImage: (imageBase64: string) => Promise<void>;
   analyzeText: (prompt: string, mode?: DrawMode) => Promise<void>;
-  analyzeAdvance: (prompt: string) => Promise<void>;
+  analyzeAdvance: (prompt: string, imageBase64?: string) => Promise<void>;
   setStep: (i: number) => void;
   queueAnalyzeText: (prompt: string, mode?: DrawMode, tags?: string[], detailLevel?: import('@/types/geometry').DetailLevel, offset?: [number, number, number]) => void;
   queueAnalyzeImage: (imageBase64: string, mode?: DrawMode, tags?: string[], detailLevel?: import('@/types/geometry').DetailLevel) => void;
@@ -626,10 +626,10 @@ export function GeometryProvider({ children }: { children: React.ReactNode }) {
     }
   }, [finishWithGeometry]);
 
-  const analyzeAdvance = useCallback(async (prompt: string) => {
+  const analyzeAdvance = useCallback(async (prompt: string, imageBase64?: string) => {
     dispatch({ type: 'START_SCANNING' });
     try {
-      const { data, error } = await invokeLocalApi('/api/analyze-advance', { prompt });
+      const { data, error } = await invokeLocalApi('/api/analyze-advance', imageBase64 ? { imageBase64, prompt: prompt || undefined } : { prompt });
       if (error) throw new Error(error.message || String(error));
       if (data?.mode === 'advance' && data.scene) {
         dispatch({ type: 'SET_ADVANCE_SCENE', scene: data.scene });
