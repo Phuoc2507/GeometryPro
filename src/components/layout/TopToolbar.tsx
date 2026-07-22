@@ -64,9 +64,9 @@ export function TopToolbar() {
           </Tooltip>
           <DropdownMenuContent align="start">
             <DropdownMenuLabel className="text-xs">Góc nhìn & Hiển thị</DropdownMenuLabel>
-            <DropdownMenuItem onClick={() => {}}>
-              <Grid3X3 className="w-4 h-4 mr-2 text-muted-foreground" />
-              Lưới tọa độ
+            <DropdownMenuItem onClick={() => context.toggleCoordinateGrid()}>
+              <Grid3X3 className={`w-4 h-4 mr-2 ${state.showCoordinateGrid ? 'text-blue-500' : 'text-muted-foreground'}`} />
+              {state.showCoordinateGrid ? 'Ẩn lưới tọa độ' : 'Hiện lưới tọa độ'}
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => {}}>
               <Maximize2 className="w-4 h-4 mr-2 text-muted-foreground" />
