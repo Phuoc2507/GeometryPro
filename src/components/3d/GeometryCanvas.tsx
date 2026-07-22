@@ -124,12 +124,13 @@ interface SceneProps {
   geometry: any;
   isBuilding: boolean;
   autoRotate?: boolean;
+  showCoordinateGrid?: boolean;
   is2D?: boolean;
   /** Task C1/C2: điểm cần "bay tới" (toạ độ math). nonce đổi = trigger bay mới. null = không bay (mặc định). */
   focus?: { pts: Array<{ x: number; y: number; z: number }>; nonce: number } | null;
 }
 
-function Scene({ geometry, isBuilding, autoRotate = false, is2D = false, focus = null }: SceneProps) {
+function Scene({ geometry, isBuilding, autoRotate = false, is2D = false, focus = null, showCoordinateGrid = true }: SceneProps) {
   const geometryContext = useGeometryOptional();
   const { camera } = useThree();
   const cameraStateContext = useCameraStateOptional();
@@ -265,7 +266,7 @@ function Scene({ geometry, isBuilding, autoRotate = false, is2D = false, focus =
       />
 
       {/* Coordinate Grid with axis labels */}
-      <CoordinateGridPlanes showXY showXZ={false} showYZ={false} size={gridSize} is2D={is2D} unit={geometry?.axisUnit} />
+      <CoordinateGridPlanes showXY={showCoordinateGrid} showXZ={false} showYZ={false} size={gridSize} is2D={is2D} unit={geometry?.axisUnit} />
 
       {/* Geometries */}
       <group>
@@ -312,6 +313,7 @@ export function GeometryCanvas({
 
   const isBuilding = state?.isBuilding ?? false;
   const autoRotate = state?.autoRotate ?? false;
+  const showCoordinateGrid = state?.showCoordinateGrid ?? true;
 
   const is2D = useMemo(() => {
     return geometry?.tags?.some((t: string) => t.includes('2D')) || false;
@@ -384,7 +386,7 @@ export function GeometryCanvas({
           }}
           style={{ background: 'transparent' }}
         >
-          <Scene geometry={scaledGeometry} isBuilding={isBuilding} autoRotate={autoRotate} is2D={is2D} focus={cameraContext?.cameraFocus ?? focus} />
+          <Scene geometry={scaledGeometry} isBuilding={isBuilding} autoRotate={autoRotate} showCoordinateGrid={showCoordinateGrid} is2D={is2D} focus={cameraContext?.cameraFocus ?? focus} />
         </Canvas>
       </ErrorBoundary>
     </div>
