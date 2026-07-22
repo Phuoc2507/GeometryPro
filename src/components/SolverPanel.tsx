@@ -379,6 +379,12 @@ export function SolverContent({ creditNote }: { creditNote?: string } = {}) {
       setReveal(null);
     }
 
+    // Trong phiên ADVANCE (thanh câu + lời giải từng câu): Solver phẳng KHÔNG được ghép điểm vào hình
+    // hay ghi đè bản đã lưu. state.geometry lúc này là scene.base (KHÔNG kèm advanceScene) nên
+    // loadGeometry/updateGeometryData bằng nó sẽ thay cảnh Advance bằng 1 hình phẳng ⇒ mất sạch
+    // thanh câu + lời giải khi mở lại (và rớt stepper ngay giữa phiên). Vẫn cho hiện reveal tạm ở trên.
+    if (ctx?.state.advanceScene) { shouldSaveRef.current = false; return; }
+
     if (shouldSaveRef.current) {
       // Kết quả GIẢI MỚI -> ghép điểm + đính lời giải vào hình rồi LƯU (update bản đã lưu theo ?id).
       shouldSaveRef.current = false;
