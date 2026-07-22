@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, User, Mail, Shield, LogOut, Save } from 'lucide-react';
+import { ArrowLeft, User, Mail, Shield, LogOut, Save, Crown, Sparkles, SlidersHorizontal } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -8,11 +8,31 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/hooks/use-toast';
+import { Switch } from '@/components/ui/switch';
+import { usePreferences } from '@/hooks/usePreferences';
+import { AppPreferences } from '@/lib/preferences';
+import { formatCredits } from '@/lib/utils';
+
+const TIER_LABELS: Record<string, string> = {
+  free: 'Miễn phí',
+  teacher: 'Giáo viên',
+  pro: 'Chuyên nghiệp',
+  school: 'Trường học',
+};
+
+const PREF_TOGGLES: { key: keyof AppPreferences; label: string; hint: string }[] = [
+  { key: 'showCoordinateGrid', label: 'Lưới toạ độ', hint: 'Hiện mặt phẳng lưới Oxy trong không gian.' },
+  { key: 'showPoints', label: 'Hiện điểm', hint: 'Hiện nhãn và chấm cho các điểm.' },
+  { key: 'autoColorPlanes', label: 'Tô màu mặt phẳng', hint: 'Tự tô màu các mặt phẳng để dễ phân biệt.' },
+  { key: 'autoRotate', label: 'Tự xoay', hint: 'Tự động xoay hình 3D.' },
+  { key: 'showIllustrationValues', label: 'Hiện số ở bài minh hoạ', hint: 'Hiện giá trị đo được ở các hình minh hoạ đại diện.' },
+];
 
 const Settings = () => {
   const navigate = useNavigate();
-  const { user, profile, isPro, updateProfile, signOut, isLoading: authLoading } = useAuth();
+  const { user, profile, isPro, tier, credits, openUpgradeModal, updateProfile, signOut, isLoading: authLoading } = useAuth();
   const { toast } = useToast();
+  const { prefs, setPref } = usePreferences();
 
   const [displayName, setDisplayName] = useState('');
   const [avatarUrl, setAvatarUrl] = useState('');
@@ -68,6 +88,15 @@ const Settings = () => {
   }
 
   const initial = displayName ? displayName.slice(0, 2).toUpperCase() : user.email?.slice(0, 2).toUpperCase() || 'US';
+
+  const planName = TIER_LABELS[tier] ?? 'Miễn phí';
+  const planStatus = (() => {
+    if (!isPro) return 'Miễn phí';
+    const exp = profile?.plan_expires_at ? new Date(profile.plan_expires_at) : null;
+    if (!exp) return 'Đang kích hoạt';
+    const days = Math.ceil((exp.getTime() - Date.now()) / 86400000);
+    return days > 0 ? `Còn ${days} ngày` : 'Đã hết hạn';
+  })();
 
   return (
     <div className="min-h-screen radial-gradient-bg p-4 md:p-8">
@@ -176,6 +205,67 @@ const Settings = () => {
                   Lưu thay đổi
                 </Button>
               </CardFooter>
+            </Card>
+
+            <Card className="border-border/50 bg-background/50 backdrop-blur-sm">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-lg">
+                  <Crown className="w-5 h-5 text-amber-500" />
+                  Gói của tôi
+                </CardTitle>
+                <CardDescription>
+                  Gói hiện tại và số credit còn lại.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">Gói</span>
+                  <span className="font-medium">{planName}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">Trạng thái</span>
+                  <span className="font-medium">{planStatus}</span>
+                </div>
+                {tier !== 'free' && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">Credit còn lại</span>
+                    <span className="font-medium">{formatCredits(credits)}</span>
+                  </div>
+                )}
+              </CardContent>
+              <CardFooter className="border-t border-border/50 pt-6">
+                <Button variant="outline" className="gap-2" onClick={() => openUpgradeModal()}>
+                  <Sparkles className="w-4 h-4" />
+                  Nâng cấp / Quản lý gói
+                </Button>
+              </CardFooter>
+            </Card>
+
+            <Card className="border-border/50 bg-background/50 backdrop-blur-sm">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-lg">
+                  <SlidersHorizontal className="w-5 h-5 text-primary" />
+                  Hiển thị & Bản vẽ
+                </CardTitle>
+                <CardDescription>
+                  Tuỳ chọn hiển thị bản vẽ 3D. Lưu trên trình duyệt này.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {PREF_TOGGLES.map(({ key, label, hint }) => (
+                  <div key={key} className="flex items-center justify-between gap-4">
+                    <div className="space-y-0.5">
+                      <Label htmlFor={`pref-${key}`}>{label}</Label>
+                      <p className="text-xs text-muted-foreground">{hint}</p>
+                    </div>
+                    <Switch
+                      id={`pref-${key}`}
+                      checked={prefs[key]}
+                      onCheckedChange={(v) => setPref(key, v)}
+                    />
+                  </div>
+                ))}
+              </CardContent>
             </Card>
           </div>
         </div>
