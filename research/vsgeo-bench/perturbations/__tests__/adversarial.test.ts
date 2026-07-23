@@ -938,3 +938,30 @@ describe("RF-2 — reflect: đại lượng CÓ DẤU/ĐỊNH HƯỚNG diễn đ
     expect(v.answer.canonical).toBe(seedWithCoords.answer.canonical);
   });
 });
+
+describe("DS-1 — distractor: nhãn NEO TIA 'Kx/Ky/Kz' bị pickSafeDistractor bỏ sót => né BANK[0] ('K')", () => {
+  // GỐC RỄ: pickSafeDistractor tính "used" chỉ bằng extractVertexLabels — hàm này BỎ SÓT 'K' khi
+  // 'K' đứng trước chữ thường hướng ('Kz' => AFTER_LABEL_NEG loại 'K'). Các đề dưới neo điểm tải
+  // trọng (đỉnh chung của ba tia, toạ độ/khoảng cách CHÍNH là yêu cầu) tại 'K' viết 'Kx/Ky/Kz'.
+  // 'K' không bị coi là đã dùng ⇒ chọn BANK[0] "gọi K là một điểm tuỳ ý (không liên quan)" ⇒ ĐỊNH
+  // NGHĨA LẠI điểm K tải trọng thành "tuỳ ý/không liên quan" ⇒ statement tự mâu thuẫn, đáp án giữ
+  // nguyên ⇒ sai-im-lặng (§4.3). DS-1: gộp extractRayAnchors vào "used" ⇒ né BANK[0], dùng BANK[1].
+  const seedsDS1: any[] = [
+    // Khoảng cách: đỉnh tia Kz có toạ độ (1;2;2); đáp án 2 (khoảng cách tới (Oxy)).
+    {"id":"vsgeo-4401","source":{"type":"synthetic","ref":"VSGeo-Bench round4 finder5 - distractor ray-anchor K (distance)"},"statement_vi":"Trong khong gian voi he toa do Oxyz, goc cua tia Kz co toa do (1;2;2). Tinh khoang cach tu goc cua tia Kz den mat phang (Oxy).","figure":{"coords_given":true},"answer":{"canonical":"2","type":"rational"},"tags":{"topic":["khoang_cach"],"answer_form":"rational","difficulty":1,"requires_auxiliary_construction":false},"scale_degree":1},
+    // Điểm: đỉnh chung ba tia Kx,Ky,Kz; đáp án CHÍNH là toạ độ của K = (2,3,5).
+    {"id":"vsgeo-3402","source":{"type":"synthetic","ref":"VSGeo adversarial round-3 finder-5 distractor ray-anchor-K point-answer"},"statement_vi":"Trong khong gian Oxyz, cho ba tia Kx, Ky, Kz doi mot vuong goc, chung goc, lan luot cung huong voi cac truc toa do. Biet goc chung cua ba tia do co toa do nguyen, cach mat phang (Oyz) mot khoang bang 2, cach (Oxz) mot khoang bang 3, cach (Oxy) mot khoang bang 5, va nam trong goc phan tam thu nhat. Tim toa do goc chung cua ba tia Kx, Ky, Kz.","figure":{"coords_given":true},"answer":{"canonical":"(2,3,5)","type":"point"},"tags":{"topic":["toa_do"],"answer_form":"point","difficulty":2,"requires_auxiliary_construction":false}},
+  ];
+  for (const s of seedsDS1) {
+    it(`seed ${s.id} neo tia 'K' => distractor KHÔNG chèn BANK[0] (định nghĩa lại K)`, () => {
+      const v = distractor(s);
+      expect(v.statement_vi).not.toContain(DISTRACTOR_BANK[0]);
+      expect(v.statement_vi).toContain(DISTRACTOR_BANK[1]); // câu an toàn không nhãn HOA
+    });
+  }
+
+  it("HỒI QUY DƯƠNG: đề KHÔNG có nhãn 'K' (kể cả neo tia) vẫn dùng BANK[0]", () => {
+    const v = distractor(seedNumeric); // "ABCD.A'B'C'D'" — không có K neo tia
+    expect(v.statement_vi).toContain(DISTRACTOR_BANK[0]);
+  });
+});
