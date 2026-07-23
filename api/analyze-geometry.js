@@ -175,6 +175,9 @@ export default async function handler(req, res) {
     // sinh hình CINEMATIC (Kinematic/Morphing/Geodesic — có chuyển động), mà engine chỉ dựng hình
     // TĨNH ⇒ chặn 'detailed' sẽ là giật lùi cho người dùng đã chọn chế độ giàu hơn.
     // Tắt khẩn cấp: đặt env KERNEL_MODE=off.
+    // Tier engine để stamp lên hình (banner giáo viên). Chỉ set khi khối kernel dưới chạy
+    // (quick & !ảnh). Draw ảnh/detailed giữ null ⇒ banner ẩn, Mức 3 vẫn hiện ở luồng SOLVE.
+    let engineClassification = null;
     if (drawMode === 'quick' && !imageBase64 && trimmedPrompt && process.env.KERNEL_MODE !== 'off') {
       try {
         sendEvent('Đang thử engine tất định...', 25);
@@ -182,6 +185,7 @@ export default async function handler(req, res) {
         const { solveProblem } = await import('./_lib/kernel-bridge/solveWithKernel.js');
         const _kt0 = Date.now();
         const k = await solveProblem(trimmedPrompt);
+        engineClassification = k.tier || null;
         const _kms = Date.now() - _kt0;
         const usable = k.ok
           && k.geometry
@@ -191,6 +195,7 @@ export default async function handler(req, res) {
         if (usable) {
           const geometry = normalizeGeometryData(k.geometry);
           geometry.confidence = 1; // engine đã tự kiểm mọi assert của đề
+          geometry.classification = k.tier || null; // banner: served có thể là Mức 1 (đáp số) hoặc Mức 3 (vd góc: hình dựng được, đáp chưa chứng thực).
           const _ea = (k.answers || [])[0];
           if (_ea && Number.isFinite(_ea.approx)) {
             geometry.engineAnswer = { text: _ea.text, approx: _ea.approx, verified: true }; // engine đã tự kiểm ở nhánh phục vụ này
@@ -241,6 +246,7 @@ export default async function handler(req, res) {
         });
       } catch (e) {
         console.warn('[kernel] lỗi → rơi về LLM:', e?.message);
+        engineClassification = { level: 3, exactness: null, problemType: 'Khác', reason: { kind: 'error', message: e?.message || 'lỗi engine' } };
         logEngineDecision({ mode: 'quick', served: false, reason: `error:${e?.message || ''}`, ms: 0, promptLen: trimmedPrompt.length });
       }
     }
@@ -496,6 +502,8 @@ KẾT QUẢ TRƯỚC BỊ PHẲNG (mọi điểm có z≈0). Hãy dựng lại h
     }
 
     sendEvent('Hoàn tất!', 100);
+    // Draw rơi về LLM: gắn tier engine (Mức 2/3) lên hình để banner giáo viên hiện lý do.
+    if (engineClassification) normalizedGeometry.classification = engineClassification;
     const finalPayload = {
       step1: {
         // Ảnh mà không trích được đề -> dùng ĐÚNG placeholder (frontend lọc thành ô trống), KHÔNG
