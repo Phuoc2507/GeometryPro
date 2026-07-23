@@ -901,7 +901,7 @@ và có một công cụ CLI `selfcheck.ts` để rút mẫu ngẫu nhiên đem 
     return null;
   }
 
-  /** Trắc nghiệm: lấy chữ cái A–D đầu tiên ở cả hai bên. Không có → unsure. */
+  /** Trắc nghiệm: lấy chữ cái A–D ĐỨNG ĐỘC LẬP đầu tiên ở cả hai bên. Không có → unsure. */
   export function compareMcq(model: string, truth: string): Verdict {
     const lt = toMcq(truth);
     const lm = toMcq(model);
@@ -911,7 +911,12 @@ và có một công cụ CLI `selfcheck.ts` để rút mẫu ngẫu nhiên đem 
   }
 
   function toMcq(raw: string): string | null {
-    const m = raw.toUpperCase().match(/[ABCD]/);
+    // Chỉ nhận A/B/C/D khi nó là MỘT TỪ RIÊNG, không nằm trong từ khác. Nếu chỉ dùng
+    // /[ABCD]/ thì "Chọn đáp án B" sẽ khớp nhầm chữ C trong "CHỌN", và "không có chữ cái"
+    // khớp nhầm chữ C trong "CÓ" → phán bừa. Ranh giới \b của JS chỉ tính [A-Za-z0-9_] nên
+    // dấu tiếng Việt (Ó, Đ, Á…) vẫn bị coi là ranh giới → không đủ. Ta dùng lookaround theo
+    // \p{L} (mọi CHỮ Unicode, kể cả chữ có dấu) để chắc chắn chữ cái đứng tách biệt.
+    const m = raw.toUpperCase().match(/(?<!\p{L})[ABCD](?!\p{L})/u);
     return m ? m[0] : null;
   }
   ```
@@ -925,6 +930,8 @@ và có một công cụ CLI `selfcheck.ts` để rút mẫu ngẫu nhiên đem 
   git add research/vsgeo-bench/grader/compare.ts research/vsgeo-bench/grader/__tests__/compare.test.ts
   git commit -m "feat(grader): logic tương đương vô hướng/tỉ số/điểm/mặt/boolean/mcq"
   ```
+
+> **Bài học `toMcq` (một lỗi thật, đáng kể khi bảo vệ):** bản đầu tiên viết `raw.toUpperCase().match(/[ABCD]/)` — tưởng vô hại nhưng SAI với tiếng Việt: câu "Chọn đáp án B" khi viết hoa thành `CHỌN ĐÁP ÁN B`, regex tham lam khớp ngay chữ **C trong "CHỌN"** rồi trả `C` ≠ `B`; tệ hơn, "không có chữ cái" (đáng lẽ `unsure`) lại khớp **C trong "CÓ"** và bị chấm nhầm. Ranh giới `\b` của JavaScript **không cứu được** vì nó chỉ coi `[A-Za-z0-9_]` là "chữ", nên các dấu tiếng Việt (Ó, Đ, Á…) bị tính là ranh giới. Bản vá dùng lookaround Unicode `/(?<!\p{L})[ABCD](?!\p{L})/u` — chỉ nhận A/B/C/D khi hai bên **không phải chữ Unicode nào** (kể cả chữ có dấu). Đây là kiểu lỗi 2 em nên kể trước hội đồng: "chúng em phát hiện khi tự kiểm định, hiểu vì sao `\b` không đủ cho tiếng Việt, và vá bằng thuộc tính Unicode `\p{L}`."
 
 > **Hạn chế của `comparePoint` (design.md §4.2 điểm 3) — phải ghi rõ khi bảo vệ:** hàm này so **từng tọa độ** theo epsilon, tức **giả định đề đã cố định hệ trục Oxyz** (đa số bài tọa độ hóa lớp 12 đều cho sẵn gốc/hướng trục, nên giả định này đúng). Nếu một bài **không** cố định hệ trục thì cùng một điểm có thể có tọa độ khác nhau sau một **phép dời hình** (tịnh tiến/xoay), và so từng tọa độ sẽ báo "sai" oan. **Cách xử lý tối thiểu ở v1:** khi soạn seed loại `point`/`vector` (kế hoạch 01), Em 1 **luôn ghi rõ hệ trục trong đề** để đáp án là duy nhất; ca hiếm không cố định được hệ trục thì gắn cờ soát tay. Nâng cấp "bất biến dời hình" là *trần cao*, ghi vào "câu hỏi mở", không làm ở v1.
 

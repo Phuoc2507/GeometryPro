@@ -84,7 +84,7 @@ function toBool(raw: string): boolean | null {
   return null;
 }
 
-/** Trắc nghiệm: lấy chữ cái A–D đầu tiên ở cả hai bên. Không có → unsure. */
+/** Trắc nghiệm: lấy chữ cái A–D ĐỨNG ĐỘC LẬP đầu tiên ở cả hai bên. Không có → unsure. */
 export function compareMcq(model: string, truth: string): Verdict {
   const lt = toMcq(truth);
   const lm = toMcq(model);
@@ -94,6 +94,11 @@ export function compareMcq(model: string, truth: string): Verdict {
 }
 
 function toMcq(raw: string): string | null {
-  const m = raw.toUpperCase().match(/[ABCD]/);
+  // Chỉ nhận A/B/C/D khi nó là MỘT TỪ RIÊNG, không nằm trong từ khác. Nếu chỉ dùng
+  // /[ABCD]/ thì "Chọn đáp án B" sẽ khớp nhầm chữ C trong "CHỌN", và "không có chữ cái"
+  // khớp nhầm chữ C trong "CÓ" → phán bừa. Ranh giới \b của JS chỉ tính [A-Za-z0-9_] nên
+  // dấu tiếng Việt (Ó, Đ, Á…) vẫn bị coi là ranh giới → không đủ. Ta dùng lookaround theo
+  // \p{L} (mọi CHỮ Unicode, kể cả chữ có dấu) để chắc chắn chữ cái đứng tách biệt.
+  const m = raw.toUpperCase().match(/(?<!\p{L})[ABCD](?!\p{L})/u);
   return m ? m[0] : null;
 }
