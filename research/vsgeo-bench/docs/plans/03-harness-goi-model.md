@@ -81,9 +81,20 @@ Chào Em 2! Đây là "trái tim vận hành" của cả đề tài. Hãy hình 
       expect(estimateCostUsd("test:demo", undefined)).toBeUndefined();
     });
 
-    it("bảng giá PRICING có ít nhất các model chính của đề tài", () => {
-      // Chỉ kiểm tra khoá tồn tại, KHÔNG kiểm tra con số (con số là cấu hình, sẽ đổi theo thời giá).
-      expect(PRICING["test:demo"]).toBeDefined();
+    it("bảng giá PRICING phủ MỖI nhà cung cấp chính (openai/gemini/anthropic/openrouter)", () => {
+      // Bản ngây thơ chỉ kiểm PRICING["test:demo"] (khoá DEMO) — tên test hứa "model chính"
+      // nhưng KHÔNG canh dòng giá THẬT nào: ai lỡ xoá hết dòng thật thì mọi costUsd rỗng mà
+      // test vẫn XANH (xem Task 11). Kiểm THEO TIỀN TỐ nhà cung cấp, KHÔNG khoá cứng tên model.
+      const providers = new Set(Object.keys(PRICING).map((key) => key.split(":")[0]));
+      for (const p of ["openai", "gemini", "anthropic", "openrouter"]) {
+        expect(providers).toContain(p);
+      }
+    });
+
+    it("estimateCostUsd ra số dương cho một model THẬT trong bảng (không chỉ demo)", () => {
+      const realKey = Object.keys(PRICING).find((key) => !key.startsWith("test:"));
+      expect(realKey).toBeDefined();
+      expect(estimateCostUsd(realKey!, { in: 1000, out: 1000 })).toBeGreaterThan(0);
     });
   });
   ```
@@ -165,7 +176,7 @@ Chào Em 2! Đây là "trái tim vận hành" của cả đề tài. Hãy hình 
   ```
   npm test -- research/vsgeo-bench/harness/__tests__/pricing.test.ts
   ```
-  Kỳ vọng: `4 passed`. Xanh rồi thì đi tiếp.
+  Kỳ vọng: `5 passed`. Xanh rồi thì đi tiếp.
 
 - [ ] **Bước 5 — Commit.**
   ```
@@ -285,7 +296,9 @@ Chào Em 2! Đây là "trái tim vận hành" của cả đề tài. Hãy hình 
     } else {
       // cot = chain-of-thought: yêu cầu suy luận từng bước rồi mới chốt.
       user =
-        `Giải bài sau. Hãy suy luận TỪNG BƯỚC rõ ràng, sau đó đặt đáp án cuối trong \\boxed{...}.\n\n` +
+        // Viết "từng bước" THƯỜNG (không hoa) để khớp chính xác test ở Bước 1
+        // (`toContain("từng bước")` phân biệt hoa–thường). Chớ viết HOA kẻo test đỏ.
+        `Giải bài sau. Hãy suy luận từng bước rõ ràng, sau đó đặt đáp án cuối trong \\boxed{...}.\n\n` +
         `Đề: ${de}`;
     }
     return { system: SYSTEM_PROMPT, user };
@@ -377,11 +390,13 @@ Chào Em 2! Đây là "trái tim vận hành" của cả đề tài. Hãy hình 
         }
       }
       if (depth === 0) {
-        result = raw.slice(contentStart, i).trim();  // ghi đè => giữ cái CUỐI
-        searchFrom = i + 1;
-      } else {
-        break;                                // ngoặc không đóng => bỏ, tránh lặp vô tận
+        result = raw.slice(contentStart, i).trim();  // chỉ nhận khi ngoặc đóng cân; ghi đè => giữ CUỐI
       }
+      // LUÔN nhích qua marker này rồi quét tiếp — kể cả khi ngoặc KHÔNG đóng cân. Một \boxed{
+      // hỏng/bị cắt cụt ở phía TRƯỚC không được che mất \boxed{...} hợp lệ phía SAU (khớp cách
+      // grader/extract.ts làm; xem Task 11 — bản `break` cũ làm mất box sau). contentStart > start
+      // nên indexOf lần sau luôn tiến => không lặp vô tận.
+      searchFrom = contentStart;
     }
     return result;
   }
@@ -1018,10 +1033,30 @@ Chào Em 2! Đây là "trái tim vận hành" của cả đề tài. Hãy hình 
 
   const realSleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 
-  // Nhận biết lỗi "tạm thời" đáng thử lại (mạng chập, quá tải, giới hạn nhịp).
+  // Nhận biết lỗi "tạm thời" đáng thử lại (mạng chập, quá tải, giới hạn nhịp, quá hạn).
   // Bắt chước cách phân loại của api/_lib/vilao.js.
+  //
+  // Hai bẫy do bộ tự-phản-biện phát hiện (xem Task 11), đã vá sẵn ở đây:
+  //   F1 — timeout do CHÍNH harness kích qua AbortController.abort() làm fetch ném lỗi
+  //        name="AbortError", message "This operation was aborted" — KHÔNG chứa chữ "timeout".
+  //        Dò chuỗi con "timeout" sẽ BỎ SÓT => timeout không bao giờ được retry. Sửa: bắt theo TÊN.
+  //   F4 — dò chuỗi con "500" khớp NHẦM "8500" trong thân lỗi HTTP 400 (vd "max_tokens ... 8500
+  //        tokens") => 4xx vĩnh viễn bị retry vô ích. Sửa: đọc ĐÚNG mã ngay sau "HTTP ".
   function isTransient(err: unknown): boolean {
+    // F1 — timeout của harness: bắt theo TÊN lỗi, không theo chuỗi con.
+    if (err instanceof Error && err.name === "AbortError") return true;
+
     const msg = (err instanceof Error ? err.message : String(err)).toLowerCase();
+
+    // F4 — có mã HTTP thì quyết định LUÔN tại đây (mọi adapter ném "PROVIDER HTTP <mã>: <thân>"):
+    // chỉ 429 (quá nhịp) và 5xx là tạm thời; 4xx khác là vĩnh viễn. Đọc mã ngay sau "http ".
+    const httpMatch = msg.match(/\bhttp (\d{3})\b/);
+    if (httpMatch) {
+      const status = Number(httpMatch[1]);
+      return status === 429 || status >= 500;
+    }
+
+    // Lỗi mạng cấp thấp (không kèm mã HTTP): chập mạng, mất/không nối được, quá hạn, quá nhịp.
     return (
       msg.includes("timeout") ||
       msg.includes("timed out") ||
@@ -1029,11 +1064,7 @@ Chào Em 2! Đây là "trái tim vận hành" của cả đề tài. Hãy hình 
       msg.includes("fetch failed") ||
       msg.includes("econnreset") ||
       msg.includes("econnrefused") ||
-      msg.includes("429") ||     // quá nhịp (rate limit)
-      msg.includes("500") ||
-      msg.includes("502") ||
-      msg.includes("503") ||
-      msg.includes("504")
+      msg.includes("rate limit")
     );
   }
 
@@ -1392,13 +1423,29 @@ Chào Em 2! Đây là "trái tim vận hành" của cả đề tài. Hãy hình 
     const styles = (get("--styles") ?? "zero_shot")
       .split(",").map((s) => s.trim()).filter(Boolean) as PromptStyle[];
 
+    // Ép & KIỂM tham số số học. Bản ngây thơ dùng Number() TRẦN: "--k abc" => NaN, vòng lặp
+    // `run <= NaN` sai ngay => 0 lượt, ghi JSONL rỗng, thoát 0 (xem Task 11 — benchmark IM
+    // LẶNG không ra dữ liệu, đầu độc oracle bằng tập rỗng). Nay từ chối rõ ràng.
+    const kRaw = get("--k") ?? "3";
+    const k = Number(kRaw);
+    if (!Number.isInteger(k) || k < 1) {
+      throw new Error(`--k phải là số nguyên ≥ 1 (số lần lặp mỗi bài), nhận: "${kRaw}"`);
+    }
+    // Tương tự: "--temperature hot" => NaN => temperature:null lọt vào request (?? KHÔNG chặn
+    // NaN) => vỡ tính TÁI LẬP. Chặn về [0, 2] (bao trọn dải của các nhà cung cấp).
+    const tempRaw = get("--temperature") ?? "0";
+    const temperature = Number(tempRaw);
+    if (!Number.isFinite(temperature) || temperature < 0 || temperature > 2) {
+      throw new Error(`--temperature phải là số trong [0, 2], nhận: "${tempRaw}"`);
+    }
+
     return {
       seedsPath,
       models: modelsRaw.split(",").map((s) => s.trim()).filter(Boolean),
-      k: Number(get("--k") ?? "3"),
+      k,
       styles,
       date,
-      temperature: Number(get("--temperature") ?? "0"),
+      temperature,
       outDir: get("--out") ?? "research/vsgeo-bench/results",
     };
   }
@@ -1521,6 +1568,146 @@ Chào Em 2! Đây là "trái tim vận hành" của cả đề tài. Hãy hình 
 
 ---
 
+### Task 11: Tự-phản-biện harness — `harness/__tests__/adversarial.test.ts`
+
+> **Làm khi nào?** Task này KHÔNG cần mạng — làm được ngay sau Task 9 (khi mọi unit offline đã xong). Đặt cuối vì nó là *đỉnh* của kế hoạch: sau khi mọi test "đường hạnh phúc" đã XANH, ta **cố tình đi tìm cách làm harness ghi dữ liệu SAI/THIẾU**.
+
+> **⭐ Tự-phản-biện harness (adversarial self-review) — phần đáng kể nhất khi bảo vệ.** Harness không *chấm* như oracle, nhưng nó là cái **ống dẫn** mọi con số vào benchmark: nếu nó âm thầm bỏ bài, kẹt retry, hay ghi tập rỗng thì mọi kết luận về sau đều hỏng theo mà nhìn bề ngoài vẫn "chạy ngon". Bài học Plan 02 lặp lại y nguyên: **một suite test xanh KHÔNG chứng minh harness đúng** — nó chỉ chứng minh harness vượt qua đúng những ca ta đã nghĩ ra. Một lượt review đa-góc (10 finder + refute-verify độc lập) lôi ra **6 lỗi đều lọt qua suite gốc**. Các bản vá đã **nằm sẵn** trong code Task 1/3/7/9 ở trên (như Plan 02 vá sẵn ở Task 3–4); file test dưới đây xác nhận bản vá còn nguyên và sẽ ĐỎ nếu ai lỡ tay làm hồi lỗi.
+>
+> | Mã | Ở đâu | Bản ngây thơ sai thế nào | Vì sao nguy hiểm |
+> |----|-------|--------------------------|------------------|
+> | **F1** | `callModel.isTransient` (Task 7) | Dò chuỗi con `"timeout"`, nhưng timeout do harness tự kích qua `AbortController.abort()` ném lỗi `name="AbortError"` msg `"This operation was aborted"` — KHÔNG chứa "timeout". | Timeout là lỗi tạm thời PHỔ BIẾN NHẤT khi gọi model chậm; bản cũ *không bao giờ retry* nó ⇒ mất bài lác đác, dữ liệu thủng lỗ chỗ. |
+> | **F4** | `callModel.isTransient` (Task 7) | Dò chuỗi con `"500"` khớp NHẦM `"8500"` trong thân HTTP **400** (`max_tokens ... 8500 tokens`). | 4xx là lỗi *vĩnh viễn* (sai request) — retry 3 lần chỉ tổ chậm và tốn tiền, không bao giờ khá hơn. |
+> | **F2** | `run.parseArgs` (Task 9) | `Number("--k abc")` ⇒ `NaN`; vòng `run <= NaN` sai ngay ⇒ 0 lượt. | Benchmark **im lặng không ra dữ liệu**: JSONL rỗng, thoát mã 0 (như thành công), đầu độc phân tích bằng tập rỗng. |
+> | **F5** | `run.parseArgs` (Task 9) | `Number("--temperature hot")` ⇒ `NaN` lọt vào request. | Vỡ tính **tái lập** — trụ cột của một benchmark khoa học (§12). |
+> | **F3** | `extract.extractBoxed` (Task 3) | `break` khi gặp một `\boxed{` mở-không-đóng ⇒ mất `\boxed{...}` hợp lệ phía sau. | `extractedAnswer` để soi lỗi bị sai lệch, gây hiểu nhầm khi phân tích thủ công. |
+> | **F6** | `pricing.test` (Task 1) | Test cũ chỉ kiểm khoá `"test:demo"` — ai xoá hết dòng giá THẬT vẫn XANH. | Lỗ hổng *trong chính bộ test*: cột chi phí có thể rỗng toàn bộ mà CI vẫn báo an toàn. |
+>
+> **Cách kể trước hội đồng:** "Harness là *ống dẫn dữ liệu* của cả benchmark — nếu nó âm thầm bỏ bài hay ghi tập rỗng thì mọi con số về sau đều sai theo. Nên sau khi test xanh, chúng em dựng một lượt **tự-phản-biện** chuyên đi tìm *mất/hỏng dữ liệu im lặng*, tìm ra 6 lỗi mà suite gốc bỏ sót — trong đó F2 khiến benchmark chạy ra tập RỖNG mà vẫn báo thành công — rồi vá từng lỗi kèm test hồi quy." Đây chính là tư duy *đo lường được độ tin cậy của công cụ đo*.
+
+**Files:**
+- Create: `research/vsgeo-bench/harness/__tests__/adversarial.test.ts`
+
+- [ ] **Bước 1 — Viết bộ test tấn công (phải XANH ngay vì code Task 1/3/7/9 đã vá).** Tạo `research/vsgeo-bench/harness/__tests__/adversarial.test.ts`:
+  ```ts
+  // harness/__tests__/adversarial.test.ts
+  // BỘ TEST TỰ-PHẢN-BIỆN cho HARNESS (design.md §4.3) — song song grader/__tests__/adversarial.test.ts.
+  // 6 lỗi F1–F6 đều LỌT QUA suite "đường hạnh phúc"; mỗi test dưới đây là một "bằng chứng hồi quy".
+  import { describe, it, expect, vi } from "vitest";
+  import { callModel } from "../callModel";
+  import { parseArgs } from "../run";
+  import { extractBoxed } from "../extract";
+  import type { ModelReply } from "../types";
+
+  const noSleep = async (_ms: number) => {};
+  const okReply: ModelReply = { text: "\\boxed{1}", latencyMs: 1 };
+
+  // Dựng lỗi y như fetch ném khi AbortController.abort() bắn (đường timeout của mọi adapter).
+  function abortError(): Error {
+    const e = new Error("This operation was aborted");
+    e.name = "AbortError";
+    return e;
+  }
+
+  describe("F1 — callModel: timeout (AbortError) PHẢI được thử lại", () => {
+    it("AbortError được coi là tạm thời => thử lại rồi thành công", async () => {
+      let n = 0;
+      const flaky = vi.fn(async () => { n++; if (n === 1) throw abortError(); return okReply; });
+      const reply = await callModel("openai:gpt-x", "S", "U", {},
+        { adapters: { openai: flaky }, sleep: noSleep, maxAttempts: 3 });
+      expect(n).toBe(2);
+      expect(reply.text).toBe("\\boxed{1}");
+    });
+
+    it("AbortError liên tục => thử ĐỦ maxAttempts lần", async () => {
+      const always = vi.fn(async () => { throw abortError(); });
+      await expect(callModel("openai:gpt-x", "S", "U", {},
+        { adapters: { openai: always }, sleep: noSleep, maxAttempts: 3 })).rejects.toThrow(/aborted/i);
+      expect(always).toHaveBeenCalledTimes(3);
+    });
+  });
+
+  describe("F4 — callModel: 4xx KHÔNG bị retry chỉ vì thân lỗi chứa chuỗi số giống mã 5xx", () => {
+    it('HTTP 400 với thân "...8500 tokens" chỉ gọi ĐÚNG 1 lần', async () => {
+      const badReq = vi.fn(async () => {
+        throw new Error("OpenAI HTTP 400: max_tokens is too large: you requested 8500 tokens");
+      });
+      await expect(callModel("openai:gpt-x", "S", "U", {},
+        { adapters: { openai: badReq }, sleep: noSleep, maxAttempts: 3 })).rejects.toThrow(/HTTP 400/);
+      expect(badReq).toHaveBeenCalledTimes(1);
+    });
+
+    it("HTTP 404 cũng chỉ gọi 1 lần", async () => {
+      const err404 = vi.fn(async () => { throw new Error("OpenAI HTTP 404: model not found"); });
+      await expect(callModel("openai:x", "S", "U", {},
+        { adapters: { openai: err404 }, sleep: noSleep, maxAttempts: 3 })).rejects.toThrow(/HTTP 404/);
+      expect(err404).toHaveBeenCalledTimes(1);
+    });
+
+    it("nhưng 5xx & 429 THẬT vẫn được retry", async () => {
+      const err500 = vi.fn(async () => { throw new Error("Gemini HTTP 500: internal"); });
+      await expect(callModel("gemini:g", "S", "U", {},
+        { adapters: { gemini: err500 }, sleep: noSleep, maxAttempts: 3 })).rejects.toThrow(/HTTP 500/);
+      expect(err500).toHaveBeenCalledTimes(3);
+    });
+  });
+
+  // parseArgs bắt buộc --seeds/--models/--date; BASE cấp sẵn để mỗi test chỉ thay cờ số học.
+  const BASE = ["--seeds", "s.jsonl", "--models", "openai:x", "--date", "2026-07-23"];
+
+  describe("F2 — run.ts: --k phải là số nguyên ≥ 1, nếu không THÌ NÉM", () => {
+    it('"--k abc", "--k 0", "--k 2.5" đều bị từ chối', () => {
+      expect(() => parseArgs([...BASE, "--k", "abc"])).toThrow(/--k/);
+      expect(() => parseArgs([...BASE, "--k", "0"])).toThrow(/--k/);
+      expect(() => parseArgs([...BASE, "--k", "2.5"])).toThrow(/--k/);
+    });
+    it("mặc định = 3; hợp lệ giữ nguyên", () => {
+      expect(parseArgs([...BASE]).k).toBe(3);
+      expect(parseArgs([...BASE, "--k", "5"]).k).toBe(5);
+    });
+  });
+
+  describe("F5 — run.ts: --temperature phải là số trong [0,2], nếu không THÌ NÉM", () => {
+    it('"--temperature hot", "3", "-1" đều bị từ chối', () => {
+      expect(() => parseArgs([...BASE, "--temperature", "hot"])).toThrow(/--temperature/);
+      expect(() => parseArgs([...BASE, "--temperature", "3"])).toThrow(/--temperature/);
+      expect(() => parseArgs([...BASE, "--temperature", "-1"])).toThrow(/--temperature/);
+    });
+    it("mặc định = 0; hợp lệ giữ nguyên", () => {
+      expect(parseArgs([...BASE]).temperature).toBe(0);
+      expect(parseArgs([...BASE, "--temperature", "0.7"]).temperature).toBeCloseTo(0.7, 9);
+    });
+  });
+
+  describe("F3 — extract.ts: \\boxed{ hỏng phía trước KHÔNG che \\boxed{...} hợp lệ phía sau", () => {
+    it("box hỏng mở-không-đóng phía trước, vẫn lấy box hợp lệ phía sau", () => {
+      expect(extractBoxed("scratch \\boxed{x ... final \\boxed{a\\sqrt2}")).toBe("a\\sqrt2");
+    });
+    it("box cụt ở CUỐI không xoá box hợp lệ trước đó", () => {
+      expect(extractBoxed("answer \\boxed{a} then junk \\boxed{oops")).toBe("a");
+    });
+    it("đường hạnh phúc vẫn nguyên: lấy box CUỐI, ngoặc lồng, không box => null", () => {
+      expect(extractBoxed("foo \\boxed{1} bar \\boxed{2}")).toBe("2");
+      expect(extractBoxed("\\boxed{\\frac{1}{2}}")).toBe("\\frac{1}{2}");
+      expect(extractBoxed("khong co box")).toBeNull();
+    });
+  });
+  ```
+
+- [ ] **Bước 2 — Chạy test PASS (không cần mạng).**
+  ```
+  npm test -- research/vsgeo-bench/harness/__tests__/adversarial.test.ts
+  ```
+  Kỳ vọng: tất cả xanh (bản vá đã nằm sẵn trong Task 1/3/7/9). Nếu ĐỎ ⇒ code em còn bản ngây thơ; xem lại đúng Task tương ứng.
+
+- [ ] **Bước 3 — Commit.**
+  ```
+  git add research/vsgeo-bench/harness/__tests__/adversarial.test.ts
+  git commit -m "test(harness): bộ tự-phản-biện khóa 6 lỗi mất/hỏng dữ liệu im lặng"
+  ```
+
+---
+
 ## Tiêu chí hoàn thành (Definition of Done)
 
 Ánh xạ tới tiêu chí thành công §13 và giao thức §6.
@@ -1531,7 +1718,8 @@ Chào Em 2! Đây là "trái tim vận hành" của cả đề tài. Hãy hình 
 - [ ] `runEval` sinh đúng `seeds × models × styles × k` bản ghi, `verdict` từ `grade()`, và **một bài lỗi không làm sập mẻ**. (§6.2 k=3–5, ghi log đầy đủ)
 - [ ] `run.ts` chạy thật: đọc `--seeds/--models/--k/--styles/--date`, ghi `results/<date>.jsonl`, `date` lấy từ tham số (không hardcode), temperature cố định & ghi lại. (§6.2, §12 tái lập)
 - [ ] `.env.example` liệt kê 4 tên khoá, không giá trị. (§9.3 tuân thủ điều khoản API)
-- [ ] `npm test -- research/vsgeo-bench/harness` xanh toàn bộ (~35 test).
+- [ ] **Task 11 tự-phản-biện:** `harness/__tests__/adversarial.test.ts` khóa 6 lỗi mất/hỏng dữ liệu im lặng (F1–F6), XANH ngay vì bản vá đã nằm trong Task 1/3/7/9. (design.md §4.3)
+- [ ] `npm test -- research/vsgeo-bench/harness` xanh toàn bộ (~49 test, gồm bộ tự-phản-biện).
 - [ ] (Sau khi có 01 & 02) Task 10 chạy khói end-to-end thành công trên 1 bài × 1 model, có file JSONL kết quả và một dòng nhật ký. (Mốc T2: "1 model chạy hết")
 
 ---
