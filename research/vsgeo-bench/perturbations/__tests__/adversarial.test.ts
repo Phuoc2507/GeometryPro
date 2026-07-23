@@ -25,6 +25,7 @@
 import { describe, it, expect } from "vitest";
 import type { Seed } from "../../data/schema/problem";
 import { rescale, scaleLengthsInText, canonicalToNumber } from "../rescale";
+import { reflect } from "../reflect";
 import { seedNumeric } from "./fixtures";
 
 // Bộ dựng seed tối thiểu cho các ca đối kháng (ghi đè trường cần thiết).
@@ -101,5 +102,65 @@ describe("F1 — rescale: từ chối (skip) thay vì sinh bài tự mâu thuẫ
   it("hồi quy: đáp án SỐ exact vẫn co giãn gọn (khối lập phương cạnh 2 => 64)", () => {
     const v = rescale(seedNumeric, 2);
     expect(v.answer.canonical).toBe("64");
+  });
+});
+
+// Seed có toạ độ tối thiểu cho reflect (coords_given + points bắt buộc).
+function mkCoordSeed(over: Partial<Seed> & Pick<Seed, "statement_vi" | "answer">): Seed {
+  return mkSeed({
+    figure: {
+      points: [
+        { id: "A", x: 1, y: 2, z: 3 },
+        { id: "B", x: 4, y: 0, z: 0 },
+      ],
+      coords_given: true,
+    },
+    tags: {
+      topic: ["khoang_cach"],
+      answer_form: "surd",
+      difficulty: 1,
+      requires_auxiliary_construction: false,
+    },
+    scale_degree: 1,
+    ...over,
+  });
+}
+
+describe("F2 — reflect: cổng theo TÍNH BẤT BIẾN, không theo answer.type", () => {
+  it("hỏi toạ độ ('hoành độ') dù type=rational vẫn PHẢI ném (đáp án đổi khi phản chiếu)", () => {
+    // Lỗi cũ: type 'rational' ∈ INVARIANT_TYPES => reflect giữ nguyên đáp án "1" trong khi
+    // hoành độ x=1 phản chiếu thành -1 => sinh biến thể SAI-IM-LẶNG.
+    const s = mkCoordSeed({
+      statement_vi: "Trong không gian Oxyz cho A(1;2;3). Tính hoành độ của điểm A.",
+      answer: { canonical: "1", type: "rational" },
+      tags: {
+        topic: ["toa_do_oxyz", "khoang_cach"], // qua cổng topic, nhưng hỏi toạ độ => phải chặn
+        answer_form: "rational",
+        difficulty: 1,
+        requires_auxiliary_construction: false,
+      },
+    });
+    expect(() => reflect(s)).toThrow(/to[aạ] độ|hoành|bất biến/i);
+  });
+
+  it("có phương trình mặt phẳng (x+2y-2z=0) dù type=surd vẫn PHẢI ném", () => {
+    // reflectCoordsInText đổi A(1;2;3)->A(-1;2;3) nhưng KHÔNG đổi hệ số phương trình =>
+    // khoảng cách A đến (P) đổi giá trị, đáp án cũ sai. Type surd không nhận ra được điều này.
+    const s = mkCoordSeed({
+      statement_vi:
+        "Trong Oxyz cho mặt phẳng (P): x+2y-2z=0 và điểm A(1;2;3). Tính khoảng cách từ A đến (P).",
+      answer: { canonical: "sqrt(2)", type: "surd" },
+    });
+    expect(() => reflect(s)).toThrow(/phương trình|mặt phẳng|bất biến/i);
+  });
+
+  it("hồi quy dương: bài khoảng cách thuần (không toạ-độ-hỏi, không pt) VẪN reflect được", () => {
+    const s = mkCoordSeed({
+      statement_vi: "Trong không gian Oxyz cho A(1;2;3) và B(4;0;0). Tính độ dài đoạn AB.",
+      answer: { canonical: "sqrt(22)", type: "surd" },
+    });
+    const v = reflect(s);
+    expect(v.answer.canonical).toBe("sqrt(22)"); // bất biến, giữ nguyên
+    expect(v.statement_vi).toContain("A(-1;2;3)");
   });
 });
