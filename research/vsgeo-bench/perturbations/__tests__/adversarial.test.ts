@@ -889,3 +889,52 @@ describe("F26 — rename: đáp án dạng TIA 'Vx' (Sx/Ax) chứa NHÃN ĐỈNH
     expect(extractRayAnchors("AB")).toEqual([]); // 'B' không thuộc {x,y,z,t} => không phải tia
   });
 });
+
+describe("RF-1 — reflect: đáp án dạng TOẠ ĐỘ (point/vector/plane_eq/line_eq) đổi khi phản chiếu => PHẢI ném", () => {
+  // GỐC RỄ: assertReflectInvariant xét theo topic + LỜI VĂN, không xét answer.TYPE. Một đáp án
+  // TOẠ ĐỘ (điểm trung điểm, vector pháp tuyến, phương trình mặt/đường) ĐỔI dưới phép x→-x, nhưng
+  // reflect GIỮ NGUYÊN answer.canonical ⇒ figure lật toạ độ mà đáp án cũ ⇒ sai-im-lặng (§4.3).
+  // Các cổng lời-văn hiện có KHÔNG bắt được (không có '=', không "mặt phẳng", không "toạ độ").
+  const seedsRF1: any[] = [
+    // Đáp án ĐIỂM: trung điểm M=(4;2;1); sau reflect true = (-4;2;1) nhưng canonical vẫn "(4;2;1)".
+    {"id":"vsgeo-2501","source":{"type":"synthetic","ref":"adversarial round2 finder6 - reflect ignores answer_form (point-valued answer flips under x->-x)"},"statement_vi":"Trong không gian Oxyz cho hai điểm A(2;0;0) và B(6;4;2). Tìm trung điểm M của đoạn thẳng AB.","figure":{"points":[{"id":"A","x":2,"y":0,"z":0},{"id":"B","x":6,"y":4,"z":2}],"coords_given":true},"answer":{"canonical":"(4;2;1)","type":"point"},"tags":{"topic":["khoang_cach"],"answer_form":"point","difficulty":1,"requires_auxiliary_construction":false}},
+    // Đáp án VECTOR: pháp tuyến (4;2;1); sau reflect true = (4;-2;-1) nhưng canonical vẫn "(4;2;1)".
+    {"id":"vsgeo-4302","source":{"type":"synthetic","ref":"round4-finder4-normalvector"},"statement_vi":"Trong không gian Oxyz, cho ba điểm A, B, C (xem hình). Tìm một vector pháp tuyến của mặt (ABC).","figure":{"points":[{"id":"A","x":1,"y":0,"z":0},{"id":"B","x":0,"y":2,"z":0},{"id":"C","x":0,"y":0,"z":4}],"coords_given":true},"answer":{"canonical":"(4;2;1)","type":"vector","human_note":"n = AB x AC ∝ (4;2;1)"},"tags":{"topic":["goc"],"answer_form":"vector","difficulty":2,"requires_auxiliary_construction":false}},
+  ];
+  for (const s of seedsRF1) {
+    it(`seed ${s.id} đáp án toạ độ '${s.answer.type}' => reflect PHẢI ném`, () => {
+      expect(() => reflect(s)).toThrow(/toạ độ|bất biến/i);
+    });
+  }
+
+  it("HỒI QUY DƯƠNG: đáp án surd 'độ dài AB' (seedWithCoords) BẤT BIẾN => VẪN reflect được", () => {
+    const v = reflect(seedWithCoords);
+    expect(v.variant.kind).toBe("reflect");
+    expect(v.answer.canonical).toBe(seedWithCoords.answer.canonical);
+  });
+});
+
+describe("RF-2 — reflect: đại lượng CÓ DẤU/ĐỊNH HƯỚNG diễn đạt bằng lời (đại số/lượng giác/phần tám...) => PHẢI ném", () => {
+  // GỐC RỄ: phản chiếu ĐẢO HƯỚNG nên đại lượng có dấu/định hướng ĐỔI DẤU. Hai bộ dò lời văn hiện có
+  // (SIGNED_ORIENTED, ORIENTATION_SENSITIVE) thiếu từ vựng: "diện tích đại số", "góc lượng giác",
+  // "góc phần tám", "bàn tay phải", "có dấu"... Các cổng '='/mặt-phẳng cũng không bắt. ⇒ emit sai
+  // (đáp án giữ, giá trị thật đảo dấu). RF-2 thêm một bộ dò rộng ORIENTED_OR_SIGNED.
+  const seedsRF2: any[] = [
+    // "diện tích đại số (có dấu)": true=−6 sau reflect nhưng canonical "6".
+    {"id":"vsgeo-1301","source":{"type":"synthetic","ref":"adversarial-reflect-signed-area"},"statement_vi":"Trong không gian Oxyz cho ba điểm O(0;0;0), A(4;0;0), B(0;3;0). Tính diện tích đại số (có dấu) của tam giác OAB lấy theo thứ tự các đỉnh O, A, B.","figure":{"coords_given":true,"points":[{"id":"O","x":0,"y":0,"z":0},{"id":"A","x":4,"y":0,"z":0},{"id":"B","x":0,"y":3,"z":0}]},"answer":{"canonical":"6","type":"rational"},"tags":{"topic":["dien_tich"],"answer_form":"rational","difficulty":2,"requires_auxiliary_construction":false}},
+    // "góc lượng giác (OA, OB)": true=−90 sau reflect nhưng canonical "90".
+    {"id":"vsgeo-3302","source":{"type":"synthetic","ref":"VSGeo adversarial r3 finder4 — directed angle"},"statement_vi":"Trong không gian Oxyz, cho hai tia OA và OB với A(2;0;0), B(0;2;0). Tính số đo góc lượng giác (OA, OB), đơn vị độ, lấy giá trị trong nửa khoảng (-180; 180].","figure":{"coords_given":true,"points":[{"id":"A","x":2,"y":0,"z":0},{"id":"B","x":0,"y":2,"z":0}]},"answer":{"canonical":"90","type":"rational"},"tags":{"topic":["goc"],"answer_form":"rational","difficulty":2,"requires_auxiliary_construction":false}},
+    // "góc phần tám thứ mấy" (octant): true=II sau reflect nhưng canonical "A" (octant I).
+    {"id":"vsgeo-4301","source":{"type":"synthetic","ref":"round4-finder4-octant"},"statement_vi":"Trong không gian Oxyz, cho điểm M (xem hình). Hỏi điểm M nằm trong góc phần tám thứ mấy? A. Thứ nhất. B. Thứ hai. C. Thứ năm. D. Thứ tám.","figure":{"points":[{"id":"M","x":3,"y":2,"z":1}],"coords_given":true},"answer":{"canonical":"A","type":"mcq","human_note":"M(3;2;1) dấu (+,+,+) => góc phần tám thứ nhất"},"tags":{"topic":["goc"],"answer_form":"mcq","difficulty":1,"requires_auxiliary_construction":false}},
+  ];
+  for (const s of seedsRF2) {
+    it(`seed ${s.id} '${s.answer.canonical}' => reflect PHẢI ném (đại lượng có dấu/định hướng)`, () => {
+      expect(() => reflect(s)).toThrow(/dấu|hướng|bất biến/i);
+    });
+  }
+
+  it("HỒI QUY DƯƠNG: 'độ dài AB' (không dấu) VẪN reflect được", () => {
+    const v = reflect(seedWithCoords);
+    expect(v.answer.canonical).toBe(seedWithCoords.answer.canonical);
+  });
+});

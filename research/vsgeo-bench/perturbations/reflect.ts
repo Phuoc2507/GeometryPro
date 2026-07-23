@@ -39,8 +39,25 @@ const PLANE_LINE_SPHERE = /mặt phẳng|mặt cầu|đường thẳng|phương 
 // Nhãn có phẩy (A', B') mà reflectCoordsInText chưa biết cách xử lý.
 const HAS_PRIMED_LABEL = /[A-Z]['’′]/;
 
+// RF-1 (Round-5) Đáp án dạng TOẠ ĐỘ (point/vector/plane_eq/line_eq) BIẾN ĐỔI dưới phép phản
+// chiếu (x→-x đảo dấu thành phần x của điểm/vector, đổi hệ số phương trình mặt/đường) trong khi
+// reflect GIỮ NGUYÊN answer.canonical ⇒ figure lật toạ độ còn đáp án cũ ⇒ sai-im-lặng (§4.3).
+// Bất biến chỉ ở ca đo-không (mọi thành phần x = 0) — không đáng emit. Đặt Ở ĐẦU để chặn sớm.
+const COORD_VALUED_ANSWER = new Set(["point", "vector", "plane_eq", "line_eq"]);
+// RF-2 (Round-5) Đại lượng CÓ DẤU/ĐỊNH HƯỚNG diễn đạt bằng LỜI mà SIGNED_ORIENTED (tên công
+// thức) và ORIENTATION_SENSITIVE (thuận/nghịch, chiều dương/âm) còn SÓT: "…đại số", "có dấu",
+// "có hướng", "góc lượng giác", "bàn tay phải", "góc phần tám" (octant), "đầu/nửa dương/âm".
+// Phản chiếu ĐẢO HƯỚNG ⇒ các đại lượng này đổi dấu/đổi octant ⇒ đáp án giữ nguyên là sai (§4.3).
+const ORIENTED_OR_SIGNED =
+  /đại số|có dấu|có hướng|lượng giác|bàn tay phải|phần tám|(?:đầu|nửa)\s*(?:dương|âm)|chiều\s*(?:dương|âm)/iu;
+
 // Chỉ chấp nhận reflect khi CHẮC CHẮN đáp án bất biến; nghi ngờ thì ném để bị bỏ (§4.3).
 function assertReflectInvariant(seed: Seed): void {
+  if (COORD_VALUED_ANSWER.has(seed.answer.type)) {
+    throw new Error(
+      `reflect: đáp án dạng toạ độ (${seed.answer.type}) đổi khi phản chiếu, không bất biến (bỏ qua §4.3) — seed ${seed.id}`
+    );
+  }
   const topics = seed.tags?.topic ?? [];
   if (!topics.some((t) => INVARIANT_TOPICS.has(t))) {
     throw new Error(
@@ -62,6 +79,14 @@ function assertReflectInvariant(seed: Seed): void {
   if (ORIENTATION_SENSITIVE.test(s)) {
     throw new Error(
       `reflect: đại lượng phụ thuộc ĐỊNH HƯỚNG/DẤU TOẠ ĐỘ diễn đạt bằng lời (thuận/nghịch, chiều kim đồng hồ, phía trước/sau/trái/phải, chiều dương/âm) — đổi khi phản chiếu, không bất biến (bỏ qua §4.3) — seed ${seed.id}`
+    );
+  }
+  // RF-2 Bộ dò RỘNG cho đại lượng có dấu/định hướng còn sót ở hai bộ trên (đại số/có dấu/có
+  // hướng/lượng giác/bàn tay phải/góc phần tám/đầu-nửa dương-âm). Đặt SAU hai bộ trên để chúng
+  // giữ ưu tiên thông điệp; đặt TRƯỚC cổng '='/mặt-phẳng vì các đề này thường không có hai dấu đó.
+  if (ORIENTED_OR_SIGNED.test(s)) {
+    throw new Error(
+      `reflect: đại lượng CÓ DẤU/ĐỊNH HƯỚNG (đại số/có dấu/có hướng/lượng giác/bàn tay phải/góc phần tám/đầu dương) đổi dấu khi phản chiếu — không bất biến (bỏ qua §4.3) — seed ${seed.id}`
     );
   }
   // F10 Bỏ toạ độ ĐIỂM literal (được phản chiếu đúng), rồi nếu CÒN dấu '=' thì đó là một
