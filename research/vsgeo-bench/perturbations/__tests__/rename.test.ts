@@ -25,10 +25,13 @@ describe("rename — đổi tên đỉnh", () => {
 
   it("rename: mọi đỉnh được thay, đáp án GIỮ NGUYÊN", () => {
     const v = rename(seedSymbolic);
-    // Các đỉnh cũ S,A,B,C,D biến mất khỏi lời văn.
+    // F7: khẳng định THỰC SỰ — nhãn đỉnh trong lời văn sau khi đổi.
+    // (Vòng lặp cũ dùng `|| /[A-Z]/.test(...)` LUÔN đúng nên chẳng kiểm gì.)
+    const labels = extractVertexLabels(v.statement_vi);
     for (const old of ["S", "A", "B", "C", "D"]) {
-      expect(v.statement_vi.includes(`${old}.`) || /[A-Z]/.test(v.statement_vi)).toBeTruthy();
+      expect(labels).not.toContain(old); // đỉnh cũ biến mất hoàn toàn
     }
+    expect(labels).toEqual(["M", "N", "P", "Q", "R"]); // đổi đúng theo bể đích mặc định
     expect(v.statement_vi).not.toContain("S.ABCD");
     // Đáp án và bậc không đổi.
     expect(v.answer.canonical).toBe(seedSymbolic.answer.canonical);
