@@ -15,7 +15,11 @@ export function compareScalar(model: string, truth: string): Verdict {
   const m = parseScalar(model);
   if (m === null) return 'unsure';        // model viết khó đọc → không đoán bừa
   if (toExactForm(m).text === toExactForm(t).text) return 'correct';
-  if (Math.abs(m - t) < SCALAR_EPS) return 'correct';
+  // Sai số TƯƠNG ĐỐI theo độ lớn đáp án chuẩn. Đáp án lớn (vd 6√2≈8.4853) khi model làm
+  // tròn 2 chữ số thập phân (8.49) lệch 0.0047 > 1e-3 tuyệt đối → bị chấm SAI oan. Nhân
+  // 1e-3 với max(1,|t|) cho công bằng ở mọi cỡ số, mà vẫn giữ chặt 1e-3 cho đáp án nhỏ
+  // (|t|≤1) nên "0.82 vs 0.8165" vẫn khác nhau. (Lỗi này do bộ tự-phản-biện phát hiện.)
+  if (Math.abs(m - t) < SCALAR_EPS * Math.max(1, Math.abs(t))) return 'correct';
   return 'incorrect';
 }
 
@@ -73,18 +77,30 @@ export function compareBoolean(model: string, truth: string): Verdict {
 }
 
 function toBool(raw: string): boolean | null {
-  const s = raw.trim().toLowerCase();
+  // Chuẩn hóa: thường hóa, gộp khoảng trắng, bỏ dấu câu cuối ("Đúng." → "đúng").
+  let s = raw.trim().toLowerCase().replace(/\s+/g, ' ').replace(/[.!?]+$/, '');
+  // Tiếng Việt PHỦ ĐỊNH BẰNG TIỀN TỐ: "không/chưa/chẳng đúng" nghĩa là SAI. Vì vậy TUYỆT
+  // ĐỐI KHÔNG được bắt chuỗi con "đúng" rồi phán true — sẽ phán NGƯỢC (bug thật, bộ
+  // tự-phản-biện phát hiện: "Không đúng" từng bị chấm là "đúng"). Cách đúng: bóc tiền tố
+  // phủ định ra rồi ĐẢO cực tính của phần lõi.
+  let neg = false;
+  const negMatch = s.match(/^(?:không|khong|chưa|chua|chẳng|chang|ko)\s+(.*)$/);
+  if (negMatch) { neg = true; s = negMatch[1]; }
   const TRUE = ['đúng', 'dung', 'true', 'yes', 'có', 'co', 'phải', 'phai', '1'];
-  const FALSE = ['sai', 'false', 'no', 'không', 'khong', 'ko', '0'];
-  if (TRUE.includes(s)) return true;
-  if (FALSE.includes(s)) return false;
-  // Fallback: chứa từ khóa (vd "Khẳng định là đúng")
-  if (/(^|\W)(đúng|true)(\W|$)/i.test(s)) return true;
-  if (/(^|\W)(sai|false)(\W|$)/i.test(s)) return false;
-  return null;
+  // Các từ phủ định đứng MỘT MÌNH ("không", "chưa"…) cũng là một câu trả lời SAI.
+  const FALSE = ['sai', 'false', 'no', '0', 'không', 'khong', 'ko', 'chưa', 'chua', 'chẳng', 'chang'];
+  let base: boolean | null = null;
+  if (TRUE.includes(s)) base = true;
+  else if (FALSE.includes(s)) base = false;
+  if (base === null) {
+    if (neg && s === '') return false;   // "không" + rỗng = phủ định trần = SAI
+    // Không phải một token/cụm rõ ràng → unsure (nguyên tắc liêm chính §4.3: không đoán bừa).
+    return null;
+  }
+  return neg ? !base : base;
 }
 
-/** Trắc nghiệm: lấy chữ cái A–D ĐỨNG ĐỘC LẬP đầu tiên ở cả hai bên. Không có → unsure. */
+/** Trắc nghiệm: rút chữ cái được CHỐT (chọn/đáp án …) ở cả hai bên. Mơ hồ/không có → unsure. */
 export function compareMcq(model: string, truth: string): Verdict {
   const lt = toMcq(truth);
   const lm = toMcq(model);
@@ -94,11 +110,20 @@ export function compareMcq(model: string, truth: string): Verdict {
 }
 
 function toMcq(raw: string): string | null {
-  // Chỉ nhận A/B/C/D khi nó là MỘT TỪ RIÊNG, không nằm trong từ khác. Nếu chỉ dùng
-  // /[ABCD]/ thì "Chọn đáp án B" sẽ khớp nhầm chữ C trong "CHỌN", và "không có chữ cái"
-  // khớp nhầm chữ C trong "CÓ" → phán bừa. Ranh giới \b của JS chỉ tính [A-Za-z0-9_] nên
-  // dấu tiếng Việt (Ó, Đ, Á…) vẫn bị coi là ranh giới → không đủ. Ta dùng lookaround theo
-  // \p{L} (mọi CHỮ Unicode, kể cả chữ có dấu) để chắc chắn chữ cái đứng tách biệt.
-  const m = raw.toUpperCase().match(/(?<!\p{L})[ABCD](?!\p{L})/u);
-  return m ? m[0] : null;
+  // (1) Ưu tiên chữ cái A–D đứng NGAY SAU một "cụm chốt đáp án" (chọn / đáp án / answer /
+  //     kết luận / → ), và lấy cụm CUỐI CÙNG: model hay nhắc phương án nhiễu trước ("A sai")
+  //     rồi mới chốt ("nên chọn C") ở cuối. Nếu chỉ lấy chữ A–D ĐẦU TIÊN (bản cũ) thì
+  //     "A sai nên chọn C" bị đọc nhầm là 'A' → chấm ĐÚNG oan (bug thật, bộ tự-phản-biện
+  //     phát hiện). Lookahead (?!\p{L}) để chữ cái phải đứng tách biệt (kể cả cạnh chữ có dấu).
+  const cue = /(?:chọn|chon|đáp\s*án|dap\s*an|answer|kết\s*luận|ket\s*luan|=>|⇒|→)\s*(?:là|la|:|\.)?\s*([abcd])(?!\p{L})/giu;
+  let m: RegExpExecArray | null;
+  let lastCue: string | null = null;
+  while ((m = cue.exec(raw)) !== null) lastCue = m[1].toUpperCase();
+  if (lastCue) return lastCue;
+  // (2) Không có cụm chốt: chỉ nhận khi có ĐÚNG MỘT chữ A–D đứng độc lập. Nhiều chữ khác
+  //     nhau (vd liệt kê "A, B, C") là MƠ HỒ → null (unsure), không đoán bừa. "Chọn đáp án B"
+  //     vẫn ra 'B' nhờ (1); "không có chữ cái" ra null vì C trong "CÓ" bị (?<!\p{L}) loại.
+  const singles = raw.toUpperCase().match(/(?<!\p{L})[ABCD](?!\p{L})/gu) ?? [];
+  const distinct = Array.from(new Set(singles));
+  return distinct.length === 1 ? distinct[0] : null;
 }

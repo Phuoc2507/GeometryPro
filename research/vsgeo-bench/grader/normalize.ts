@@ -41,6 +41,15 @@ export function toEvalString(raw: string, probe: Record<string, number> = DEFAUL
   t = t.replace(/[×·⋅]/g, '*');         // dấu nhân lạ → *
   t = t.replace(/[÷:]/g, '/');          // dấu chia lạ & ':' (tỉ số) → /
   t = t.replace(/\\cdot/g, '*');        // \cdot → *
+  // \frac / \dfrac dạng RÚT GỌN không ngoặc: bọc từng đối số MỘT-KÝ-TỰ vào {} để vòng lặp
+  // khử bên dưới xử lý được (vd model hay viết "\frac12" thay vì "\frac{1}{2}").
+  //   \frac12 → \frac{1}2 → \frac{1}{2};  \frac1{2} → \frac{1}{2};  \frac{1}2 → \frac{1}{2}.
+  // Chạy 2 lượt: lượt 1 bọc đối số thứ nhất, lượt 2 bọc đối số thứ hai. Dạng đã có {} lồng
+  // (vd \dfrac{\sqrt{6}}{3}) KHÔNG khớp [0-9a-zA-Z] ngay sau \frac/} nên không bị đụng tới.
+  for (let k = 0; k < 2; k++) {
+    t = t.replace(/(\\d?frac)([0-9a-zA-Z])/g, '$1{$2}');            // đối số 1 trần → {…}
+    t = t.replace(/(\\d?frac\{[^{}]*\})([0-9a-zA-Z])/g, '$1{$2}');  // đối số 2 trần → {…}
+  }
   // Khử LaTeX TỪ TRONG RA NGOÀI: lặp tới khi ổn định. Nhờ đổi \sqrt{X} → √(X) (ngoặc tròn,
   // KHÔNG phải {}), lần lặp sau \dfrac{√(6)}{3} mới khớp được [^{}]* (nhóm không còn '{}').
   // Đây là mấu chốt để xử lý ĐÚNG \dfrac{\sqrt{6}}{3} — dạng model AI hay xuất ra.
@@ -132,10 +141,13 @@ export function evalExpr(s: string): number | null {
       i++;
       return v;
     }
-    const start = i;
-    while (i < s.length && /[0-9.]/.test(s[i])) i++;
-    if (i === start) throw new Error('token lạ: ' + (s[i] ?? 'EOF'));
-    return parseFloat(s.slice(start, i));
+    // Đọc MỘT số hợp lệ: tùy chọn phần nguyên, tối đa MỘT dấu chấm, phần thập phân. Nhờ vậy
+    // "1.5.2" chỉ nuốt "1.5" rồi dừng, để lại ".2" → parseExpr thấy dư ký tự → trả null
+    // (bản cũ nuốt cả "1.5.2" bằng lớp ký tự [0-9.] rồi parseFloat ra 1.5 — chấp nhận SAI).
+    const numMatch = /^\d*\.?\d+/.exec(s.slice(i));
+    if (!numMatch) throw new Error('token lạ: ' + (s[i] ?? 'EOF'));
+    i += numMatch[0].length;
+    return parseFloat(numMatch[0]);
   }
 
   try {
