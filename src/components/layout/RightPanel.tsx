@@ -16,6 +16,7 @@ import { CaptureModal } from '@/components/CaptureModal';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { SolverContent, ResizeHandle } from '@/components/SolverPanel';
 import { useResizableWidth } from '@/hooks/useResizableWidth';
+import { TierBanner } from './TierBanner';
 
 function PanelContent() {
   const [copied, setCopied] = useState(false);
@@ -880,6 +881,7 @@ export function RightPanel() {
       >
         {!isCollapsed && <ResizeHandle onPointerDown={onPointerDown} onReset={reset} />}
         <div style={{ width: 'var(--rp-w, 20rem)' }} className="h-full flex flex-col relative">
+          <TierBanner classification={state.geometry?.classification} />
           <ErrorBoundary>
             <PanelContent />
           </ErrorBoundary>
