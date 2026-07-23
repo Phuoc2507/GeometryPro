@@ -31,8 +31,9 @@ const ORIENTATION_SENSITIVE =
   /tam diện\s+(?:thuận|nghịch)|(?:thuận|nghịch)\s+chiều|chiều\s+kim\s+đồng\s+hồ|(?:phía|bên)\s+(?:trước|sau|trái|phải)|chiều\s+(?:dương|âm)|hướng\s+(?:dương|âm)|định hướng/iu;
 // F10 Toạ độ ĐIỂM literal "L(x;y;z)" — bỏ khỏi lời văn TRƯỚC khi soi dấu '=' (điểm được
 // phản chiếu đúng nên không phải ràng buộc cần chặn). Cùng dạng reflectCoordsInText nhận.
+// RF-6 (Round-7) NỚI dạng đánh máy: khoảng trắng trước '(', dấu trừ Unicode '−', dấu '+' đầu.
 const COORD_LITERAL_G =
-  /[A-Z]\(\s*-?\d+(?:\.\d+)?\s*[;,]\s*-?\d+(?:\.\d+)?\s*[;,]\s*-?\d+(?:\.\d+)?\s*\)/g;
+  /[A-Z]\s*\(\s*[-+−]?\d+(?:\.\d+)?\s*[;,]\s*[-+−]?\d+(?:\.\d+)?\s*[;,]\s*[-+−]?\d+(?:\.\d+)?\s*\)/g;
 // F10 Nhắc tới ĐỐI TƯỢNG hình học có phương trình/hệ số cố định: phản chiếu chỉ đổi điểm,
 // KHÔNG đổi mặt phẳng/mặt cầu/đường thẳng/vector => đáp án (khoảng cách, góc tới mặt...) sai.
 const PLANE_LINE_SPHERE = /mặt phẳng|mặt cầu|đường thẳng|phương trình|\bmp\b|\([PQRSαβ]\)/iu;
@@ -51,6 +52,32 @@ const COORD_VALUED_ANSWER = new Set(["point", "vector", "plane_eq", "line_eq"]);
 const ORIENTED_OR_SIGNED =
   /đại số|có dấu|có hướng|lượng giác|bàn tay phải|phần tám|(?:đầu|nửa)\s*(?:dương|âm)|chiều\s*(?:dương|âm)/iu;
 
+// RF-3/RF-4 (Round-7) GẤP DẤU tiếng Việt: các bộ dò trên chỉ khớp CÓ DẤU nên đề viết KHÔNG
+// DẤU ("tam dien thuan", "hoanh do", "dai so") LỌT lưới ⇒ emit sai. foldVi bỏ dấu + đ→d để
+// dò trên bản đã gấp dấu (bao trùm cả hai cách viết).
+function foldVi(t: string): string {
+  return t
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .replace(/đ/g, "d")
+    .replace(/Đ/g, "D");
+}
+// Đề HỎI trực tiếp toạ độ (hoành/tung/cao/toạ độ) — không dấu.
+const ASKS_COORD_FOLD = /hoanh do|tung do|cao do|toa do/i;
+// Chirality/định hướng bằng lời — không dấu (thuận/nghịch tay, kim đồng hồ, xoắn, vặn nút chai…).
+const ORIENTATION_FOLD =
+  /tam dien\s+(?:thuan|nghich)|(?:thuan|nghich)\s+chieu|chieu\s+(?:thuan|nghich)|kim\s+dong\s+ho|(?:phia|ben)\s+(?:truoc|sau|trai|phai)|(?:chieu|huong)\s+(?:duong|am)|dinh huong|van\s+nut\s+chai|oc\s+vit|(?:thuan|nghich)\s+tay|xoan\s+(?:phai|trai)/i;
+// Đại lượng có dấu/định hướng bằng lời — không dấu (đại số, có dấu/hướng, lượng giác, phần tám…).
+const ORIENTED_SIGNED_FOLD =
+  /dai so|co dau|co huong|goc luong giac|goc phan tam|phan tam thu|ban tay phai|(?:dau|nua)\s*(?:duong|am)/i;
+// RF-5 (Round-7) Đại lượng đo RELATIVE với KHUNG TOẠ ĐỘ CỐ ĐỊNH (tia/trục Ox, mp (Oxy)): phép
+// phản chiếu x→−x KHÔNG lật khung ⇒ góc/cosin/tang TỚI trục/mp đổi giá trị ⇒ đáp án sai (§4.3).
+const FIXED_FRAME_REF =
+  /\btia\s+O[xyzt]\b|\btruc\s+O[xyz]\b|\btruc\s+(?:hoanh|tung|cao)\b|\(O(?:xy|yz|xz|zx|yx|zy)\)/i;
+// RF-3 (Round-7) Tích hỗn hợp/có hướng viết dạng NGOẶC "[XY, ZT, UV]" (định thức có dấu) —
+// SIGNED_ORIENTED (tên công thức) bỏ sót ký hiệu ngoặc. Đổi dấu khi phản chiếu ⇒ không bất biến.
+const MIXED_PRODUCT_BRACKET = /\[\s*[A-Z]{2}\s*,\s*[A-Z]{2}\s*,\s*[A-Z]{2}\s*\]/;
+
 // Chỉ chấp nhận reflect khi CHẮC CHẮN đáp án bất biến; nghi ngờ thì ném để bị bỏ (§4.3).
 function assertReflectInvariant(seed: Seed): void {
   if (COORD_VALUED_ANSWER.has(seed.answer.type)) {
@@ -65,6 +92,34 @@ function assertReflectInvariant(seed: Seed): void {
     );
   }
   const s = seed.statement_vi;
+  // RF-3/RF-4/RF-5 (Round-7) Dò trên bản GẤP DẤU + khung cố định + tích ngoặc — ĐẶT TRƯỚC các
+  // bộ dò có-dấu cũ (chúng vẫn giữ để tương thích) vì fold bao trùm cả hai cách viết.
+  const sFold = foldVi(s);
+  if (ASKS_COORD_FOLD.test(sFold)) {
+    throw new Error(
+      `reflect: đề hỏi toạ độ (hoành/tung/cao độ) — đổi khi phản chiếu (bỏ qua §4.3) — seed ${seed.id}`
+    );
+  }
+  if (ORIENTATION_FOLD.test(sFold)) {
+    throw new Error(
+      `reflect: đại lượng phụ thuộc ĐỊNH HƯỚNG (thuận/nghịch, kim đồng hồ, xoắn/tay, vặn nút chai…) đổi khi phản chiếu — không bất biến (bỏ qua §4.3) — seed ${seed.id}`
+    );
+  }
+  if (ORIENTED_SIGNED_FOLD.test(sFold)) {
+    throw new Error(
+      `reflect: đại lượng CÓ DẤU/ĐỊNH HƯỚNG (đại số/có dấu/lượng giác/phần tám…) đổi dấu khi phản chiếu — không bất biến (bỏ qua §4.3) — seed ${seed.id}`
+    );
+  }
+  if (FIXED_FRAME_REF.test(sFold)) {
+    throw new Error(
+      `reflect: đề đo đại lượng RELATIVE với khung toạ độ CỐ ĐỊNH (tia/trục Ox, mp (Oxy)…) — phản chiếu không lật trục ⇒ góc/cosin/tang tới trục đổi giá trị, không bất biến (bỏ qua §4.3) — seed ${seed.id}`
+    );
+  }
+  if (MIXED_PRODUCT_BRACKET.test(s)) {
+    throw new Error(
+      `reflect: tích hỗn hợp ký hiệu ngoặc "[XY,ZT,UV]" (có dấu) đổi dấu khi phản chiếu — không bất biến (bỏ qua §4.3) — seed ${seed.id}`
+    );
+  }
   if (ASKS_COORD.test(s)) {
     throw new Error(`reflect: đề hỏi toạ độ (hoành/tung/cao độ) — đổi khi phản chiếu (bỏ qua) — seed ${seed.id}`);
   }
@@ -111,11 +166,14 @@ export type Isometry = (p: Point3) => Point3;
 export const reflectX: Isometry = (p) => ({ x: -p.x, y: p.y, z: p.z });
 
 // Đổi toạ độ trong lời văn cho mẫu "L(x;y;z)" (ngăn cách bằng ';' hoặc ',').
+// RF-6 (Round-7) NHẬN thêm khoảng trắng trước '(', dấu trừ Unicode '−', dấu '+' đầu — chuẩn hoá
+// dấu về ASCII trước khi tính rồi in lại dạng gọn "L(x;y;z)".
 export function reflectCoordsInText(text: string, iso: Isometry): string {
+  const num = (t: string) => Number(t.replace(/−/g, "-").replace(/^\+/, ""));
   return text.replace(
-    /([A-Z])\(\s*(-?\d+(?:\.\d+)?)\s*[;,]\s*(-?\d+(?:\.\d+)?)\s*[;,]\s*(-?\d+(?:\.\d+)?)\s*\)/g,
+    /([A-Z])\s*\(\s*([-+−]?\d+(?:\.\d+)?)\s*[;,]\s*([-+−]?\d+(?:\.\d+)?)\s*[;,]\s*([-+−]?\d+(?:\.\d+)?)\s*\)/g,
     (_m, lab: string, x: string, y: string, z: string) => {
-      const q = iso({ x: Number(x), y: Number(y), z: Number(z) });
+      const q = iso({ x: num(x), y: num(y), z: num(z) });
       return `${lab}(${q.x};${q.y};${q.z})`;
     }
   );
@@ -130,6 +188,22 @@ export function reflect(seed: Seed, iso: Isometry = reflectX): Variant {
   v.id = variantId(seed.id, "reflect");
   v.figure!.points = seed.figure.points.map((p) => ({ id: p.id, ...iso(p) }));
   v.statement_vi = reflectCoordsInText(seed.statement_vi, iso);
+  // RF-6 (Round-7) HẬU-KIỂM DƯ TRÊN MỌI EMIT: sau khi viết lại, KHÔNG được còn literal toạ độ
+  // nào (kể cả dạng lạ reflectCoordsInText chưa nắm: full-width, '＋'…) LỆCH với hình đã phản
+  // chiếu. Quét RỘNG hơn regex viết-lại: bất kỳ 'L(x…' nào có nhãn trong figure mà x ≠ x-đã-lật
+  // ⇒ đã viết lại NỬA VỜI ⇒ ném (bỏ qua §4.3) thay vì emit câu chỉ lật một phần.
+  const BROAD = /([A-Z])\s*\(\s*([-+−＋]?[\d０-９]+(?:\.\d+)?)\s*[;,]/g;
+  const byId = new Map(seed.figure.points.map((p) => [p.id, iso(p)]));
+  for (const m of v.statement_vi.matchAll(BROAD)) {
+    const q = byId.get(m[1]);
+    if (!q) continue;
+    const xv = Number(m[2].normalize("NFKC").replace(/−/g, "-").replace(/^\+/, ""));
+    if (Number.isFinite(xv) && xv !== q.x) {
+      throw new Error(
+        `reflect: literal toạ độ '${m[1]}' trong lời văn chưa phản chiếu khớp hình (${xv} ≠ ${q.x}) — viết lại một phần (bỏ qua §4.3) — seed ${seed.id}`
+      );
+    }
+  }
   // answer KHÔNG đổi (bất biến dời hình).
   v.variant = { kind: "reflect", parentSeedId: seed.id };
   return v;

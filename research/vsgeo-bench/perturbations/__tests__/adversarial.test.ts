@@ -1161,3 +1161,87 @@ describe("OS-1 — rescale: chỉ số HOA trong tên đỉnh ('A1B1C1') KHÔNG 
     expect(v.statement_vi).toContain("cạnh 2a");
   });
 });
+
+// --- Reflect Round-7 (foldVi lexicon + FIXED_FRAME + MIXED_PRODUCT + RF-6 rewriter/hậu-kiểm) ---
+
+const P4 = [
+  { id: "A", x: 1, y: 0, z: 0 },
+  { id: "B", x: 0, y: 1, z: 0 },
+  { id: "C", x: 0, y: 0, z: 1 },
+  { id: "D", x: 1, y: 1, z: 1 },
+];
+
+describe("RF-3 — reflect: từ CHIRALITY/ĐỊNH HƯỚNG (có dấu) diễn đạt bằng lời => skip", () => {
+  const seeds: any[] = [
+    {"id":"vsgeo-9001","statement_vi":"Trong không gian Oxyz, cho ba vectơ OA, OB, OC. Theo quy tắc vặn nút chai (ốc vít), hệ ba vectơ đó tạo thành tam diện thuận tay hay nghịch tay?","figure":{"coords_given":true,"points":P4},"answer":{"canonical":"A","type":"mcq"},"tags":{"topic":["the_tich"],"answer_form":"mcq","difficulty":1,"requires_auxiliary_construction":false}},
+    {"id":"vsgeo-9002","statement_vi":"Trong mặt phẳng Oxy, ba điểm A, B, C (xem hình) được liệt kê ngược chiều với kim đồng hồ hay cùng chiều?","figure":{"coords_given":true,"points":P4},"answer":{"canonical":"A","type":"mcq"},"tags":{"topic":["dien_tich"],"answer_form":"mcq","difficulty":1,"requires_auxiliary_construction":false}},
+    {"id":"vsgeo-9003","statement_vi":"Trong không gian Oxyz, cho ba vectơ như hình vẽ. Hỏi hệ ba vectơ đó theo chiều thuận hay chiều nghịch?","figure":{"coords_given":true,"points":P4},"answer":{"canonical":"A","type":"mcq"},"tags":{"topic":["goc"],"answer_form":"mcq","difficulty":1,"requires_auxiliary_construction":false}},
+    {"id":"vsgeo-9004","statement_vi":"Cho tứ diện với các đỉnh như hình vẽ. Tính giá trị của tích [AB, AC, AD].","figure":{"coords_given":true,"points":P4},"answer":{"canonical":"1","type":"rational"},"tags":{"topic":["the_tich"],"answer_form":"rational","difficulty":2,"requires_auxiliary_construction":false}},
+    {"id":"vsgeo-9005","statement_vi":"Cho hệ ba vectơ (xem hình). Hỏi bộ ba đó xoắn phải hay xoắn trái?","figure":{"coords_given":true,"points":P4},"answer":{"canonical":"A","type":"mcq"},"tags":{"topic":["the_tich"],"answer_form":"mcq","difficulty":1,"requires_auxiliary_construction":false}},
+  ];
+  for (const s of seeds) {
+    it(`seed ${s.id} chirality => reflect PHẢI ném`, () => {
+      expect(() => reflect(s)).toThrow(/hướng|dấu|bất biến/i);
+    });
+  }
+});
+
+describe("RF-4 — reflect: dấu KHÔNG DẤU (fold) — 'hoanh do'/'tam dien thuan'/'dai so' => skip", () => {
+  const seeds: any[] = [
+    {"id":"vsgeo-5001","statement_vi":"Trong khong gian Oxyz cho diem A(3;2;1). Tinh hoanh do cua diem A.","figure":{"coords_given":true,"points":[{"id":"A","x":3,"y":2,"z":1}]},"answer":{"canonical":"3","type":"rational"},"tags":{"topic":["khoang_cach"],"answer_form":"rational","difficulty":1,"requires_auxiliary_construction":false}},
+    {"id":"vsgeo-5002","statement_vi":"Trong khong gian Oxyz cho ba diem O(0;0;0), A(4;0;0), B(0;3;0). Tinh dien tich dai so co dau cua tam giac OAB.","figure":{"coords_given":true,"points":[{"id":"O","x":0,"y":0,"z":0},{"id":"A","x":4,"y":0,"z":0},{"id":"B","x":0,"y":3,"z":0}]},"answer":{"canonical":"6","type":"rational"},"tags":{"topic":["dien_tich"],"answer_form":"rational","difficulty":2,"requires_auxiliary_construction":false}},
+    {"id":"vsgeo-5003","statement_vi":"Trong khong gian Oxyz cho O(0;0;0), A(1;0;0), B(0;1;0), C(0;0;1). Hoi ba vecto OA, OB, OC theo thu tu do co lap thanh mot tam dien thuan hay khong?","figure":{"coords_given":true,"points":[{"id":"O","x":0,"y":0,"z":0},{"id":"A","x":1,"y":0,"z":0},{"id":"B","x":0,"y":1,"z":0},{"id":"C","x":0,"y":0,"z":1}]},"answer":{"canonical":"A","type":"mcq"},"tags":{"topic":["the_tich"],"answer_form":"mcq","difficulty":1,"requires_auxiliary_construction":false}},
+  ];
+  for (const s of seeds) {
+    it(`seed ${s.id} (không dấu) => reflect PHẢI ném`, () => {
+      expect(() => reflect(s)).toThrow(/toạ độ|hướng|dấu|bất biến/i);
+    });
+  }
+  it("HỒI QUY DƯƠNG: khoảng cách KHÔNG DẤU vẫn reflect được (đáp án bất biến)", () => {
+    const s: any = {"id":"vsgeo-5099","statement_vi":"Trong khong gian Oxyz cho A(1;0;0), B(4;0;0). Tinh khoang cach giua A va B.","figure":{"coords_given":true,"points":[{"id":"A","x":1,"y":0,"z":0},{"id":"B","x":4,"y":0,"z":0}]},"answer":{"canonical":"3","type":"rational"},"tags":{"topic":["khoang_cach"],"answer_form":"rational","difficulty":1,"requires_auxiliary_construction":false}};
+    const v = reflect(s);
+    expect(v.answer.canonical).toBe("3");
+    expect(v.statement_vi).toContain("A(-1;0;0)");
+    expect(v.statement_vi).toContain("B(-4;0;0)");
+  });
+});
+
+describe("RF-5 — reflect: đại lượng đo RELATIVE với khung toạ độ CỐ ĐỊNH (tia/trục Ox, (Oxy)) => skip", () => {
+  const seeds: any[] = [
+    {"id":"vsgeo-9001","statement_vi":"Trong khong gian Oxyz cho hai diem A, B nhu hinh ve. Tinh cosin cua goc giua vecto AB va tia Ox.","figure":{"coords_given":true,"points":[{"id":"A","x":1,"y":2,"z":0},{"id":"B","x":3,"y":1,"z":0}]},"answer":{"canonical":"1/2","type":"rational"},"tags":{"topic":["goc"],"answer_form":"rational","difficulty":2,"requires_auxiliary_construction":false}},
+    {"id":"vsgeo-9003","statement_vi":"Trong khong gian Oxyz cho hai diem A, B nhu hinh. Tinh goc nhon giua AB va tia Ox.","figure":{"coords_given":true,"points":[{"id":"A","x":1,"y":2,"z":0},{"id":"B","x":3,"y":1,"z":0}]},"answer":{"canonical":"sqrt(2)/2","type":"surd"},"tags":{"topic":["goc"],"answer_form":"surd","difficulty":2,"requires_auxiliary_construction":false}},
+    {"id":"vsgeo-9002","statement_vi":"Trong khong gian Oxyz cho diem M nhu hinh. Tinh cosin goc giua OM va truc Ox.","figure":{"coords_given":true,"points":[{"id":"M","x":2,"y":2,"z":1}]},"answer":{"canonical":"sqrt(3)/3","type":"surd"},"tags":{"topic":["goc"],"answer_form":"surd","difficulty":2,"requires_auxiliary_construction":false}},
+    {"id":"vsgeo-9005","statement_vi":"Cho diem A nhu hinh ve. Tinh tang cua goc giua OA va mat phang (Oxy).","figure":{"coords_given":true,"points":[{"id":"A","x":2,"y":2,"z":2}]},"answer":{"canonical":"sqrt(2)/2","type":"surd"},"tags":{"topic":["goc"],"answer_form":"surd","difficulty":2,"requires_auxiliary_construction":false}},
+  ];
+  for (const s of seeds) {
+    it(`seed ${s.id} đo tới khung cố định => reflect PHẢI ném`, () => {
+      expect(() => reflect(s)).toThrow(/trục|khung|bất biến/i);
+    });
+  }
+});
+
+describe("RF-6 — reflect: viết lại toạ độ literal dạng ĐÁNH MÁY + hậu-kiểm dư mọi emit", () => {
+  it("vsgeo-0001 (khoảng trắng trước '('): 'A(2;0;0) và B (5;0;0)' => phản chiếu cả hai", () => {
+    const s: any = {"id":"vsgeo-0001","statement_vi":"Cho hai điểm A(2;0;0) và B (5;0;0). Tính khoảng cách giữa A và B.","figure":{"coords_given":true,"points":[{"id":"A","x":2,"y":0,"z":0},{"id":"B","x":5,"y":0,"z":0}]},"answer":{"canonical":"3","type":"rational"},"tags":{"topic":["khoang_cach"],"answer_form":"rational","difficulty":1,"requires_auxiliary_construction":false}};
+    const v = reflect(s);
+    expect(v.statement_vi).toContain("A(-2;0;0)");
+    expect(v.statement_vi).toContain("B(-5;0;0)");
+    expect(v.answer.canonical).toBe("3");
+  });
+  it("vsgeo-0003 (dấu trừ Unicode '−'): 'A(−4;0;0)' => phản chiếu thành A(4;0;0)", () => {
+    const s: any = {"id":"vsgeo-0003","statement_vi":"Cho hai điểm A(−4;0;0) và B(1;0;0). Tính khoảng cách giữa A và B.","figure":{"coords_given":true,"points":[{"id":"A","x":-4,"y":0,"z":0},{"id":"B","x":1,"y":0,"z":0}]},"answer":{"canonical":"5","type":"rational"},"tags":{"topic":["khoang_cach"],"answer_form":"rational","difficulty":1,"requires_auxiliary_construction":false}};
+    const v = reflect(s);
+    expect(v.statement_vi).toContain("A(4;0;0)");
+    expect(v.statement_vi).toContain("B(-1;0;0)");
+  });
+  it("vsgeo-0006 (dấu '+' đầu): 'A(+2;0;0)' => phản chiếu thành A(-2;0;0)", () => {
+    const s: any = {"id":"vsgeo-0006","statement_vi":"Cho hai điểm A(+2;0;0) và B(1;0;0). Tính khoảng cách giữa A và B.","figure":{"coords_given":true,"points":[{"id":"A","x":2,"y":0,"z":0},{"id":"B","x":1,"y":0,"z":0}]},"answer":{"canonical":"1","type":"rational"},"tags":{"topic":["khoang_cach"],"answer_form":"rational","difficulty":1,"requires_auxiliary_construction":false}};
+    const v = reflect(s);
+    expect(v.statement_vi).toContain("A(-2;0;0)");
+    expect(v.statement_vi).toContain("B(-1;0;0)");
+  });
+  it("HẬU-KIỂM (hardening): dạng lạ chưa xử lý (full-width '７') CÒN SÓT => ném, KHÔNG emit nửa vời", () => {
+    const s: any = {"id":"vsgeo-0007","statement_vi":"Cho hai điểm A(７;0;0) và B(1;0;0). Tính khoảng cách giữa A và B.","figure":{"coords_given":true,"points":[{"id":"A","x":7,"y":0,"z":0},{"id":"B","x":1,"y":0,"z":0}]},"answer":{"canonical":"6","type":"rational"},"tags":{"topic":["khoang_cach"],"answer_form":"rational","difficulty":1,"requires_auxiliary_construction":false}};
+    expect(() => reflect(s)).toThrow(/chưa phản chiếu|khớp hình|một phần/i);
+  });
+});
