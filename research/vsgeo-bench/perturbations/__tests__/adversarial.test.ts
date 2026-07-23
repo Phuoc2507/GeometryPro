@@ -27,6 +27,7 @@ import type { Seed } from "../../data/schema/problem";
 import { rescale, scaleLengthsInText, canonicalToNumber } from "../rescale";
 import { reflect } from "../reflect";
 import { rename, extractVertexLabels } from "../rename";
+import { distractor, DISTRACTOR_BANK } from "../distractor";
 import { seedNumeric } from "./fixtures";
 
 // Bộ dựng seed tối thiểu cho các ca đối kháng (ghi đè trường cần thiết).
@@ -193,5 +194,25 @@ describe("F3 — rename: không chọn đích trùng nhãn CHỈ có trong lời
     expect(after).toBe(before);
     // Cụ thể: 'M' phụ vẫn còn, nhưng KHÔNG được là đích của một đỉnh mới.
     expect(v.statement_vi).toContain("M là trung điểm");
+  });
+});
+
+describe("F8 — distractor: không chèn câu đưa nhãn trùng với đề", () => {
+  it("đề đã có điểm 'K' => KHÔNG dùng câu nhiễu giới thiệu 'K' (BANK[0])", () => {
+    // BANK[0] "gọi K là một điểm tuỳ ý" — nếu đề đã có K, sinh ra hai điểm K khác nhau.
+    const s = mkSeed({
+      statement_vi: "Cho hình chóp S.ABCD, K là trung điểm cạnh SA. Tính thể tích khối chóp.",
+      answer: { canonical: "a^3/6", type: "surd" },
+    });
+    const v = distractor(s);
+    expect(v.statement_vi).not.toContain(DISTRACTOR_BANK[0]); // né câu đưa thêm 'K'
+    expect(v.statement_vi).toContain(DISTRACTOR_BANK[1]); // dùng câu an toàn (không nhãn HOA)
+    // Không phát sinh nhãn 'K' thứ hai từ câu nhiễu (K trong đề vẫn là K duy nhất).
+    expect(v.statement_vi).toContain("K là trung điểm");
+  });
+
+  it("hồi quy: đề KHÔNG có 'K' vẫn dùng câu nhiễu mặc định BANK[0]", () => {
+    const v = distractor(seedNumeric); // "ABCD.A'B'C'D'" — không có K
+    expect(v.statement_vi).toContain(DISTRACTOR_BANK[0]);
   });
 });
