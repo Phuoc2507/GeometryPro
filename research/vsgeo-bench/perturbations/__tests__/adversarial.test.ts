@@ -479,3 +479,43 @@ describe("F14 — paraphrase: bắt HOÁN VAI cả gán KÝ HIỆU ('SA=2a, SB=a
     ).not.toThrow();
   });
 });
+
+// ===========================================================================
+// LƯỢT ĐỐI KHÁNG THỨ HAI (F16–F21) — 6 ca SINH-SAI-IM-LẶNG lọt suite xanh cũ.
+// ===========================================================================
+
+describe("F16 — reflect: đại lượng CÓ DẤU/ĐỊNH HƯỚNG đổi dấu khi phản chiếu => PHẢI ném", () => {
+  // Phản chiếu (x->-x) là phép ĐẢO HƯỚNG: tích hỗn hợp (scalar triple product), tích có hướng
+  // (cross product), định thức đều ĐỔI DẤU. Cổng bất biến cũ chỉ soi topic (the_tich ∈ nhóm) +
+  // lời văn (toạ độ/pt/mặt) => KHÔNG bắt "tích hỗn hợp" nên GIỮ đáp án "2" trong khi giá trị
+  // thật hoá "-2" => sinh biến thể sai-im-lặng (§4.3).
+  const seedSignedVolume = {
+    id: "vsgeo-0101",
+    source: { type: "synthetic", ref: "adversarial-F16" },
+    statement_vi:
+      "Trong không gian Oxyz cho A(1;0;0), B(0;1;0), C(0;0;1), D(1;1;1). Tính tích hỗn hợp của ba vectơ AB, AC, AD.",
+    figure: {
+      coords_given: true,
+      points: [
+        { id: "A", x: 1, y: 0, z: 0 },
+        { id: "B", x: 0, y: 1, z: 0 },
+        { id: "C", x: 0, y: 0, z: 1 },
+        { id: "D", x: 1, y: 1, z: 1 },
+      ],
+    },
+    answer: { canonical: "2", type: "rational" },
+    tags: {
+      topic: ["the_tich"],
+      answer_form: "rational",
+      difficulty: 2,
+      requires_auxiliary_construction: false,
+    },
+    scale_degree: 3,
+  } as const;
+
+  it("'tích hỗn hợp' (scalar triple product) => reflect PHẢI ném (đại lượng có dấu)", () => {
+    expect(() => reflect(seedSignedVolume as any)).toThrow(
+      /dấu|định hướng|hỗn hợp|có hướng|định thức/i
+    );
+  });
+});

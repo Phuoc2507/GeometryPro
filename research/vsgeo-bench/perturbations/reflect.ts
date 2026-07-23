@@ -16,6 +16,12 @@ import { cloneSeed, variantId } from "./types";
 const INVARIANT_TOPICS = new Set(["khoang_cach", "the_tich", "dien_tich", "goc", "ti_so"]);
 // Đề HỎI trực tiếp một giá trị toạ độ (đổi khi phản chiếu).
 const ASKS_COORD = /hoành độ|tung độ|cao độ|to[aạ] độ/i;
+// F16 Đại lượng CÓ DẤU / ĐỊNH HƯỚNG: tích hỗn hợp (scalar triple product), tích có hướng
+// (cross product), định thức, thể tích ĐẠI SỐ — tất cả ĐỔI DẤU dưới phép phản chiếu (đảo
+// hướng). Cổng bất biến theo topic/lời-văn KHÔNG bắt được (topic the_tich vẫn qua cổng),
+// nên phải soi riêng: giữ đáp án "2" trong khi giá trị thật hoá "-2" là sai-im-lặng (§4.3).
+const SIGNED_ORIENTED =
+  /tích hỗn hợp|tich hon hop|tích có hướng|tich co huong|định thức|dinh thuc|thể tích đại số|the tich dai so/i;
 // F10 Toạ độ ĐIỂM literal "L(x;y;z)" — bỏ khỏi lời văn TRƯỚC khi soi dấu '=' (điểm được
 // phản chiếu đúng nên không phải ràng buộc cần chặn). Cùng dạng reflectCoordsInText nhận.
 const COORD_LITERAL_G =
@@ -37,6 +43,12 @@ function assertReflectInvariant(seed: Seed): void {
   const s = seed.statement_vi;
   if (ASKS_COORD.test(s)) {
     throw new Error(`reflect: đề hỏi toạ độ (hoành/tung/cao độ) — đổi khi phản chiếu (bỏ qua) — seed ${seed.id}`);
+  }
+  // F16 Đại lượng có dấu/định hướng (tích hỗn hợp/có hướng/định thức) ĐỔI DẤU khi phản chiếu.
+  if (SIGNED_ORIENTED.test(s)) {
+    throw new Error(
+      `reflect: đại lượng CÓ DẤU/ĐỊNH HƯỚNG (tích hỗn hợp/có hướng/định thức) đổi dấu khi phản chiếu — không bất biến (bỏ qua §4.3) — seed ${seed.id}`
+    );
   }
   // F10 Bỏ toạ độ ĐIỂM literal (được phản chiếu đúng), rồi nếu CÒN dấu '=' thì đó là một
   // phương trình/ràng buộc (mặt phẳng dạng đoạn chắn, "z=2x+1", "x-5=0"...) mà phép phản
