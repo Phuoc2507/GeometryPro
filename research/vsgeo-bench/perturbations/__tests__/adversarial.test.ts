@@ -837,6 +837,34 @@ describe("RS-2 — rescale: SANITY BẬC — hỏi TỔNG khác bậc / scale_de
   });
 });
 
+describe("RN-1 — rename: BẤT BIẾN-ĐỔI-TÊN cho đáp án (nhãn nhiều ký tự: chỉ số/phẩy)", () => {
+  // GỐC RỄ: figure.points có nhãn NHIỀU KÝ TỰ (M1, Ma, B') nên renameMap KHOÁ là chuỗi đầy đủ;
+  // renameInText đổi đúng chúng trong statement nhưng answer.canonical GIỮ NGUYÊN (rename thiết
+  // kế không đổi đáp án). Guard F20/F26 cũ dùng extractVertexLabels/extractRayAnchors KHÔNG thấy
+  // nhãn nhiều ký tự: 'M1M2'->['M'] mà khoá là 'M1' (miss); 'MaMb'->[] (miss); "B'C'"->['B','C']
+  // mà khoá là "B'" (miss). ⇒ statement đổi nhãn còn đáp án trỏ nhãn đã biến mất (sai-im-lặng).
+  // RN-1: nếu renameInText(answer, map) ≠ answer thì đáp án tham chiếu nhãn sẽ đổi ⇒ ném (§4.3).
+  const seedsRN1: any[] = [
+    // Chỉ số CHỮ SỐ 'M1M2' (spec vsgeo-1201) — extractVertexLabels->['M'], khoá 'M1' (miss).
+    {"id":"vsgeo-1201","source":{"type":"synthetic","ref":"finder3 r1 subscript-answer"},"statement_vi":"Trong không gian Oxyz, cho hình chóp S.ABCD có đáy là hình vuông. Gọi M1, M2 lần lượt là trung điểm của cạnh SA và cạnh SC. Trong các đường thẳng sau, đường thẳng nào song song với mặt phẳng (ABCD)?","figure":{"points":[{"id":"S","x":0,"y":0,"z":2},{"id":"A","x":0,"y":0,"z":0},{"id":"B","x":2,"y":0,"z":0},{"id":"C","x":2,"y":2,"z":0},{"id":"D","x":0,"y":2,"z":0},{"id":"M1","x":0,"y":0,"z":1},{"id":"M2","x":1,"y":1,"z":1}],"coords_given":true},"answer":{"canonical":"M1M2","type":"line_eq","human_note":"đường thẳng nối hai trung điểm M1, M2 (song song đáy)"},"tags":{"topic":["quan_he_song_song"],"answer_form":"line_eq","difficulty":2,"requires_auxiliary_construction":true}},
+    // Chỉ số CHỮ THƯỜNG 'MaMb' (spec vsgeo-3201) — extractVertexLabels->[] (miss hoàn toàn).
+    {"id":"vsgeo-3201","source":{"type":"synthetic","ref":"VSGeo-Bench adversarial rename round-3 finder-3 (lowercase-subscript midpoint labels)"},"statement_vi":"Cho tam giác ABC. Gọi Ma, Mb, Mc lần lượt là trung điểm của các cạnh BC, CA, AB. Hỏi đoạn thẳng nối trung điểm của cạnh BC với trung điểm của cạnh CA là đoạn thẳng nào?","figure":{"points":[{"id":"A","x":0,"y":0,"z":0},{"id":"B","x":4,"y":0,"z":0},{"id":"C","x":0,"y":3,"z":0},{"id":"Ma","x":2,"y":1.5,"z":0},{"id":"Mb","x":0,"y":1.5,"z":0},{"id":"Mc","x":2,"y":0,"z":0}],"coords_given":true},"answer":{"canonical":"MaMb","type":"mcq","human_note":"đoạn nối trung điểm BC (Ma) và trung điểm CA (Mb)"},"tags":{"topic":["ti_so"],"answer_form":"mcq","difficulty":1,"requires_auxiliary_construction":false}},
+    // Nhãn có PHẨY "B'C'" (spec vsgeo-4201) — extractVertexLabels->['B','C'], khoá "B'" (miss).
+    {"id":"vsgeo-4201","source":{"type":"synthetic","ref":"round4-finder3-primed-label-segment"},"statement_vi":"Cho tứ diện A'B'C'D' có A'B', A'C', A'D' đôi một vuông góc và A'B' = A'C' = A'D' = 1. Trong hai đoạn thẳng A'B' và B'C', đoạn nào có độ dài lớn hơn?","figure":{"points":[{"id":"A'","x":0,"y":0,"z":0},{"id":"B'","x":1,"y":0,"z":0},{"id":"C'","x":0,"y":1,"z":0},{"id":"D'","x":0,"y":0,"z":1}],"coords_given":true},"answer":{"canonical":"B'C'","type":"mcq","human_note":"B'C'=√2 > A'B'=1"},"tags":{"topic":["do_dai"],"answer_form":"mcq","difficulty":1,"requires_auxiliary_construction":false}},
+  ];
+  for (const s of seedsRN1) {
+    it(`seed ${s.id} đáp án '${s.answer.canonical}' => rename PHẢI ném (bất biến-đổi-tên vỡ)`, () => {
+      expect(() => rename(s)).toThrow(/nhãn|đáp án|đỉnh/i);
+    });
+  }
+
+  it("HỒI QUY DƯƠNG: đáp án ký hiệu/căn (seedSymbolic) KHÔNG chứa nhãn HOA => VẪN rename được", () => {
+    const v = rename(seedSymbolic);
+    expect(v.variant.kind).toBe("rename");
+    expect(v.answer.canonical).toBe(seedSymbolic.answer.canonical);
+  });
+});
+
 describe("F26 — rename: đáp án dạng TIA 'Vx' (Sx/Ax) chứa NHÃN ĐỈNH bị đổi tên => PHẢI ném", () => {
   // extractVertexLabels bỏ 'S' trong "Sx" (theo sau chữ thường 'x') nên nhãn đỉnh neo trong tên
   // tia LỌT lưới guard F20 ⇒ rename đổi S->M trong câu mà đáp án vẫn "Sx" (trỏ đỉnh đã biến mất).

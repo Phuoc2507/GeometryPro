@@ -72,12 +72,26 @@ export function rename(seed: Seed, map?: Map<string, string>): Variant {
   ]);
   const renameMap = map ?? defaultRenameMap(labels, exclude);
 
+  // RN-1 (Round-5) BẤT BIẾN-ĐỔI-TÊN cho đáp án: nếu áp CHÍNH renameMap (dùng renameInText — cùng
+  // hàm sẽ viết lại statement) lên answer.canonical mà đáp án ĐỔI, tức đáp án tham chiếu một nhãn
+  // đỉnh SẼ bị đổi tên; rename thiết kế GIỮ NGUYÊN đáp án ⇒ sau khi đổi, câu hỏi trỏ nhãn mới còn
+  // đáp án trỏ nhãn cũ (đã biến mất) ⇒ mâu thuẫn sai-im-lặng (§4.3). Bắt ĐÚNG các nhãn sẽ di
+  // chuyển — kể cả nhãn NHIỀU KÝ TỰ (M1, Ma, B') mà extractVertexLabels/extractRayAnchors (guard
+  // F20/F26) BỎ SÓT — vì dùng chung bộ khoá renameMap, không cần bộ rút nhãn thứ hai giữ đồng bộ.
+  if (renameInText(seed.answer.canonical, renameMap) !== seed.answer.canonical) {
+    throw new Error(
+      `rename: đáp án "${seed.answer.canonical}" tham chiếu nhãn đỉnh sẽ bị đổi tên nhưng đáp án không đổi theo — mâu thuẫn (bỏ qua §4.3) — seed ${seed.id}`
+    );
+  }
+
   // F20 Đáp án THAM CHIẾU NHÃN ĐỈNH (mcq/point/vector/line/plane có canonical là biểu thức
   // nhãn, vd "AB") nhưng rename KHÔNG đổi answer.canonical => sau khi đổi đỉnh, câu hỏi về "NP"
   // trong khi đáp án vẫn "AB" => mâu thuẫn sai-im-lặng (§4.3). Nếu đáp án chứa nhãn nằm trong
   // renameMap thì BỎ QUA (đáp án ký hiệu thường + căn thì extractVertexLabels=[] nên không chặn).
   // F26 gộp thêm nhãn đỉnh neo trong tên tia "Vx" (Sx,Ax) — extractVertexLabels bỏ sót vì 'S'
   // theo sau chữ thường 'x'. Nếu nhãn đó nằm trong renameMap thì đáp án sẽ trỏ đỉnh không còn.
+  // GIỮ LẠI loop này (RN-1 ở trên KHÔNG bao phủ ca F26): renameInText("Sx") = "Sx" KHÔNG đổi vì
+  // AFTER_LABEL_NEG chặn 'S' khi theo sau chữ thường 'x' ⇒ RN-1 không ném; extractRayAnchors bắt.
   const answerLabels = [
     ...new Set([
       ...extractVertexLabels(seed.answer.canonical),
