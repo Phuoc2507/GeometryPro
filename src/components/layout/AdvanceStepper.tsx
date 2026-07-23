@@ -1,6 +1,7 @@
-import { ChevronLeft, ChevronRight, Check, AlertTriangle } from 'lucide-react';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { safetyTierMeta, verifiedToLevel } from '@/lib/safetyTier';
 import { useGeometryOptional } from '@/context/GeometryContext';
 
 /**
@@ -73,23 +74,21 @@ export function AdvanceStepper() {
         </Button>
       </div>
 
-      {/* Đáp câu hiện tại + badge kiểm chứng */}
-      {hasAnswer && (
-        <div className="flex items-center gap-2 border-t border-border/40 pt-2 text-sm">
-          <span className="flex-1 min-w-0 text-foreground">{answer!.text}</span>
-          {answer!.verified ? (
-            <span className="shrink-0 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-green-500/15 text-green-600 dark:text-green-400">
-              <Check className="w-3 h-3" />
-              đã kiểm chứng
+      {/* Đáp câu hiện tại + badge kiểm chứng — gom về safetyTier (tông "gọn, không hù dọa";
+          chưa kiểm chứng = trung tính, KHÔNG còn vàng cảnh báo). */}
+      {hasAnswer && (() => {
+        const meta = safetyTierMeta(verifiedToLevel(!!answer!.verified));
+        const Icon = meta.icon;
+        return (
+          <div className="flex items-center gap-2 border-t border-border/40 pt-2 text-sm">
+            <span className="flex-1 min-w-0 text-foreground">{answer!.text}</span>
+            <span className={cn('shrink-0 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium', meta.badgeClass)}>
+              <Icon className="w-3 h-3" />
+              {answer!.verified ? 'đã kiểm chứng' : 'chưa kiểm chứng'}
             </span>
-          ) : (
-            <span className="shrink-0 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-500/15 text-yellow-600 dark:text-yellow-400">
-              <AlertTriangle className="w-3 h-3" />
-              chưa kiểm chứng
-            </span>
-          )}
-        </div>
-      )}
+          </div>
+        );
+      })()}
     </div>
   );
 }
