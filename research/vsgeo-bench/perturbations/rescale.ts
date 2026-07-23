@@ -16,7 +16,11 @@ const HAS_COORD_LITERAL =
   /[A-Z]\(\s*-?\d+(?:\.\d+)?\s*[;,]\s*-?\d+(?:\.\d+)?\s*[;,]\s*-?\d+(?:\.\d+)?\s*\)/;
 
 function assertScalable(orig: string): void {
-  if (/\bgóc\b/i.test(orig) || /\d\s*(?:°|độ)\b/i.test(orig)) {
+  // F12 Nhánh '°/độ' cũ dùng '\b' sau '°'/'ộ' (ký tự phi-từ) nên KHÔNG BAO GIỜ khớp khi
+  // theo sau là dấu câu/khoảng trắng — guard chết, "45°." / "60 độ." lọt lưới. Thay bằng
+  // lookahead (?![\p{L}\d]) với cờ /u: chặn khi sau đơn vị góc KHÔNG phải chữ/số (tức là
+  // '°'/'độ' đứng như đơn vị, không phải mở đầu từ khác như "độ dài" — vốn cần \d ngay trước).
+  if (/\bgóc\b/i.test(orig) || /\d\s*(?:°|độ)(?![\p{L}\d])/iu.test(orig)) {
     throw new Error(`rescale: đề chứa góc/độ — co giãn cạnh không được đổi góc (bỏ qua)`);
   }
   if (/\b(diện tích|thể tích)\b[^.]*\bbằng\b\s*\d/i.test(orig)) {

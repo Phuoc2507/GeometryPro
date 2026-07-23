@@ -371,3 +371,34 @@ describe("F11 — rescale: assertFullyScaled không được nhầm NHÃN đỉn
     expect(() => rescale(s, 2)).toThrow(/ký hiệu|chưa co giãn/i);
   });
 });
+
+describe("F12 — rescale: cổng '°/độ' phải sống (số đo góc KHÔNG kèm chữ 'góc')", () => {
+  // Guard cũ /\d\s*(?:°|độ)\b/i CHẾT: '\b' sau ký tự phi-từ '°'/'ộ' không bao giờ khớp khi
+  // theo sau là dấu câu/khoảng trắng => "45°.", "60 độ." lọt lưới. Nếu đề KHÔNG có chữ "góc"
+  // (nhánh \bgóc\b không bắt) thì bài góc bị co giãn im lặng. Sửa: (?![\p{L}\d]) với cờ /u.
+  it("số đo '45°' KHÔNG kèm chữ 'góc' vẫn PHẢI bị từ chối", () => {
+    const s = mkSeed({
+      statement_vi: "Khối chóp có mặt bên nghiêng 45° so với mặt phẳng đáy. Tính thể tích.",
+      answer: { canonical: "24", type: "rational" },
+    });
+    expect(() => rescale(s, 2)).toThrow(/góc|độ|°/i);
+  });
+
+  it("số đo '60 độ' (đơn vị viết chữ) KHÔNG kèm 'góc' vẫn PHẢI bị từ chối", () => {
+    const s = mkSeed({
+      statement_vi: "Khối lăng trụ có mặt bên nghiêng 60 độ so với đáy. Tính thể tích.",
+      answer: { canonical: "24", type: "rational" },
+    });
+    expect(() => rescale(s, 2)).toThrow(/góc|độ|°/i);
+  });
+
+  it("hồi quy: 'độ dài' (không có số ngay trước 'độ') KHÔNG bị nhầm là góc", () => {
+    // Nhánh mới đòi \d NGAY trước 'độ' nên "Tính độ dài" (không số) không kích hoạt.
+    const s = mkSeed({
+      statement_vi: "Cho hình lập phương cạnh a. Tính độ dài đường chéo.",
+      answer: { canonical: "a*sqrt(3)", type: "surd" },
+    });
+    const v = rescale(s, 2);
+    expect(v.statement_vi).toContain("cạnh 2a");
+  });
+});
