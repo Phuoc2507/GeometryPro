@@ -8,6 +8,34 @@ import { evalExpr } from "../../../api/_lib/kernel/analysis/expr";
 
 const NUMERIC_TYPES = new Set(["rational", "surd", "ratio"]);
 
+// F1(c) TIỀN-KIỂM: từ chối co giãn khi đề chứa dữ kiện KHÔNG co giãn tuyến tính theo k.
+// Nguyên tắc §4.3: thà SKIP còn hơn sinh bài tự mâu thuẫn (góc bị nhân đôi, thể tích cho
+// bằng số sẽ sai bậc). generateVariantsForSeed bọc try/catch nên ném = biến thể bị bỏ.
+function assertScalable(orig: string): void {
+  if (/\bgóc\b/i.test(orig) || /\d\s*(?:°|độ)\b/i.test(orig)) {
+    throw new Error(`rescale: đề chứa góc/độ — co giãn cạnh không được đổi góc (bỏ qua)`);
+  }
+  if (/\b(diện tích|thể tích)\b[^.]*\bbằng\b\s*\d/i.test(orig)) {
+    throw new Error(
+      `rescale: diện tích/thể tích cho bằng số — bậc co giãn ≠ 1, không đảm bảo nhất quán (bỏ qua)`
+    );
+  }
+}
+
+// F1(d) HẬU-KIỂM: sau khi co giãn, không được còn độ dài KÝ HIỆU ('a', '2a') đứng tự do
+// mà chưa nhân k (vd "SA = a" bị bỏ sót trong khi "cạnh a" đã thành "cạnh 2a").
+// m[1] là tiền tố "cạnh " (đã co giãn) — chỉ ném khi độ dài ký hiệu KHÔNG có tiền tố này.
+function assertFullyScaled(scaled: string): void {
+  const EDGE = /(?<=^|[\s=(:])(cạnh\s+)?(\d*)a(?=$|[\s.,;)√^])/gi;
+  for (const m of scaled.matchAll(EDGE)) {
+    if (!m[1]) {
+      throw new Error(
+        `rescale: còn độ dài ký hiệu '${m[0].trim()}' chưa co giãn — bài sẽ tự mâu thuẫn (bỏ qua)`
+      );
+    }
+  }
+}
+
 // Chuẩn hoá canonical về cú pháp evalExpr đọc được (√ -> sqrt), rồi tính giá trị số.
 // env cho phép gán a=1 khi canonical còn ký hiệu cạnh 'a'.
 export function canonicalToNumber(canonical: string, env: Record<string, number> = {}): number {
@@ -28,13 +56,17 @@ export function isNumericCanonical(canonical: string): boolean {
 export function scaleLengthsInText(text: string, k: number): string {
   let out = text;
   // 1) hệ số của cạnh ký hiệu: "cạnh a" -> "cạnh (k)a"; "cạnh 2a" -> "cạnh (2k)a"
-  out = out.replace(/(cạnh\s+)(\d*)a\b/gi, (_m, pre: string, coef: string) => {
+  // F1(b') PHÂN BIỆT HOA/THƯỜNG (bỏ cờ /i): 'a' là ký hiệu cạnh, 'A' là NHÃN đỉnh —
+  // "cạnh A." không được biến thành "cạnh 2a" (làm hỏng nhãn hình học).
+  out = out.replace(/(cạnh\s+)(\d*)a\b/g, (_m, pre: string, coef: string) => {
     const c = coef ? Number(coef) : 1;
     return `${pre}${c * k}a`;
   });
-  // 2) số sau từ khoá độ dài, KHÔNG theo sau bởi chữ/số (tránh đụng "2a" đã xử lý ở trên)
+  // 2) số sau từ khoá ĐỘ DÀI, KHÔNG theo sau bởi chữ/số (tránh đụng "2a" đã xử lý ở trên).
+  // F1(a) BỎ 'bằng' khỏi từ khoá: "bằng 60" (số đo góc), "bằng 8" (thể tích cho sẵn) KHÔNG
+  // phải độ dài — nhân k vào chúng là sai. Chỉ giữ các danh từ chỉ độ dài thực sự.
   out = out.replace(
-    /(cạnh|bằng|dài|cao|bán kính)(\s+)(\d+(?:\.\d+)?)(?![\da-zA-Z])/gi,
+    /(cạnh|dài|cao|bán kính|đường kính)(\s+)(\d+(?:\.\d+)?)(?![\da-zA-Z])/gi,
     (_m, kw: string, sp: string, num: string) => `${kw}${sp}${Number(num) * k}`
   );
   return out;
@@ -49,12 +81,14 @@ export function rescale(seed: Seed, k: number): Variant {
       `rescale chỉ định nghĩa cho đáp án số (rational|surd|ratio), gặp ${seed.answer.type} ở seed ${seed.id}`
     );
   }
+  assertScalable(seed.statement_vi); // F1(c) tiền-kiểm góc/độ, diện tích/thể tích cho bằng số
   const degree = seed.scale_degree;
   const factor = Math.pow(k, degree);
 
   const v = cloneSeed(seed) as Variant;
   v.id = variantId(seed.id, "rescale");
   v.statement_vi = scaleLengthsInText(seed.statement_vi, k);
+  assertFullyScaled(v.statement_vi); // F1(d) hậu-kiểm: không còn độ dài ký hiệu chưa co giãn
   if (v.figure?.points) {
     v.figure.points = v.figure.points.map((p) => ({ ...p, x: p.x * k, y: p.y * k, z: p.z * k }));
   }
@@ -62,7 +96,14 @@ export function rescale(seed: Seed, k: number): Variant {
   // Đáp án
   if (isNumericCanonical(seed.answer.canonical)) {
     const nv = canonicalToNumber(seed.answer.canonical) * factor;
-    v.answer = { ...seed.answer, canonical: toExactForm(nv).text };
+    // F1(e) toExactForm.isExact=false nghĩa là nó rơi xuống nhánh .toFixed(4) (MẤT MÁT).
+    // Không lưu decimal cắt cụt; thay vào đó bọc ký hiệu k^degree quanh canonical gốc để
+    // giữ đáp án CHÍNH XÁC (grader chuẩn hoá số học khi chấm).
+    const exact = toExactForm(nv);
+    v.answer = {
+      ...seed.answer,
+      canonical: exact.isExact ? exact.text : `${factor}*(${seed.answer.canonical})`,
+    };
   } else {
     // Còn ký hiệu 'a': bọc hệ số k^degree; grader sẽ chuẩn hoá khi chấm.
     v.answer = { ...seed.answer, canonical: `${factor}*(${seed.answer.canonical})` };
