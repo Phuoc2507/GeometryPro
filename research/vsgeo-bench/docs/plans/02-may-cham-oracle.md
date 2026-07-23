@@ -442,6 +442,15 @@ và có một công cụ CLI `selfcheck.ts` để rút mẫu ngẫu nhiên đem 
     t = t.replace(/[×·⋅]/g, '*');         // dấu nhân lạ → *
     t = t.replace(/[÷:]/g, '/');          // dấu chia lạ & ':' (tỉ số) → /
     t = t.replace(/\\cdot/g, '*');        // \cdot → *
+    // \frac / \dfrac dạng RÚT GỌN không ngoặc: bọc từng đối số MỘT-KÝ-TỰ vào {} để vòng lặp
+    // khử bên dưới xử lý được (vd model hay viết "\frac12" thay vì "\frac{1}{2}").
+    //   \frac12 → \frac{1}2 → \frac{1}{2};  \frac1{2} → \frac{1}{2};  \frac{1}2 → \frac{1}{2}.
+    // Chạy 2 lượt: lượt 1 bọc đối số thứ nhất, lượt 2 bọc đối số thứ hai. Dạng đã có {} lồng
+    // (vd \dfrac{\sqrt{6}}{3}) KHÔNG khớp [0-9a-zA-Z] ngay sau \frac/} nên không bị đụng tới.
+    for (let k = 0; k < 2; k++) {
+      t = t.replace(/(\\d?frac)([0-9a-zA-Z])/g, '$1{$2}');            // đối số 1 trần → {…}
+      t = t.replace(/(\\d?frac\{[^{}]*\})([0-9a-zA-Z])/g, '$1{$2}');  // đối số 2 trần → {…}
+    }
     // Khử LaTeX TỪ TRONG RA NGOÀI: lặp tới khi ổn định. Nhờ đổi \sqrt{X} → √(X) (ngoặc tròn,
     // KHÔNG phải {}), lần lặp sau \dfrac{√(6)}{3} mới khớp được [^{}]* (nhóm không còn '{}').
     // Đây là mấu chốt để xử lý ĐÚNG \dfrac{\sqrt{6}}{3} — dạng model AI hay xuất ra.
@@ -533,10 +542,13 @@ và có một công cụ CLI `selfcheck.ts` để rút mẫu ngẫu nhiên đem 
         i++;
         return v;
       }
-      const start = i;
-      while (i < s.length && /[0-9.]/.test(s[i])) i++;
-      if (i === start) throw new Error('token lạ: ' + (s[i] ?? 'EOF'));
-      return parseFloat(s.slice(start, i));
+      // Đọc MỘT số hợp lệ: tùy chọn phần nguyên, tối đa MỘT dấu chấm, phần thập phân. Nhờ vậy
+      // "1.5.2" chỉ nuốt "1.5" rồi dừng, để lại ".2" → parseExpr thấy dư ký tự → trả null
+      // (bản cũ nuốt cả "1.5.2" bằng lớp ký tự [0-9.] rồi parseFloat ra 1.5 — chấp nhận SAI).
+      const numMatch = /^\d*\.?\d+/.exec(s.slice(i));
+      if (!numMatch) throw new Error('token lạ: ' + (s[i] ?? 'EOF'));
+      i += numMatch[0].length;
+      return parseFloat(numMatch[0]);
     }
 
     try {
@@ -832,7 +844,11 @@ và có một công cụ CLI `selfcheck.ts` để rút mẫu ngẫu nhiên đem 
     const m = parseScalar(model);
     if (m === null) return 'unsure';        // model viết khó đọc → không đoán bừa
     if (toExactForm(m).text === toExactForm(t).text) return 'correct';
-    if (Math.abs(m - t) < SCALAR_EPS) return 'correct';
+    // Sai số TƯƠNG ĐỐI theo độ lớn đáp án chuẩn. Đáp án lớn (vd 6√2≈8.4853) khi model làm
+    // tròn 2 chữ số thập phân (8.49) lệch 0.0047 > 1e-3 tuyệt đối → bị chấm SAI oan. Nhân
+    // 1e-3 với max(1,|t|) cho công bằng ở mọi cỡ số, mà vẫn giữ chặt 1e-3 cho đáp án nhỏ
+    // (|t|≤1) nên "0.82 vs 0.8165" vẫn khác nhau. (Lỗi này do bộ tự-phản-biện phát hiện.)
+    if (Math.abs(m - t) < SCALAR_EPS * Math.max(1, Math.abs(t))) return 'correct';
     return 'incorrect';
   }
 
@@ -890,18 +906,30 @@ và có một công cụ CLI `selfcheck.ts` để rút mẫu ngẫu nhiên đem 
   }
 
   function toBool(raw: string): boolean | null {
-    const s = raw.trim().toLowerCase();
+    // Chuẩn hóa: thường hóa, gộp khoảng trắng, bỏ dấu câu cuối ("Đúng." → "đúng").
+    let s = raw.trim().toLowerCase().replace(/\s+/g, ' ').replace(/[.!?]+$/, '');
+    // Tiếng Việt PHỦ ĐỊNH BẰNG TIỀN TỐ: "không/chưa/chẳng đúng" nghĩa là SAI. Vì vậy TUYỆT
+    // ĐỐI KHÔNG được bắt chuỗi con "đúng" rồi phán true — sẽ phán NGƯỢC (bug thật, bộ
+    // tự-phản-biện phát hiện: "Không đúng" từng bị chấm là "đúng"). Cách đúng: bóc tiền tố
+    // phủ định ra rồi ĐẢO cực tính của phần lõi.
+    let neg = false;
+    const negMatch = s.match(/^(?:không|khong|chưa|chua|chẳng|chang|ko)\s+(.*)$/);
+    if (negMatch) { neg = true; s = negMatch[1]; }
     const TRUE = ['đúng', 'dung', 'true', 'yes', 'có', 'co', 'phải', 'phai', '1'];
-    const FALSE = ['sai', 'false', 'no', 'không', 'khong', 'ko', '0'];
-    if (TRUE.includes(s)) return true;
-    if (FALSE.includes(s)) return false;
-    // Fallback: chứa từ khóa (vd "Khẳng định là đúng")
-    if (/(^|\W)(đúng|true)(\W|$)/i.test(s)) return true;
-    if (/(^|\W)(sai|false)(\W|$)/i.test(s)) return false;
-    return null;
+    // Các từ phủ định đứng MỘT MÌNH ("không", "chưa"…) cũng là một câu trả lời SAI.
+    const FALSE = ['sai', 'false', 'no', '0', 'không', 'khong', 'ko', 'chưa', 'chua', 'chẳng', 'chang'];
+    let base: boolean | null = null;
+    if (TRUE.includes(s)) base = true;
+    else if (FALSE.includes(s)) base = false;
+    if (base === null) {
+      if (neg && s === '') return false;   // "không" + rỗng = phủ định trần = SAI
+      // Không phải một token/cụm rõ ràng → unsure (nguyên tắc liêm chính §4.3: không đoán bừa).
+      return null;
+    }
+    return neg ? !base : base;
   }
 
-  /** Trắc nghiệm: lấy chữ cái A–D ĐỨNG ĐỘC LẬP đầu tiên ở cả hai bên. Không có → unsure. */
+  /** Trắc nghiệm: rút chữ cái được CHỐT (chọn/đáp án …) ở cả hai bên. Mơ hồ/không có → unsure. */
   export function compareMcq(model: string, truth: string): Verdict {
     const lt = toMcq(truth);
     const lm = toMcq(model);
@@ -911,13 +939,22 @@ và có một công cụ CLI `selfcheck.ts` để rút mẫu ngẫu nhiên đem 
   }
 
   function toMcq(raw: string): string | null {
-    // Chỉ nhận A/B/C/D khi nó là MỘT TỪ RIÊNG, không nằm trong từ khác. Nếu chỉ dùng
-    // /[ABCD]/ thì "Chọn đáp án B" sẽ khớp nhầm chữ C trong "CHỌN", và "không có chữ cái"
-    // khớp nhầm chữ C trong "CÓ" → phán bừa. Ranh giới \b của JS chỉ tính [A-Za-z0-9_] nên
-    // dấu tiếng Việt (Ó, Đ, Á…) vẫn bị coi là ranh giới → không đủ. Ta dùng lookaround theo
-    // \p{L} (mọi CHỮ Unicode, kể cả chữ có dấu) để chắc chắn chữ cái đứng tách biệt.
-    const m = raw.toUpperCase().match(/(?<!\p{L})[ABCD](?!\p{L})/u);
-    return m ? m[0] : null;
+    // (1) Ưu tiên chữ cái A–D đứng NGAY SAU một "cụm chốt đáp án" (chọn / đáp án / answer /
+    //     kết luận / → ), và lấy cụm CUỐI CÙNG: model hay nhắc phương án nhiễu trước ("A sai")
+    //     rồi mới chốt ("nên chọn C") ở cuối. Nếu chỉ lấy chữ A–D ĐẦU TIÊN (bản cũ) thì
+    //     "A sai nên chọn C" bị đọc nhầm là 'A' → chấm ĐÚNG oan (bug thật, bộ tự-phản-biện
+    //     phát hiện). Lookahead (?!\p{L}) để chữ cái phải đứng tách biệt (kể cả cạnh chữ có dấu).
+    const cue = /(?:chọn|chon|đáp\s*án|dap\s*an|answer|kết\s*luận|ket\s*luan|=>|⇒|→)\s*(?:là|la|:|\.)?\s*([abcd])(?!\p{L})/giu;
+    let m: RegExpExecArray | null;
+    let lastCue: string | null = null;
+    while ((m = cue.exec(raw)) !== null) lastCue = m[1].toUpperCase();
+    if (lastCue) return lastCue;
+    // (2) Không có cụm chốt: chỉ nhận khi có ĐÚNG MỘT chữ A–D đứng độc lập. Nhiều chữ khác
+    //     nhau (vd liệt kê "A, B, C") là MƠ HỒ → null (unsure), không đoán bừa. "Chọn đáp án B"
+    //     vẫn ra 'B' nhờ (1); "không có chữ cái" ra null vì C trong "CÓ" bị (?<!\p{L}) loại.
+    const singles = raw.toUpperCase().match(/(?<!\p{L})[ABCD](?!\p{L})/gu) ?? [];
+    const distinct = Array.from(new Set(singles));
+    return distinct.length === 1 ? distinct[0] : null;
   }
   ```
 - [ ] **Bước 4 — Chạy test PASS.**
@@ -931,7 +968,15 @@ và có một công cụ CLI `selfcheck.ts` để rút mẫu ngẫu nhiên đem 
   git commit -m "feat(grader): logic tương đương vô hướng/tỉ số/điểm/mặt/boolean/mcq"
   ```
 
-> **Bài học `toMcq` (một lỗi thật, đáng kể khi bảo vệ):** bản đầu tiên viết `raw.toUpperCase().match(/[ABCD]/)` — tưởng vô hại nhưng SAI với tiếng Việt: câu "Chọn đáp án B" khi viết hoa thành `CHỌN ĐÁP ÁN B`, regex tham lam khớp ngay chữ **C trong "CHỌN"** rồi trả `C` ≠ `B`; tệ hơn, "không có chữ cái" (đáng lẽ `unsure`) lại khớp **C trong "CÓ"** và bị chấm nhầm. Ranh giới `\b` của JavaScript **không cứu được** vì nó chỉ coi `[A-Za-z0-9_]` là "chữ", nên các dấu tiếng Việt (Ó, Đ, Á…) bị tính là ranh giới. Bản vá dùng lookaround Unicode `/(?<!\p{L})[ABCD](?!\p{L})/u` — chỉ nhận A/B/C/D khi hai bên **không phải chữ Unicode nào** (kể cả chữ có dấu). Đây là kiểu lỗi 2 em nên kể trước hội đồng: "chúng em phát hiện khi tự kiểm định, hiểu vì sao `\b` không đủ cho tiếng Việt, và vá bằng thuộc tính Unicode `\p{L}`."
+> **⭐ Tự-phản-biện máy chấm (adversarial self-review) — phần đáng kể nhất khi bảo vệ.** Sau khi cả module chạy được và bộ test "đường hạnh phúc" đã XANH hết, 2 em **cố tình đi tìm cách làm máy chấm chấm sai** (xem `grader/__tests__/adversarial.test.ts`). Bài học lớn: **một suite test xanh KHÔNG chứng minh máy chấm đúng** — nó chỉ chứng minh máy chấm vượt qua đúng những ca ta đã nghĩ ra. Năm lỗi dưới đây đều **lọt qua suite gốc**, trong đó hai lỗi đầu là *false positive* (chấm "đúng" cho đáp án SAI — nguy hiểm nhất vì làm điểm benchmark ảo cao):
+>
+> - **F1 — boolean (CRITICAL).** `toBool` bản đầu có "fallback chứa chuỗi con": hễ thấy chữ *"đúng"* trong câu là trả `true`. Nhưng tiếng Việt **phủ định bằng tiền tố**: "Không đúng" = SAI, mà vẫn chứa chuỗi con "đúng" → bị chấm là `true` = khớp với đáp án chuẩn "đúng" → **false positive**. Bản vá: bóc tiền tố phủ định (`không/chưa/chẳng/ko`) rồi **đảo cực tính** phần lõi; câu mơ hồ ("không đúng lắm") → `unsure` thay vì đoán bừa.
+> - **F2 — mcq (CRITICAL).** `toMcq` bản đầu lấy **chữ A–D đứng độc lập ĐẦU TIÊN**. Câu "A sai nên chọn C" (model **chọn C**) bị đọc thành `'A'` → nếu đáp án chuẩn là A thì **chấm đúng oan**. Bản vá: lấy chữ **ngay sau cụm chốt** (`chọn`/`đáp án`/`answer`/`kết luận`/`→`), lấy cụm **cuối cùng**; không có cụm chốt mà nhiều chữ khác nhau → `unsure`. *(Lưu ý kỹ thuật vẫn giữ:* ranh giới `\b` của JS chỉ coi `[A-Za-z0-9_]` là "chữ" nên dấu tiếng Việt Ó/Đ/Á… bị tính là ranh giới → phải dùng lookaround Unicode `(?<!\p{L})…(?!\p{L})` để C trong "CÓ" không bị nhận nhầm.)*
+> - **F3 — scalar (HIGH, *false negative*).** Sai số `1e-3` **tuyệt đối** phạt oan đáp án lớn: `6√2≈8.4853`, model làm tròn 2 chữ số thành `8.49` lệch `0.0047 > 1e-3` → chấm "sai" oan. Bản vá: sai số **tương đối** `1e-3·max(1,|t|)` — công bằng ở mọi cỡ số, vẫn giữ chặt cho đáp án nhỏ.
+> - **F4 — parse (MEDIUM).** `\frac12` (thiếu ngoặc, dạng model AI hay xuất) đọc không ra → `unsure`, giảm recall. Bản vá: bọc đối số một-ký-tự vào `{}` trước khi khử LaTeX; **không** đụng dạng lồng ngoặc `\dfrac{\sqrt{6}}{3}`.
+> - **F5 — parse (LOW).** Số hỏng `1.5.2` bị lớp ký tự `[0-9.]` nuốt hết rồi `parseFloat` ra `1.5` (**chấp nhận sai**). Bản vá: đọc đúng **một** số hợp lệ (`/^\d*\.?\d+/`), dư ký tự → `null`.
+>
+> **Cách kể trước hội đồng:** "Máy chấm là *oracle* — nếu nó chấm sai thì mọi con số trong đề tài đều sai theo. Nên sau khi test xanh, chúng em dựng một lượt **tự-phản-biện** chuyên đi tìm *false positive*, tìm ra 5 lỗi mà suite gốc bỏ sót, vá từng lỗi kèm test hồi quy, và biến chính quá trình đó thành bằng chứng về độ tin cậy (đo lại precision/recall ở kế hoạch 05)." Đây chính là tư duy *đo lường được độ tin cậy của công cụ đo* mà một đề tài khoa học cần.
 
 > **Hạn chế của `comparePoint` (design.md §4.2 điểm 3) — phải ghi rõ khi bảo vệ:** hàm này so **từng tọa độ** theo epsilon, tức **giả định đề đã cố định hệ trục Oxyz** (đa số bài tọa độ hóa lớp 12 đều cho sẵn gốc/hướng trục, nên giả định này đúng). Nếu một bài **không** cố định hệ trục thì cùng một điểm có thể có tọa độ khác nhau sau một **phép dời hình** (tịnh tiến/xoay), và so từng tọa độ sẽ báo "sai" oan. **Cách xử lý tối thiểu ở v1:** khi soạn seed loại `point`/`vector` (kế hoạch 01), Em 1 **luôn ghi rõ hệ trục trong đề** để đáp án là duy nhất; ca hiếm không cố định được hệ trục thì gắn cờ soát tay. Nâng cấp "bất biến dời hình" là *trần cao*, ghi vào "câu hỏi mở", không làm ở v1.
 
@@ -1345,6 +1390,121 @@ và có một công cụ CLI `selfcheck.ts` để rút mẫu ngẫu nhiên đem 
   ```bash
   git add research/vsgeo-bench/grader/index.ts research/vsgeo-bench/grader/__tests__/index.test.ts
   git commit -m "feat(grader): barrel index.ts re-export grade + kiểu kết quả cho harness"
+  ```
+
+---
+
+## Task 8: Tự-phản-biện máy chấm — `grader/__tests__/adversarial.test.ts`
+
+**Mục tiêu Task:** khi cả module đã xong và mọi test "đường hạnh phúc" đã XANH, **dựng một lượt cố tình đi tìm cách làm máy chấm chấm sai** rồi khóa các lỗi tìm được bằng test hồi quy. Đây KHÔNG phải test lặp lại các ca cũ — mỗi ca ở đây là một *đòn tấn công* mà suite gốc bỏ sót. Xem callout "⭐ Tự-phản-biện máy chấm" ở cuối Task 4 để hiểu 5 lỗi F1–F5 và vì sao chúng nguy hiểm (đặc biệt F1/F2 là *false positive*). Nếu 2 em viết lại code từ kế hoạch này, code Task 3–4 đã có sẵn bản vá — file test dưới đây xác nhận bản vá còn nguyên.
+
+**Files:**
+- Create: `research/vsgeo-bench/grader/__tests__/adversarial.test.ts`
+
+- [ ] **Bước 1 — Viết bộ test tấn công (phải XANH ngay vì code Task 3–4 đã vá).** Tạo `research/vsgeo-bench/grader/__tests__/adversarial.test.ts`:
+  ```ts
+  // grader/__tests__/adversarial.test.ts
+  // Bộ test TỰ-PHẢN-BIỆN (adversarial self-review) — design.md §4.3. Cố tình đi tìm cách làm
+  // máy chấm chấm SAI. Lỗi nguy hiểm nhất là FALSE POSITIVE: chấm "correct" cho đáp án SAI.
+  //   F1 boolean: "Không đúng" (=SAI) từng bị chấm bằng "đúng" vì bắt chuỗi con "đúng".
+  //   F2 mcq:     "A sai nên chọn C" (chọn C) từng bị chấm là 'A' vì lấy chữ ĐẦU TIÊN.
+  //   F3 scalar:  8.49 (làm tròn của 6√2) từng bị chấm SAI oan (false negative).
+  //   F4 parse:   "\frac12" từng đọc không ra → unsure. F5: "1.5.2" từng bị nuốt thành 1.5.
+  import { describe, it, expect } from 'vitest';
+  import { grade } from '../grade';
+  import { compareScalar, compareBoolean, compareMcq } from '../compare';
+  import { parseScalar } from '../normalize';
+  import type { Answer } from '../types';
+
+  const boolAns = (canonical: string): Answer => ({ canonical, type: 'boolean' });
+  const mcqAns = (canonical: string): Answer => ({ canonical, type: 'mcq' });
+
+  describe('F1 — boolean: phủ định KHÔNG được chấm thành khẳng định', () => {
+    it('"Không đúng" (=SAI) KHÔNG bao giờ là correct khi đáp án chuẩn là "đúng"', () => {
+      expect(grade('\\boxed{Không đúng}', boolAns('đúng')).verdict).toBe('incorrect');
+      expect(grade('\\boxed{chưa đúng}', boolAns('đúng')).verdict).toBe('incorrect');
+      expect(grade('\\boxed{Không đúng.}', boolAns('đúng')).verdict).toBe('incorrect');
+    });
+    it('phủ định của "sai" thì thành đúng: "không sai" == "đúng"', () => {
+      expect(compareBoolean('không sai', 'đúng')).toBe('correct');
+    });
+    it('token phủ định trần vẫn là SAI: "Không"/"Chưa"/"ko" == "sai"', () => {
+      expect(compareBoolean('Không', 'sai')).toBe('correct');
+      expect(compareBoolean('Chưa', 'sai')).toBe('correct');
+      expect(compareBoolean('ko', 'sai')).toBe('correct');
+    });
+    it('câu mơ hồ (không phải token/cụm rõ) → unsure, KHÔNG đoán bừa', () => {
+      expect(compareBoolean('không đúng lắm', 'đúng')).toBe('unsure');
+      expect(compareBoolean('có lẽ đúng', 'đúng')).toBe('unsure');
+    });
+    it('đường hạnh phúc vẫn nguyên: "Đúng"/"Sai" chấm chuẩn', () => {
+      expect(compareBoolean('Đúng', 'đúng')).toBe('correct');
+      expect(compareBoolean('Sai', 'đúng')).toBe('incorrect');
+      expect(compareBoolean('true', 'đúng')).toBe('correct');
+    });
+  });
+
+  describe('F2 — mcq: phải lấy chữ được CHỐT, không phải chữ đầu tiên', () => {
+    it('"A sai nên chọn C" (model chọn C) KHÔNG được chấm là A', () => {
+      expect(grade('\\boxed{A sai nên chọn C}', mcqAns('A')).verdict).toBe('incorrect');
+      expect(grade('\\boxed{A sai nên chọn C}', mcqAns('C')).verdict).toBe('correct');
+    });
+    it('câu qua đường "Đáp án:" cũng lấy đúng chữ chốt cuối', () => {
+      expect(grade('Kết luận: Vì A và B đều sai nên chọn D', mcqAns('A')).verdict).toBe('incorrect');
+      expect(grade('Kết luận: Vì A và B đều sai nên chọn D', mcqAns('D')).verdict).toBe('correct');
+    });
+    it('liệt kê nhiều chữ mà không có cụm chốt → mơ hồ → unsure', () => {
+      expect(compareMcq('A, B, C', 'A')).toBe('unsure');
+    });
+    it('đường hạnh phúc vẫn nguyên: "C", "Chọn đáp án B", "(B)"', () => {
+      expect(compareMcq('C', 'C')).toBe('correct');
+      expect(compareMcq('Chọn đáp án B', 'B')).toBe('correct');
+      expect(compareMcq('(B)', 'B')).toBe('correct');
+      expect(compareMcq('không có chữ cái', 'C')).toBe('unsure');
+    });
+  });
+
+  describe('F3 — scalar: sai số theo ĐỘ LỚN, không phạt oan đáp án lớn làm tròn', () => {
+    it('6√2 ≈ 8.4853: model viết 8.49 (làm tròn 2 chữ số) vẫn correct', () => {
+      expect(compareScalar('8.49', '6√2')).toBe('correct');
+      expect(compareScalar('84.85', '60√2')).toBe('correct');
+    });
+    it('nhưng đáp án nhỏ vẫn giữ chặt: 0.82 vs √6/3(≈0.8165) vẫn incorrect', () => {
+      expect(compareScalar('0.82', '√6/3')).toBe('incorrect');
+    });
+    it('đáp án lớn KHÁC hẳn vẫn incorrect: 8.5 (=17/2) vs 6√2', () => {
+      expect(compareScalar('8.5', '6√2')).toBe('incorrect');
+    });
+  });
+
+  describe('F4/F5 — parse: đọc \\frac rút gọn; từ chối số hỏng', () => {
+    it('F4 "\\frac12" đọc được thành 0.5 (dạng model hay xuất)', () => {
+      expect(parseScalar('\\frac12')).toBeCloseTo(0.5, 9);
+      expect(parseScalar('\\frac1{2}')).toBeCloseTo(0.5, 9);
+      expect(parseScalar('\\frac{1}2')).toBeCloseTo(0.5, 9);
+    });
+    it('F4 KHÔNG làm hỏng dạng lồng ngoặc \\dfrac{\\sqrt{6}}{3}', () => {
+      expect(parseScalar('\\dfrac{\\sqrt{6}}{3}')).toBeCloseTo(Math.sqrt(6) / 3, 9);
+    });
+    it('F5 số hỏng "1.5.2" → null (từ chối, không nuốt thành 1.5)', () => {
+      expect(parseScalar('1.5.2')).toBeNull();
+    });
+    it('F5 số thập phân hợp lệ vẫn đọc bình thường (".5", "0.5", "1.5")', () => {
+      expect(parseScalar('.5')).toBeCloseTo(0.5, 9);
+      expect(parseScalar('0.5')).toBeCloseTo(0.5, 9);
+      expect(parseScalar('1.5')).toBeCloseTo(1.5, 9);
+    });
+  });
+  ```
+- [ ] **Bước 2 — Chạy toàn bộ suite grader, phải XANH hết.**
+  ```bash
+  npx vitest run research/vsgeo-bench/grader
+  ```
+  Mong đợi: tất cả PASS (gồm cả file tấn công này).
+- [ ] **Bước 3 — Commit.**
+  ```bash
+  git add research/vsgeo-bench/grader/__tests__/adversarial.test.ts
+  git commit -m "test(grader): bộ tự-phản-biện khóa 5 lỗi false-positive/negative"
   ```
 
 ---
