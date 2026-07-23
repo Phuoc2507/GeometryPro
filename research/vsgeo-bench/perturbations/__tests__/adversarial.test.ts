@@ -555,3 +555,28 @@ describe("F20 — rename: đáp án tham chiếu NHÃN ĐỈNH bị đổi tên 
     expect(extractVertexLabels("AB")).toEqual(["A", "B"]);
   });
 });
+
+describe("F18 — rescale: 'số cạnh/mặt/đỉnh' là SỐ ĐẾM đa giác, không phải độ dài => PHẢI ném", () => {
+  // scaleLengthsInText pattern-2 khớp "cạnh ... bằng N" và nhân N. Nhưng "số cạnh đáy bằng 6"
+  // là SỐ ĐẾM (lục giác có 6 cạnh), không phải độ dài — nhân k biến lăng trụ lục giác thành
+  // 12-giác => đổi hình. Scaler nhân số đếm NHẤT QUÁN với k nên hậu-kiểm số-đo không bắt được;
+  // phải từ chối NGAY từ đầu.
+  const seedSideCount = {
+    id: "vsgeo-0103",
+    source: { type: "synthetic", ref: "adversarial-F18" },
+    statement_vi:
+      "Cho hình lăng trụ đứng có đáy là đa giác đều với số cạnh đáy bằng 6, mỗi cạnh đáy bằng 2 và chiều cao bằng 5. Tính thể tích khối lăng trụ.",
+    answer: { canonical: "30*sqrt(3)", type: "surd" },
+    tags: {
+      topic: ["the_tich"],
+      answer_form: "surd",
+      difficulty: 3,
+      requires_auxiliary_construction: false,
+    },
+    scale_degree: 3,
+  } as const;
+
+  it("'số cạnh đáy bằng 6' (số đếm) => rescale PHẢI ném", () => {
+    expect(() => rescale(seedSideCount as any, 2)).toThrow(/số cạnh|đa giác|đếm|số\b/i);
+  });
+});

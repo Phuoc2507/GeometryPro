@@ -35,6 +35,14 @@ function assertScalable(orig: string): void {
       `rescale: đề hỏi tỉ số/tỉ lệ — bất biến co giãn (bậc 0), nhân k^degree sẽ sai (bỏ qua)`
     );
   }
+  // F18 "SỐ cạnh/mặt/đỉnh" = SỐ ĐẾM của đa giác/đa diện (lục giác có 6 cạnh), KHÔNG phải độ
+  // dài. scaleLengthsInText lại khớp "cạnh ... bằng 6" và nhân 6->12 (biến lục giác thành
+  // 12-giác) một cách NHẤT QUÁN với k nên hậu-kiểm số-đo không phát hiện — phải từ chối trước.
+  if (/\bsố\s+(c[aạ]nh|m[aặ]t|đỉnh)\b/iu.test(orig)) {
+    throw new Error(
+      `rescale: đề nêu SỐ cạnh/mặt/đỉnh (số đếm đa giác, không phải độ dài) — co giãn sẽ đổi hình (bỏ qua §4.3)`
+    );
+  }
   // F9 (MỞ RỘNG) TỪ CHỐI, KHÔNG cố co giãn toạ độ. scaleLengthsInText không khớp "A(1;2;3)"
   // nên câu giữ nguyên toạ độ (⇒ khoảng cách cũ) trong khi figure.points và đáp án đã ×k ⇒
   // statement mâu thuẫn với answer (model trả đúng theo đề lại bị chấm sai — §4.3 sai-im-lặng).
