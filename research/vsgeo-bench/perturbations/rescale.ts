@@ -43,6 +43,21 @@ function assertScalable(orig: string): void {
       `rescale: đề nêu SỐ cạnh/mặt/đỉnh (số đếm đa giác, không phải độ dài) — co giãn sẽ đổi hình (bỏ qua §4.3)`
     );
   }
+  // F23 Kích thước định nghĩa THEO BỘI SỐ: "đường cao bằng 2 lần cạnh đáy", "gấp đôi"…
+  // Số "2" ở "2 lần" là HỆ SỐ HÌNH DẠNG (tỉ lệ), không phải độ dài; scaler nhân nhầm nó ⇒ đổi
+  // hình một cách mà hậu-kiểm số-đo không thấy (bội số co giãn cùng nhịp với độ dài thật). Bỏ.
+  if (/\d+\s*lần/i.test(orig) || /\bgấp\s+(?:đôi|rưỡi|ba|bốn|năm|sáu|bảy|\d)/i.test(orig)) {
+    throw new Error(
+      `rescale: đề định nghĩa kích thước theo BỘI SỐ ("N lần"/"gấp …") — hệ số bội là tỉ lệ hình (bất biến co giãn), scaler nhân nhầm ⇒ đổi hình (bỏ qua §4.3)`
+    );
+  }
+  // F24 Gán dạng "XY = N ZT" (một đoạn = SỐ LẦN một đoạn khác), vd "SM = 2 MA": số N là TỈ LỆ
+  // chia điểm, không phải độ dài theo đơn vị. pattern-3 nhân nhầm N ⇒ dời điểm sai. Bỏ (§4.3).
+  if (/\b[A-Z]{1,2}\s*=\s*\d+(?:[.,]\d+)?\s+[A-Z]/.test(orig)) {
+    throw new Error(
+      `rescale: đề có gán "XY = N ZT" (đoạn = số lần đoạn khác — tỉ lệ chia điểm) — hệ số là tỉ lệ, scaler nhân nhầm ⇒ dời điểm sai (bỏ qua §4.3)`
+    );
+  }
   // F9 (MỞ RỘNG) TỪ CHỐI, KHÔNG cố co giãn toạ độ. scaleLengthsInText không khớp "A(1;2;3)"
   // nên câu giữ nguyên toạ độ (⇒ khoảng cách cũ) trong khi figure.points và đáp án đã ×k ⇒
   // statement mâu thuẫn với answer (model trả đúng theo đề lại bị chấm sai — §4.3 sai-im-lặng).
@@ -177,6 +192,16 @@ export function rescale(seed: Seed, k: number): Variant {
   v.statement_vi = scaleLengthsInText(seed.statement_vi, k);
   assertFullyScaled(v.statement_vi); // F1(d) hậu-kiểm: không còn độ dài ký hiệu chưa co giãn
   assertNoUnscaledLength(seed.statement_vi, v.statement_vi, k); // F13(b) hậu-kiểm số-độ-dài sót
+  // F22 CHỐT "KHÔNG-ĐỔI": nếu đáp án SẼ đổi (factor≠1) nhưng scaler KHÔNG đổi được gì trong
+  // lời văn (câu y hệt bản gốc) thì chắc chắn KHÔNG có độ dài nào được co giãn — trong khi đáp
+  // án lại ×factor ⇒ câu mâu thuẫn đáp án. Đây là điểm mù TỔNG QUÁT của cả cỗ máy co-giãn-ký-hiệu
+  // (vốn chỉ nắm ký hiệu 'a'): ký hiệu khác 'a' (h,b,x), hệ số+ký hiệu (2x), đơn vị dính số
+  // (3m,6cm,5dm), hay căn trần (√3) đều khiến câu GIỮ NGUYÊN. Thà bỏ còn hơn sai (§4.3).
+  if (factor !== 1 && v.statement_vi === seed.statement_vi) {
+    throw new Error(
+      `rescale: đáp án co giãn ×${factor} nhưng lời văn KHÔNG đổi (scaler không nắm được độ dài: ký hiệu ≠'a', đơn vị dính số, hay căn trần) — câu sẽ mâu thuẫn đáp án (bỏ qua §4.3) — seed ${seed.id}`
+    );
+  }
   if (v.figure?.points) {
     v.figure.points = v.figure.points.map((p) => ({ ...p, x: p.x * k, y: p.y * k, z: p.z * k }));
   }

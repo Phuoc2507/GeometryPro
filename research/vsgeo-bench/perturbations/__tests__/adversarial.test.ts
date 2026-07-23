@@ -89,8 +89,11 @@ describe("F1 — rescale: từ chối (skip) thay vì sinh bài tự mâu thuẫ
   });
 
   it("(e) đáp án số không biểu diễn exact được => KHÔNG lưu decimal mất mát, bọc ký hiệu", () => {
+    // NOTE(F22): câu phải chứa MỘT độ dài co giãn được ('cạnh a') để không dính CHỐT "không-đổi"
+    // mới (đáp án ×factor mà lời văn y hệt ⇒ ném). Trọng tâm test (e) — đáp án số không-exact
+    // KHÔNG bị lưu decimal cắt cụt mà được bọc ký hiệu — vẫn nguyên vẹn.
     const s = mkSeed({
-      statement_vi: "Tính giá trị biểu thức đã cho.",
+      statement_vi: "Cho hình lập phương cạnh a. Tính giá trị biểu thức đã cho.",
       answer: { canonical: "sqrt(2)+sqrt(3)", type: "surd" },
       scale_degree: 1,
     });
@@ -672,5 +675,67 @@ describe("F17/F19/F21 — rescale: hậu-kiểm SỐ-ĐO độc lập từ khoá
     const v = rescale(seedSymbolic, 2);
     expect(v.statement_vi).toContain("cạnh 2a");
     expect(v.variant.kind).toBe("rescale");
+  });
+});
+
+// ===========================================================================
+// LƯỢT ĐỐI KHÁNG THỨ TƯ (F22–F26) — 17 ca SINH-SAI-IM-LẶNG do AUDIT chạy CODE THẬT (tsx)
+// xác nhận: transform EMIT một biến thể có statement mâu thuẫn answer.canonical. §4.3 "thà bỏ
+// còn hơn sai" ⇒ mọi ca dưới đây PHẢI trở thành SKIP (throw). Mỗi test = một bằng chứng hồi quy.
+// ===========================================================================
+
+describe("F22 — rescale: CHỐT 'không-đổi' — đáp án ×factor mà lời văn y hệt => PHẢI ném (skip)", () => {
+  // Điểm mù TỔNG QUÁT của cỗ máy co-giãn-ký-hiệu (chỉ nắm ký hiệu 'a'): ký hiệu khác 'a' (h,b,x),
+  // hệ số+ký hiệu (2x), đơn vị dính số (3m,6cm,5dm), hay căn trần (√3) đều khiến scaler GIỮ NGUYÊN
+  // lời văn, trong khi nhánh đáp án vẫn ×factor ⇒ câu mâu thuẫn đáp án. CHỐT so byte statement.
+  const seedsF22: any[] = [
+    // Seed 1 — cạnh ký hiệu 'h' (khác 'a'), bậc 1.
+    {"id":"vsgeo-7101","source":{"type":"synthetic","ref":"lap-phuong-duong-cheo-h"},"statement_vi":"Cho hình lập phương ABCD.A'B'C'D' có cạnh bằng h. Tính độ dài đường chéo của hình lập phương đó.","answer":{"canonical":"h√3","type":"surd"},"tags":{"topic":["hinh_hoc_khong_gian","do_dai"],"answer_form":"surd","difficulty":1,"requires_auxiliary_construction":false},"scale_degree":1},
+    // Seed 2 — cạnh ký hiệu 'b', bậc 3.
+    {"id":"vsgeo-7102","source":{"type":"synthetic","ref":"tu-dien-deu-the-tich-b"},"statement_vi":"Cho khối tứ diện đều có cạnh bằng b. Tính thể tích của khối tứ diện đó theo b.","answer":{"canonical":"b^3*√2/12","type":"surd"},"tags":{"topic":["the_tich"],"answer_form":"surd","difficulty":2,"requires_auxiliary_construction":false},"scale_degree":3},
+    // Seed 3 — hệ số+ký hiệu '2x', bậc 3.
+    {"id":"vsgeo-7103","source":{"type":"synthetic","ref":"lap-phuong-the-tich-2x"},"statement_vi":"Cho khối lập phương có cạnh 2x. Tính thể tích khối lập phương theo x.","answer":{"canonical":"8x^3","type":"rational"},"tags":{"topic":["the_tich"],"answer_form":"rational","difficulty":1,"requires_auxiliary_construction":false},"scale_degree":3},
+    // Seed 4 — đơn vị dính số 'AB = 3m', bậc 3.
+    {"id":"vsgeo-7104","source":{"type":"synthetic","ref":"unit-suffix-cube-volume"},"statement_vi":"Cho hình lập phương ABCD.A'B'C'D' có cạnh AB = 3m. Tính thể tích khối lập phương đó.","answer":{"canonical":"27","type":"rational"},"tags":{"topic":["the_tich"],"answer_form":"rational","difficulty":1,"requires_auxiliary_construction":false},"scale_degree":3},
+    // Seed 5 — đơn vị dính số 'AB = 2m' + đáp án căn, bậc 1.
+    {"id":"vsgeo-7105","source":{"type":"synthetic","ref":"unit-suffix-cube-diagonal"},"statement_vi":"Cho hình lập phương ABCD.A'B'C'D' có AB = 2m. Tính độ dài đường chéo AC' của khối lập phương.","answer":{"canonical":"2√3","type":"surd"},"tags":{"topic":["khoang_cach"],"answer_form":"surd","difficulty":2,"requires_auxiliary_construction":false},"scale_degree":1},
+    // Seed 6 — nhiều đơn vị dính số '5dm/3dm/2dm', bậc 3.
+    {"id":"vsgeo-7106","source":{"type":"synthetic","ref":"unit-suffix-box-volume"},"statement_vi":"Cho hình hộp chữ nhật có chiều dài 5dm, chiều rộng 3dm và chiều cao 2dm. Tính thể tích khối hộp.","answer":{"canonical":"30","type":"rational"},"tags":{"topic":["the_tich"],"answer_form":"rational","difficulty":1,"requires_auxiliary_construction":false},"scale_degree":3},
+    // Seed 7 — cạnh ký hiệu 'x', bậc 3.
+    {"id":"vsgeo-9001","source":{"type":"synthetic","ref":"symbol-x-tetra"},"statement_vi":"Cho khối tứ diện đều có cạnh bằng x. Tính thể tích của khối tứ diện đều đó theo x.","answer":{"canonical":"x^3*√2/12","type":"surd"},"tags":{"topic":["the_tich"],"answer_form":"surd","difficulty":2,"requires_auxiliary_construction":false},"scale_degree":3},
+    // Seed 8 — đơn vị dính số '6cm', bậc 3.
+    {"id":"vsgeo-9002","source":{"type":"synthetic","ref":"glued-unit-cube"},"statement_vi":"Cho khối lập phương có cạnh bằng 6cm. Tính thể tích của khối lập phương đó.","answer":{"canonical":"216","type":"rational"},"tags":{"topic":["the_tich"],"answer_form":"rational","difficulty":1,"requires_auxiliary_construction":false},"scale_degree":3},
+    // Seed 9 — căn trần '√3', bậc 3.
+    {"id":"vsgeo-9003","source":{"type":"synthetic","ref":"bare-surd-cube"},"statement_vi":"Cho khối lập phương có cạnh bằng √3. Tính thể tích của khối lập phương đó.","answer":{"canonical":"3√3","type":"surd"},"tags":{"topic":["the_tich"],"answer_form":"surd","difficulty":2,"requires_auxiliary_construction":false},"scale_degree":3},
+  ];
+  for (const s of seedsF22) {
+    it(`seed ${s.id} (${s.source.ref}) => rescale PHẢI ném (bỏ qua §4.3)`, () => {
+      expect(() => rescale(s, 2)).toThrow();
+    });
+  }
+});
+
+describe("F23 — rescale: kích thước theo BỘI SỐ ('N lần' / 'gấp …') => PHẢI ném", () => {
+  // Số ở "2 lần" là HỆ SỐ HÌNH DẠNG (tỉ lệ), không phải độ dài; scaler nhân nhầm ⇒ đổi hình mà
+  // hậu-kiểm số-đo không thấy (bội số co giãn cùng nhịp với độ dài thật).
+  const seedsF23: any[] = [
+    // D1 — đường cao "2 lần cạnh đáy".
+    {"id":"vsgeo-7201","source":{"type":"synthetic","ref":"pyramid-height-multiple"},"statement_vi":"Cho hình chóp tứ giác đều S.ABCD có cạnh đáy bằng 3, đường cao bằng 2 lần cạnh đáy. Tính thể tích khối chóp S.ABCD.","answer":{"canonical":"18","type":"rational"},"tags":{"topic":["the_tich"],"answer_form":"rational","difficulty":2,"requires_auxiliary_construction":false},"scale_degree":3},
+    // D2 — đường sinh "2 lần bán kính đáy".
+    {"id":"vsgeo-7202","source":{"type":"synthetic","ref":"cone-slant-multiple"},"statement_vi":"Cho hình nón có bán kính đáy bằng 3, độ dài đường sinh bằng 2 lần bán kính đáy. Tính chiều cao của hình nón.","answer":{"canonical":"3√3","type":"surd"},"tags":{"topic":["hinh_non"],"answer_form":"surd","difficulty":2,"requires_auxiliary_construction":false},"scale_degree":1},
+  ];
+  for (const s of seedsF23) {
+    it(`seed ${s.id} (${s.source.ref}) => rescale PHẢI ném (bội số là tỉ lệ hình)`, () => {
+      expect(() => rescale(s, 2)).toThrow(/bội số|lần|gấp|tỉ lệ/i);
+    });
+  }
+});
+
+describe("F24 — rescale: gán tỉ lệ đoạn 'XY = N ZT' (vd 'SM = 2 MA') => PHẢI ném", () => {
+  // "SM = 2 MA": số 2 là TỈ LỆ chia điểm M trên SA, không phải độ dài theo đơn vị. pattern-3 nhân
+  // nhầm 2->4 ⇒ dời M sai. measureNumbers mù (tỉ lệ co giãn cùng nhịp với hai đoạn thật).
+  const seedE1: any = {"id":"vsgeo-7203","source":{"type":"synthetic","ref":"segment-ratio-pattern3"},"statement_vi":"Cho hình chóp S.ABCD có đáy là hình vuông cạnh 3, cạnh bên SA ⊥ đáy và SA = 6. Gọi M là điểm trên cạnh SA sao cho SM = 2 MA. Tính khoảng cách từ điểm M đến mặt phẳng đáy.","answer":{"canonical":"2","type":"rational"},"tags":{"topic":["khoang_cach"],"answer_form":"rational","difficulty":2,"requires_auxiliary_construction":false},"scale_degree":1};
+  it("seed vsgeo-7203 'SM = 2 MA' => rescale PHẢI ném (tỉ lệ chia điểm)", () => {
+    expect(() => rescale(seedE1, 2)).toThrow(/tỉ lệ|chia điểm|XY = N/i);
   });
 });
