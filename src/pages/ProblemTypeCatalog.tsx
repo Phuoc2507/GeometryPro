@@ -91,7 +91,8 @@ export default function ProblemTypeCatalog() {
 
   const drawExample = (g: GeometryData) => navigate('/teacher', { state: { loadGeometry: g } });
   const certified = problemTypeCatalog.filter((e) => e.level === 1);
-  const uncertified = problemTypeCatalog.filter((e) => e.level === 3);
+  // `!== 1` chứ KHÔNG `=== 3`: dạng Mức 2 (minh hoạ đại diện) nếu thêm sau này sẽ rơi mất im lặng.
+  const uncertified = problemTypeCatalog.filter((e) => e.level !== 1);
 
   return (
     <div className="radial-gradient-bg min-h-screen">

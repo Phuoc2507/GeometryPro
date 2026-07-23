@@ -1,14 +1,24 @@
 import { safetyTierMeta, exactnessLabel, type SafetyClassification } from '@/lib/safetyTier';
+import { loadPreferences } from '@/lib/preferences';
 import { cn } from '@/lib/utils';
 
+// Số đo trên hình: 3 chữ số thập phân là đủ để đọc, cắt đuôi 0 thừa (0.577, 2, 1.41).
+function formatMeasure(n: number): string {
+  return String(Number(n.toFixed(3)));
+}
+
 /**
- * Banner giáo viên: "[Dạng bài] · Mức N — nhãn" (+ chip chính xác khi Mức 1; + lý do khi Mức 3).
- * Tự ẩn khi không có classification. CHỈ mount ở <aside> desktop (teacher-only ≥1024px).
+ * Banner giáo viên: "[Dạng bài] · Mức N — nhãn" (+ chip chính xác khi Mức 1; + lý do khi Mức 3;
+ * + số ĐO ĐƯỢC TRÊN HÌNH khi Mức 2). Tự ẩn khi không có classification.
+ * CHỈ mount ở <aside> desktop (teacher-only ≥1024px).
  */
 export function TierBanner({ classification }: { classification?: SafetyClassification | null }) {
   if (!classification) return null;
   const meta = safetyTierMeta(classification.level);
   const Icon = meta.icon;
+  // Đọc thẳng localStorage mỗi lần render (rẻ) thay vì snapshot lúc mount ⇒ bật/tắt ở Settings
+  // rồi quay lại là thấy ngay, không cần remount.
+  const showIllustrationValues = loadPreferences().showIllustrationValues;
   return (
     <div className={cn('flex items-start gap-2 px-3 py-2 border-b border-border/40 text-xs', meta.bannerClass)}>
       <Icon className={cn('w-3.5 h-3.5 shrink-0 mt-0.5', meta.tone === 'ok' ? 'text-green-500' : meta.tone === 'muted' ? 'text-blue-500' : 'text-muted-foreground')} />
@@ -23,6 +33,14 @@ export function TierBanner({ classification }: { classification?: SafetyClassifi
             </span>
           )}
         </div>
+        {classification.level === 2 && (
+          <p className="mt-0.5 text-[11px] text-muted-foreground leading-snug break-words">
+            {meta.description}
+            {showIllustrationValues && classification.illustration && (
+              <> · đo được ≈ {formatMeasure(classification.illustration.approxAtScale)} ({classification.illustration.note})</>
+            )}
+          </p>
+        )}
         {classification.level === 3 && classification.reason?.message && (
           <p className="mt-0.5 text-[11px] text-muted-foreground leading-snug break-words">
             {classification.reason.message}

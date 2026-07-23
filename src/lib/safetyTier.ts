@@ -3,12 +3,21 @@ import { CheckCircle2, Info, Layers, type LucideIcon } from 'lucide-react';
 export type SafetyLevel = 1 | 2 | 3;
 export type Exactness = 'exact' | 'numeric' | null;
 
+// Số ĐO ĐƯỢC TRÊN HÌNH đại diện (chỉ Mức 2). Bài THANG CHỮ dựng ở thang scaleSymbol = 1;
+// đáp CHỮ vẫn tổng quát, còn số này CHỈ đúng ở đúng hình đang vẽ ⇒ luôn hiện kèm `note`.
+export interface IllustrationMeasure {
+  approxAtScale: number;
+  scaleSymbol: string | null;
+  note: string;
+}
+
 // Object phân loại — CÙNG shape ở geometry.classification và SolveResult.tier (một nguồn).
 export interface SafetyClassification {
   level: SafetyLevel;
   exactness: Exactness;
   problemType: string;
   reason?: { kind: string; message: string } | null;
+  illustration?: IllustrationMeasure | null;
 }
 
 export interface SafetyTierMeta {

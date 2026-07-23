@@ -87,8 +87,17 @@ function applyScaleSymbol(answers, sym) {
     if (!k || a.text == null) return a;
     const t = String(a.text).trim();
     if (t === '' || t === '0' || a.approx === 0) return a; // đáp 0 (vd thẳng hàng ⇒ area 0): không ghép
-    // approx là giá trị tại a=1, sẽ gây hiểu nhầm nếu hiện dạng thập phân trần ⇒ bỏ.
-    return { ...a, text: scaleText(a.text, sym, k), approx: null, scaleSymbol: sym, scaleExp: k };
+    // approx là giá trị tại a=1, sẽ gây hiểu nhầm nếu hiện dạng thập phân trần ⇒ bỏ khỏi `approx`.
+    // Nhưng GIỮ nó ở `approxAtScale`: đó là số ĐO ĐƯỢC TRÊN HÌNH đang vẽ (thang a=1) — dữ liệu
+    // hợp lệ của Mức 2, UI hiện kèm nhãn "ở hình này" (gated bởi pref showIllustrationValues).
+    return {
+      ...a,
+      text: scaleText(a.text, sym, k),
+      approx: null,
+      approxAtScale: typeof a.approx === 'number' && Number.isFinite(a.approx) ? a.approx : null,
+      scaleSymbol: sym,
+      scaleExp: k,
+    };
   });
 }
 
@@ -107,10 +116,17 @@ export function solvePlan(plan) {
       errors: result.errors,
     });
   }
+  const answers = applyScaleSymbol(result.answers, plan.scaleSymbol); // ghép ×a^k nếu là bài THANG CHỮ
+  // MỨC 2 — "minh hoạ đại diện". Bài THANG CHỮ chỉ xác định TỚI ĐỒNG DẠNG: engine buộc phải chọn
+  // MỘT thang cụ thể (a=1) để dựng được hình. Đáp CHỮ (vd 'a·√3/3') vẫn đúng TỔNG QUÁT, nhưng mọi
+  // số ĐO TRÊN HÌNH đang vẽ chỉ đúng ở đúng thang đó ⇒ không được khẳng định như số tuyệt đối.
+  // Cờ này là thứ classifyTier đọc để trả level 2 (trước nay chưa ai đặt ⇒ nhánh Mức 2 nằm chết).
+  const representative = Array.isArray(answers) && answers.some((a) => a && a.scaleSymbol);
   return jsonSafe({
     ok: result.ok,
+    representative,
     geometry: entityTableToGeometryData(result.entities, plan.solidName || 'figure'),
-    answers: applyScaleSymbol(result.answers, plan.scaleSymbol), // ghép ×a^k nếu là bài THANG CHỮ
+    answers,
     violations: result.violations,
     errors: result.errors,
     trace: result.trace,

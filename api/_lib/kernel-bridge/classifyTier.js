@@ -36,6 +36,19 @@ function exactnessOf(result) {
   return a && a.exact != null && a.approximate === false ? 'exact' : 'numeric';
 }
 
+// Số ĐO ĐƯỢC TRÊN HÌNH đang vẽ (Mức 2). Bài THANG CHỮ dựng ở thang scaleSymbol=1 ⇒ approxAtScale
+// là giá trị tại thang đó — hợp lệ để HIỆN KÈM NHÃN, KHÔNG hợp lệ để khẳng định là đáp số tuyệt đối.
+// Trả null khi không có số đo (Mức 2 vẫn hợp lệ, chỉ là không có gì để hiện).
+function illustrationOf(result) {
+  const a = result && result.answers && result.answers[0];
+  if (!a || typeof a.approxAtScale !== 'number' || !Number.isFinite(a.approxAtScale)) return null;
+  return {
+    approxAtScale: a.approxAtScale,
+    scaleSymbol: typeof a.scaleSymbol === 'string' ? a.scaleSymbol : null,
+    note: a.scaleSymbol ? `đo ở hình vẽ với ${a.scaleSymbol} = 1` : 'đo ở hình vẽ này',
+  };
+}
+
 // Lấy message an toàn từ phần tử violation/error (có thể là {message} hoặc chuỗi).
 function msgOf(x, fallback) {
   if (x == null) return fallback;
@@ -49,7 +62,7 @@ export function classifyTier(result) {
 
   // Thứ tự: representative → engineSolved → còn lại.
   if (result && result.representative === true) {
-    return { level: 2, exactness: null, problemType, reason: null };
+    return { level: 2, exactness: null, problemType, reason: null, illustration: illustrationOf(result) };
   }
   if (engineSolved(result)) {
     return { level: 1, exactness: exactnessOf(result), problemType, reason: null };
