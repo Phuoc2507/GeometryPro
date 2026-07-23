@@ -28,7 +28,8 @@ import { rescale, scaleLengthsInText, canonicalToNumber } from "../rescale";
 import { reflect } from "../reflect";
 import { rename, extractVertexLabels } from "../rename";
 import { distractor, DISTRACTOR_BANK } from "../distractor";
-import { seedNumeric } from "./fixtures";
+import { paraphrase, assertParaphrasePreserves, ParaphraseDriftError } from "../paraphrase";
+import { seedNumeric, seedSymbolic } from "./fixtures";
 
 // Bộ dựng seed tối thiểu cho các ca đối kháng (ghi đè trường cần thiết).
 function mkSeed(over: Partial<Seed> & Pick<Seed, "statement_vi" | "answer">): Seed {
@@ -214,5 +215,39 @@ describe("F8 — distractor: không chèn câu đưa nhãn trùng với đề", 
   it("hồi quy: đề KHÔNG có 'K' vẫn dùng câu nhiễu mặc định BANK[0]", () => {
     const v = distractor(seedNumeric); // "ABCD.A'B'C'D'" — không có K
     expect(v.statement_vi).toContain(DISTRACTOR_BANK[0]);
+  });
+});
+
+describe("F6 — paraphrase: bắt mất ký hiệu đáp án và hoán vai dữ kiện", () => {
+  it("(a) rewriter đổi 'a'->'b' trong khi đáp án còn dùng 'a' => PHẢI ném", () => {
+    // Lỗi cũ: 'a' là chữ THƯỜNG nên không tính là nhãn đỉnh, số cũng không đổi => lọt lưới,
+    // đáp án 'a^3*sqrt(2)/12' trở nên vô nghĩa với đề đã đổi sang 'b'. (paraphrase.test còn để
+    // sẵn badRewriter đúng ca này nhưng `void` bỏ qua — nay bắt được nhờ tham số answerCanonical.)
+    expect(() =>
+      assertParaphrasePreserves("hình vuông cạnh a.", "hình vuông cạnh b.", "a^3*sqrt(2)/12")
+    ).toThrow(ParaphraseDriftError);
+  });
+
+  it("(a) tích hợp: paraphrase truyền answer.canonical => rewriter làm mất 'a' bị chặn", async () => {
+    const aToB = async () =>
+      "Cho hình chóp đều S.ABCD có đáy là hình vuông cạnh b. Tính thể tích khối chóp.";
+    await expect(paraphrase(seedSymbolic, aToB)).rejects.toThrow(ParaphraseDriftError);
+  });
+
+  it("(b) hoán vai 'SA=2, SB=3' -> 'SA=3, SB=2' (giữ multiset số) => PHẢI ném", () => {
+    // Kiểm-số dựa trên MULTISET nên {2,3}=={2,3} lọt; nhưng vai của SA/SB bị tráo => đề khác nghĩa.
+    expect(() =>
+      assertParaphrasePreserves(
+        "Cho tứ diện SABC có SA = 2, SB = 3. Tính thể tích.",
+        "Cho tứ diện SABC có SA = 3, SB = 2. Tính thể tích."
+      )
+    ).toThrow(ParaphraseDriftError);
+  });
+
+  it("hồi quy: paraphrase hợp lệ (giữ 'a', không hoán vai) VẪN chạy", async () => {
+    const ok = async (t: string) => `Xét bài toán sau: ${t}`;
+    const v = await paraphrase(seedSymbolic, ok);
+    expect(v.statement_vi.startsWith("Xét bài toán sau:")).toBe(true);
+    expect(v.answer.canonical).toBe(seedSymbolic.answer.canonical);
   });
 });
