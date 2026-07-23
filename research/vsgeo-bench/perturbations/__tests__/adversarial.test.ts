@@ -26,7 +26,7 @@ import { describe, it, expect } from "vitest";
 import type { Seed } from "../../data/schema/problem";
 import { rescale, scaleLengthsInText, canonicalToNumber } from "../rescale";
 import { reflect } from "../reflect";
-import { rename, extractVertexLabels } from "../rename";
+import { rename, extractVertexLabels, extractRayAnchors } from "../rename";
 import { distractor, DISTRACTOR_BANK } from "../distractor";
 import { paraphrase, assertParaphrasePreserves, ParaphraseDriftError } from "../paraphrase";
 import { generateVariantsForSeed, DETERMINISTIC } from "../generate";
@@ -758,4 +758,29 @@ describe("F25 — reflect: đại lượng phụ thuộc ĐỊNH HƯỚNG diễn
       expect(() => reflect(s)).toThrow(/định hướng|thuận|nghịch|chiều|phía|bất biến/i);
     });
   }
+});
+
+describe("F26 — rename: đáp án dạng TIA 'Vx' (Sx/Ax) chứa NHÃN ĐỈNH bị đổi tên => PHẢI ném", () => {
+  // extractVertexLabels bỏ 'S' trong "Sx" (theo sau chữ thường 'x') nên nhãn đỉnh neo trong tên
+  // tia LỌT lưới guard F20 ⇒ rename đổi S->M trong câu mà đáp án vẫn "Sx" (trỏ đỉnh đã biến mất).
+  // extractRayAnchors rút 'S'/'A' để guard bắt được.
+  const seedsF26: any[] = [
+    // G1 — đáp án "Sx" (giao tuyến hai mặt phẳng qua đỉnh chung S).
+    {"id":"vsgeo-0731","source":{"type":"exam","ref":"On tap HKII lop 11 - giao tuyen hai mat phang"},"statement_vi":"Cho hình chóp S.ABCD có đáy ABCD là hình bình hành tâm O. Tìm giao tuyến của hai mặt phẳng (SAB) và (SCD).","answer":{"canonical":"Sx","type":"line_eq"},"tags":{"topic":["giao_tuyen","quan_he_song_song"],"answer_form":"line_eq","difficulty":2,"requires_auxiliary_construction":true}},
+    // G2 — đáp án "Ax" (giao tuyến qua đỉnh A song song BC).
+    {"id":"vsgeo-0742","source":{"type":"textbook","ref":"Hinh hoc 11 - giao tuyen trong tu dien"},"statement_vi":"Cho tứ diện ABCD. Mặt phẳng (P) đi qua đỉnh A và song song với cạnh BC. Xác định giao tuyến của (P) với mặt phẳng (ABC).","answer":{"canonical":"Ax","type":"line_eq"},"tags":{"topic":["giao_tuyen","quan_he_song_song"],"answer_form":"line_eq","difficulty":2,"requires_auxiliary_construction":true}},
+  ];
+  for (const s of seedsF26) {
+    it(`seed ${s.id} đáp án '${s.answer.canonical}' => rename PHẢI ném (nhãn đỉnh trong tên tia)`, () => {
+      expect(() => rename(s)).toThrow(/nhãn|đáp án|đỉnh/i);
+    });
+  }
+
+  it("extractRayAnchors: 'Sx'->['S'], 'Ax'->['A']; đáp án ký hiệu/căn -> [] (không chặn oan)", () => {
+    expect(extractRayAnchors("Sx")).toEqual(["S"]);
+    expect(extractRayAnchors("Ax")).toEqual(["A"]);
+    expect(extractRayAnchors("2√3")).toEqual([]);
+    expect(extractRayAnchors("a*sqrt(6)/3")).toEqual([]);
+    expect(extractRayAnchors("AB")).toEqual([]); // 'B' không thuộc {x,y,z,t} => không phải tia
+  });
 });

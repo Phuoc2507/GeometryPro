@@ -16,6 +16,16 @@ export function extractVertexLabels(text: string): string[] {
   return seen;
 }
 
+// F26 Đáp án dạng TIA/ĐƯỜNG "Vx" = đỉnh HOA + chữ HƯỚNG thường (x/y/z/t): "Sx","Ax","At".
+// extractVertexLabels bỏ 'S' vì theo sau là chữ thường 'x', nên NHÃN ĐỈNH trong tên tia LỌT
+// lưới guard F20. Hàm này rút riêng chữ HOA đứng ngay trước một chữ hướng thường + ranh giới từ.
+export function extractRayAnchors(text: string): string[] {
+  const re = /\b([A-Z])[xyzt]\b/g;
+  const seen: string[] = [];
+  for (const m of text.matchAll(re)) if (!seen.includes(m[1])) seen.push(m[1]);
+  return seen;
+}
+
 // Bể chữ đích. Lọc bỏ chữ đang dùng để không tạo "thay dây chuyền" (A->M, rồi M vô tình bị thay tiếp).
 const TARGET_POOL = ["M", "N", "P", "Q", "R", "T", "U", "V", "X", "Y", "Z", "E", "F", "G", "H", "I", "J", "K", "L"];
 
@@ -57,6 +67,8 @@ export function rename(seed: Seed, map?: Map<string, string>): Variant {
     ...labels,
     ...extractVertexLabels(seed.statement_vi),
     ...extractVertexLabels(seed.answer.canonical),
+    // F26 nhãn đỉnh neo trong tên tia/đường "Vx" của đáp án cũng không được làm đích.
+    ...extractRayAnchors(seed.answer.canonical),
   ]);
   const renameMap = map ?? defaultRenameMap(labels, exclude);
 
@@ -64,7 +76,14 @@ export function rename(seed: Seed, map?: Map<string, string>): Variant {
   // nhãn, vd "AB") nhưng rename KHÔNG đổi answer.canonical => sau khi đổi đỉnh, câu hỏi về "NP"
   // trong khi đáp án vẫn "AB" => mâu thuẫn sai-im-lặng (§4.3). Nếu đáp án chứa nhãn nằm trong
   // renameMap thì BỎ QUA (đáp án ký hiệu thường + căn thì extractVertexLabels=[] nên không chặn).
-  const answerLabels = extractVertexLabels(seed.answer.canonical);
+  // F26 gộp thêm nhãn đỉnh neo trong tên tia "Vx" (Sx,Ax) — extractVertexLabels bỏ sót vì 'S'
+  // theo sau chữ thường 'x'. Nếu nhãn đó nằm trong renameMap thì đáp án sẽ trỏ đỉnh không còn.
+  const answerLabels = [
+    ...new Set([
+      ...extractVertexLabels(seed.answer.canonical),
+      ...extractRayAnchors(seed.answer.canonical),
+    ]),
+  ];
   for (const l of answerLabels) {
     if (renameMap.has(l)) {
       throw new Error(
