@@ -1,0 +1,23 @@
+{
+  "id": "vsgeo-0001",
+  "source": {
+    "type": "exam",
+    "ref": "THPTQG 2019 - mã 101 - câu 43 (đã chuẩn hoá lời văn)"
+  },
+  "statement_vi": "Cho hình chóp S.ABCD có đáy ABCD là hình vuông cạnh a. Cạnh SA vuông góc với mặt phẳng đáy và SA = a. Tính khoảng cách từ điểm A đến mặt phẳng (SBD).",
+  "figure": { "coords_given": false },
+  "answer": {
+    "canonical": "a*sqrt(3)/3",
+    "type": "surd",
+    "human_note": "khoảng cách từ A đến mặt phẳng (SBD)"
+  },
+  "tags": {
+    "topic": ["khoang_cach", "vuong_goc"],
+    "answer_form": "surd",
+    "difficulty": 3,
+    "requires_auxiliary_construction": true
+  },
+  "solution_ref_vi": "Chọn hệ trục A(0,0,0), B(a,0,0), D(0,a,0), S(0,0,a). Mặt phẳng (SBD) đi qua S, B, D có phương trình x + y + z = a. Khoảng cách từ A(0,0,0) đến mặt này bằng |0-a|/sqrt(3) = a/sqrt(3) = a*sqrt(3)/3.",
+  "verified_by_engine": false,
+  "scale_degree": 1
+}

@@ -1,0 +1,30 @@
+{
+  "id": "vsgeo-0003",
+  "source": {
+    "type": "synthetic",
+    "ref": "tự sinh: ba giao điểm trục toạ độ A(1,0,0), B(0,2,0), C(0,0,3)"
+  },
+  "statement_vi": "Trong không gian Oxyz, cho ba điểm A(1,0,0), B(0,2,0), C(0,0,3). Viết phương trình mặt phẳng (ABC).",
+  "figure": {
+    "coords_given": true,
+    "points": [
+      { "id": "A", "x": 1, "y": 0, "z": 0 },
+      { "id": "B", "x": 0, "y": 2, "z": 0 },
+      { "id": "C", "x": 0, "y": 0, "z": 3 }
+    ]
+  },
+  "answer": {
+    "canonical": "6x+3y+2z-6=0",
+    "type": "plane_eq",
+    "human_note": "phương trình mặt phẳng (ABC)"
+  },
+  "tags": {
+    "topic": ["toa_do_oxyz"],
+    "answer_form": "plane_eq",
+    "difficulty": 2,
+    "requires_auxiliary_construction": false
+  },
+  "solution_ref_vi": "Mặt phẳng chắn ba trục có phương trình theo đoạn chắn: x/1 + y/2 + z/3 = 1. Nhân hai vế với 6 được 6x + 3y + 2z = 6, tức 6x + 3y + 2z - 6 = 0.",
+  "verified_by_engine": false,
+  "scale_degree": 0
+}

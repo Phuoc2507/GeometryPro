@@ -1,0 +1,23 @@
+{
+  "id": "vsgeo-0002",
+  "source": {
+    "type": "textbook",
+    "ref": "SGK Hình học 12 - chương I - bài thể tích khối chóp (biến thể thay số)"
+  },
+  "statement_vi": "Cho hình chóp S.ABCD có đáy ABCD là hình vuông cạnh 2. Cạnh SA vuông góc với mặt phẳng đáy và SA = 3. Tính thể tích khối chóp S.ABCD.",
+  "figure": { "coords_given": false },
+  "answer": {
+    "canonical": "4",
+    "type": "rational",
+    "human_note": "thể tích khối chóp S.ABCD"
+  },
+  "tags": {
+    "topic": ["the_tich"],
+    "answer_form": "rational",
+    "difficulty": 1,
+    "requires_auxiliary_construction": false
+  },
+  "solution_ref_vi": "Diện tích đáy = 2^2 = 4; chiều cao = SA = 3. Thể tích khối chóp = (1/3)·đáy·cao = (1/3)·4·3 = 4.",
+  "verified_by_engine": false,
+  "scale_degree": 0
+}
