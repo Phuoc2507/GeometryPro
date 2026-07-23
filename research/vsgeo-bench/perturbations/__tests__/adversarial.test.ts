@@ -1245,3 +1245,41 @@ describe("RF-6 — reflect: viết lại toạ độ literal dạng ĐÁNH MÁY 
     expect(() => reflect(s)).toThrow(/chưa phản chiếu|khớp hình|một phần/i);
   });
 });
+
+// --- Distractor Round-7 (DS-2: used-set gộp figure.points ids + answer.canonical labels) ---
+
+describe("DS-2 — distractor: 'used' phải gộp NHÃN CHỈ CÓ TRONG HÌNH và TRONG ĐÁP ÁN => né BANK[0] ('K')", () => {
+  // GỐC RỄ: pickSafeDistractor cũ dựng "used" CHỈ từ lời văn (extractVertexLabels + extractRayAnchors),
+  // không đọc seed.figure.points ids hay seed.answer.canonical. Khi đỉnh tải trọng 'K' chỉ được đặt
+  // tên TRONG HÌNH (figure.points) hoặc CHÍNH LÀ đáp án, BANK[0] ("gọi K là điểm tuỳ ý … không liên
+  // quan") vẫn được chọn ⇒ ĐỊNH NGHĨA LẠI K ⇒ mâu thuẫn hình/đáp án, đáp án giữ nguyên ⇒ sai-im-lặng
+  // (§4.3). DS-2: gộp figureIds + answerLabels vào "used" ⇒ né BANK[0], rơi về BANK[1] (không nhãn HOA).
+  const seedsDS2: any[] = [
+    // K là đỉnh tải trọng CHỈ có trong figure.points (V=36 phụ thuộc K=(0,0,6)); lời văn không nêu nhãn.
+    {"id":"vsgeo-0009","source":{"type":"exam","ref":"probe-figureK-tetra"},"statement_vi":"Trong không gian Oxyz, cho tứ diện có bốn đỉnh như trong hình vẽ. Tính thể tích khối tứ diện đó.","figure":{"coords_given":true,"points":[{"id":"A","x":0,"y":0,"z":0},{"id":"B","x":6,"y":0,"z":0},{"id":"C","x":0,"y":6,"z":0},{"id":"K","x":0,"y":0,"z":6}]},"answer":{"canonical":"36","type":"rational","human_note":"V=|det|/6=216/6=36"},"tags":{"topic":["the_tich"],"answer_form":"rational","difficulty":2,"requires_auxiliary_construction":false},"scale_degree":3},
+    // 'K' CHÍNH LÀ đáp án (điểm cần tìm); lời văn không đánh vần chữ 'K' đứng riêng.
+    {"id":"vsgeo-0004","source":{"type":"synthetic","ref":"probe"},"statement_vi":"Cho hình chóp S.ABCD đáy hình vuông. Gọi giao điểm của SC với mặt phẳng (ABD') là điểm cần tìm; ký hiệu đáp án theo hình vẽ.","figure":{"coords_given":false},"answer":{"canonical":"K","type":"mcq"},"tags":{"topic":["giao_diem"],"answer_form":"mcq","difficulty":2,"requires_auxiliary_construction":false}},
+    // K trong figure.points, lời văn "như hình vẽ" (không nêu nhãn HOA nào ngoài mở đầu câu).
+    {"id":"vsgeo-0001","source":{"type":"synthetic","ref":"probe-figureK"},"statement_vi":"Trong không gian Oxyz, cho khối chóp có các đỉnh như hình vẽ. Tính thể tích khối chóp.","figure":{"coords_given":true,"points":[{"id":"A","x":0,"y":0,"z":0},{"id":"B","x":4,"y":0,"z":0},{"id":"C","x":0,"y":4,"z":0},{"id":"D","x":4,"y":4,"z":0},{"id":"K","x":0,"y":0,"z":3}]},"answer":{"canonical":"16","type":"rational"},"tags":{"topic":["the_tich"],"answer_form":"rational","difficulty":2,"requires_auxiliary_construction":false},"scale_degree":3},
+    // K trong figure.points (đỉnh chóp tam giác).
+    {"id":"vsgeo-0003","source":{"type":"synthetic","ref":"probe-figureK"},"statement_vi":"Cho khối tứ diện có các đỉnh cho trong hình vẽ. Tính thể tích khối tứ diện.","figure":{"coords_given":true,"points":[{"id":"A","x":0,"y":0,"z":0},{"id":"B","x":3,"y":0,"z":0},{"id":"C","x":0,"y":3,"z":0},{"id":"K","x":0,"y":0,"z":3}]},"answer":{"canonical":"9/2","type":"rational"},"tags":{"topic":["the_tich"],"answer_form":"rational","difficulty":2,"requires_auxiliary_construction":false},"scale_degree":3},
+  ];
+  for (const s of seedsDS2) {
+    it(`seed ${s.id} 'K' chỉ trong hình/đáp án => distractor KHÔNG chèn BANK[0]`, () => {
+      const v = distractor(s);
+      expect(v.statement_vi).not.toContain(DISTRACTOR_BANK[0]); // né câu định nghĩa lại 'K'
+      expect(v.statement_vi).toContain(DISTRACTOR_BANK[1]); // dùng câu an toàn (không nhãn HOA)
+    });
+  }
+
+  it("HỒI QUY DƯƠNG: seedNumeric (không 'K' ở hình/lời văn/đáp án) vẫn dùng BANK[0]", () => {
+    const v = distractor(seedNumeric); // ABCD.A'B'C'D', figure.points=[], answer '8' — không có K
+    expect(v.statement_vi).toContain(DISTRACTOR_BANK[0]);
+  });
+
+  it("HỒI QUY DƯƠNG: câu nhiễu TRUYỀN TAY (sentence tường minh) luôn được dùng nguyên văn", () => {
+    const custom = "Câu nhiễu tuỳ chỉnh cho kiểm thử.";
+    const v = distractor(seedNumeric, custom);
+    expect(v.statement_vi).toContain(custom);
+  });
+});
