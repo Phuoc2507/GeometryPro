@@ -14,7 +14,7 @@ import { useState, useEffect, useRef } from 'react';
 import type { Dispatch, SetStateAction } from 'react';
 import {
   ChevronLeft, ChevronRight, Sparkles, Loader2,
-  CheckCircle2, AlertTriangle, RotateCcw, BookOpen, Info,
+  AlertTriangle, RotateCcw, BookOpen,
 } from 'lucide-react';
 import { Button }      from '@/components/ui/button';
 import { Textarea }    from '@/components/ui/textarea';
@@ -28,6 +28,7 @@ import { useGeometryHistory } from '@/hooks/useGeometryHistory';
 import { useResizableWidth } from '@/hooks/useResizableWidth';
 import { buildSolveReveal, type SolveReveal } from '@/lib/solveReveal';
 import { cn }          from '@/lib/utils';
+import { safetyTierMeta, verifiedToLevel, exactnessLabel } from '@/lib/safetyTier';
 import { InlineMath, BlockMath } from 'react-katex';
 import 'katex/dist/katex.min.css';
 
@@ -250,20 +251,28 @@ export function SolveResultView({
 
   return (
     <div className="h-full flex flex-col">
-      {/* Đáp số — gọn, không hù dọa. Đã kiểm chứng: tick xanh; chưa: icon trung tính (KHÔNG phải X). */}
-      <div className="px-4 py-3 border-b flex items-start gap-2">
-        {result.verified ? (
-          <CheckCircle2 className="w-4 h-4 text-green-500 shrink-0 mt-0.5" />
-        ) : (
-          <Info className="w-4 h-4 text-muted-foreground shrink-0 mt-0.5" />
-        )}
-        <div className="flex-1 min-w-0">
-          <MathText text={result.final_answer} className="text-sm font-semibold text-foreground break-words" />
-          <p className={cn('text-[11px] mt-0.5', result.verified ? 'text-green-600 dark:text-green-500' : 'text-muted-foreground')}>
-            {result.verified ? 'Đã được ứng dụng kiểm chứng' : 'Ứng dụng chưa kiểm chứng kết quả này'}
-          </p>
-        </div>
-      </div>
+      {/* Đáp số — gọn, không hù dọa. Mức từ tier server (fallback verified nếu lời giải cũ). */}
+      {(() => {
+        const level = result.tier?.level ?? verifiedToLevel(result.verified);
+        const meta = safetyTierMeta(level);
+        const Icon = meta.icon;
+        const reasonMsg = result.tier?.reason?.message ?? result.verify_error;
+        return (
+          <div className="px-4 py-3 border-b flex items-start gap-2">
+            <Icon className={cn('w-4 h-4 shrink-0 mt-0.5', meta.tone === 'ok' ? 'text-green-500' : meta.tone === 'muted' ? 'text-blue-500' : 'text-muted-foreground')} />
+            <div className="flex-1 min-w-0">
+              <MathText text={result.final_answer} className="text-sm font-semibold text-foreground break-words" />
+              <p className={cn('text-[11px] mt-0.5', meta.tone === 'ok' ? 'text-green-600 dark:text-green-500' : 'text-muted-foreground')}>
+                {meta.description}
+                {level === 1 && result.tier?.exactness ? ` · ${exactnessLabel(result.tier.exactness)}` : ''}
+              </p>
+              {level === 3 && reasonMsg && (
+                <p className="text-[11px] mt-1 text-muted-foreground/90 leading-snug break-words">{reasonMsg}</p>
+              )}
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Step navigation */}
       <div className="flex items-center justify-between px-3 py-2 border-b gap-2">
