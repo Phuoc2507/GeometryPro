@@ -535,7 +535,7 @@ Tạo file `research/vsgeo-bench/data/schema/validate.ts`:
 // Thoát mã 0 nếu tất cả hợp lệ; mã 1 nếu có bất kỳ lỗi nào (để chạy tự động biết dừng).
 
 import { readdirSync, readFileSync } from "node:fs";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { dirname, join, basename } from "node:path";
 import { validateSeed } from "./problem";
 import { isValidSeedId } from "./id";
@@ -551,8 +551,8 @@ export type ValidationReport = { okCount: number; problems: string[] };
  *   1) JSON có parse được không.
  *   2) Có khớp SeedSchema không (validateSeed).
  *   3) id có đúng định dạng vsgeo-XXXX không.
- *   4) Tên file có bằng "<id>.json" không (để tra cứu dễ, tránh lẫn).
- *   5) id có trùng với file khác không.
+ *   4) id có trùng với file khác không (kiểm trước tên file, xem chú thích dưới).
+ *   5) Tên file có bằng "<id>.json" không (để tra cứu dễ, tránh lẫn).
  */
 export function runValidation(files: SeedFile[]): ValidationReport {
   let okCount = 0;
@@ -583,19 +583,21 @@ export function runValidation(files: SeedFile[]): ValidationReport {
       continue;
     }
 
-    // (4) Tên file khớp id?
+    // (4) id trùng? (kiểm TRƯỚC tên file: một bản sao đặt sai tên vẫn phải bị
+    //     bắt là trùng id — nếu kiểm tên file trước thì lỗi tên sẽ che mất lỗi trùng.)
+    const truoc = seenIds.get(seed.id);
+    if (truoc) {
+      problems.push(`${file}: id "${seed.id}" trùng với file "${truoc}"`);
+      continue;
+    }
+
+    // (5) Tên file khớp id?
     const expected = `${seed.id}.json`;
     if (basename(file) !== expected) {
       problems.push(`${file}: tên file phải là "${expected}" để khớp id "${seed.id}"`);
       continue;
     }
 
-    // (5) id trùng?
-    const truoc = seenIds.get(seed.id);
-    if (truoc) {
-      problems.push(`${file}: id "${seed.id}" trùng với file "${truoc}"`);
-      continue;
-    }
     seenIds.set(seed.id, file);
     okCount++;
   }
@@ -662,16 +664,21 @@ Sửa **dòng cuối** của `validate.ts`, thay `main();` bằng:
 
 ```ts
 // Chỉ chạy khi được gọi trực tiếp qua tsx (không chạy khi bị test import).
+// Dùng pathToFileURL của Node để so khớp URL cho ĐÚNG trên mọi HĐH: trên Windows
+// import.meta.url là "file:///C:/..." (ba dấu /) nên KHÔNG được tự ghép chuỗi
+// "file://" + đường dẫn (chỉ hai dấu /) — sẽ luôn lệch và main() không bao giờ chạy.
 const calledDirectly =
   typeof process !== "undefined" &&
   process.argv[1] !== undefined &&
-  import.meta.url === `file://${process.argv[1].replace(/\\/g, "/")}`;
+  import.meta.url === pathToFileURL(process.argv[1]).href;
 if (calledDirectly) {
   main();
 }
 ```
 
-> Giải thích: `import.meta.url` là địa chỉ của chính file `validate.ts`; `process.argv[1]` là đường dẫn file mà `tsx` được lệnh chạy. Khi hai cái trỏ cùng một file ⇒ ta đang chạy trực tiếp ⇒ gọi `main()`. Khi vitest import module, `argv[1]` là runner của vitest ⇒ không khớp ⇒ không gọi `main()`. Phần `.replace(/\\/g, "/")` xử lý dấu `\` của đường dẫn Windows.
+> Giải thích: `import.meta.url` là địa chỉ của chính file `validate.ts`; `process.argv[1]` là đường dẫn file mà `tsx` được lệnh chạy. Khi hai cái trỏ cùng một file ⇒ ta đang chạy trực tiếp ⇒ gọi `main()`. Khi vitest import module, `argv[1]` là runner của vitest ⇒ không khớp ⇒ không gọi `main()`.
+>
+> **Cạm bẫy Windows (quan trọng):** KHÔNG tự ghép chuỗi `` `file://${process.argv[1].replace(/\\/g, "/")}` `` để so sánh. Trên Windows, `import.meta.url` có dạng `file:///C:/...` (ba dấu `/`) trong khi chuỗi tự ghép chỉ ra `file://C:/...` (hai dấu `/`) ⇒ **luôn lệch**, khiến `main()` không bao giờ chạy: CLI im lặng, không in gì, và luôn thoát mã 0 kể cả khi seed sai — mất tác dụng máy soi. Dùng `pathToFileURL(process.argv[1]).href` của Node để nó tự chuẩn hoá dấu `/` và chữ hoa/thường ổ đĩa cho đúng trên mọi HĐH.
 
 - [ ] **Bước 4: Chạy test PASS**
 
