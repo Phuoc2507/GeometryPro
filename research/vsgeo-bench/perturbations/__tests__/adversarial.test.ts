@@ -31,7 +31,7 @@ import { distractor, DISTRACTOR_BANK } from "../distractor";
 import { paraphrase, assertParaphrasePreserves, ParaphraseDriftError } from "../paraphrase";
 import { generateVariantsForSeed, DETERMINISTIC } from "../generate";
 import { robustnessReport } from "../metrics";
-import { seedNumeric, seedSymbolic } from "./fixtures";
+import { seedNumeric, seedSymbolic, seedWithCoords } from "./fixtures";
 
 // Bộ dựng seed tối thiểu cho các ca đối kháng (ghi đè trường cần thiết).
 function mkSeed(over: Partial<Seed> & Pick<Seed, "statement_vi" | "answer">): Seed {
@@ -289,5 +289,20 @@ describe("F5 — metrics: tập rỗng => NaN (không phải 0), byKind so với
     expect(rep.byKind.rename).toBeCloseTo(1, 9); // 1 (base cha) - 0 (rename) = 1
     expect(rep.counts.rename).toEqual({ nBase: 1, nVariant: 1 });
     expect(rep.nBase).toBe(2);
+  });
+});
+
+describe("F9 — rescale: từ chối đề có toạ độ literal (tránh mâu thuẫn statement vs answer)", () => {
+  it("seedWithCoords có A(1;2;3)/B(4;0;0) => PHẢI ném (không sinh biến thể mâu thuẫn)", () => {
+    // Mâu thuẫn cụ thể nếu KHÔNG chặn: scaleLengthsInText không khớp toạ độ literal nên
+    // câu vẫn "A(1;2;3) và B(4;0;0)" => AB=√22; nhưng figure.points và đáp án đều ×2 => 2√22.
+    // Đề nói √22, đáp án lưu 2√22: model trả đúng √22 sẽ bị chấm SAI (§4.3 sai-im-lặng).
+    // Co giãn toạ độ chỉ đúng cho bài thuần bậc đồng nhất và cần xử lý pt mặt/vector => thà bỏ.
+    expect(() => rescale(seedWithCoords, 2)).toThrow(/to[aạ] độ|literal|co giãn/i);
+  });
+
+  it("hồi quy: đề KHÔNG có toạ độ literal vẫn co giãn bình thường (guard hẹp)", () => {
+    // seedNumeric "ABCD.A'B'C'D' có cạnh 2" — không có A(x;y;z) => không bị chặn nhầm.
+    expect(rescale(seedNumeric, 2).answer.canonical).toBe("64");
   });
 });

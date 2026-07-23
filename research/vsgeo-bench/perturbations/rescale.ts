@@ -11,6 +11,10 @@ const NUMERIC_TYPES = new Set(["rational", "surd", "ratio"]);
 // F1(c) TIỀN-KIỂM: từ chối co giãn khi đề chứa dữ kiện KHÔNG co giãn tuyến tính theo k.
 // Nguyên tắc §4.3: thà SKIP còn hơn sinh bài tự mâu thuẫn (góc bị nhân đôi, thể tích cho
 // bằng số sẽ sai bậc). generateVariantsForSeed bọc try/catch nên ném = biến thể bị bỏ.
+// F9 Toạ độ literal "L(x;y;z)" (nhãn HOA + 3 số ngăn bởi ';' hoặc ','), cùng dạng reflect nhận.
+const HAS_COORD_LITERAL =
+  /[A-Z]\(\s*-?\d+(?:\.\d+)?\s*[;,]\s*-?\d+(?:\.\d+)?\s*[;,]\s*-?\d+(?:\.\d+)?\s*\)/;
+
 function assertScalable(orig: string): void {
   if (/\bgóc\b/i.test(orig) || /\d\s*(?:°|độ)\b/i.test(orig)) {
     throw new Error(`rescale: đề chứa góc/độ — co giãn cạnh không được đổi góc (bỏ qua)`);
@@ -18,6 +22,17 @@ function assertScalable(orig: string): void {
   if (/\b(diện tích|thể tích)\b[^.]*\bbằng\b\s*\d/i.test(orig)) {
     throw new Error(
       `rescale: diện tích/thể tích cho bằng số — bậc co giãn ≠ 1, không đảm bảo nhất quán (bỏ qua)`
+    );
+  }
+  // F9 (MỞ RỘNG) TỪ CHỐI, KHÔNG cố co giãn toạ độ. scaleLengthsInText không khớp "A(1;2;3)"
+  // nên câu giữ nguyên toạ độ (⇒ khoảng cách cũ) trong khi figure.points và đáp án đã ×k ⇒
+  // statement mâu thuẫn với answer (model trả đúng theo đề lại bị chấm sai — §4.3 sai-im-lặng).
+  // Co giãn toạ độ chỉ hợp lệ cho bài THUẦN BẬC ĐỒNG NHẤT và đòi xử lý riêng phương trình
+  // mặt/mặt cầu (có hạng tử tự do) và vector phương-vs-vị-trí; một scaler nửa vời sẽ đẻ thêm
+  // ca sai-emit mới. Theo "thà bỏ còn hơn sai", ta bỏ. Bù đắp toạ độ để MỞ RỘNG sau.
+  if (HAS_COORD_LITERAL.test(orig)) {
+    throw new Error(
+      `rescale: đề chứa toạ độ literal A(x;y;z) — co giãn toạ độ cần xử lý riêng (pt mặt/vector), thà bỏ còn hơn sinh sai (MỞ RỘNG) — bỏ qua`
     );
   }
 }
