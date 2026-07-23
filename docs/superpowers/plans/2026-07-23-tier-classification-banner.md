@@ -282,7 +282,7 @@ export function tierFromThrow(err) {
 - [ ] **Step 4: Chạy test để xác nhận PASS**
 
 Run: `npx vitest run api/_lib/__tests__/classifyTier.test.js`
-Expected: PASS toàn bộ (14 test).
+Expected: PASS toàn bộ (16 test).
 
 - [ ] **Step 5: Commit**
 
