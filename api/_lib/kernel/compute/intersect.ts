@@ -82,6 +82,22 @@ function iLineSphere(l: LineE, s: SphereE): IntersectionAnswer {
   };
 }
 
+// Đường×đường (exact): cross = dir1×dir2. |cross|²=0 ⇒ song song/trùng — phân biệt bằng (p2−p1)×dir1.
+// Ngược lại xét đồng phẳng qua tích hỗn tạp (p2−p1)·cross: ≠0 ⇒ CHÉO (none); =0 ⇒ CẮT tại
+// t = ((p2−p1)×dir2)·cross / |cross|², điểm = p1 + t·dir1. Toàn bộ trên số hữu tỉ exact.
+function iLineLine(l1: LineE, l2: LineE): IntersectionAnswer {
+  const cross = crossV(l1.dir, l2.dir);
+  const w = subV(l2.p, l1.p); // p2 − p1
+  if (isZeroS(lenSqV(cross))) {
+    return isZeroS(lenSqV(crossV(w, l1.dir)))
+      ? { kind: 'intersection', result: 'coincident' }
+      : { kind: 'intersection', result: 'parallel' };
+  }
+  if (!isZeroS(dotV(w, cross))) return { kind: 'intersection', result: 'none' }; // chéo nhau (3D)
+  const t = div(dotV(crossV(w, l2.dir), cross), lenSqV(cross));
+  return { kind: 'intersection', result: 'point', point: pointFromCoords(addV(l1.p, scaleV(l1.dir, t))) };
+}
+
 export function computeIntersection(a: Entity, b: Entity): ComputeOutcome<IntersectionAnswer> {
   const deg = firstDegenerate([a, b]);
   if (deg) return { ok: false, problem: deg };
@@ -94,6 +110,7 @@ export function computeIntersection(a: Entity, b: Entity): ComputeOutcome<Inters
     case 'plane-sphere': return { ok: true, answer: iSpherePlane(b as SphereE, a as PlaneE) };
     case 'line-sphere': return { ok: true, answer: iLineSphere(a as LineE, b as SphereE) };
     case 'sphere-line': return { ok: true, answer: iLineSphere(b as LineE, a as SphereE) };
+    case 'line-line': return { ok: true, answer: iLineLine(a as LineE, b as LineE) };
     default: return { ok: false, problem: `intersection not supported for ${key}` };
   }
 }
