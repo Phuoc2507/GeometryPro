@@ -101,3 +101,54 @@ export function validateSeed(
   });
   return { ok: false, errors };
 }
+
+// --- Variant: một BIẾN THỂ (perturbation) = Seed hợp lệ + nhãn truy vết `variant` ---
+// F15 Bộ sinh biến thể (kế hoạch 04) xuất ra các Variant; ta cần validate chúng y như Seed
+// để mẻ dữ liệu biến thể không lọt bản ghi hỏng. Định nghĩa ở đây (không import ngược từ
+// perturbations/) để lớp data/schema tự đứng, tránh phụ thuộc vòng.
+
+// PerturbKind — 5 giá trị PHẢI khớp perturbations/types.ts (khai lại để tránh import vòng;
+// nếu types.ts đổi tập giá trị, sửa cả hai nơi cho khớp).
+export const PerturbKindSchema = z.enum([
+  "rename",
+  "rescale",
+  "paraphrase",
+  "distractor",
+  "reflect",
+]);
+export type PerturbKind = z.infer<typeof PerturbKindSchema>;
+
+// Nhãn truy vết: biến thể sinh từ seed cha nào, bằng phép gì.
+export const VariantMetaSchema = z
+  .object({
+    kind: PerturbKindSchema,
+    parentSeedId: z
+      .string()
+      .regex(/^vsgeo-\d{4}$/, "variant.parentSeedId phải dạng vsgeo-XXXX (id seed cha)"),
+  })
+  .strict();
+
+// Variant = mọi trường của Seed, nhưng id có hậu tố "__<kind>" và có thêm `variant`.
+// SeedSchema.extend giữ nguyên chế độ .strict() của Seed; ta ghi đè id bằng mẫu biến thể.
+export const VariantSchema = SeedSchema.extend({
+  id: z
+    .string()
+    .regex(/^vsgeo-\d{4}__[a-z]+$/, "id biến thể phải dạng vsgeo-XXXX__<kind>"),
+  variant: VariantMetaSchema,
+}).strict();
+
+/**
+ * validateVariant — kiểm một object bất kỳ có phải Variant hợp lệ không.
+ * Cùng hợp đồng KHÔNG-NÉM như validateSeed: trả { ok:true, variant } hoặc { ok:false, errors }.
+ */
+export function validateVariant(
+  obj: unknown
+): { ok: true; variant: z.infer<typeof VariantSchema> } | { ok: false; errors: string[] } {
+  const r = VariantSchema.safeParse(obj);
+  if (r.success) return { ok: true, variant: r.data };
+  const errors = r.error.issues.map((iss) => {
+    const path = iss.path.length ? iss.path.join(".") : "(gốc)";
+    return `${path}: ${iss.message}`;
+  });
+  return { ok: false, errors };
+}
