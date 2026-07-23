@@ -1,179 +1,180 @@
-# Bảng phân loại dạng bài cho giáo viên (Teacher Problem-Type Catalog) — Design
+# Bảng phân loại dạng bài cho giáo viên — Thiết kế
 
-> Sub-project **D** of the 3-mức-an-toàn + teacher-UX program (order E → A → B → **D** → C).
-> Depends on **B** (shipped): `classifyTier` / `SafetyClassification` / `safetyTierMeta`.
+> Tiểu dự án **D** trong chương trình 3-mức-an-toàn + trải nghiệm giáo viên (thứ tự E → A → B → **D** → C).
+> Phụ thuộc **B** (đã ship): `classifyTier` / `SafetyClassification` / `safetyTierMeta`.
 
-**Date:** 2026-07-23
-**Branch / worktree:** `claude/teacher-catalog` · `F:\geo3dnew\geo3d\.claude\worktrees\teacher-catalog` (from `origin/main` = `714e174`)
+**Ngày:** 2026-07-23
+**Nhánh / worktree:** `claude/teacher-catalog` · `F:\geo3dnew\geo3d\.claude\worktrees\teacher-catalog` (tách từ `origin/main` = `714e174`)
 
 ---
 
-## 1. Goal
+## 1. Mục tiêu
 
-Give teachers a single **reference page** that answers: *"What kinds of problems can GeometryPro handle, and how much can I trust each?"*
+Cho giáo viên một **trang tra cứu** trả lời: *"GeometryPro xử lý được những dạng bài nào, và tin được tới đâu?"*
 
-For every problem type the engine recognises, the page shows its name, its current **safety Mức**, and — for the types the engine can **certify** — a worked example the teacher can load straight into the canvas with a **"Vẽ thử"** button. Uncertified types are shown **honestly**, never hidden, with a neutral "engine tính được nhưng chưa cấp chứng thực" note.
+Với mỗi dạng bài engine nhận diện, trang hiện tên dạng, **Mức an toàn** hiện tại, và — với những dạng engine **chứng thực được** — một đề ví dụ mà giáo viên bấm **"Vẽ thử"** để nạp thẳng hình vào canvas. Dạng chưa chứng thực vẫn hiện **thành thật**, không giấu, kèm ghi chú trung tính "engine tính được nhưng chưa cấp chứng thực".
 
-This is a pure teacher-facing surface. It changes **no** engine behaviour and adds **no** kernel code. Its entire value is honest transparency, so its one hard rule is: **nothing on the page may assert an answer the engine has not actually produced.**
+Đây thuần là một mặt tiền hướng giáo viên. Nó **không** đổi hành vi engine và **không** thêm code kernel. Toàn bộ giá trị của nó là sự minh bạch trung thực, nên luật cứng duy nhất là: **không nội dung nào trên trang được khẳng định một đáp án mà engine chưa thực sự tính ra.**
 
-## 2. Locked product decisions (from the user)
+## 2. Các quyết định sản phẩm đã chốt (từ người dùng)
 
-| # | Decision | Choice |
-|---|----------|--------|
-| 1 | Audience | **Teacher-only, gated.** Auth required; teacher-capable tier only. Reached from `UserMenu`. Students never see it. |
-| 2 | Interactivity | **"Vẽ thử" loads the figure** into the canvas — not read-only. Reuses the existing load mechanism. |
-| 3 | Coverage | **Full taxonomy, including Mức-3 types**, shown honestly as "chưa chứng thực". |
+| # | Hạng mục | Lựa chọn |
+|---|----------|----------|
+| 1 | Đối tượng | **Chỉ giáo viên, có gate.** Bắt buộc đăng nhập; đúng điều kiện của TeacherMode. Vào từ `UserMenu`. Học sinh không thấy. |
+| 2 | Tương tác | **"Vẽ thử" nạp hình** vào canvas — không chỉ đọc. Dùng lại đúng cơ chế nạp sẵn có. |
+| 3 | Phạm vi | **Đủ taxonomy, gồm cả dạng Mức 3**, hiện thành thật là "chưa chứng thực". |
+| 4 | Ví dụ Cực trị | **Câu 1** (đống rơm parabol, đỉnh `16/3 m = 533 cm`). |
 
-## 3. Non-negotiable honesty constraints
+## 3. Ràng buộc trung thực bất di bất dịch
 
-These flow from the whole program's reason for existing (anti-hallucination). They are requirements, not preferences:
+Những điều này xuất phát từ lý do tồn tại của cả chương trình (chống bịa đáp số). Chúng là yêu cầu, không phải tuỳ chọn:
 
-- **H1 — No uncertified assertion.** An answer value may be shown as certified ("Đã kiểm chứng", Mức 1) **only if** the live engine actually produces it. Enforced by a CI guard that re-runs the example (§7).
-- **H2 — `demoResults` is banned as a source.** `src/data/demoResults.ts` is the *rendered showcase* and contains a **provably wrong** figure (Câu 9: sphere center/R and 14 m top are incorrect). No catalog figure, answer, or example may be sourced from it. Enforced structurally by the guard.
-- **H3 — Mức is dynamic, mirrored from B.** The page classifies types the same way B classifies instances: `level 1 ⟺ engineSolved`. The catalog never invents a Mức; a type is "Mức-1-capable" **iff** it carries a certified example that passes the live-engine guard.
-- **H4 — Mức-3 is neutral, not alarming.** Uncertified types use B's neutral Info tone (`safetyTierMeta(3)`), never red/warning. No "Vẽ thử" button (nothing verified to load).
+- **H1 — Không khẳng định thứ chưa chứng thực.** Một giá trị đáp án chỉ được hiện là đã chứng thực ("Đã kiểm chứng", Mức 1) **nếu** engine thật sự tính ra nó. Được bảo đảm bằng một guard CI chạy lại ví dụ (§7).
+- **H2 — Cấm lấy nguồn từ `demoResults`.** `src/data/demoResults.ts` là *bộ trình diễn đã render* và chứa một hình **sai chứng minh được** (Câu 9: tâm/bán kính mặt cầu và đỉnh 14 m đều sai). Không ví dụ / đáp án / hình nào trong bảng được lấy từ đó. Guard chặn về mặt cấu trúc.
+- **H3 — Mức là động, soi theo B.** Trang phân loại các dạng đúng cách B phân loại từng bài: `level 1 ⟺ engineSolved`. Bảng không bao giờ tự bịa Mức; một dạng "có khả năng Mức 1" **khi và chỉ khi** nó mang một ví dụ chứng thực vượt qua guard chạy-engine-thật (§7).
+- **H4 — Mức 3 trung tính, không hù dọa.** Dạng chưa chứng thực dùng tông Info trung tính của B (`safetyTierMeta(3)`), không đỏ / không cảnh báo. Không có nút "Vẽ thử" (không có gì đã chứng thực để nạp).
 
-## 4. Taxonomy (source of truth: `classifyTier.js`)
+## 4. Taxonomy (nguồn sự thật: `classifyTier.js`)
 
-The catalog enumerates exactly the labels `problemTypeOf` can emit — no more, no less:
+Bảng liệt kê đúng những nhãn `problemTypeOf` có thể phát ra — không hơn, không kém:
 
-**Certified-capable today (Mức 1 — has a passing contract test ⇒ `engineSolved`):**
+**Có khả năng chứng thực hôm nay (Mức 1 — có contract test đang pass ⇒ `engineSolved`):**
 
-| Type | Certifying contract test | Verified answer (illustrative) |
-|------|--------------------------|-------------------------------|
+| Dạng bài | Contract test cấp chứng thực | Đáp án đã kiểm chứng (minh hoạ) |
+|----------|------------------------------|----------------------------------|
 | Khoảng cách | `api/_lib/kernel/__tests__/e2e-flagship.test.ts` | `d(A,(SCD)) = √2` |
 | Thể tích | `api/_lib/kernel/__tests__/e2e-flagship.test.ts` | `V = 8/3` |
 | Diện tích | `api/_lib/kernel/analysis/__tests__/cau4-contract.test.ts` | thiết diện lớn nhất `392 cm²` |
-| Cực trị | `api/_lib/kernel/analysis/__tests__/cau1-contract.test.ts` (or `cau5-contract`) | đỉnh `16/3 m = 533 cm` (Câu 1) / `MN` min `≈ 7,49 m` (Câu 5) |
+| Cực trị | `api/_lib/kernel/analysis/__tests__/cau1-contract.test.ts` | điểm cao nhất `16/3 m = 533 cm` (Câu 1) |
 | Toạ độ điểm | `api/_lib/kernel/__tests__/translator-contract.test.ts` | trực tâm `H = (16/21, 8/21, 4/21)` |
 | Mặt cầu | `api/_lib/kernel/analysis/__tests__/cau9-integration.test.ts` | `R = 10 − 2√7 ≈ 4,7085` |
 
-The exact `file:line` + the exact `program` (kernel input) for each entry are pinned during the writing-plans phase by reading each cited test. The table above is the intent; the guard (§7) is the enforcement.
+`file:line` chính xác + `program` (đầu vào kernel) chính xác của mỗi mục sẽ được chốt ở bước writing-plans bằng cách đọc từng test được trích. Bảng trên là ý định; guard (§7) là thứ thực thi.
 
-**Not certified today (Mức 3 — shown honestly, no "Vẽ thử"):**
+**Chưa chứng thực hôm nay (Mức 3 — hiện thành thật, không "Vẽ thử"):**
 
 `Góc`, `Phương trình`, `Vị trí tương đối`, `Giao`, `Tỉ số thể tích`, `Tích phân`, `Giải phương trình`, `Tính giá trị`, `Khác`.
 
-Each carries a neutral note. Two honest sub-notes:
-- **"engine tính được, chưa cấp chứng thực"** — the engine can compute a number but B assigns Mức 3 by policy (e.g. `Phương trình`, `Tích phân`, `Giải phương trình`, `Tính giá trị`).
-- **"chưa hỗ trợ chứng thực"** — no reliable engine path yet (e.g. `Góc` in 3D — known gap; `Vị trí tương đối`, `Giao`, `Tỉ số thể tích`, `Khác`).
+Mỗi dạng kèm một ghi chú trung tính, thuộc một trong hai kiểu:
+- **"engine tính được, chưa cấp chứng thực"** — engine ra được một con số nhưng B gán Mức 3 theo chính sách (vd `Phương trình`, `Tích phân`, `Giải phương trình`, `Tính giá trị`).
+- **"chưa hỗ trợ chứng thực"** — chưa có đường engine đáng tin (vd `Góc` trong không gian — lỗ hổng đã biết; `Vị trí tương đối`, `Giao`, `Tỉ số thể tích`, `Khác`).
 
-The per-type sub-note is data on the entry, decided during planning by checking each type against the engine; the page just renders whatever the entry says.
+Ghi chú của từng dạng là dữ liệu nằm trên mục đó, được quyết ở bước lập kế hoạch bằng cách đối chiếu từng dạng với engine; trang chỉ render đúng thứ mục ấy khai báo.
 
-## 5. Data model
+## 5. Mô hình dữ liệu
 
-One typed module — the single source of catalog content:
+Một module có kiểu — nguồn nội dung duy nhất của bảng:
 
 **`src/data/problemTypeCatalog.ts`**
 
 ```ts
-import type { GeometryData } from '@/context/GeometryContext'; // or wherever GeometryData lives
+import type { GeometryData } from '@/context/GeometryContext'; // hoặc nơi GeometryData được định nghĩa
 import type { SafetyLevel } from '@/lib/safetyTier';
 
-/** A certified, engine-checked worked example (Mức-1 entries only). */
+/** Ví dụ đã chứng thực, được engine kiểm (chỉ dành cho mục Mức 1). */
 export interface CatalogExample {
-  /** Vietnamese problem statement shown to the teacher. */
+  /** Đề bài tiếng Việt hiện cho giáo viên. */
   de: string;
-  /** Human-facing verified answer, e.g. "d(A,(SCD)) = √2". */
+  /** Đáp án đã kiểm chứng, dạng chữ cho người đọc, vd "d(A,(SCD)) = √2". */
   answer: string;
   /**
-   * Kernel input for this exact problem — the SAME construction its
-   * certifying contract test solves. The guard runs this and asserts the
-   * engine returns `answer` at level 1. This is what makes the answer honest.
+   * Đầu vào kernel cho đúng bài này — CÙNG cấu hình mà contract test cấp
+   * chứng thực của nó giải. Guard chạy cái này và khẳng định engine trả về
+   * `answer` ở level 1. Đây là thứ làm cho đáp án trung thực.
    */
-  program: unknown;               // shape = runAny() input (RunPlan | AnalysisPlan)
-  /** file:line of the certifying contract test (human citation). */
+  program: unknown;               // shape = đầu vào runAny() (RunPlan | AnalysisPlan)
+  /** file:line của contract test cấp chứng thực (trích dẫn cho người đọc). */
   sourceTest: string;
-  /** Loadable figure for "Vẽ thử" — authored to match `program`'s config. */
+  /** Hình nạp được cho "Vẽ thử" — vẽ khớp cấu hình của `program`. */
   geometry: GeometryData;
 }
 
 export interface CatalogEntry {
-  /** Exactly one of the labels classifyTier.js can emit. */
+  /** Đúng một trong các nhãn classifyTier.js có thể phát ra. */
   type: string;                   // 'Khoảng cách' | 'Góc' | ...
-  /** Current safety Mức for this TYPE's best available support. */
-  level: SafetyLevel;             // 1 | 3 (2 reserved for C)
-  /** Neutral one-line description of the type. */
+  /** Mức an toàn hiện tại cho mức hỗ trợ tốt nhất của DẠNG này. */
+  level: SafetyLevel;             // 1 | 3 (2 để dành cho C)
+  /** Mô tả trung tính một dòng về dạng bài. */
   blurb: string;
-  /** Mức-3 honesty note; null for Mức-1 entries. */
+  /** Ghi chú trung thực cho Mức 3; null với mục Mức 1. */
   note: string | null;
-  /** Present iff level === 1. Absent/undefined for Mức-3. */
+  /** Có mặt khi level === 1. Vắng mặt/undefined với Mức 3. */
   example?: CatalogExample;
 }
 
 export const PROBLEM_TYPE_CATALOG: CatalogEntry[] = [ /* ... */ ];
 ```
 
-**Why a `.ts` module, not JSON:** it imports `GeometryData` / `SafetyLevel` types (compile-time safety, and the page can't drift from B's `SafetyLevel` union), and it can hold the `program` object literally.
+**Vì sao dùng module `.ts` chứ không JSON:** nó import kiểu `GeometryData` / `SafetyLevel` (an toàn lúc biên dịch, và trang không thể lệch khỏi union `SafetyLevel` của B), và có thể chứa object `program` dưới dạng literal.
 
-**Invariant (guard-enforced):** `entry.level === 1 ⟺ entry.example != null`.
+**Bất biến (guard thực thi):** `entry.level === 1 ⟺ entry.example != null`.
 
-## 6. UI & integration
+## 6. Giao diện & tích hợp
 
-Follows the **E pattern** (`src/pages/Settings.tsx`) exactly — same auth gate, same shadcn Card layout, same `useAuth`.
+Theo đúng **khuôn E** (`src/pages/Settings.tsx`) — cùng gate đăng nhập, cùng layout Card của shadcn, cùng `useAuth`.
 
-### 6.1 New page — `src/pages/ProblemTypeCatalog.tsx`
+### 6.1 Trang mới — `src/pages/ProblemTypeCatalog.tsx`
 
-- **Gate:** copy Settings' gate. `useAuth()` → if `!isLoading && !user` → `navigate('/auth')`. Then a **teacher-capability** check: render the catalog only for teacher-capable tiers; authenticated non-teacher (free) users see a short upsell card (reuse Settings' "Gói của tôi" tone + `openUpgradeModal`). The exact predicate (`canUseTeacherTools`) mirrors whatever already gates `TeacherMode` / reveals teacher UI — pinned during planning by reading `TeacherMode.tsx` and `useAuth`.
-- **Layout:** two grouped sections using B's `safetyTierMeta` for badge styling so the page is visually consistent with the banner:
-  - **"Mức 1 — Đã chứng thực"** — one Card per certified type: type name + `safetyTierMeta(1)` badge, `blurb`, the example's `de`, its verified `answer` (labeled "Đáp án đã kiểm chứng"), a small "Nguồn: `sourceTest`" citation, and a **"Vẽ thử"** button.
-  - **"Mức 3 — Chưa chứng thực"** — one row/Card per uncertified type: type name + `safetyTierMeta(3)` neutral badge, `blurb`, and the honest `note`. **No** button.
-- **"Vẽ thử" behaviour:** `onClick` → `loadGeometry(entry.example.geometry, { silent })` (the same context action `DropZone` uses) → `navigate('/teacher')` so the figure appears on the teacher canvas. Requires the catalog route to sit **inside** the `GeometryProvider` tree (verified during planning; App.tsx wraps routes in the provider).
+- **Gate:** copy gate của Settings. `useAuth()` → nếu `!isLoading && !user` → `navigate('/auth')`. Sau đó kiểm **khả năng giáo viên**: chỉ render bảng cho những tài khoản đúng điều kiện của TeacherMode; người đã đăng nhập nhưng không phải giáo viên thấy một card mời nâng cấp ngắn (dùng lại tông "Gói của tôi" của Settings + `openUpgradeModal`). Vị từ chính xác (`canUseTeacherTools`) soi theo đúng thứ đang gate `TeacherMode` / mở UI giáo viên — sẽ chốt ở bước lập kế hoạch bằng cách đọc `TeacherMode.tsx` và `useAuth`.
+- **Layout:** hai nhóm, dùng `safetyTierMeta` của B cho kiểu badge để trang đồng bộ thị giác với banner:
+  - **"Mức 1 — Đã chứng thực"** — mỗi dạng chứng thực một Card: tên dạng + badge `safetyTierMeta(1)`, `blurb`, đề `de` của ví dụ, `answer` đã kiểm chứng (nhãn "Đáp án đã kiểm chứng"), trích "Nguồn: `sourceTest`", và nút **"Vẽ thử"**.
+  - **"Mức 3 — Chưa chứng thực"** — mỗi dạng chưa chứng thực một hàng/Card: tên dạng + badge trung tính `safetyTierMeta(3)`, `blurb`, và `note` trung thực. **Không** nút.
+- **Hành vi "Vẽ thử":** `onClick` → `loadGeometry(entry.example.geometry, { silent })` (đúng action context mà `DropZone` dùng) → `navigate('/teacher')` để hình hiện trên canvas giáo viên. Cần route bảng nằm **trong** cây `GeometryProvider` (xác nhận ở bước lập kế hoạch; App.tsx đã bọc các route trong provider).
 
 ### 6.2 Route — `src/App.tsx`
 
-Add **above** the catch-all (respecting the existing "ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL" comment):
+Thêm **phía trên** catch-all (tôn trọng comment "ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL" đang có):
 
 ```tsx
 <Route path="/teacher/dang-bai" element={<ProblemTypeCatalog />} />
 ```
 
-### 6.3 Entry point — `src/components/UserMenu.tsx`
+### 6.3 Điểm vào — `src/components/UserMenu.tsx`
 
-Add a `DropdownMenuItem` — **"Bảng phân loại dạng bài"** (icon e.g. `LayoutGrid`/`BookOpen`) → `navigate('/teacher/dang-bai')`. Rendered **only** when `canUseTeacherTools` (teacher-gated at the link level too, so students never see the entry point).
+Thêm một `DropdownMenuItem` — **"Bảng phân loại dạng bài"** (icon vd `LayoutGrid`/`BookOpen`) → `navigate('/teacher/dang-bai')`. Chỉ render khi `canUseTeacherTools` (gate giáo viên ngay ở điểm vào, nên học sinh không thấy lối vào).
 
-## 7. Honesty guard (CI)
+## 7. Guard trung thực (CI)
 
-Two layers. Layer B is the anti-hallucination guarantee; layer A is cheap structural hygiene.
+Hai lớp. Lớp B là bảo đảm chống-bịa; lớp A là vệ sinh cấu trúc rẻ tiền.
 
-**Layer A — structural guard (light, no engine):** `src/data/__tests__/problemTypeCatalog.structure.test.ts`
-- Every `type` is one of `classifyTier.js`'s emittable labels; no duplicates; every emittable label is present (full-coverage per decision #3).
-- Invariant `level === 1 ⟺ example != null`.
-- Every Mức-3 entry has a non-empty `note` and **no** `example`.
-- **H2:** assert no catalog `geometry` is referentially or structurally equal to any `demoResults` entry (import `demoResults`, cross-check).
-- For each Mức-1 example: `geometry.points` includes the points named in `answer` (e.g. `A`, `S`, `C`, `D` for the distance example) — a wrong/empty figure fails here.
+**Lớp A — guard cấu trúc (nhẹ, không engine):** `src/data/__tests__/problemTypeCatalog.structure.test.ts`
+- Mỗi `type` là một nhãn `classifyTier.js` có thể phát ra; không trùng; mọi nhãn phát-ra-được đều có mặt (phủ đủ theo quyết định #3).
+- Bất biến `level === 1 ⟺ example != null`.
+- Mỗi mục Mức 3 có `note` khác rỗng và **không** có `example`.
+- **H2:** khẳng định không `geometry` nào trong bảng bằng (tham chiếu hoặc cấu trúc) với bất kỳ mục nào của `demoResults` (import `demoResults`, đối chiếu chéo).
+- Với mỗi ví dụ Mức 1: `geometry.points` chứa các điểm được nêu trong `answer` (vd `A`, `S`, `C`, `D` cho ví dụ khoảng cách) — hình sai/rỗng sẽ fail ở đây.
 
-**Layer B — live-engine guard (the H1 guarantee):** `api/_lib/__tests__/problemTypeCatalog.engine.test.js` (co-located with the engine so kernel import is trivial; covered by the existing `api/_lib/__tests__/**/*.test.js` vitest glob).
-- For each Mức-1 entry: `runAny(entry.example.program)` → assert `classifyTier(result).level === 1` **and** the engine's answer matches `entry.example.answer` (compare the exact/approx value the contract test asserts). If the engine ever changes an answer, this test fails until the catalog is updated — the catalog **cannot silently drift from the engine**.
-- Import friction (this JS test needs the TS catalog's programs): resolved in planning — either (a) import the catalog module through vitest's `@` alias, or (b) export the Mức-1 `{program, answer}` pairs from a tiny shared module both the page and this test import. Preference: (a) if the alias resolves in the `node` project; else (b).
+**Lớp B — guard chạy-engine-thật (bảo đảm H1):** `api/_lib/__tests__/problemTypeCatalog.engine.test.js` (đặt cạnh engine cho dễ import kernel; nằm trong glob vitest `api/_lib/__tests__/**/*.test.js` đang có).
+- Với mỗi mục Mức 1: `runAny(entry.example.program)` → khẳng định `classifyTier(result).level === 1` **và** đáp án của engine khớp `entry.example.answer` (so đúng giá trị exact/approx mà contract test khẳng định). Nếu engine đổi đáp án, test này fail cho tới khi bảng được cập nhật — bảng **không thể âm thầm lệch khỏi engine**.
+- Vướng import (test JS này cần `program` của bảng .ts): giải ở bước lập kế hoạch — hoặc (a) import module bảng qua alias `@` của vitest, hoặc (b) export cặp `{program, answer}` của các mục Mức 1 ra một module chung nhỏ mà cả trang lẫn test cùng import. Ưu tiên (a) nếu alias resolve được trong project `node`; nếu không thì (b).
 
-**Existing suite stays green:** 539/539 tests, `tsc` 0 errors, `npm run build` exit 0.
+**Suite hiện tại vẫn xanh:** 539/539 test, `tsc` 0 lỗi, `npm run build` exit 0.
 
-## 8. Out of scope (YAGNI)
+## 8. Ngoài phạm vi (YAGNI)
 
-- **Auto-generating figures from the engine** at build time (via `buildGeometryFromPoints`). Feasible and strictly more honest, but heavier; v1 hand-authors 6 figures matched to their `program` and guard-checks them. Noted as a future enhancement to eliminate hand-authoring.
-- **Mức-2 representative illustrations** — that is sub-project **C** (consumes `showIllustrationValues`). The `SafetyLevel === 2` branch is not produced here.
-- **Editing / adding examples from the UI.** Catalog is static, engine-pinned, code-reviewed.
-- **Sample đề for Mức-3 types.** Optional; if added later it carries **no** answer and **no** figure and is explicitly framed "ví dụ dạng đề — chưa chứng thực." Not in v1.
-- **`translatorPrompt.js` `problemKind`** enrichment (B-Nhịp 2 / A-Nhịp 2) — gated behind the live 50-case translator gate, unrelated to D.
+- **Tự sinh hình từ engine** lúc build (qua `buildGeometryFromPoints`). Khả thi và trung thực hơn hẳn, nhưng nặng; v1 vẽ tay 6 hình khớp với `program` của nó và cho guard kiểm. Ghi lại là cải tiến tương lai để bỏ hẳn việc vẽ tay.
+- **Minh hoạ đại diện Mức 2** — đó là tiểu dự án **C** (dùng `showIllustrationValues`). Nhánh `SafetyLevel === 2` không được sinh ở đây.
+- **Sửa/thêm ví dụ từ UI.** Bảng là tĩnh, ghim theo engine, được review code.
+- **Đề mẫu cho dạng Mức 3.** Tuỳ chọn; nếu thêm sau thì mang **không** đáp án và **không** hình, ghi rõ "ví dụ dạng đề — chưa chứng thực". Không có trong v1.
+- **Làm giàu `problemKind` của `translatorPrompt.js`** (B-Nhịp 2 / A-Nhịp 2) — bị gate sau cổng translator 50-case live, không liên quan D.
 
-## 9. Risks & mitigations
+## 9. Rủi ro & giảm thiểu
 
-| Risk | Mitigation |
-|------|-----------|
-| A hand-authored figure is geometrically wrong (the Câu-9 failure mode) | Figure authored to match the `program`'s exact coordinates; Layer-A guard checks named points exist; the *answer* (the honesty-critical claim) is pinned to the live engine by Layer B. Figure is illustrative, answer is certified. |
-| Catalog drifts from engine after an engine change | Layer-B live-engine guard fails CI on any drift. |
-| `demoResults`'s wrong data leaks in | H2 structural ban in Layer-A guard. |
-| Teacher gate lets students/free users in | Gate copied from Settings + teacher-capability predicate; link in UserMenu also gated; page redirects anonymous to `/auth`. |
-| "Vẽ thử" loads but figure doesn't appear on canvas | Catalog route confirmed inside `GeometryProvider`; `loadGeometry` then `navigate('/teacher')`. |
+| Rủi ro | Giảm thiểu |
+|--------|-----------|
+| Hình vẽ tay sai hình học (đúng kiểu thất bại Câu 9) | Hình vẽ khớp toạ độ chính xác của `program`; guard Lớp A kiểm các điểm nêu trong đáp án có mặt; *đáp án* (khẳng định cốt lõi về trung thực) được ghim vào engine thật bởi Lớp B. Hình là minh hoạ, đáp án là đã chứng thực. |
+| Bảng lệch khỏi engine sau khi engine đổi | Guard chạy-engine-thật Lớp B fail CI ngay khi có lệch. |
+| Dữ liệu sai của `demoResults` lọt vào | Lệnh cấm H2 về cấu trúc trong guard Lớp A. |
+| Gate giáo viên để lọt học sinh/tài khoản free | Gate copy từ Settings + vị từ khả-năng-giáo-viên; link trong UserMenu cũng gate; trang đẩy người chưa đăng nhập về `/auth`. |
+| "Vẽ thử" nạp xong nhưng hình không hiện trên canvas | Xác nhận route bảng nằm trong `GeometryProvider`; `loadGeometry` rồi `navigate('/teacher')`. |
 
-## 10. Deliverables
+## 10. Sản phẩm bàn giao
 
-1. `src/data/problemTypeCatalog.ts` — typed catalog (all types; 6 certified examples).
-2. `src/pages/ProblemTypeCatalog.tsx` — teacher-gated page.
-3. `src/App.tsx` — `/teacher/dang-bai` route above catch-all.
-4. `src/components/UserMenu.tsx` — teacher-gated catalog link.
-5. `src/data/__tests__/problemTypeCatalog.structure.test.ts` — Layer-A guard.
-6. `api/_lib/__tests__/problemTypeCatalog.engine.test.js` — Layer-B live-engine guard.
+1. `src/data/problemTypeCatalog.ts` — bảng có kiểu (đủ dạng; 6 ví dụ chứng thực).
+2. `src/pages/ProblemTypeCatalog.tsx` — trang gate giáo viên.
+3. `src/App.tsx` — route `/teacher/dang-bai` phía trên catch-all.
+4. `src/components/UserMenu.tsx` — link bảng, gate giáo viên.
+5. `src/data/__tests__/problemTypeCatalog.structure.test.ts` — guard Lớp A.
+6. `api/_lib/__tests__/problemTypeCatalog.engine.test.js` — guard chạy-engine-thật Lớp B.
 
-Ship per `deploy-freely-to-prod`: build green → FF-push `claude/teacher-catalog:main` → confirm Vercel `state:success` via GitHub commit-status API.
+Ship theo `deploy-freely-to-prod`: build xanh → FF-push `claude/teacher-catalog:main` → xác nhận Vercel `state:success` qua API commit-status của GitHub.
