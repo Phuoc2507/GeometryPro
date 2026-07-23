@@ -29,6 +29,7 @@ import { reflect } from "../reflect";
 import { rename, extractVertexLabels } from "../rename";
 import { distractor, DISTRACTOR_BANK } from "../distractor";
 import { paraphrase, assertParaphrasePreserves, ParaphraseDriftError } from "../paraphrase";
+import { generateVariantsForSeed, DETERMINISTIC } from "../generate";
 import { seedNumeric, seedSymbolic } from "./fixtures";
 
 // Bộ dựng seed tối thiểu cho các ca đối kháng (ghi đè trường cần thiết).
@@ -249,5 +250,17 @@ describe("F6 — paraphrase: bắt mất ký hiệu đáp án và hoán vai dữ
     const v = await paraphrase(seedSymbolic, ok);
     expect(v.statement_vi.startsWith("Xét bài toán sau:")).toBe(true);
     expect(v.answer.canonical).toBe(seedSymbolic.answer.canonical);
+  });
+});
+
+describe("F4 — generate: phép bị bỏ được GHI LẠI (không nuốt lỗi im lặng)", () => {
+  it("reflect bị bỏ (seed không toạ độ) được đếm vào bản ghi skips", async () => {
+    // catch{} rỗng che mất trường hợp một phép hỏng cho MỌI seed => 0 biến thể mà không ai hay.
+    // Tham số skips cho phép runGenerate cộng dồn và cảnh báo phép có 0 thành công.
+    const skips: Record<string, number> = {};
+    const vs = await generateVariantsForSeed(seedSymbolic, DETERMINISTIC, skips);
+    expect(vs.map((v) => v.variant.kind).sort()).toEqual(["distractor", "rename", "rescale"]);
+    expect(skips.reflect).toBe(1); // reflect ném => bị bỏ => phải được ghi
+    expect(skips.rename ?? 0).toBe(0); // phép thành công không tăng skip
   });
 });
