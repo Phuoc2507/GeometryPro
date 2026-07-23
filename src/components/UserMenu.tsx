@@ -1,7 +1,7 @@
 
 import { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { User, LogOut, Save, Settings, Sparkles, Crown } from 'lucide-react';
+import { User, LogOut, Save, Settings, Sparkles, Crown, ListChecks } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -148,6 +148,12 @@ export function UserMenu() {
           <Settings className="w-4 h-4 mr-2" />
           Cài đặt
         </DropdownMenuItem>
+        {tier === 'teacher' && (
+          <DropdownMenuItem onClick={() => navigate('/teacher/dang-bai')}>
+            <ListChecks className="w-4 h-4 mr-2" />
+            Bảng dạng bài
+          </DropdownMenuItem>
+        )}
         <DropdownMenuSeparator />
         <DropdownMenuItem onClick={handleSignOut} className="text-destructive focus:text-destructive">
           <LogOut className="w-4 h-4 mr-2" />
