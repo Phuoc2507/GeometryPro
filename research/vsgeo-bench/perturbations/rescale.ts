@@ -28,6 +28,13 @@ function assertScalable(orig: string): void {
       `rescale: diện tích/thể tích cho bằng số — bậc co giãn ≠ 1, không đảm bảo nhất quán (bỏ qua)`
     );
   }
+  // F13 Tỉ số/tỉ lệ là đại lượng BẤT BIẾN co giãn (bậc 0): nhân k^degree vào đáp án sẽ sai.
+  // Viết cả "tỉ"/"tỷ". Thà bỏ còn hơn sinh biến thể có đáp án sai bậc.
+  if (/t[ỉỷ]\s*(số|lệ)/i.test(orig)) {
+    throw new Error(
+      `rescale: đề hỏi tỉ số/tỉ lệ — bất biến co giãn (bậc 0), nhân k^degree sẽ sai (bỏ qua)`
+    );
+  }
   // F9 (MỞ RỘNG) TỪ CHỐI, KHÔNG cố co giãn toạ độ. scaleLengthsInText không khớp "A(1;2;3)"
   // nên câu giữ nguyên toạ độ (⇒ khoảng cách cũ) trong khi figure.points và đáp án đã ×k ⇒
   // statement mâu thuẫn với answer (model trả đúng theo đề lại bị chấm sai — §4.3 sai-im-lặng).
@@ -86,11 +93,38 @@ export function scaleLengthsInText(text: string, k: number): string {
   // 2) số sau từ khoá ĐỘ DÀI, KHÔNG theo sau bởi chữ/số (tránh đụng "2a" đã xử lý ở trên).
   // F1(a) BỎ 'bằng' khỏi từ khoá: "bằng 60" (số đo góc), "bằng 8" (thể tích cho sẵn) KHÔNG
   // phải độ dài — nhân k vào chúng là sai. Chỉ giữ các danh từ chỉ độ dài thực sự.
+  // F13 (a) NỚI RỘNG: cho phép bổ nghĩa "(đáy|bên|xung quanh|nghiêng)*" và liên từ "bằng"
+  // giữa từ khoá và con số — "cạnh đáy bằng 3" trước đây bị bỏ sót (số không kề từ khoá) nên
+  // câu giữ nguyên 3 trong khi đáp án ×k^bậc => mâu thuẫn. Thêm từ khoá chiều cao|đường cao.
   out = out.replace(
-    /(cạnh|dài|cao|bán kính|đường kính)(\s+)(\d+(?:\.\d+)?)(?![\da-zA-Z])/gi,
-    (_m, kw: string, sp: string, num: string) => `${kw}${sp}${Number(num) * k}`
+    /(cạnh|dài|cao|bán kính|đường kính|chiều cao|đường cao)((?:\s+(?:đáy|bên|xung quanh|nghiêng|bằng))*\s+)(\d+(?:\.\d+)?)(?![\da-zA-Z])/gi,
+    (_m, kw: string, mid: string, num: string) => `${kw}${mid}${Number(num) * k}`
   );
   return out;
+}
+
+// F13 (b) HẬU-KIỂM AN TOÀN: dò các con số nằm sau từ khoá độ dài (dò RỘNG, mọi từ nối tới
+// hết câu) rồi so tập số-độ-dài của bản gốc (đã ×k) với bản đã co giãn. Nếu còn số-độ-dài
+// chưa nhân (scaler nới rộng vẫn không nắm được cách diễn đạt) => NÉM để bỏ qua, tránh emit
+// câu mâu thuẫn với đáp án. false-skip chấp nhận được, false-emit thì không (§4.3).
+const LENGTH_NUM_PROBE =
+  /(?:cạnh|dài|cao|bán kính|đường kính|chiều cao|đường cao)[^.\d]*?(\d+(?:\.\d+)?)(?![\da-zA-Z])/gi;
+function lengthContextNumbers(text: string): number[] {
+  return [...text.matchAll(LENGTH_NUM_PROBE)].map((m) => Number(m[1]));
+}
+function assertNoUnscaledLength(original: string, scaled: string, k: number): void {
+  const key = (arr: number[]) =>
+    arr
+      .map((x) => Math.round(x * 1e6) / 1e6)
+      .sort((a, b) => a - b)
+      .join(",");
+  const expected = key(lengthContextNumbers(original).map((x) => x * k));
+  const actual = key(lengthContextNumbers(scaled));
+  if (expected !== actual) {
+    throw new Error(
+      `rescale: còn số đo độ dài sau từ khoá cạnh/cao chưa được co giãn (scaler không nắm được cách diễn đạt) — câu sẽ mâu thuẫn đáp án (bỏ qua)`
+    );
+  }
 }
 
 export function rescale(seed: Seed, k: number): Variant {
@@ -110,6 +144,7 @@ export function rescale(seed: Seed, k: number): Variant {
   v.id = variantId(seed.id, "rescale");
   v.statement_vi = scaleLengthsInText(seed.statement_vi, k);
   assertFullyScaled(v.statement_vi); // F1(d) hậu-kiểm: không còn độ dài ký hiệu chưa co giãn
+  assertNoUnscaledLength(seed.statement_vi, v.statement_vi, k); // F13(b) hậu-kiểm số-độ-dài sót
   if (v.figure?.points) {
     v.figure.points = v.figure.points.map((p) => ({ ...p, x: p.x * k, y: p.y * k, z: p.z * k }));
   }

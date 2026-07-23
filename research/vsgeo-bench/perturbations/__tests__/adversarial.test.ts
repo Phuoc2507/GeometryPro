@@ -402,3 +402,47 @@ describe("F12 — rescale: cổng '°/độ' phải sống (số đo góc KHÔNG
     expect(v.statement_vi).toContain("cạnh 2a");
   });
 });
+
+describe("F13 — rescale: số đo độ dài KHÔNG kề từ khoá phải được co giãn hoặc BỎ QUA", () => {
+  // scaleLengthsInText cũ chỉ nhân số NGAY sau từ khoá ("cạnh 3"); "cạnh đáy bằng 3" bị bỏ
+  // sót => figure.points & đáp án ×k^bậc trong khi câu vẫn ghi 3 => statement MÂU THUẪN answer
+  // (§4.3 sai-im-lặng, tệ hơn crash). (a) nới scaler cho "(đáy|bên|xung quanh|nghiêng)?(bằng)? số";
+  // (b) hậu-kiểm assertNoUnscaledLength: còn số-độ-dài chưa nhân => BỎ QUA thay vì emit sai.
+  it("(a) 'cạnh đáy bằng 3' phải được co giãn thành 6 (không giữ nguyên 3)", () => {
+    const s = mkSeed({
+      statement_vi: "Cho hình chóp có cạnh đáy bằng 3. Tính thể tích khối chóp.",
+      answer: { canonical: "9", type: "rational" },
+      scale_degree: 3,
+    });
+    const v = rescale(s, 2);
+    expect(v.statement_vi).toContain("cạnh đáy bằng 6");
+    expect(v.statement_vi).not.toContain("bằng 3");
+    // đáp án ×2^3 = 72, nhất quán với câu đã đổi 3->6.
+    expect(canonicalToNumber(v.answer.canonical)).toBeCloseTo(72, 6);
+  });
+
+  it("(b) số-độ-dài mà scaler nới rộng VẪN không nắm được => PHẢI ném (bỏ qua, không emit sai)", () => {
+    // "cạnh của nó là 5": từ nối 'của ... là' không thuộc tập bổ nghĩa của scaler => không nhân
+    // được; hậu-kiểm phát hiện 5 còn nguyên sau từ khoá 'cạnh' => bỏ qua.
+    const s = mkSeed({
+      statement_vi: "Cho hình vuông có cạnh của nó là 5. Tính thể tích khối tạo thành.",
+      answer: { canonical: "125", type: "rational" },
+      scale_degree: 3,
+    });
+    expect(() => rescale(s, 2)).toThrow(/co giãn|độ dài|bỏ qua/i);
+  });
+
+  it("(c) đề hỏi 'tỉ số' (bất biến co giãn) => PHẢI ném", () => {
+    const s = mkSeed({
+      statement_vi: "Cho hình chóp, tính tỉ số thể tích hai phần bị chia bởi mặt phẳng qua trung điểm.",
+      answer: { canonical: "1/7", type: "ratio" },
+      scale_degree: 3,
+    });
+    expect(() => rescale(s, 2)).toThrow(/tỉ số|tỉ lệ|bất biến|bỏ qua/i);
+  });
+
+  it("hồi quy: 'cạnh 2' vẫn ra 64, 'cạnh a' vẫn thành '2a' (không chặn nhầm)", () => {
+    expect(rescale(seedNumeric, 2).answer.canonical).toBe("64");
+    expect(scaleLengthsInText("cạnh a.", 2)).toBe("cạnh 2a.");
+  });
+});
