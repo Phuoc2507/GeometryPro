@@ -760,6 +760,83 @@ describe("F25 — reflect: đại lượng phụ thuộc ĐỊNH HƯỚNG diễn
   }
 });
 
+// ===========================================================================
+// LƯỢT ĐỐI KHÁNG THỨ NĂM (RS-1, RS-2, RN-1, RF-1, RF-2, DS-1) — 6 LỚP SINH-SAI-IM-LẶNG
+// do bộ dò nhiễu VSGeo-Bench (perturbations) phát hiện: transform EMIT một biến thể có
+// statement mâu thuẫn answer.canonical. §4.3 "thà bỏ còn hơn sai" ⇒ mọi ca PHẢI thành SKIP.
+// ===========================================================================
+
+describe("RS-1 — rescale: bỏ ĐỘ DÀI NGOẠI LAI (căn trần/đơn vị dính/ký hiệu≠a/luỹ thừa/chữ số)", () => {
+  // GỐC RỄ: cỗ máy co giãn chỉ nắm 'cạnh [n]a' và số sau từ khoá/'AB = n'. Khi đề TRỘN một độ
+  // dài co-giãn-được (khiến câu ĐỔI ⇒ chốt F22 không bắt) với một độ dài "ngoại lai" mà
+  // measureNumbers mù (ký hiệu ≠'a' không có chữ số, hệ số+ký hiệu '2x', đơn vị dính '3m',
+  // căn trần '√3', luỹ thừa ký hiệu 'b^2', số viết CHỮ 'ba'), độ dài ngoại lai GIỮ NGUYÊN
+  // trong khi đáp án ×k^bậc ⇒ câu tự mâu thuẫn. assertNoForeignLength phải ném (bỏ qua §4.3).
+  const seedsRS1: any[] = [
+    // Rule 3 — ký hiệu ≠'a' ('h') ngay sau từ khoá độ dài (spec vsgeo-2001).
+    {"id":"vsgeo-2001","source":{"type":"synthetic","ref":"VSGeo adversarial round2 finder1 mixed-symbol h"},"statement_vi":"Cho hình chóp S.ABCD có đáy ABCD là hình vuông cạnh a, chiều cao h. Tính thể tích khối chóp S.ABCD.","answer":{"canonical":"a^2*h/3","type":"surd","human_note":"V = (1/3)·a²·h"},"tags":{"topic":["the_tich"],"answer_form":"surd","difficulty":2,"requires_auxiliary_construction":false},"scale_degree":3},
+    // Rule 2 — đơn vị dính số '3m' (spec vsgeo-2101).
+    {"id":"vsgeo-2101","source":{"type":"synthetic","ref":"adversarial-round2-finder2:unit-suffix-blindspot"},"statement_vi":"Cho khối hộp chữ nhật có đáy là hình vuông cạnh đáy bằng 5 và chiều cao 3m. Tính thể tích khối hộp.","answer":{"canonical":"75","type":"rational"},"tags":{"topic":["the_tich"],"answer_form":"rational","difficulty":2,"requires_auxiliary_construction":false},"scale_degree":3},
+    // Rule 1 — căn TRẦN '√3' trộn với số co-giãn-được '4' (spec vsgeo-1101).
+    {"id":"vsgeo-1101","source":{"type":"synthetic","ref":"adversarial round4 finder2"},"statement_vi":"Cho hình chóp S.ABCD có đáy ABCD là hình vuông cạnh đáy bằng 4, chiều cao bằng √3. Tính thể tích khối chóp S.ABCD.","answer":{"canonical":"16*sqrt(3)/3","type":"surd"},"tags":{"topic":["the_tich"],"answer_form":"surd","difficulty":2,"requires_auxiliary_construction":false},"scale_degree":3},
+    // Rule 4 — luỹ thừa ký hiệu ≠'a' 'b^2' (diện tích ký hiệu) trộn số co-giãn-được '6'.
+    {"id":"vsgeo-4102","source":{"type":"synthetic","ref":"round5-RS1-rule4-symbolic-power-area"},"statement_vi":"Cho hình chóp có chiều cao bằng 6 và diện tích đáy là b^2. Tính thể tích khối chóp.","answer":{"canonical":"6*b^2/3","type":"surd"},"tags":{"topic":["the_tich"],"answer_form":"surd","difficulty":2,"requires_auxiliary_construction":false},"scale_degree":3},
+    // Rule 5 — số viết CHỮ 'ba' (dimension) trộn số co-giãn-được '5'.
+    {"id":"vsgeo-3104","source":{"type":"synthetic","ref":"round5-RS1-rule5-spelled-number-height"},"statement_vi":"Cho hình hộp chữ nhật có chiều dài bằng 5 và chiều cao bằng ba. Tính thể tích khối hộp.","answer":{"canonical":"45","type":"rational"},"tags":{"topic":["the_tich"],"answer_form":"rational","difficulty":2,"requires_auxiliary_construction":false},"scale_degree":3},
+  ];
+  for (const s of seedsRS1) {
+    it(`seed ${s.id} (${s.source.ref}) => rescale PHẢI ném (độ dài ngoại lai, bỏ qua §4.3)`, () => {
+      expect(() => rescale(s, 2)).toThrow();
+    });
+  }
+
+  it("HỒI QUY DƯƠNG: hệ số+căn 'cạnh 2√3' (F21) KHÔNG bị rule-1 chặn oan (vẫn emit '4√3')", () => {
+    // Rule 1 lột hệ số trước √ nên "2√3" -> "  3" (không còn √) => không ném; căn TRẦN mới ném.
+    const s = mkSeed({
+      statement_vi: "Cho hình lập phương ABCD.A'B'C'D' có đường chéo bằng 2√3. Tính thể tích khối lập phương.",
+      answer: { canonical: "8", type: "rational" },
+      scale_degree: 3,
+    });
+    const v = rescale(s, 2);
+    expect(v.statement_vi).toContain("4√3");
+  });
+
+  it("HỒI QUY DƯƠNG: 'cạnh 2' và 'cạnh a' (thuần) KHÔNG bị chặn oan", () => {
+    expect(() => rescale(seedNumeric, 2)).not.toThrow(); // cạnh 2 -> 64
+    expect(() => rescale(seedSymbolic, 2)).not.toThrow(); // cạnh a -> cạnh 2a
+  });
+});
+
+describe("RS-2 — rescale: SANITY BẬC — hỏi TỔNG khác bậc / scale_degree lệch bậc suy từ đề", () => {
+  // (a) Đề hỏi TỔNG một diện tích (bậc 2) và một thể tích (bậc 3): không một k^degree nào đúng
+  //     cho cả hai ⇒ PHẢI ném. (b) scale_degree tác giả gán LỆCH với bậc suy từ đại lượng hỏi
+  //     (vd thể tích mà scale_degree=2) ⇒ factor=k^2 sai ⇒ PHẢI ném (bỏ qua §4.3).
+  const seedAreaVol: any = {"id":"vsgeo-4101","source":{"type":"synthetic","ref":"adversarial round-4 finder-2 (heterogeneous-degree answer)"},"statement_vi":"Cho khối lập phương cạnh 2. Tính tổng diện tích toàn phần và thể tích của khối lập phương.","answer":{"canonical":"32","type":"rational"},"tags":{"topic":["the_tich","dien_tich"],"answer_form":"rational","difficulty":2,"requires_auxiliary_construction":false},"scale_degree":3};
+  const seedDegMismatch: any = {"id":"vsgeo-2104","source":{"type":"synthetic","ref":"adversarial-round2-finder2:scale-degree-mismatch"},"statement_vi":"Cho khối lăng trụ đứng có đáy là hình vuông cạnh 4 và chiều cao 5. Tính thể tích khối lăng trụ.","answer":{"canonical":"80","type":"rational"},"tags":{"topic":["the_tich"],"answer_form":"rational","difficulty":2,"requires_auxiliary_construction":false},"scale_degree":2};
+
+  it("(a) vsgeo-4101 'tổng diện tích toàn phần và thể tích' (bậc 2 + bậc 3) => PHẢI ném", () => {
+    expect(() => rescale(seedAreaVol, 2)).toThrow(/bậc|đồng bậc|diện tích/i);
+  });
+  it("(b) vsgeo-2104 thể tích nhưng scale_degree=2 (lệch bậc) => PHẢI ném", () => {
+    expect(() => rescale(seedDegMismatch, 2)).toThrow(/bậc/i);
+  });
+
+  it("HỒI QUY DƯƠNG: thể tích + scale_degree=3 (khớp bậc) VẪN emit", () => {
+    expect(() => rescale(seedNumeric, 2)).not.toThrow(); // Tính thể tích, deg 3
+    expect(rescale(seedNumeric, 2).answer.canonical).toBe("64");
+  });
+  it("HỒI QUY DƯƠNG: diện tích + scale_degree=2 (khớp bậc) VẪN emit", () => {
+    const s = mkSeed({
+      statement_vi: "Cho hình vuông cạnh 3. Tính diện tích hình vuông.",
+      answer: { canonical: "9", type: "rational" },
+      scale_degree: 2,
+      tags: { topic: ["dien_tich"], answer_form: "rational", difficulty: 1, requires_auxiliary_construction: false },
+    });
+    const v = rescale(s, 2);
+    expect(v.answer.canonical).toBe("36"); // 9 * 2^2
+  });
+});
+
 describe("F26 — rename: đáp án dạng TIA 'Vx' (Sx/Ax) chứa NHÃN ĐỈNH bị đổi tên => PHẢI ném", () => {
   // extractVertexLabels bỏ 'S' trong "Sx" (theo sau chữ thường 'x') nên nhãn đỉnh neo trong tên
   // tia LỌT lưới guard F20 ⇒ rename đổi S->M trong câu mà đáp án vẫn "Sx" (trỏ đỉnh đã biến mất).
