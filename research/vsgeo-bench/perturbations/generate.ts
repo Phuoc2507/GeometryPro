@@ -1,0 +1,56 @@
+// research/vsgeo-bench/perturbations/generate.ts
+// CLI: đọc data/seeds/*.json, sinh biến thể TẤT ĐỊNH, ghi ra data/seeds-variants/.
+// Chạy: npx tsx research/vsgeo-bench/perturbations/generate.ts
+import { readdirSync, readFileSync, writeFileSync, mkdirSync, existsSync } from "node:fs";
+import { join, dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+import type { Seed, Variant, PerturbKind } from "./types";
+import { perturb } from "./perturb";
+
+const HERE = dirname(fileURLToPath(import.meta.url));
+const SEEDS_DIR = resolve(HERE, "../data/seeds");
+const OUT_DIR = resolve(HERE, "../data/seeds-variants");
+
+// Các phép TẤT ĐỊNH (paraphrase cần model -> để harness chạy riêng).
+export const DETERMINISTIC: PerturbKind[] = ["rename", "rescale", "distractor", "reflect"];
+
+// Hàm THUẦN (không đụng ổ đĩa) -> test được.
+export async function generateVariantsForSeed(
+  seed: Seed,
+  kinds: PerturbKind[] = DETERMINISTIC
+): Promise<Variant[]> {
+  const out: Variant[] = [];
+  for (const kind of kinds) {
+    try {
+      out.push(...(await perturb(seed, kind)));
+    } catch {
+      // Seed không hợp phép này (vd reflect mà không có toạ độ) -> bỏ qua, không làm sập mẻ.
+    }
+  }
+  return out;
+}
+
+// Phần đọc/ghi file — chỉ chạy khi gọi CLI.
+export async function runGenerate(): Promise<void> {
+  if (!existsSync(SEEDS_DIR)) {
+    console.error(`Không thấy thư mục seeds: ${SEEDS_DIR}`);
+    process.exit(1);
+  }
+  mkdirSync(OUT_DIR, { recursive: true });
+  const files = readdirSync(SEEDS_DIR).filter((f) => f.endsWith(".json"));
+  let ok = 0;
+  for (const f of files) {
+    const seed = JSON.parse(readFileSync(join(SEEDS_DIR, f), "utf8")) as Seed;
+    const variants = await generateVariantsForSeed(seed);
+    for (const v of variants) {
+      writeFileSync(join(OUT_DIR, `${v.id}.json`), JSON.stringify(v, null, 2), "utf8");
+      ok++;
+    }
+  }
+  console.log(`Sinh xong ${ok} biến thể từ ${files.length} seed. Thư mục: ${OUT_DIR}`);
+}
+
+// Tự chạy khi gọi trực tiếp bằng tsx (không chạy khi bị import trong test).
+if (process.argv[1] && resolve(process.argv[1]) === resolve(fileURLToPath(import.meta.url))) {
+  runGenerate();
+}
