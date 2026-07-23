@@ -17,6 +17,16 @@ const NUMERIC_TYPES = new Set(["rational", "surd", "ratio"]);
 const HAS_COORD_LITERAL =
   /[A-Z]\s*\(\s*[-+−]?\d+(?:\.\d+)?\s*[;,]\s*[-+−]?\d+(?:\.\d+)?\s*[;,]\s*[-+−]?\d+(?:\.\d+)?\s*\)/;
 
+// NGUỒN CHUNG các DANH TỪ ĐỘ DÀI mà pattern-2 (scaleLengthsInText) co giãn. Guard RS-5 PHẢI phủ
+// ĐÚNG tập này — HẸP hơn = bug (bội số "bằng N <danh từ>" lọt RS-5 rồi bị scaler nhân nhầm N);
+// RỘNG hơn = an toàn (chỉ thêm SKIP). Dùng CHUNG một hằng cho cả scaler lẫn RS-5 nên hai bên
+// KHÔNG THỂ LỆCH. Sắp DÀI-TRƯỚC để 'chiều\s+cao' thắng 'cao', 'cạnh đáy' thắng 'cạnh'. Giữ ĐÚNG
+// tập keyword pattern-2 hiện hữu (bảo toàn hành vi scaler từng-byte): KHÔNG thêm 'chiều rộng|rộng'
+// vào đây (chúng chỉ là danh từ phòng thủ RS-5 — thêm vào scaler sẽ đổi hành vi & rủi ro nhân
+// nhầm số đo góc "rộng bằng 50 độ").
+const LENGTH_NOUN_ALT =
+  "chiều\\s+cao|chiều\\s+dài|đường\\s+cao|đường\\s+kính|đường\\s+sinh|đường\\s+chéo|bán\\s+kính(?:\\s+đáy)?|trung\\s+đoạn|cạnh(?:\\s+(?:đáy|bên))?|cao|dài";
+
 // RS-1 (Round-5) ĐỘ DÀI NGOẠI LAI: cỗ máy co giãn chỉ nắm 'cạnh [n]a' và số sau từ khoá độ
 // dài / 'AB = n'. Khi đề TRỘN một độ dài co-giãn-được (khiến câu ĐỔI ⇒ chốt F22 line 200 KHÔNG
 // bắt) với một độ dài "ngoại lai" mà measureNumbers (line 147) mù, độ dài ngoại lai GIỮ NGUYÊN
@@ -134,17 +144,19 @@ function assertScalable(orig: string, scaleDegree?: number): void {
   }
   // RS-3 (Round-7) TỈ LỆ đoạn dạng "XY/ZT = N" hoặc "XY:ZT = N" — tỉ lệ chia điểm / so đoạn là
   // đại lượng BẤT BIẾN co giãn; pattern-3 (AB=N) bắt gặp "= N" và nhân nhầm ⇒ dời điểm/đổi hình.
-  if (/\b[A-Z]{1,2}\s*[/:]\s*[A-Z]{1,2}\s*=\s*\d/.test(orig)) {
+  // NIT (review): thêm '÷' (U+00F7) vào lớp dấu chia — "MD ÷ MA = 2" cũng là tỉ lệ.
+  if (/\b[A-Z]{1,2}\s*[/:÷]\s*[A-Z]{1,2}\s*=\s*\d/.test(orig)) {
     throw new Error(
       `rescale: đề có TỈ LỆ đoạn "XY/ZT = N" hoặc "XY:ZT = N" (tỉ lệ chia điểm/so đoạn — bất biến co giãn) — pattern-3 nhân nhầm N ⇒ dời điểm/đổi hình (bỏ qua §4.3)`
     );
   }
   // RS-5 (Round-7) BỘI SỐ HÌNH DẠNG "bằng/= N <danh từ độ dài>" (vd "chiều cao bằng 3 cạnh đáy"):
   // N là HỆ SỐ TỈ LỆ không thứ nguyên (danh từ độ dài đã mang ×k), scaler nhân nhầm N ⇒ đổi hình.
+  // MUST-FIX (review): danh từ theo sau lấy từ HẰNG CHUNG LENGTH_NOUN_ALT (đồng bộ TUYỆT ĐỐI với
+  // pattern-2 — trước đây RS-5 HẸP hơn scaler nên "bằng 2 chiều cao" lọt rồi bị nhân nhầm). Thêm
+  // 'chiều\s+rộng|rộng' phòng thủ (RS-5-only, THROW-only) vì scaler cũng chạm 'dài/rộng' gần đó.
   if (
-    /(?:bằng|=)\s*\d+\s+(cạnh(?:\s+(?:đáy|bên))?|bán\s+kính(?:\s+đáy)?|đường\s+kính|đường\s+sinh|đường\s+chéo|đường\s+cao|trung\s+đoạn)\b/iu.test(
-      orig
-    )
+    new RegExp(`(?:bằng|=)\\s*\\d+\\s+(?:${LENGTH_NOUN_ALT}|chiều\\s+rộng|rộng)\\b`, "iu").test(orig)
   ) {
     throw new Error(
       `rescale: đề có bội số hình dạng "bằng/= N <danh từ độ dài>" (vd "3 cạnh đáy") — N không thứ nguyên (danh từ đã mang ×k), scaler nhân nhầm ⇒ đổi hình (bỏ qua §4.3)`
@@ -244,8 +256,14 @@ export function scaleLengthsInText(text: string, k: number): string {
   // câu giữ nguyên 3 trong khi đáp án ×k^bậc => mâu thuẫn. Thêm từ khoá chiều cao|đường cao.
   // F21 THÊM từ khoá độ dài "đường chéo|đường sinh|trung đoạn" (đều là độ dài bậc-1) để
   // "đường chéo bằng 2√3" -> "đường chéo bằng 4√3". Lookahead (?![\da-zA-Z]) đã cho dừng trước '√'.
+  // Từ khoá độ dài lấy từ HẰNG CHUNG LENGTH_NOUN_ALT (đồng bộ với guard RS-5 — không thể lệch).
+  // Hành vi co giãn giữ nguyên: cùng tập danh từ, phần bổ nghĩa (đáy|bên|xung quanh|nghiêng|bằng)
+  // vẫn ở nhóm giữa nên chuỗi thay thế `${kw}${mid}${num*k}` tái tạo y hệt.
   out = out.replace(
-    /(cạnh|dài|cao|bán kính|đường kính|chiều cao|đường cao|đường chéo|đường sinh|trung đoạn)((?:\s+(?:đáy|bên|xung quanh|nghiêng|bằng))*\s+)(\d+(?:\.\d+)?)(?![\da-zA-Z])/gi,
+    new RegExp(
+      `(${LENGTH_NOUN_ALT})((?:\\s+(?:đáy|bên|xung quanh|nghiêng|bằng))*\\s+)(\\d+(?:\\.\\d+)?)(?![\\da-zA-Z])`,
+      "gi"
+    ),
     (_m, kw: string, mid: string, num: string) => `${kw}${mid}${Number(num) * k}`
   );
   // F19 3) gán cạnh TRẦN "AB = 3" (không có từ khoá độ dài) — tên đoạn = HAI chữ HOA.

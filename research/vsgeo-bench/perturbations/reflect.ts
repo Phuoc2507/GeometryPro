@@ -189,15 +189,24 @@ export function reflect(seed: Seed, iso: Isometry = reflectX): Variant {
   v.figure!.points = seed.figure.points.map((p) => ({ id: p.id, ...iso(p) }));
   v.statement_vi = reflectCoordsInText(seed.statement_vi, iso);
   // RF-6 (Round-7) HẬU-KIỂM DƯ TRÊN MỌI EMIT: sau khi viết lại, KHÔNG được còn literal toạ độ
-  // nào (kể cả dạng lạ reflectCoordsInText chưa nắm: full-width, '＋'…) LỆCH với hình đã phản
-  // chiếu. Quét RỘNG hơn regex viết-lại: bất kỳ 'L(x…' nào có nhãn trong figure mà x ≠ x-đã-lật
-  // ⇒ đã viết lại NỬA VỜI ⇒ ném (bỏ qua §4.3) thay vì emit câu chỉ lật một phần.
-  const BROAD = /([A-Z])\s*\(\s*([-+−＋]?[\d０-９]+(?:\.\d+)?)\s*[;,]/g;
+  // nào (kể cả dạng lạ reflectCoordsInText chưa nắm) LỆCH với hình đã phản chiếu. THROW-only:
+  // chỉ biến một emit KHÔNG kiểm chứng được thành SKIP, không bao giờ đổi một emit đúng.
+  // NIT (review) NỚI RỘNG lưới bắt (chỉ ở hậu-kiểm, KHÔNG đụng rewriter) để phủ các dạng rewriter
+  // bỏ sót:
+  //  - Nhãn NHIỀU KÝ TỰ / chỉ số ('A1(...)', "A'(...)"): [^\s(]{1,3} ngay TRƯỚC '(' (giữ '(' DÍNH
+  //    nhãn — không '\s*' — nên "mặt phẳng (P)" / "(Oxy)" [có khoảng trắng trước '('] KHÔNG khớp).
+  //  - Dấu CÁCH sau dấu: [-+−＋]?\s* ('(- 4;…)').
+  //  - Số THẬP PHÂN đầu chấm: '.5' cũng khớp. Bắt buộc có CHỮ SỐ ⇒ '(P)'/'f(x)' không lọt.
+  // Chỉ literal có nhãn TRÙNG một id trong figure.points mới bị đối chiếu; lệch ⇒ ném.
+  const BROAD = /([^\s(]{1,3})\(\s*([-+−＋]?\s*(?:[\d０-９]+(?:\.\d+)?|\.[\d０-９]+))\s*[;,]/g;
   const byId = new Map(seed.figure.points.map((p) => [p.id, iso(p)]));
   for (const m of v.statement_vi.matchAll(BROAD)) {
     const q = byId.get(m[1]);
     if (!q) continue;
-    const xv = Number(m[2].normalize("NFKC").replace(/−/g, "-").replace(/^\+/, ""));
+    const xv = Number(m[2].normalize("NFKC").replace(/\s+/g, "").replace(/−/g, "-").replace(/^\+/, ""));
+    // NIT (review) GẮN CỨNG trục x: chỉ đúng vì reflectX (x→−x) là isometry DUY NHẤT được nối hiện
+    // nay ⇒ chỉ thành phần x đổi. Nếu về sau bật reflectY/reflectZ, thành phần đối chiếu PHẢI đổi
+    // theo trục đang lật (hoặc so cả (x,y,z) với q). iso hiện không lộ trục rẻ ⇒ ghim ràng buộc ở đây.
     if (Number.isFinite(xv) && xv !== q.x) {
       throw new Error(
         `reflect: literal toạ độ '${m[1]}' trong lời văn chưa phản chiếu khớp hình (${xv} ≠ ${q.x}) — viết lại một phần (bỏ qua §4.3) — seed ${seed.id}`

@@ -1315,3 +1315,100 @@ describe("OS-4 — rename: nhãn ĐỈNH trong đáp án do RN-1 bắt; chỉ NE
     expect(() => rename(s)).toThrow(/chứa nhãn đỉnh 'S'/);
   });
 });
+
+// ===========================================================================
+// ROUND-7b (review fixes) — MUST-FIX RS-5↔scaler đồng bộ + RS-3 '÷' + RF-6 hậu-kiểm rộng.
+// Tất cả THEO HƯỚNG THROW-only (chỉ thêm SKIP, không bao giờ thêm emit).
+// ===========================================================================
+
+describe("RS-5 (MUST-FIX) — guard bội số phải PHỦ MỌI danh từ pattern-2 co giãn (không lệch)", () => {
+  // GỐC RỄ: danh sách danh từ của guard RS-5 HẸP hơn danh sách từ khoá của pattern-2 (scaler).
+  // 'chiều cao'/'cao'/'dài' bị scaler co giãn nhưng RS-5 KHÔNG chặn ⇒ "... bằng N chiều cao ..."
+  // (N là bội số không thứ nguyên) lọt RS-5 rồi bị pattern-2 nhân N ⇒ statement mâu thuẫn đáp án.
+  it("REPRO review: '... cạnh đáy bằng 2 chiều cao' (bội số theo chiều cao) => rescale PHẢI ném", () => {
+    const s = mkSeed({
+      statement_vi:
+        "Cho hình hộp chữ nhật có chiều cao bằng 5 và cạnh đáy bằng 2 chiều cao. Tính đường chéo.",
+      answer: { canonical: "a*sqrt(3)", type: "surd" },
+      scale_degree: 1,
+    });
+    expect(() => rescale(s, 2)).toThrow(/bội số|cạnh đáy|đổi hình/i);
+  });
+
+  it("biến thể 'chiều rộng' (danh từ mở rộng phòng thủ của RS-5) => rescale PHẢI ném", () => {
+    const s = mkSeed({
+      statement_vi: "Cho hình hộp có cạnh a và chiều dài bằng 2 chiều rộng. Tính thể tích khối hộp.",
+      answer: { canonical: "a^3", type: "surd" },
+      scale_degree: 3,
+    });
+    expect(() => rescale(s, 2)).toThrow(/bội số|đổi hình/i);
+  });
+
+  it("HỒI QUY DƯƠNG (giữ nguyên control): 'cạnh đáy bằng 3 và chiều cao bằng 4' (số ĐỘC LẬP) vẫn EMIT", () => {
+    const s = mkSeed({
+      statement_vi: "Cho hình chóp S.ABCD có cạnh đáy bằng 3 và chiều cao bằng 4. Tính thể tích khối chóp.",
+      answer: { canonical: "12", type: "rational" },
+      scale_degree: 3,
+    });
+    const v = rescale(s, 2);
+    expect(v.statement_vi).toContain("bằng 6");
+    expect(v.statement_vi).toContain("bằng 8");
+  });
+});
+
+describe("RS-3 (NIT) — dấu chia '÷' (U+00F7) cũng là ký hiệu TỈ LỆ đoạn => skip", () => {
+  it("'MD ÷ MA = 2' => rescale PHẢI ném", () => {
+    const s = mkSeed({
+      statement_vi: "Cho tứ diện ABCD cạnh a. Gọi M thuộc AD sao cho MD ÷ MA = 2. Tính khoảng cách từ M đến (BCD).",
+      answer: { canonical: "a*sqrt(6)/9", type: "surd" },
+      scale_degree: 1,
+    });
+    expect(() => rescale(s, 2)).toThrow(/tỉ lệ|chia điểm|bất biến/i);
+  });
+  it("HỒI QUY DƯƠNG: 'AB = 3' (không dấu chia) vẫn co giãn => 'AB = 6'", () => {
+    const s = mkSeed({
+      statement_vi: "Cho tứ diện đều ABCD có AB = 3. Tính thể tích khối tứ diện ABCD.",
+      answer: { canonical: "9*sqrt(2)/4", type: "surd" },
+      scale_degree: 3,
+    });
+    expect(rescale(s, 2).statement_vi).toContain("AB = 6");
+  });
+});
+
+describe("RF-6 (NIT) — hậu-kiểm dư phải bắt NHÃN NHIỀU KÝ TỰ ('A1(...)') mà rewriter bỏ sót", () => {
+  it("figure có điểm 'A1' (x≠0) + literal 'A1(2;0;0)' chưa được viết lại => reflect PHẢI ném", () => {
+    const s: any = {
+      id: "vsgeo-rf6b-a1",
+      statement_vi: "Cho hai điểm A1(2;0;0) và B(1;0;0). Tính khoảng cách giữa A1 và B.",
+      figure: {
+        coords_given: true,
+        points: [
+          { id: "A1", x: 2, y: 0, z: 0 },
+          { id: "B", x: 1, y: 0, z: 0 },
+        ],
+      },
+      answer: { canonical: "1", type: "rational" },
+      tags: { topic: ["khoang_cach"], answer_form: "rational", difficulty: 1, requires_auxiliary_construction: false },
+    };
+    expect(() => reflect(s)).toThrow(/chưa phản chiếu|khớp hình|một phần/i);
+  });
+
+  it("HỒI QUY DƯƠNG: literal nhãn ĐƠN 'A(2;0;0)' vẫn được viết lại & EMIT (không ném oan)", () => {
+    const s: any = {
+      id: "vsgeo-rf6b-a",
+      statement_vi: "Cho hai điểm A(2;0;0) và B(1;0;0). Tính khoảng cách giữa A và B.",
+      figure: {
+        coords_given: true,
+        points: [
+          { id: "A", x: 2, y: 0, z: 0 },
+          { id: "B", x: 1, y: 0, z: 0 },
+        ],
+      },
+      answer: { canonical: "1", type: "rational" },
+      tags: { topic: ["khoang_cach"], answer_form: "rational", difficulty: 1, requires_auxiliary_construction: false },
+    };
+    const v = reflect(s);
+    expect(v.statement_vi).toContain("A(-2;0;0)");
+    expect(v.statement_vi).toContain("B(-1;0;0)");
+  });
+});
