@@ -4,24 +4,24 @@
 >
 > **Tên kho/dataset:** `VSGeo-Bench` (*Vietnamese Solid-Geometry Benchmark*)
 > **Khẩu hiệu:** "AI có 'nhìn' được hình không gian?"
-> **Sân chơi:** Cuộc thi Khoa học Kỹ thuật cấp quốc gia (ViSEF) — lĩnh vực Khoa học máy tính / Phần mềm hệ thống.
+> **Sân chơi:** Cuộc thi Khoa học Kỹ thuật (ViSEF) — **lĩnh vực đăng ký: Phần mềm hệ thống (Systems Software)**.
 > **Nhóm:** 2 học sinh THPT (dự án tập thể).
-> **Ngày lập:** 2026-07-23 · **Mùa thi nhắm tới:** 2026–2027 (quỹ ~5–6 tháng).
+> **Ngày lập:** 2026-07-23 · **Mùa thi nhắm tới:** vòng trường ~tháng 11/2026 (**3 tháng lõi**), tiếp vòng thành phố ~tháng 12 và xa hơn (**mở rộng**).
 > **Vị trí trong repo:** `research/vsgeo-bench/` — tách riêng khỏi web app (xem §14).
 
 ---
 
 ## 0. Tóm tắt điều hành (Executive summary)
 
-Các mô hình AI (GPT, Gemini, Claude…) đang được học sinh Việt dùng để học Toán, nhưng **chưa có công cụ đo lường khách quan** xem chúng giải **hình học không gian** tốt đến đâu, sai ở đâu, và có đáng tin không — đặc biệt với **đề tiếng Việt** và **đáp án dạng mở** (căn thức, tọa độ, tỉ số) chứ không chỉ trắc nghiệm.
+**Vấn đề người dùng:** Học sinh Việt đang dùng AI (GPT, Gemini, Claude…) để tự học Toán, nhưng lời giải AI thường **trôi chảy mà vẫn sai** — và **chưa có công cụ nào tự động kiểm tra** đáp án ấy đúng hay sai ở quy mô lớn, đặc biệt với **đề tiếng Việt** và **đáp án dạng mở** (căn thức, tọa độ, tỉ số) chứ không chỉ trắc nghiệm. Người hưởng lợi trực tiếp: **giáo viên Toán THPT** và **học sinh tự học**.
 
-VSGeo-Bench giải quyết khoảng trống đó bằng các sản phẩm gắn kết:
+**Sản phẩm chính — MÁY CHẤM TỰ ĐỘNG (oracle/grader):** một hệ thống phần mềm nhận *đáp án dạng mở* của hình học không gian và **xác minh Đúng / Sai / Không chắc ở quy mô lớn** — việc trước nay phải chấm tay từng bài. Đây là đóng góp hệ thống cốt lõi của nhóm (§4): logic *tương đương đáp án*, lớp trích xuất, giao thức chấm và toàn bộ phân tích do 2 em tự làm; engine ký hiệu chính xác là **công cụ có sẵn được ghi nguồn minh bạch** (§4.4).
 
-1. **Bộ dữ liệu** ~300 bài hình không gian THPT tiếng Việt, phân loại nhiều chiều, có đáp án chuẩn.
-2. **Máy chấm tự động (oracle)** dựa trên một engine ký hiệu chính xác — xác minh được *đáp án mở* ở quy mô lớn (đóng góp phương pháp luận chính).
-3. **Bộ đánh giá + phân tích:** xếp hạng model theo chủ đề, **bộ biến đổi có kiểm soát** để đo suy luận-thật-hay-dò-mẫu, **bảng phân loại lỗi**, chỉ số **"tự tin nhưng sai"**, và **một khảo sát giáo viên** làm điểm tham chiếu con người (góc an toàn giáo dục).
+**Ứng dụng đầu tiên = bằng chứng:** dùng máy chấm để **xếp hạng và soi lỗi các model AI** trên bộ dữ liệu VSGeo-Bench (~300 bài hình không gian THPT tiếng Việt, phân loại nhiều chiều, có đáp án chuẩn). Benchmark **không phải đích cuối** mà là **bằng chứng** cho thấy máy chấm chạy được, hữu ích, và phơi bày rủi ro **"tự tin nhưng sai"** của AI.
 
-**Vì sao đạt tầm quốc gia:** giao điểm *tiếng Việt × hình học không gian 3D × chấm ký hiệu tự động × kiểm thử độ bền* là **chưa có tiền lệ (theo hiểu biết của nhóm)**; sản phẩm **đo được, tái lập được, công khai được**, và có **thông điệp tác động** (AI dạy Toán đáng tin cho học sinh Việt) được **kiểm chứng bằng cả số liệu máy lẫn cảm nhận giáo viên thật**.
+**Điểm nhấn trưng bày:** **demo sống "Kiểm tra lời giải AI"** — dán *đề bài + lời giải AI* vào, máy chấm trả về **Đúng / Sai / Không chắc** kèm **đáp án chuẩn** (§9).
+
+**Vì sao đạt tầm quốc gia:** một **máy chấm ký hiệu tự động cho đáp án mở** ở giao điểm *tiếng Việt × hình học không gian 3D* là **chưa có tiền lệ (theo hiểu biết của nhóm)**; sản phẩm **đo được, tái lập được, công khai được**, và có **thông điệp tác động** (bảo vệ học sinh Việt khỏi lời giải AI trôi chảy-nhưng-sai) được **kiểm chứng bằng số liệu máy** và — như một **điểm tham chiếu phụ** — **cảm nhận giáo viên thật** (§8).
 
 ---
 
@@ -29,14 +29,15 @@ VSGeo-Bench giải quyết khoảng trống đó bằng các sản phẩm gắn 
 
 **Câu hỏi trung tâm:** *Các mô hình AI hiện nay giải hình học không gian THPT tiếng Việt tốt đến đâu, sai ở đâu và vì sao, và chúng có thực sự "suy luận không gian" hay chỉ "dò mẫu"?*
 
-Bốn giả thuyết kiểm chứng được:
+Ba giả thuyết lõi kiểm chứng được (trọng tâm 3 tháng vòng trường):
 
 | Mã | Giả thuyết | Cách kiểm chứng |
 |----|-----------|-----------------|
 | **H1** | Độ chính xác tụt mạnh ở bài **cần dựng hình phụ** so với bài tọa độ hóa trực tiếp. | So sánh accuracy theo cờ `requires_auxiliary_construction`; hồi quy logistic. |
 | **H2** | Model **giòn**: biến đổi bảo toàn toán học (đổi tên đỉnh, xoay khối) làm điểm rớt đáng kể → dò mẫu, không suy luận. | Đo "khoảng rớt robustness" giữa bài gốc và biến thể. |
 | **H3** | Model **"tự tin nhưng sai"**: trả lời quả quyết ngay cả khi sai — và **con người (giáo viên) cũng bị đánh lừa**. | Đo tỉ lệ câu sai trình bày quả quyết (calibration, §6); đối chiếu với khảo sát giáo viên (§8). |
-| **H4** | **Lai thắng thuần**: LLM (dịch đề) + engine (giải ký hiệu) vượt LLM thuần về tính chính xác. | So accuracy hệ lai vs LLM thuần trên cùng tập, nhất là bài đáp án căn/phân số. |
+
+> **Ghi chú — H4 (hạ xuống hướng MỞ RỘNG):** giả thuyết *"lai thắng thuần"* — hệ lai LLM (dịch đề) + engine (giải ký hiệu) vượt LLM thuần, nhất là bài đáp án căn/phân số — **không nằm trong phần lõi 3 tháng**; đây là **hướng mở rộng sau vòng trường** (xem mục MỞ RỘNG ở §11).
 
 **Không gian phủ (scope):** hình học không gian lớp 11–12 (khối đa diện, quan hệ song song/vuông góc, khoảng cách, góc, mặt cầu–nón–trụ, phương pháp tọa độ Oxyz). **Ngoài phạm vi:** hình học phẳng, giải tích, đại số, xác suất.
 
@@ -182,9 +183,9 @@ Phân loại lỗi từ **output thật** của model:
 
 ---
 
-## 8. Khảo sát giáo viên — điểm tham chiếu con người
+## 8. Khảo sát giáo viên — kiểm chứng phụ (điểm tham chiếu con người)
 
-Một nghiên cứu con **nhỏ, nhanh, rẻ** để (a) kiểm chứng H3 ở phía người dùng thật và (b) tăng "tác động" cho hội đồng.
+Một **kiểm chứng phụ (secondary validation)** *nhỏ, nhanh, rẻ* — **không phải trục chính** của đề tài (trục chính là máy chấm ở §4) — để (a) kiểm chứng H3 ở phía người dùng thật và (b) tăng "tác động" giáo dục cho hội đồng. Vì chỉ là kiểm chứng phụ, quy mô **cố ý giữ nhỏ** (§8.4) nhằm tránh thủ tục nghiên cứu-trên-người nặng.
 
 ### 8.1 Mục tiêu
 Đo xem **giáo viên Toán có bị lời giải AI "trôi chảy nhưng sai" đánh lừa không**, và cảm nhận của họ về độ tin của model có khớp với số liệu benchmark không.
@@ -212,6 +213,7 @@ Một nghiên cứu con **nhỏ, nhanh, rẻ** để (a) kiểm chứng H3 ở p
 ### 9.1 Sản phẩm
 - **Dataset + code công khai** (GitHub) kèm **datasheet** mô tả nguồn, quy trình, hạn chế.
 - **Dashboard xếp hạng** trực quan (tận dụng frontend React sẵn có của dự án).
+- **Demo sống "Kiểm tra lời giải AI"** (deliverable điểm nhấn): giao diện dán *đề bài + lời giải AI* → máy chấm phán **Đúng / Sai / Không chắc** kèm **đáp án chuẩn**; dùng để trưng bày và phỏng vấn hội đồng.
 - **Báo cáo NCKH + poster + nhật ký nghiên cứu (logbook)** + kịch bản luyện phản biện.
 - **Trần cao hơn (nếu dư thời gian):** một *preprint/bài báo ngắn*.
 
@@ -237,7 +239,7 @@ Công cụ đánh giá khách quan mức độ **đáng tin của AI khi dạy T
 
 ---
 
-## 11. Chia việc 2 em & tiến độ 5–6 tháng
+## 11. Chia việc 2 em & tiến độ (3 tháng lõi + mở rộng)
 
 ### 11.1 Vai trò
 | | **Em 1 — Dữ liệu & Taxonomy** | **Em 2 — Harness & Phân tích** |
@@ -247,15 +249,21 @@ Công cụ đánh giá khách quan mức độ **đáng tin của AI khi dạy T
 | Khảo sát GV (§8) | Soạn phiếu, tuyển & làm việc với giáo viên | Phân tích số liệu khảo sát, đối chiếu benchmark |
 | Cùng làm | Câu hỏi NC, thiết kế biến đổi, viết báo cáo, poster, **luyện phản biện** | |
 
-### 11.2 Lịch (mốc kiểm tra rõ ràng)
+### 11.2 Lộ trình — 3 tháng LÕI (cho vòng trường) + MỞ RỘNG
+
+**LÕI — 3 tháng (nay → ~tháng 10), kịp vòng trường ~tháng 11:**
+
 | Tháng | Mục tiêu | Đầu ra kiểm được |
 |-------|----------|------------------|
-| **T1** | Schema + oracle v1 + 50 bài pilot + chốt giao thức | Chấm tự động chạy trên 50 bài, khớp tay ≥ ngưỡng |
-| **T2** | Dataset lên ~300 bài + harness gọi model chạy end-to-end | 300 bài có metadata + 1 model chạy hết |
-| **T3** | Chạy eval đầy đủ + bộ biến đổi + **soạn phiếu khảo sát** | Bảng accuracy sơ bộ + số liệu robustness + phiếu khảo sát |
-| **T4** | Phân tích + taxonomy (κ) + dashboard + **chạy khảo sát GV** | Bảng lỗi có κ + dashboard + dữ liệu khảo sát |
-| **T5** | Báo cáo + poster + luyện phản biện | Bản báo cáo hoàn chỉnh + poster |
-| **T6** | Dự phòng / mở rộng (preprint, thêm model) | Bản công khai + (tùy chọn) preprint |
+| **T1 — Bộ xương đi được xuyên suốt** | Plan 00 (môi trường) + Plan 01 (schema + ~20 bài mẫu) + Plan 02 (máy chấm oracle MVP: rational/surd/point) + Plan 03 (harness gọi 1–2 model). | Chạy **end-to-end trên ~20 bài**: đề → model → trích → chấm → JSONL. Chứng minh **đường ống chạy thật**. |
+| **T2 — Nội dung + đánh giá đầy đủ + demo sống** | Mở rộng dữ liệu lên **~120–150 bài** (Plan 01 lõi) · harness đủ dàn model mục tiêu, **k=3** (Plan 03) · bộ biến đổi robustness lõi **rename/rescale/paraphrase** (Plan 04) · dựng **demo sống "Kiểm tra lời giải AI"** trên dashboard (Plan 07, ưu tiên cao). | ~120–150 bài có metadata + dàn model chạy hết k=3 + số liệu robustness sơ bộ + **demo sống chạy được**. |
+| **T3 — Thống kê + taxonomy + đóng gói (ĐÓNG BĂNG cho vòng trường)** | Thống kê lỗi (accuracy, bootstrap CI, McNemar, calibration "tự tin nhưng sai", kappa trên tập nhãn nhỏ) + bảng phân loại lỗi (Plan 05) · dashboard + poster + báo cáo (Plan 07) · **mini-pilot 3–5 giáo viên** (Plan 06 lõi) · chốt bản demo trình vòng trường. | Bảng lỗi có κ + dashboard + poster + báo cáo + dữ liệu mini-pilot + **bản demo chốt cho vòng trường**. |
+
+**MỞ RỘNG — sau vòng trường → vòng thành phố (~tháng 12) và xa hơn:**
+- Dữ liệu lên **~300 bài**, taxonomy đầy đủ hơn (Plan 01 scale).
+- Bộ biến đổi đủ **5 loại** + số biến thể lớn, distractor/reflect breadth (Plan 04 scale).
+- **Khảo sát giáo viên đầy đủ N người** với quy trình đạo đức/đồng thuận chính thức (Plan 06 scale) · **hồi quy logistic** (Plan 05 scale) · phân tích **H4 hybrid LLM+engine** (hướng mở rộng, đã hạ từ giả thuyết lõi).
+- **Công khai bộ dữ liệu + máy chấm** (tách repo), viết **preprint**.
 
 ---
 
@@ -263,7 +271,7 @@ Công cụ đánh giá khách quan mức độ **đáng tin của AI khi dạy T
 
 | Rủi ro | Ảnh hưởng | Cách chặn |
 |--------|-----------|-----------|
-| **Nhiễm dữ liệu** (model đã thấy đề thi thật) | Điểm ảo cao | So *đề thật vs biến thể tự sinh*; dùng perturbation; báo cáo phần chênh như một phát hiện |
+| **Nhiễm dữ liệu** (model đã thấy đề thi thật) | Điểm ảo cao | So *đề thật vs biến thể tự sinh*; dùng perturbation; báo cáo phần chênh như một phát hiện. Trong **3 tháng lõi**, contamination được xử lý **gián tiếp** qua bộ biến đổi (paraphrase/rename); **kiểm toán contamination đầy đủ là việc MỞ RỘNG** (sau vòng trường). |
 | **Oracle chấm sai** | Sai toàn bộ kết quả | Tự kiểm định precision/recall + soát tay mẫu; ca không chắc → đánh dấu, không đoán |
 | **Nghi ngờ sở hữu khi phản biện** | Mất điểm liêm chính | 2 em làm dataset/harness/taxonomy; engine ghi nguồn rõ; giải thích được logic tương đương |
 | **Phình phạm vi** | Không kịp | Làm lõi (§3–4,§6) trước; §6.4 hồi quy, §8 khảo sát mở rộng, preprint là tùy chọn |
@@ -275,9 +283,9 @@ Công cụ đánh giá khách quan mức độ **đáng tin của AI khi dạy T
 
 ## 13. Tiêu chí thành công
 
-**Mức "đủ nộp":** 300 bài có đáp án chuẩn; oracle tự kiểm định đạt độ tin cậy báo cáo được; ≥4 model được xếp hạng theo chủ đề; taxonomy lỗi có κ; báo cáo + poster hoàn chỉnh.
+**Mức "đủ nộp" (vòng trường, 3 tháng lõi):** **máy chấm oracle** tự kiểm định đạt độ tin cậy báo cáo được; **~120–150 bài** có đáp án chuẩn; ≥4 model được xếp hạng theo chủ đề; taxonomy lỗi có κ (tập nhãn nhỏ); **demo sống "Kiểm tra lời giải AI" chạy được**; báo cáo + poster hoàn chỉnh.
 
-**Mức "tranh giải Nhất":** thêm bằng chứng H1–H4 với thống kê (CI, McNemar); bộ biến đổi cho thấy khoảng rớt robustness rõ; chỉ số "tự tin nhưng sai" định lượng được **và được khảo sát giáo viên chứng thực**; dataset + code + dashboard **công khai, tái lập được**; (tùy chọn) preprint.
+**Mức "tranh giải Nhất":** thêm bằng chứng H1–H3 với thống kê (CI, McNemar); bộ biến đổi cho thấy khoảng rớt robustness rõ; chỉ số "tự tin nhưng sai" định lượng được **và được khảo sát giáo viên (kiểm chứng phụ) chứng thực**; dataset + code + dashboard + **demo sống** **công khai, tái lập được**; (mở rộng) lên ~300 bài, khảo sát GV đầy đủ, preprint.
 
 ---
 
