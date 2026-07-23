@@ -1,3 +1,4 @@
+import type { SafetyClassification } from '@/lib/safetyTier';
 export interface Point3D {
   id: string;
   label: string;
@@ -234,6 +235,8 @@ export interface GeometryData {
   constraints?: GeometryConstraint[];
   /** 0–1: mức độ tin cậy từ ConstraintVerifier (1 = pass hết) */
   confidence?: number;
+  /** Phân loại 3 mức an toàn (B): mức + chính xác + dạng bài + lý do. Lồng ⇒ tự sống sót qua spread. */
+  classification?: SafetyClassification;
   timeline?: AnimationTimeline;
   agents?: Agent3D[];
   tags?: string[];

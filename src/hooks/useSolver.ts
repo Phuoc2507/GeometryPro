@@ -11,6 +11,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/context/AuthContext';
 import { checkAndIncrementGuestQuota } from '@/lib/quota';
 import type { ConstructSpec } from '@/lib/solveReveal';
+import type { SafetyClassification } from '@/lib/safetyTier';
 
 export interface SolveStep {
   id: string;
@@ -29,6 +30,8 @@ export interface SolveResult {
   answer_value: number | null;
   verified: boolean;
   verify_error: string | null;
+  /** Phân loại 3 mức từ server (B). Vắng (lời giải cũ) ⇒ UI fallback theo `verified`. */
+  tier?: SafetyClassification | null;
 }
 
 export function useSolver() {
@@ -75,6 +78,7 @@ export function useSolver() {
         answer_value: data.answer_value ?? null,
         verified:     data.verified     ?? false,
         verify_error: data.verify_error ?? null,
+        tier:         data.tier         ?? null,
       });
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
