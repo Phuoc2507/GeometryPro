@@ -1283,3 +1283,35 @@ describe("DS-2 — distractor: 'used' phải gộp NHÃN CHỈ CÓ TRONG HÌNH v
     expect(v.statement_vi).toContain(custom);
   });
 });
+
+// --- Rename OS-4 (bỏ nhánh extractVertexLabels THỪA trong answerLabels; RN-1 đã bao phủ) ---
+
+describe("OS-4 — rename: nhãn ĐỈNH trong đáp án do RN-1 bắt; chỉ NEO-TIA mới cần nhánh riêng", () => {
+  // OS-4 bỏ extractVertexLabels khỏi answerLabels (nhánh THỪA): mọi nhãn đỉnh trong đáp án nằm
+  // trong renameMap đều làm renameInText(answer) ĐỔI ⇒ RN-1 (ném trước) đã bao phủ. Chỉ NEO TIA
+  // 'Sx' (extractVertexLabels bỏ 'S' vì theo sau 'x') lọt RN-1 nên nhánh extractRayAnchors mới
+  // load-bearing. Hai test dưới ghim ĐÚNG hai đường ném khác nhau ⇒ chứng minh nhánh bỏ đi là thừa.
+  it("đáp án là NHÃN ĐỈNH trần 'A' => ném qua RN-1 ('tham chiếu nhãn đỉnh'), KHÔNG cần nhánh vertex", () => {
+    const s: any = {
+      id: "vsgeo-os4-a",
+      source: { type: "synthetic", ref: "os4-vertex-answer" },
+      statement_vi: "Cho tứ diện ABCD. Trong bốn đỉnh, đỉnh nào là đáp án? Chọn theo hình vẽ.",
+      figure: { coords_given: false },
+      answer: { canonical: "A", type: "mcq" },
+      tags: { topic: ["giao_diem"], answer_form: "mcq", difficulty: 1, requires_auxiliary_construction: false },
+    };
+    expect(() => rename(s)).toThrow(/tham chiếu nhãn đỉnh/);
+  });
+
+  it("đáp án NEO TIA 'Sx' => ném qua nhánh extractRayAnchors ('chứa nhãn đỉnh'), RN-1 im lặng", () => {
+    const s: any = {
+      id: "vsgeo-os4-sx",
+      source: { type: "synthetic", ref: "os4-ray-anchor-answer" },
+      statement_vi: "Cho hình chóp S.ABCD. Tìm giao tuyến của hai mặt phẳng (SAB) và (SCD).",
+      figure: { coords_given: false },
+      answer: { canonical: "Sx", type: "line_eq" },
+      tags: { topic: ["giao_tuyen"], answer_form: "line_eq", difficulty: 2, requires_auxiliary_construction: true },
+    };
+    expect(() => rename(s)).toThrow(/chứa nhãn đỉnh 'S'/);
+  });
+});

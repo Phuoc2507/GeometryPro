@@ -92,12 +92,11 @@ export function rename(seed: Seed, map?: Map<string, string>): Variant {
   // theo sau chữ thường 'x'. Nếu nhãn đó nằm trong renameMap thì đáp án sẽ trỏ đỉnh không còn.
   // GIỮ LẠI loop này (RN-1 ở trên KHÔNG bao phủ ca F26): renameInText("Sx") = "Sx" KHÔNG đổi vì
   // AFTER_LABEL_NEG chặn 'S' khi theo sau chữ thường 'x' ⇒ RN-1 không ném; extractRayAnchors bắt.
-  const answerLabels = [
-    ...new Set([
-      ...extractVertexLabels(seed.answer.canonical),
-      ...extractRayAnchors(seed.answer.canonical),
-    ]),
-  ];
+  // OS-4 (Round-7): nhánh extractVertexLabels(answer) là THỪA — mọi nhãn đỉnh trong đáp án nằm trong
+  // renameMap đều làm renameInText(answer) ĐỔI ⇒ RN-1 (ở trên) đã ném trước. Dùng CHUNG một bộ
+  // AFTER_LABEL_NEG nên hai điều kiện tương đương. CHỈ neo-tia 'Vx' (Sx/Ax) lọt RN-1 (không đổi văn
+  // bản) ⇒ chỉ nhánh extractRayAnchors mới load-bearing tại đây. Bỏ nhánh vertex, giữ bảo toàn hành vi.
+  const answerLabels = extractRayAnchors(seed.answer.canonical);
   for (const l of answerLabels) {
     if (renameMap.has(l)) {
       throw new Error(
