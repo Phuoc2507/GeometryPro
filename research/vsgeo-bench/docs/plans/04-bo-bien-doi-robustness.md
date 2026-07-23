@@ -1287,6 +1287,26 @@ Code hạ tầng ở trên anh/chị đã cung cấp đầy đủ. Nhưng có **
 ## Câu hỏi mở (chốt với mentor trước khi làm)
 
 1. **Đường dẫn/tên API của plan 01:** file schema là `data/schema/problem.ts` và hàm `validateSeed`? Nếu khác, sửa các dòng import đã đánh dấu "ĐIỂM NỐI".
-2. **Regex `id` của plan 01:** có cho phép hậu tố `__<kind>` không? (Cần, để id biến thể hợp lệ và harness tách được `parentSeedId`.)
+2. ~~**Regex `id` của plan 01:** có cho phép hậu tố `__<kind>` không? (Cần, để id biến thể hợp lệ và harness tách được `parentSeedId`.)~~ — **ĐÃ CHỐT (F15):** không sửa `SeedSchema` (giữ id seed đúng `^vsgeo-\d{4}$`); thay vào đó thêm `VariantSchema` + `validateVariant` trong `data/schema/problem.ts` để kiểm riêng biến thể (id `^vsgeo-\d{4}__[a-z]+$`, trường `variant.{kind,parentSeedId}`). Harness tách `parentSeedId` từ chính trường `variant`, không phải parse chuỗi id.
 3. **`paraphrase` trong `generate`:** giữ nguyên quyết định bỏ paraphrase khỏi CLI tất định (để harness chạy có model), hay muốn thêm một cờ `--paraphrase` nối model ngay trong generate?
 4. **Hệ số `k` mặc định = 2** cho rescale có ổn không, hay muốn sinh nhiều `k` (2 và 3) cho mỗi seed?
+
+---
+
+## Nhật ký rà soát đối kháng (adversarial hardening)
+
+Nguyên tắc chung §4.3: **thà BỎ QUA (skip) còn hơn EMIT dữ liệu sai** — ca không chắc thì `throw` để bộ điều phối `generateVariantsForSeed` (try/catch) bỏ biến thể. false-skip chấp nhận được; false-emit thì không. Mọi phát hiện đều đi kèm test hồi quy (đỏ trước → xanh sau) trong `perturbations/__tests__/adversarial.test.ts` (và `data/schema/__tests__/variant.test.ts` cho F15).
+
+**Vòng 1 (F1–F9):** vá 9 lỗi sinh-dữ-liệu-sai-im-lặng ở rescale/reflect/paraphrase/generate; rescale từ chối đề toạ độ literal thay vì sinh mâu thuẫn (F9).
+
+**Vòng 2 (F10–F15):** rà soát 3 lăng kính + kiểm chứng đối kháng, chốt 8 phát hiện (bác 4). 6 lỗi cần sửa, trong đó **3 là emit-sai-im-lặng thực sự** (F10, F13, F14):
+
+- **F10 — reflect** (emit sai): cổng từ chối phương trình cũ `/[xyz][+-]…[xyz]/` chỉ bắt dạng chuẩn tắc, lọt đoạn chắn `x/1+y/2+z/3=1`, `z=2x+1`, `x-5=0`. Nay bỏ toạ độ điểm literal rồi nếu còn `=` là ràng buộc → bỏ qua; thêm chặn từ khoá mặt phẳng/mặt cầu/đường thẳng/`(P)`.
+- **F11 — rescale**: hậu-kiểm `assertFullyScaled` dùng `/gi` khớp nhầm nhãn đỉnh `A` (HOA) là cạnh ký hiệu `a` (thường) → bỏ oan bài co-giãn-được. Sửa `/gi → /g`.
+- **F12 — rescale**: cổng số đo góc `/\d\s*(?:°|độ)\b/` chết (`\b` sau ký tự phi-từ không khớp) → `45°`, `60 độ` không kèm chữ "góc" lọt lưới. Sửa lookahead `(?![\p{L}\d])` cờ `/u`.
+- **F13 — rescale** (emit sai): `scaleLengthsInText` chỉ nhân số kề từ khoá; `cạnh đáy bằng 3` bị bỏ sót → câu giữ 3 trong khi đáp án ×k^bậc. (a) nới scaler cho bổ nghĩa + "bằng"; (b) thêm hậu-kiểm `assertNoUnscaledLength` bỏ qua ca còn số-độ-dài chưa nhân; (c) từ chối "tỉ số/tỉ lệ" (bất biến co giãn).
+- **F14 — paraphrase** (emit sai): `assignmentMap` chỉ bắt RHS là số → hoán vai KÝ HIỆU `SA=2a,SB=a → SA=a,SB=2a` lọt (multiset số không đổi). Sửa RHS bắt trọn token hệ-số+ký-hiệu+luỹ-thừa.
+- **F15 — schema**: thêm `VariantSchema` + `validateVariant` (giữ `SeedSchema`/`validateSeed` nguyên vẹn) để validate mẻ biến thể; giải quyết Câu hỏi mở #2.
+- **G — reflect (chỉ tài liệu):** ghi chú ngay tại `INVARIANT_TOPICS` rằng người soạn PHẢI gắn nhãn chủ đề bất biến cho seed toạ độ muốn được phản chiếu, nếu không reflect sẽ bỏ qua.
+
+**Bác bỏ (không phải lỗi):** 4 phát hiện còn lại bị lăng kính phản-biện bác vì đã có cổng chặn khác bắt hoặc không tái lập được.
