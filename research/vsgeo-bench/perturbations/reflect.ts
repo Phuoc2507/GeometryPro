@@ -8,13 +8,21 @@ import { cloneSeed, variantId } from "./types";
 // answer.type chỉ nói dạng SỐ của đáp án (rational/surd...), KHÔNG nói đại lượng có
 // bất biến khi phản chiếu hay không: "hoành độ" (type rational) ĐỔI dấu, "khoảng cách"
 // (cũng có thể type rational) thì GIỮ NGUYÊN. Ta duyệt theo chủ đề + đặc trưng lời văn.
+//
+// G (LƯU Ý CHO NGƯỜI SOẠN SEED): reflect CHỈ chạy khi tags.topic có ít nhất một chủ đề
+// trong INVARIANT_TOPICS dưới đây. Vì thế mọi seed CÓ toạ độ mà muốn được phản chiếu PHẢI
+// được gắn nhãn một chủ đề bất biến dời hình (khoang_cach/the_tich/dien_tich/goc/ti_so);
+// seed toạ độ không gắn nhãn sẽ bị reflect BỎ QUA (an toàn: thà bỏ còn hơn sinh sai).
 const INVARIANT_TOPICS = new Set(["khoang_cach", "the_tich", "dien_tich", "goc", "ti_so"]);
 // Đề HỎI trực tiếp một giá trị toạ độ (đổi khi phản chiếu).
 const ASKS_COORD = /hoành độ|tung độ|cao độ|to[aạ] độ/i;
-// Có phương trình mặt/đường (hệ số cố định, phản chiếu điểm nhưng không phản chiếu pt => sai).
-const HAS_EQUATION = /[xyz]\s*[+\-]\s*\d*\s*[xyz]/i;
-// Vector/toạ độ literal dạng "= (1;2;...)".
-const HAS_VECTOR_LITERAL = /=\s*\(\s*-?\d/;
+// F10 Toạ độ ĐIỂM literal "L(x;y;z)" — bỏ khỏi lời văn TRƯỚC khi soi dấu '=' (điểm được
+// phản chiếu đúng nên không phải ràng buộc cần chặn). Cùng dạng reflectCoordsInText nhận.
+const COORD_LITERAL_G =
+  /[A-Z]\(\s*-?\d+(?:\.\d+)?\s*[;,]\s*-?\d+(?:\.\d+)?\s*[;,]\s*-?\d+(?:\.\d+)?\s*\)/g;
+// F10 Nhắc tới ĐỐI TƯỢNG hình học có phương trình/hệ số cố định: phản chiếu chỉ đổi điểm,
+// KHÔNG đổi mặt phẳng/mặt cầu/đường thẳng/vector => đáp án (khoảng cách, góc tới mặt...) sai.
+const PLANE_LINE_SPHERE = /mặt phẳng|mặt cầu|đường thẳng|phương trình|\bmp\b|\([PQRSαβ]\)/iu;
 // Nhãn có phẩy (A', B') mà reflectCoordsInText chưa biết cách xử lý.
 const HAS_PRIMED_LABEL = /[A-Z]['’′]/;
 
@@ -30,11 +38,15 @@ function assertReflectInvariant(seed: Seed): void {
   if (ASKS_COORD.test(s)) {
     throw new Error(`reflect: đề hỏi toạ độ (hoành/tung/cao độ) — đổi khi phản chiếu (bỏ qua) — seed ${seed.id}`);
   }
-  if (HAS_EQUATION.test(s)) {
-    throw new Error(`reflect: đề chứa phương trình mặt phẳng/đường thẳng — đáp án đổi theo phép biến (bỏ qua) — seed ${seed.id}`);
+  // F10 Bỏ toạ độ ĐIỂM literal (được phản chiếu đúng), rồi nếu CÒN dấu '=' thì đó là một
+  // phương trình/ràng buộc (mặt phẳng dạng đoạn chắn, "z=2x+1", "x-5=0"...) mà phép phản
+  // chiếu điểm KHÔNG biến đổi => đáp án hoá sai. Cách này bắt mọi dạng, không chỉ chuẩn tắc.
+  const stripped = s.replace(COORD_LITERAL_G, " ");
+  if (stripped.includes("=")) {
+    throw new Error(`reflect: đề còn dấu '=' (phương trình/ràng buộc) sau khi bỏ toạ độ điểm — phản chiếu điểm không biến đổi ràng buộc, đáp án sẽ sai (bỏ qua) — seed ${seed.id}`);
   }
-  if (HAS_VECTOR_LITERAL.test(s)) {
-    throw new Error(`reflect: đề chứa vector/toạ độ literal — không đảm bảo bất biến (bỏ qua) — seed ${seed.id}`);
+  if (PLANE_LINE_SPHERE.test(s)) {
+    throw new Error(`reflect: đề nhắc mặt phẳng/mặt cầu/đường thẳng/phương trình — phản chiếu chỉ đổi điểm, không đổi các đối tượng này, không đảm bảo bất biến (bỏ qua) — seed ${seed.id}`);
   }
   if (HAS_PRIMED_LABEL.test(s)) {
     throw new Error(`reflect: đề chứa nhãn có phẩy (A') chưa xử lý được — bỏ qua — seed ${seed.id}`);

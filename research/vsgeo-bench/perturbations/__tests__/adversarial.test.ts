@@ -306,3 +306,45 @@ describe("F9 — rescale: từ chối đề có toạ độ literal (tránh mâu
     expect(rescale(seedNumeric, 2).answer.canonical).toBe("64");
   });
 });
+
+describe("F10 — reflect: từ chối MỌI phương trình/ràng buộc, không chỉ dạng chuẩn tắc", () => {
+  // HAS_EQUATION cũ /[xyz][+-]...[xyz]/ chỉ bắt dạng chuẩn "x+2y-2z=0"; bỏ lọt dạng đoạn chắn,
+  // "z=2x+1", "x-5=0", "2x=z"... => reflect lật ĐIỂM nhưng để nguyên phương trình + đáp án =>
+  // khoảng-cách-đến-mặt sai. Cách chắc chắn: bỏ toạ độ literal rồi nếu CÒN '=' thì bỏ qua.
+  it("mặt phẳng dạng ĐOẠN CHẮN 'x/1 + y/2 + z/3 = 1' => PHẢI ném", () => {
+    const s = mkCoordSeed({
+      statement_vi:
+        "Trong Oxyz cho mặt phẳng (P): x/1 + y/2 + z/3 = 1 và điểm M(3;4;5). Tính khoảng cách từ M đến (P).",
+      answer: { canonical: "sqrt(2)", type: "surd" },
+    });
+    expect(() => reflect(s)).toThrow(/phương trình|ràng buộc|mặt phẳng|đường thẳng|bất biến/i);
+  });
+
+  it("phương trình 'z = 2x + 1' (không đúng dạng chuẩn) => PHẢI ném", () => {
+    const s = mkCoordSeed({
+      statement_vi:
+        "Trong Oxyz cho A(1;2;3) và mặt phẳng z = 2x + 1. Tính khoảng cách từ A đến mặt phẳng đó.",
+      answer: { canonical: "sqrt(5)", type: "surd" },
+    });
+    expect(() => reflect(s)).toThrow(/phương trình|ràng buộc|mặt phẳng|đường thẳng|bất biến/i);
+  });
+
+  it("ràng buộc 'x - 5 = 0' => PHẢI ném", () => {
+    const s = mkCoordSeed({
+      statement_vi:
+        "Trong Oxyz cho mặt phẳng (P): x - 5 = 0 và điểm A(1;2;3). Tính khoảng cách từ A đến (P).",
+      answer: { canonical: "4", type: "rational" },
+    });
+    expect(() => reflect(s)).toThrow(/phương trình|ràng buộc|mặt phẳng|đường thẳng|bất biến/i);
+  });
+
+  it("hồi quy dương: bài hai điểm THUẦN (không '=', không mặt phẳng) VẪN reflect được", () => {
+    const s = mkCoordSeed({
+      statement_vi: "Trong không gian Oxyz cho A(1;2;3) và B(4;0;0). Tính độ dài đoạn AB.",
+      answer: { canonical: "sqrt(22)", type: "surd" },
+    });
+    const v = reflect(s);
+    expect(v.statement_vi).toContain("A(-1;2;3)");
+    expect(v.answer.canonical).toBe("sqrt(22)");
+  });
+});
