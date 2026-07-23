@@ -26,6 +26,7 @@ import { describe, it, expect } from "vitest";
 import type { Seed } from "../../data/schema/problem";
 import { rescale, scaleLengthsInText, canonicalToNumber } from "../rescale";
 import { reflect } from "../reflect";
+import { rename, extractVertexLabels } from "../rename";
 import { seedNumeric } from "./fixtures";
 
 // Bộ dựng seed tối thiểu cho các ca đối kháng (ghi đè trường cần thiết).
@@ -162,5 +163,35 @@ describe("F2 — reflect: cổng theo TÍNH BẤT BIẾN, không theo answer.typ
     const v = reflect(s);
     expect(v.answer.canonical).toBe("sqrt(22)"); // bất biến, giữ nguyên
     expect(v.statement_vi).toContain("A(-1;2;3)");
+  });
+});
+
+describe("F3 — rename: không chọn đích trùng nhãn CHỈ có trong lời văn", () => {
+  it("nhãn phụ 'M' (trung điểm) trong lời văn không bị chọn làm đích => không gộp điểm", () => {
+    // figure.points chỉ liệt kê đỉnh S,A,B,C,D; 'M' (trung điểm) chỉ nằm trong câu chữ.
+    // Lỗi cũ: defaultRenameMap loại {S,A,B,C,D} khỏi bể => chọn 'M' làm đích cho 'S' =>
+    // 'M' (S đổi tên) và 'M' (trung điểm gốc) trùng nhau: hai điểm khác nhau cùng tên.
+    const s = mkSeed({
+      statement_vi:
+        "Cho hình chóp S.ABCD có M là trung điểm cạnh SA. Tính thể tích khối chóp.",
+      answer: { canonical: "a^3/6", type: "surd" },
+      figure: {
+        points: [
+          { id: "S", x: 0, y: 0, z: 1 },
+          { id: "A", x: 0, y: 0, z: 0 },
+          { id: "B", x: 1, y: 0, z: 0 },
+          { id: "C", x: 1, y: 1, z: 0 },
+          { id: "D", x: 0, y: 1, z: 0 },
+        ],
+        coords_given: false,
+      },
+    });
+    const before = new Set(extractVertexLabels(s.statement_vi)).size; // {S,A,B,C,D,M} = 6
+    const v = rename(s);
+    const after = new Set(extractVertexLabels(v.statement_vi)).size;
+    // Không đỉnh nào bị gộp nhãn: số nhãn phân biệt phải được bảo toàn.
+    expect(after).toBe(before);
+    // Cụ thể: 'M' phụ vẫn còn, nhưng KHÔNG được là đích của một đỉnh mới.
+    expect(v.statement_vi).toContain("M là trung điểm");
   });
 });

@@ -19,8 +19,15 @@ export function extractVertexLabels(text: string): string[] {
 // Bể chữ đích. Lọc bỏ chữ đang dùng để không tạo "thay dây chuyền" (A->M, rồi M vô tình bị thay tiếp).
 const TARGET_POOL = ["M", "N", "P", "Q", "R", "T", "U", "V", "X", "Y", "Z", "E", "F", "G", "H", "I", "J", "K", "L"];
 
-export function defaultRenameMap(labels: string[]): Map<string, string> {
-  const used = new Set(labels);
+// F3 `exclude` = TẤT CẢ nhãn không được chọn làm đích: gồm cả nhãn chỉ xuất hiện trong
+// LỜI VĂN (trung điểm M, mặt phẳng (P), tâm I...) chứ không nằm trong figure.points.
+// Nếu bỏ sót, rename có thể chọn 'M' làm đích cho 'A' trong khi 'M' đã là điểm khác => hai
+// điểm khác nhau cùng tên 'M' (dữ liệu sai im lặng). Mặc định exclude=labels giữ tương thích.
+export function defaultRenameMap(
+  labels: string[],
+  exclude: Iterable<string> = labels
+): Map<string, string> {
+  const used = new Set<string>([...labels, ...exclude]);
   const targets = TARGET_POOL.filter((c) => !used.has(c));
   const map = new Map<string, string>();
   labels.forEach((l, i) => {
@@ -44,7 +51,9 @@ export function rename(seed: Seed, map?: Map<string, string>): Variant {
     seed.figure?.points && seed.figure.points.length > 0
       ? seed.figure.points.map((p) => p.id)
       : extractVertexLabels(seed.statement_vi);
-  const renameMap = map ?? defaultRenameMap(labels);
+  // F3: loại khỏi bể đích cả nhãn chỉ có trong lời văn (không nằm trong figure.points).
+  const exclude = new Set<string>([...labels, ...extractVertexLabels(seed.statement_vi)]);
+  const renameMap = map ?? defaultRenameMap(labels, exclude);
 
   const v = cloneSeed(seed) as Variant;
   v.id = variantId(seed.id, "rename");
