@@ -30,6 +30,7 @@ import { rename, extractVertexLabels } from "../rename";
 import { distractor, DISTRACTOR_BANK } from "../distractor";
 import { paraphrase, assertParaphrasePreserves, ParaphraseDriftError } from "../paraphrase";
 import { generateVariantsForSeed, DETERMINISTIC } from "../generate";
+import { robustnessReport } from "../metrics";
 import { seedNumeric, seedSymbolic } from "./fixtures";
 
 // Bộ dựng seed tối thiểu cho các ca đối kháng (ghi đè trường cần thiết).
@@ -262,5 +263,31 @@ describe("F4 — generate: phép bị bỏ được GHI LẠI (không nuốt l�
     expect(vs.map((v) => v.variant.kind).sort()).toEqual(["distractor", "rename", "rescale"]);
     expect(skips.reflect).toBe(1); // reflect ném => bị bỏ => phải được ghi
     expect(skips.rename ?? 0).toBe(0); // phép thành công không tăng skip
+  });
+});
+
+describe("F5 — metrics: tập rỗng => NaN (không phải 0), byKind so với base ĐÚNG cha", () => {
+  it("variants rỗng => overall là NaN, không phải gap giả '1'", () => {
+    // accRecords([]) cũ trả 0 => overall = acc(base) - 0 = acc(base): đọc nhầm thành "rớt sạch".
+    const base = [{ verdict: "correct" as const }];
+    const rep = robustnessReport(base, []);
+    expect(Number.isNaN(rep.overall)).toBe(true);
+    expect(rep.nVariant).toBe(0);
+  });
+
+  it("byKind so biến thể với base của CHÍNH seed cha, không phải base toàn cục", () => {
+    // S1 gốc ĐÚNG, S2 gốc SAI (base toàn cục = 0.5). rename chỉ áp cho S1 và làm S1 SAI.
+    // Gap đúng của rename = acc(base S1)=1 - acc(rename)=0 = 1, KHÔNG phải 0.5 (base toàn cục).
+    const base = [
+      { verdict: "correct" as const, seedId: "vsgeo-0001" },
+      { verdict: "incorrect" as const, seedId: "vsgeo-0002" },
+    ];
+    const variants = [
+      { verdict: "incorrect" as const, perturbation: { kind: "rename" }, parentSeedId: "vsgeo-0001" },
+    ];
+    const rep = robustnessReport(base, variants);
+    expect(rep.byKind.rename).toBeCloseTo(1, 9); // 1 (base cha) - 0 (rename) = 1
+    expect(rep.counts.rename).toEqual({ nBase: 1, nVariant: 1 });
+    expect(rep.nBase).toBe(2);
   });
 });
