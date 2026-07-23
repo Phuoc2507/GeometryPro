@@ -24,11 +24,16 @@ export function symbolicVars(canonical: string): string[] {
   return [...set];
 }
 
-// F6(b) Bản đồ "NHÃN = số" (SA = 2, AB = 3...) để phát hiện HOÁN VAI: multiset số giữ nguyên
-// nhưng gán số cho nhãn khác => đề đổi nghĩa mà kiểm-số không thấy.
+// F6(b) Bản đồ "NHÃN = giá trị" (SA = 2, AB = 3...) để phát hiện HOÁN VAI: multiset số giữ
+// nguyên nhưng gán giá trị cho nhãn khác => đề đổi nghĩa mà kiểm-số không thấy.
+// F14 RHS bắt TRỌN token "hệ số + ký hiệu + luỹ thừa" (khởi đầu bằng số HOẶC chữ thường):
+// bản cũ chỉ bắt \d+ nên "SA=2a" chỉ lưu '2' và "SB=a" bị bỏ hẳn => hoán vai KÝ HIỆU
+// ("SA=2a,SB=a" -> "SA=a,SB=2a") lọt lưới (multiset số {2} không đổi). Nay lưu cả "2a"/"a".
 export function assignmentMap(text: string): Map<string, string> {
   const m = new Map<string, string>();
-  for (const mm of text.matchAll(/\b([A-Z][A-Z0-9]{0,3})\s*=\s*(\d+(?:\.\d+)?)/g)) {
+  for (const mm of text.matchAll(
+    /\b([A-Z][A-Z0-9]{0,3})\s*=\s*((?:\d+(?:\.\d+)?)?[a-z](?:\^\d+)?|\d+(?:\.\d+)?)/g
+  )) {
     m.set(mm[1], mm[2]);
   }
   return m;

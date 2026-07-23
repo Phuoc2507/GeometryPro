@@ -446,3 +446,36 @@ describe("F13 — rescale: số đo độ dài KHÔNG kề từ khoá phải đ�
     expect(scaleLengthsInText("cạnh a.", 2)).toBe("cạnh 2a.");
   });
 });
+
+describe("F14 — paraphrase: bắt HOÁN VAI cả gán KÝ HIỆU ('SA=2a, SB=a'), không chỉ gán số", () => {
+  // assignmentMap cũ chỉ bắt RHS là SỐ (\d+) nên "SA=2a" chỉ lưu '2', "SB=a" bị bỏ hẳn =>
+  // hoán vai ký hiệu (SA<->SB) lọt lưới: kiểm-số multiset {2}=={2}, gán số không phát hiện
+  // => sinh biến thể đổi nghĩa mà đáp án giữ nguyên (§4.3 sai-im-lặng). Fix: RHS bắt trọn
+  // token "hệ số + ký hiệu + luỹ thừa" (khởi đầu bằng số HOẶC chữ thường).
+  it("hoán vai KÝ HIỆU 'SA=2a, SB=a' -> 'SA=a, SB=2a' => PHẢI ném", () => {
+    expect(() =>
+      assertParaphrasePreserves(
+        "Cho tứ diện SABC có SA = 2a, SB = a. Tính thể tích.",
+        "Cho tứ diện SABC có SA = a, SB = 2a. Tính thể tích."
+      )
+    ).toThrow(ParaphraseDriftError);
+  });
+
+  it("hồi quy: gán số 'SA=2, SB=3' hoán vai vẫn PHẢI ném (F6b không thoái lui)", () => {
+    expect(() =>
+      assertParaphrasePreserves(
+        "Cho tứ diện SABC có SA = 2, SB = 3. Tính thể tích.",
+        "Cho tứ diện SABC có SA = 3, SB = 2. Tính thể tích."
+      )
+    ).toThrow(ParaphraseDriftError);
+  });
+
+  it("hồi quy: giữ nguyên gán ký hiệu, chỉ đổi lời văn => KHÔNG ném", () => {
+    expect(() =>
+      assertParaphrasePreserves(
+        "Cho tứ diện SABC có SA = 2a, SB = a. Tính thể tích.",
+        "Xét tứ diện SABC với SA = 2a và SB = a. Hãy tính thể tích khối đó."
+      )
+    ).not.toThrow();
+  });
+});
