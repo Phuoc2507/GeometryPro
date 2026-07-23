@@ -739,3 +739,23 @@ describe("F24 — rescale: gán tỉ lệ đoạn 'XY = N ZT' (vd 'SM = 2 MA') =
     expect(() => rescale(seedE1, 2)).toThrow(/tỉ lệ|chia điểm|XY = N/i);
   });
 });
+
+describe("F25 — reflect: đại lượng phụ thuộc ĐỊNH HƯỚNG diễn đạt bằng LỜI => PHẢI ném", () => {
+  // Tính thuận/nghịch tam diện (handedness), chiều kim đồng hồ (định hướng 2D), so sánh vị trí
+  // theo "chiều dương/phía trước" của trục — tất cả ĐỔI khi phản chiếu (phép đảo hướng) nên đáp
+  // án boolean KHÔNG bất biến. SIGNED_ORIENTED chỉ bắt TÊN công thức (tích hỗn hợp…) nên lọt;
+  // topic gate (goc/khoang_cach ∈ nhóm bất biến) cũng cho qua. ORIENTATION_SENSITIVE bắt bằng lời.
+  const seedsF25: any[] = [
+    // F1 — tam diện thuận (handedness).
+    {"id":"vsgeo-3101","source":{"type":"synthetic","ref":"orientation-handedness set A"},"statement_vi":"Trong không gian Oxyz, cho các điểm O(0;0;0), A(1;1;0), B(0;1;0), C(0;0;1). Hỏi ba vectơ OA, OB, OC (theo thứ tự đó) có lập thành một tam diện thuận hay không?","figure":{"coords_given":true,"points":[{"id":"O","x":0,"y":0,"z":0},{"id":"A","x":1,"y":1,"z":0},{"id":"B","x":0,"y":1,"z":0},{"id":"C","x":0,"y":0,"z":1}]},"answer":{"canonical":"Đúng","type":"boolean"},"tags":{"topic":["goc"],"answer_form":"boolean","difficulty":2,"requires_auxiliary_construction":false}},
+    // F2 — ngược chiều kim đồng hồ (định hướng 2D).
+    {"id":"vsgeo-3102","source":{"type":"synthetic","ref":"orientation-clockwise set A"},"statement_vi":"Trong không gian Oxyz cho ba điểm A(2;0;1), B(0;2;1), C(0;0;1). Một người quan sát đứng phía trên và nhìn từ hướng dương trục Oz xuống. Theo thứ tự A, B, C, ba điểm này được sắp xếp ngược chiều kim đồng hồ. Khẳng định trên đúng hay sai?","figure":{"coords_given":true,"points":[{"id":"A","x":2,"y":0,"z":1},{"id":"B","x":0,"y":2,"z":1},{"id":"C","x":0,"y":0,"z":1}]},"answer":{"canonical":"Đúng","type":"boolean"},"tags":{"topic":["goc"],"answer_form":"boolean","difficulty":3,"requires_auxiliary_construction":false}},
+    // F3 — phía trước / chiều dương Ox (so sánh dấu toạ độ).
+    {"id":"vsgeo-3103","source":{"type":"synthetic","ref":"orientation-frontback set A"},"statement_vi":"Trong không gian Oxyz, quy ước chiều dương của trục Ox là hướng tiến về phía trước. Cho hai điểm A(3;1;2) và B(1;5;2). Khi đó điểm A nằm ở phía trước điểm B. Khẳng định này đúng hay sai?","figure":{"coords_given":true,"points":[{"id":"A","x":3,"y":1,"z":2},{"id":"B","x":1,"y":5,"z":2}]},"answer":{"canonical":"Đúng","type":"boolean"},"tags":{"topic":["khoang_cach"],"answer_form":"boolean","difficulty":2,"requires_auxiliary_construction":false}},
+  ];
+  for (const s of seedsF25) {
+    it(`seed ${s.id} (${s.source.ref}) => reflect PHẢI ném (không bất biến phản chiếu)`, () => {
+      expect(() => reflect(s)).toThrow(/định hướng|thuận|nghịch|chiều|phía|bất biến/i);
+    });
+  }
+});

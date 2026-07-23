@@ -22,6 +22,13 @@ const ASKS_COORD = /hoành độ|tung độ|cao độ|to[aạ] độ/i;
 // nên phải soi riêng: giữ đáp án "2" trong khi giá trị thật hoá "-2" là sai-im-lặng (§4.3).
 const SIGNED_ORIENTED =
   /tích hỗn hợp|tich hon hop|tích có hướng|tich co huong|định thức|dinh thuc|thể tích đại số|the tich dai so/i;
+// F25 Đại lượng PHỤ THUỘC ĐỊNH HƯỚNG / DẤU TOẠ ĐỘ diễn đạt bằng LỜI THƯỜNG (không phải tên
+// công thức mà SIGNED_ORIENTED bắt): tính thuận/nghịch của tam diện (handedness), chiều kim
+// đồng hồ (định hướng 2D), và các so sánh vị trí theo "chiều dương/âm" của một trục hay
+// "phía trước/sau/trái/phải". Tất cả ĐỔI khi phản chiếu (phép đảo hướng) ⇒ đáp án boolean/giá
+// trị KHÔNG bất biến ⇒ giữ nguyên đáp án là sai-im-lặng (§4.3). Thà bỏ còn hơn sai.
+const ORIENTATION_SENSITIVE =
+  /tam diện\s+(?:thuận|nghịch)|(?:thuận|nghịch)\s+chiều|chiều\s+kim\s+đồng\s+hồ|(?:phía|bên)\s+(?:trước|sau|trái|phải)|chiều\s+(?:dương|âm)|hướng\s+(?:dương|âm)|định hướng/iu;
 // F10 Toạ độ ĐIỂM literal "L(x;y;z)" — bỏ khỏi lời văn TRƯỚC khi soi dấu '=' (điểm được
 // phản chiếu đúng nên không phải ràng buộc cần chặn). Cùng dạng reflectCoordsInText nhận.
 const COORD_LITERAL_G =
@@ -48,6 +55,13 @@ function assertReflectInvariant(seed: Seed): void {
   if (SIGNED_ORIENTED.test(s)) {
     throw new Error(
       `reflect: đại lượng CÓ DẤU/ĐỊNH HƯỚNG (tích hỗn hợp/có hướng/định thức) đổi dấu khi phản chiếu — không bất biến (bỏ qua §4.3) — seed ${seed.id}`
+    );
+  }
+  // F25 Đại lượng phụ thuộc ĐỊNH HƯỚNG/DẤU TOẠ ĐỘ diễn đạt bằng LỜI (thuận/nghịch, chiều kim
+  // đồng hồ, phía trước/sau/trái/phải, chiều dương/âm) — SIGNED_ORIENTED chỉ bắt tên công thức.
+  if (ORIENTATION_SENSITIVE.test(s)) {
+    throw new Error(
+      `reflect: đại lượng phụ thuộc ĐỊNH HƯỚNG/DẤU TOẠ ĐỘ diễn đạt bằng lời (thuận/nghịch, chiều kim đồng hồ, phía trước/sau/trái/phải, chiều dương/âm) — đổi khi phản chiếu, không bất biến (bỏ qua §4.3) — seed ${seed.id}`
     );
   }
   // F10 Bỏ toạ độ ĐIỂM literal (được phản chiếu đúng), rồi nếu CÒN dấu '=' thì đó là một
