@@ -4,6 +4,7 @@ import { SOLVE_SYSTEM_PROMPT, buildSolveUserMessage } from './_lib/solvePrompts.
 import { engineSolved, assembleSolveResult } from './_lib/solveAssemble.js';
 // parseSolveResponse rút sang solveCore.js (dùng chung với solveSteps) — 1 nguồn sự thật.
 import { parseSolveResponse } from './_lib/solveCore.js';
+import { tierFromThrow } from './_lib/kernel-bridge/classifyTier.js';
 import { creditsConfigured, checkAndConsume, refund } from './_lib/credits.js';
 import crypto from 'crypto';
 
@@ -62,6 +63,7 @@ export default async function handler(req, res) {
 
   // Engine tất định giải trước → đáp số + verified THẬT. Có thể ném (abstain/schema) ⇒ bọc try/catch.
   let eng = null;
+  let engTier = null; // tier khi solveProblem NÉM (hiếm: import kernel-dist hỏng / runAny nổ bất ngờ).
   const ea = geometry.engineAnswer;
   if (ea && typeof ea.approx === 'number' && Number.isFinite(ea.approx)) {
     // Tái dùng đáp engine từ bước VẼ — KHÔNG chạy engine lại (bỏ dịch+giải trùng)
@@ -72,6 +74,7 @@ export default async function handler(req, res) {
       eng = await solveProblem(problem.trim());
     } catch (e) {
       console.warn('[solve] engine không giải được, dùng lời giải LLM:', e?.message || e);
+      engTier = tierFromThrow(e);
     }
   }
   const engAnswer = engineSolved(eng) ? eng.answers[0].text : null;
@@ -101,5 +104,7 @@ export default async function handler(req, res) {
   }
 
   const out = assembleSolveResult(eng, parsed);
-  return res.json({ ...out, geometry });
+  // Ưu tiên: tier từ solveProblem → tier lỗi (catch) → classification tái dùng từ hình (nhánh reuse).
+  const tier = (eng && eng.tier) || engTier || (geometry && geometry.classification) || null;
+  return res.json({ ...out, tier, geometry });
 }
