@@ -52,8 +52,26 @@ export function rename(seed: Seed, map?: Map<string, string>): Variant {
       ? seed.figure.points.map((p) => p.id)
       : extractVertexLabels(seed.statement_vi);
   // F3: loại khỏi bể đích cả nhãn chỉ có trong lời văn (không nằm trong figure.points).
-  const exclude = new Set<string>([...labels, ...extractVertexLabels(seed.statement_vi)]);
+  // F20: và cả nhãn xuất hiện trong ĐÁP ÁN (vd đáp án "AB") — chữ đích không được đụng chúng.
+  const exclude = new Set<string>([
+    ...labels,
+    ...extractVertexLabels(seed.statement_vi),
+    ...extractVertexLabels(seed.answer.canonical),
+  ]);
   const renameMap = map ?? defaultRenameMap(labels, exclude);
+
+  // F20 Đáp án THAM CHIẾU NHÃN ĐỈNH (mcq/point/vector/line/plane có canonical là biểu thức
+  // nhãn, vd "AB") nhưng rename KHÔNG đổi answer.canonical => sau khi đổi đỉnh, câu hỏi về "NP"
+  // trong khi đáp án vẫn "AB" => mâu thuẫn sai-im-lặng (§4.3). Nếu đáp án chứa nhãn nằm trong
+  // renameMap thì BỎ QUA (đáp án ký hiệu thường + căn thì extractVertexLabels=[] nên không chặn).
+  const answerLabels = extractVertexLabels(seed.answer.canonical);
+  for (const l of answerLabels) {
+    if (renameMap.has(l)) {
+      throw new Error(
+        `rename: đáp án "${seed.answer.canonical}" chứa nhãn đỉnh '${l}' sẽ bị đổi tên nhưng đáp án không đổi theo — sẽ mâu thuẫn (bỏ qua §4.3) — seed ${seed.id}`
+      );
+    }
+  }
 
   const v = cloneSeed(seed) as Variant;
   v.id = variantId(seed.id, "rename");

@@ -519,3 +519,39 @@ describe("F16 — reflect: đại lượng CÓ DẤU/ĐỊNH HƯỚNG đổi d�
     );
   });
 });
+
+describe("F20 — rename: đáp án tham chiếu NHÃN ĐỈNH bị đổi tên => PHẢI ném", () => {
+  // rename đổi nhãn trong statement (A->N, B->P...) nhưng để nguyên answer.canonical, vốn
+  // giả định đáp án là ký hiệu thường + căn. SAI với đáp án mcq/point/vector/line/plane có
+  // canonical LÀ biểu thức nhãn đỉnh (vd "AB"): sau rename câu hỏi "NP" mà đáp án vẫn "AB".
+  const seedLabelAnswer = {
+    id: "vsgeo-0105",
+    source: { type: "synthetic", ref: "adversarial-F20" },
+    statement_vi:
+      "Cho hình chóp S.ABCD có đáy ABCD là hình bình hành. Gọi d là giao tuyến của hai mặt phẳng (SAB) và (SCD). Đường thẳng d song song với đường thẳng nào trong hai đường thẳng AB và AD?",
+    answer: { canonical: "AB", type: "mcq" },
+    tags: {
+      topic: ["quan_he_song_song"],
+      answer_form: "mcq",
+      difficulty: 2,
+      requires_auxiliary_construction: false,
+    },
+  } as const;
+
+  it("đáp án 'AB' chứa nhãn đỉnh sẽ bị đổi tên => rename PHẢI ném", () => {
+    expect(() => rename(seedLabelAnswer as any)).toThrow(/nhãn|đáp án|đỉnh/i);
+  });
+
+  it("hồi quy dương: đáp án surd 'a^3*sqrt(2)/12' (không nhãn đỉnh) VẪN rename được", () => {
+    // seedSymbolic.answer.canonical = "a^3*sqrt(2)/12" — extractVertexLabels = [] => không chặn.
+    const v = rename(seedSymbolic);
+    expect(v.variant.kind).toBe("rename");
+    expect(v.answer.canonical).toBe(seedSymbolic.answer.canonical);
+  });
+
+  it("extractVertexLabels trên các dạng đáp án số/ký hiệu trả [] (không chặn oan)", () => {
+    expect(extractVertexLabels("8")).toEqual([]);
+    expect(extractVertexLabels("a*sqrt(2)/12")).toEqual([]);
+    expect(extractVertexLabels("AB")).toEqual(["A", "B"]);
+  });
+});
