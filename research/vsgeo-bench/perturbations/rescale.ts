@@ -12,8 +12,10 @@ const NUMERIC_TYPES = new Set(["rational", "surd", "ratio"]);
 // Nguyên tắc §4.3: thà SKIP còn hơn sinh bài tự mâu thuẫn (góc bị nhân đôi, thể tích cho
 // bằng số sẽ sai bậc). generateVariantsForSeed bọc try/catch nên ném = biến thể bị bỏ.
 // F9 Toạ độ literal "L(x;y;z)" (nhãn HOA + 3 số ngăn bởi ';' hoặc ','), cùng dạng reflect nhận.
+// RF-6 (Round-7) NỚI dạng đánh máy: cho khoảng trắng trước '(', dấu trừ Unicode '−' và dấu '+'
+// đầu — giữ đồng bộ với reflect để rescale cũng BỎ mọi seed toạ độ (không co giãn nửa vời).
 const HAS_COORD_LITERAL =
-  /[A-Z]\(\s*-?\d+(?:\.\d+)?\s*[;,]\s*-?\d+(?:\.\d+)?\s*[;,]\s*-?\d+(?:\.\d+)?\s*\)/;
+  /[A-Z]\s*\(\s*[-+−]?\d+(?:\.\d+)?\s*[;,]\s*[-+−]?\d+(?:\.\d+)?\s*[;,]\s*[-+−]?\d+(?:\.\d+)?\s*\)/;
 
 // RS-1 (Round-5) ĐỘ DÀI NGOẠI LAI: cỗ máy co giãn chỉ nắm 'cạnh [n]a' và số sau từ khoá độ
 // dài / 'AB = n'. Khi đề TRỘN một độ dài co-giãn-được (khiến câu ĐỔI ⇒ chốt F22 line 200 KHÔNG
@@ -35,7 +37,9 @@ function assertNoForeignLength(orig: string): void {
   }
   // (2) chữ số DÍNH ngay vào một chữ latin thường ≠ 'a' ⇒ hệ số+ký hiệu (2x) HOẶC đơn vị dính
   //     (6cm/3m/5dm). KHÔNG có \s — đơn vị viết CÁCH số "8 cm" co giãn được, không được ném.
-  if (/\d[b-z]/i.test(orig)) {
+  // OS-1 (Round-7) BỎ cờ /i: chữ HOA sau chữ số ('A1B1C1', '3D') là CHỈ SỐ NHÃN ĐỈNH / ký hiệu
+  //     hình, KHÔNG phải đơn vị/ký hiệu độ dài thường ⇒ khớp /i cũ ném oan lăng trụ 'ABC.A1B1C1'.
+  if (/\d[b-z]/.test(orig)) {
     throw new Error(
       `rescale: đề có chữ số DÍNH ký hiệu/đơn vị ≠'a' (hệ số+ký hiệu '2x' hoặc đơn vị dính '3m/6cm') — độ dài ngoại lai (bỏ qua §4.3)`
     );
@@ -58,13 +62,23 @@ function assertNoForeignLength(orig: string): void {
     );
   }
   // (5) số đo viết bằng CHỮ (một/hai/ba…) làm kích thước, ngay sau từ khoá độ dài / 'bằng'.
+  // RS-8b (Round-7) MỞ RỘNG đầu từ khoá: 'bán kính/đường kính/đường sinh/đường chéo/đường cao/
+  //     chiều cao/trung đoạn' — "bán kính ba" cũng là độ-dài-viết-chữ scaler không nắm.
   if (
-    /(cao|dài|rộng|cạnh|bằng)\s+(một|hai|ba|bốn|bon|năm|nam|sáu|sau|bảy|bay|tám|tam|chín|chin|mười|muoi)(?![a-zà-ỹ])/iu.test(
+    /(cao|dài|rộng|cạnh|bằng|bán\s+kính|đường\s+kính|đường\s+sinh|đường\s+chéo|đường\s+cao|chiều\s+cao|trung\s+đoạn)\s+(một|hai|ba|bốn|bon|năm|nam|sáu|sau|bảy|bay|tám|tam|chín|chin|mười|muoi)(?![a-zà-ỹ])/iu.test(
       orig
     )
   ) {
     throw new Error(
       `rescale: đề có số đo viết bằng CHỮ (một/hai/ba…) làm kích thước — không có chữ số để co giãn (bỏ qua §4.3)`
+    );
+  }
+  // RS-8a (Round-7) CHỮ SỐ PHI-ASCII (full-width '７' U+FF17, chữ số ả-rập khác…): scaler và
+  //     hậu-kiểm số-đo đều dùng \d ASCII nên MÙ ⇒ độ dài giữ nguyên còn đáp án ×k ⇒ mâu thuẫn.
+  //     Strip mọi chữ số ASCII rồi nếu CÒN bất kỳ chữ số Unicode nào (\p{Nd}) thì ném.
+  if (/\p{Nd}/u.test(orig.replace(/[0-9]/g, ""))) {
+    throw new Error(
+      `rescale: đề chứa CHỮ SỐ KHÔNG-ASCII (vd full-width '７' U+FF17) — scaler & hậu-kiểm số-đo (đều dùng \\d ASCII) mù ⇒ độ dài không co giãn (bỏ qua §4.3)`
     );
   }
 }
@@ -92,7 +106,13 @@ function assertScalable(orig: string, scaleDegree?: number): void {
   // F18 "SỐ cạnh/mặt/đỉnh" = SỐ ĐẾM của đa giác/đa diện (lục giác có 6 cạnh), KHÔNG phải độ
   // dài. scaleLengthsInText lại khớp "cạnh ... bằng 6" và nhân 6->12 (biến lục giác thành
   // 12-giác) một cách NHẤT QUÁN với k nên hậu-kiểm số-đo không phát hiện — phải từ chối trước.
-  if (/\bsố\s+(c[aạ]nh|m[aặ]t|đỉnh)\b/iu.test(orig)) {
+  // RS-4 (Round-7) MỞ RỘNG danh từ đếm: 'số đường chéo/đường sinh/đường kính/bán kính/cạnh
+  //     bên/cạnh đáy/góc' — tất cả là SỐ ĐẾM của đa giác/đa diện, không phải độ dài.
+  if (
+    /\bsố\s+(c[aạ]nh|m[aặ]t|đỉnh|đường\s+chéo|đường\s+sinh|đường\s+kính|bán\s+kính|cạnh\s+bên|cạnh\s+đáy|góc)\b/iu.test(
+      orig
+    )
+  ) {
     throw new Error(
       `rescale: đề nêu SỐ cạnh/mặt/đỉnh (số đếm đa giác, không phải độ dài) — co giãn sẽ đổi hình (bỏ qua §4.3)`
     );
@@ -112,6 +132,24 @@ function assertScalable(orig: string, scaleDegree?: number): void {
       `rescale: đề có gán "XY = N ZT" (đoạn = số lần đoạn khác — tỉ lệ chia điểm) — hệ số là tỉ lệ, scaler nhân nhầm ⇒ dời điểm sai (bỏ qua §4.3)`
     );
   }
+  // RS-3 (Round-7) TỈ LỆ đoạn dạng "XY/ZT = N" hoặc "XY:ZT = N" — tỉ lệ chia điểm / so đoạn là
+  // đại lượng BẤT BIẾN co giãn; pattern-3 (AB=N) bắt gặp "= N" và nhân nhầm ⇒ dời điểm/đổi hình.
+  if (/\b[A-Z]{1,2}\s*[/:]\s*[A-Z]{1,2}\s*=\s*\d/.test(orig)) {
+    throw new Error(
+      `rescale: đề có TỈ LỆ đoạn "XY/ZT = N" hoặc "XY:ZT = N" (tỉ lệ chia điểm/so đoạn — bất biến co giãn) — pattern-3 nhân nhầm N ⇒ dời điểm/đổi hình (bỏ qua §4.3)`
+    );
+  }
+  // RS-5 (Round-7) BỘI SỐ HÌNH DẠNG "bằng/= N <danh từ độ dài>" (vd "chiều cao bằng 3 cạnh đáy"):
+  // N là HỆ SỐ TỈ LỆ không thứ nguyên (danh từ độ dài đã mang ×k), scaler nhân nhầm N ⇒ đổi hình.
+  if (
+    /(?:bằng|=)\s*\d+\s+(cạnh(?:\s+(?:đáy|bên))?|bán\s+kính(?:\s+đáy)?|đường\s+kính|đường\s+sinh|đường\s+chéo|đường\s+cao|trung\s+đoạn)\b/iu.test(
+      orig
+    )
+  ) {
+    throw new Error(
+      `rescale: đề có bội số hình dạng "bằng/= N <danh từ độ dài>" (vd "3 cạnh đáy") — N không thứ nguyên (danh từ đã mang ×k), scaler nhân nhầm ⇒ đổi hình (bỏ qua §4.3)`
+    );
+  }
   // F9 (MỞ RỘNG) TỪ CHỐI, KHÔNG cố co giãn toạ độ. scaleLengthsInText không khớp "A(1;2;3)"
   // nên câu giữ nguyên toạ độ (⇒ khoảng cách cũ) trong khi figure.points và đáp án đã ×k ⇒
   // statement mâu thuẫn với answer (model trả đúng theo đề lại bị chấm sai — §4.3 sai-im-lặng).
@@ -129,12 +167,19 @@ function assertScalable(orig: string, scaleDegree?: number): void {
   // tích") và đối chiếu scale_degree. factor=k^scale_degree (line rescale()) TIN scale_degree một
   // cách mù quáng; nếu tác giả gán lệch (thể tích mà deg=2) hoặc đề hỏi TỔNG đại lượng khác bậc
   // (diện tích bậc 2 + thể tích bậc 3) thì không một factor nào đúng ⇒ ném (bỏ qua §4.3).
-  const asksArea = /Tính[^.]*\bdiện tích\b/iu.test(orig);
-  const asksVol = /Tính[^.]*\bthể tích\b/iu.test(orig);
-  // (a) TỔNG diện tích + thể tích: khác bậc, không thể một factor đúng cả hai — luôn ném (sạch).
-  if (asksArea && asksVol) {
+  // OS-2 (Round-7) LÀM PHẲNG tên đỉnh có dấu chấm ("S.ABCD"→"SABCD") để dấu chấm GIỮA hai chữ
+  // HOA không cắt đứt chuỗi [^.]* của asks* (nếu không, "Tính thể tích … S.ABCD … diện tích" bị
+  // cắt ở dấu chấm trong tên đỉnh ⇒ asksArea sai ⇒ hậu-kiểm bậc CÂM). Chỉ bỏ '.' GIỮA hai chữ
+  // HOA nên dấu chấm KẾT CÂU (sau chữ thường, trước khoảng trắng) vẫn nguyên để [^.]* dừng đúng câu.
+  const flat = orig.replace(/([A-Z])\.(?=[A-Z])/g, "$1");
+  const asksArea = /Tính[^.]*\bdiện tích\b/iu.test(flat);
+  const asksVol = /Tính[^.]*\bthể tích\b/iu.test(flat);
+  const asksPerim = /Tính[^.]*\bchu vi\b/iu.test(flat);
+  // RS-6 / RS-2(a) (Round-7) đáp án KHÔNG ĐỒNG BẬC: đề hỏi TỔNG hai đại lượng khác thứ nguyên
+  // (chu vi bậc 1 / diện tích bậc 2 / thể tích bậc 3) — không một factor=k^d nào đúng mọi hạng tử.
+  if ((asksArea && asksVol) || (asksPerim && asksArea) || (asksPerim && asksVol)) {
     throw new Error(
-      `rescale: đề hỏi TỔNG đại lượng KHÁC BẬC (diện tích bậc 2 + thể tích bậc 3) — không một k^degree nào đúng cả hai (bỏ qua §4.3)`
+      `rescale: đề hỏi TỔNG đại lượng KHÁC BẬC (chu vi/diện tích/thể tích) — đáp án không đồng bậc, không factor k^d nào đúng (bỏ qua §4.3)`
     );
   }
   // (b) LỆCH BẬC (heuristic): bậc suy từ đại lượng hỏi (thể tích→3, diện tích→2) phải khớp
@@ -259,6 +304,15 @@ export function rescale(seed: Seed, k: number): Variant {
   if (!NUMERIC_TYPES.has(seed.answer.type)) {
     throw new Error(
       `rescale chỉ định nghĩa cho đáp án số (rational|surd|ratio), gặp ${seed.answer.type} ở seed ${seed.id}`
+    );
+  }
+  // RS-7 (Round-7) đáp án type=ratio là đại lượng KHÔNG THỨ NGUYÊN (tỉ số bậc 0): giá trị bất
+  // biến co giãn, nhân factor=k^degree vào nó sẽ SAI. NUMERIC_TYPES cho 'ratio' qua để phục vụ
+  // các seed ratio + scale_degree=0 (co giãn lời văn, đáp án ×1); nhưng ratio + degree≠0 là tác
+  // giả gán sai bậc ⇒ ném (bỏ qua §4.3). (F13 chỉ bắt khi lời văn có chữ "tỉ số"; đây bắt theo type.)
+  if (seed.answer.type === "ratio" && seed.scale_degree !== 0) {
+    throw new Error(
+      `rescale: đáp án dạng tỉ số (ratio) KHÔNG THỨ NGUYÊN (bậc 0) nhưng scale_degree=${seed.scale_degree}≠0 — nhân k^degree sẽ sai (bỏ qua §4.3) — seed ${seed.id}`
     );
   }
   assertScalable(seed.statement_vi, seed.scale_degree); // F1(c) góc/độ, diện/thể tích số; RS-1/RS-2

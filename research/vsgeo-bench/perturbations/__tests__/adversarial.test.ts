@@ -965,3 +965,199 @@ describe("DS-1 — distractor: nhãn NEO TIA 'Kx/Ky/Kz' bị pickSafeDistractor 
     expect(v.statement_vi).toContain(DISTRACTOR_BANK[0]);
   });
 });
+
+// ===========================================================================
+// ROUND-7 — bịt 11 lớp sinh-sai-im-lặng cấu trúc + 4 vá chất-lượng-guard.
+// Mỗi test là bằng chứng hồi quy cho một guard §4.3 (thà SKIP còn hơn emit sai).
+// ===========================================================================
+
+describe("RS-3 — rescale: TỈ LỆ đoạn 'XY/ZT = N' / 'XY:ZT = N' (bất biến co giãn) => skip", () => {
+  const seeds: any[] = [
+    // Tỉ lệ chia điểm MD/MA = 2: pattern-3 nhân nhầm 2 => dời điểm M sai.
+    {"id":"vsgeo-9001","source":{"type":"synthetic","ref":"round7-rs3-ratio-slash"},"statement_vi":"Cho tứ diện ABCD cạnh a. Gọi M thuộc đoạn AD sao cho MD/MA = 2. Tính khoảng cách từ M đến mặt phẳng (BCD).","figure":{"coords_given":false},"answer":{"canonical":"a*sqrt(6)/9","type":"surd"},"tags":{"topic":["khoang_cach"],"answer_form":"surd","difficulty":2,"requires_auxiliary_construction":false},"scale_degree":1},
+    // So đoạn AB : MN = 2.
+    {"id":"vsgeo-9002","source":{"type":"synthetic","ref":"round7-rs3-ratio-colon"},"statement_vi":"Cho hình chóp cạnh a, các đoạn thoả AB : MN = 2. Tính khoảng cách giữa hai đường thẳng.","figure":{"coords_given":false},"answer":{"canonical":"a*sqrt(2)/2","type":"surd"},"tags":{"topic":["khoang_cach"],"answer_form":"surd","difficulty":2,"requires_auxiliary_construction":false},"scale_degree":1},
+  ];
+  for (const s of seeds) {
+    it(`seed ${s.id} tỉ lệ đoạn => rescale PHẢI ném`, () => {
+      expect(() => rescale(s, 2)).toThrow(/tỉ lệ|chia điểm|bất biến/i);
+    });
+  }
+  it("HỒI QUY DƯƠNG: 'AB = 3' (cạnh trần, KHÔNG '/'/':') vẫn co giãn => AB = 6", () => {
+    const s = mkSeed({
+      statement_vi: "Cho tứ diện đều ABCD có AB = 3. Tính thể tích khối tứ diện ABCD.",
+      answer: { canonical: "9*sqrt(2)/4", type: "surd" },
+      scale_degree: 3,
+    });
+    const v = rescale(s, 2);
+    expect(v.statement_vi).toContain("AB = 6");
+  });
+});
+
+describe("RS-4 — rescale: 'số đường chéo/đường sinh/…' = SỐ ĐẾM (không độ dài) => skip", () => {
+  it("seed vsgeo-9003 'số đường chéo bằng 9' => rescale PHẢI ném", () => {
+    const s = mkSeed({
+      statement_vi:
+        "Cho hình chóp đều cạnh a, đáy là đa giác đều có số đường chéo bằng 9. Tính thể tích khối chóp.",
+      answer: { canonical: "a^3*sqrt(3)/12", type: "surd" },
+      scale_degree: 3,
+    });
+    expect(() => rescale(s, 2)).toThrow(/số|đa giác|đổi hình/i);
+  });
+  it("HỒI QUY DƯƠNG: 'số cạnh đáy bằng 6' (F18 gốc) vẫn ném", () => {
+    const s = mkSeed({
+      statement_vi: "Cho lăng trụ đều có số cạnh đáy bằng 6, cạnh a. Tính thể tích.",
+      answer: { canonical: "a^3", type: "surd" },
+      scale_degree: 3,
+    });
+    expect(() => rescale(s, 2)).toThrow(/số/i);
+  });
+});
+
+describe("RS-5 — rescale: bội số hình dạng 'bằng/= N <danh từ độ dài>' (bậc 0) => skip", () => {
+  const seeds: any[] = [
+    {"id":"vsgeo-9001","statement_vi":"Cho hình chóp tứ giác đều S.ABCD có cạnh a và chiều cao bằng 3 cạnh đáy. Tính thể tích khối chóp.","answer":{"canonical":"a^3","type":"surd"},"scale_degree":3},
+    {"id":"vsgeo-9002","statement_vi":"Cho hình chóp S.ABCD có cạnh a và đường cao bằng 2 cạnh đáy. Tính thể tích khối chóp.","answer":{"canonical":"a^3","type":"surd"},"scale_degree":3},
+    {"id":"vsgeo-9003","statement_vi":"Cho hình chóp S.ABCD đáy hình vuông cạnh a, đường cao SA = 3 cạnh đáy. Tính thể tích khối chóp.","answer":{"canonical":"a^3","type":"surd"},"scale_degree":3},
+  ];
+  for (const raw of seeds) {
+    it(`seed ${raw.id} '${raw.statement_vi.slice(0, 40)}…' => rescale PHẢI ném`, () => {
+      const s = mkSeed(raw as any);
+      expect(() => rescale(s, 2)).toThrow(/bội số|cạnh đáy|đổi hình/i);
+    });
+  }
+  it("HỒI QUY DƯƠNG: 'cạnh đáy bằng 3 và chiều cao bằng 4' (số ĐỘC LẬP) vẫn co giãn", () => {
+    const s = mkSeed({
+      statement_vi: "Cho hình chóp S.ABCD có cạnh đáy bằng 3 và chiều cao bằng 4. Tính thể tích khối chóp.",
+      answer: { canonical: "12", type: "rational" },
+      scale_degree: 3,
+    });
+    const v = rescale(s, 2);
+    expect(v.statement_vi).toContain("bằng 6");
+    expect(v.statement_vi).toContain("bằng 8");
+  });
+});
+
+describe("RS-6 / OS-2 — rescale: TỔNG đại lượng khác bậc (chu vi/diện tích/thể tích) => skip", () => {
+  const seeds: any[] = [
+    {"id":"vsgeo-0001","statement_vi":"Cho hình lập phương ABCD.A'B'C'D' có cạnh a. Tính tổng chu vi đáy và diện tích đáy.","answer":{"canonical":"4*a + a^2","type":"surd"},"scale_degree":2},
+    {"id":"vsgeo-0002","statement_vi":"Cho hình lập phương ABCD.A'B'C'D' có cạnh a. Tính tổng diện tích một mặt và chu vi đáy.","answer":{"canonical":"a^2 + 4*a","type":"surd"},"scale_degree":2},
+  ];
+  for (const raw of seeds) {
+    it(`RS-6 seed ${raw.id} chu vi+diện tích => rescale PHẢI ném`, () => {
+      const s = mkSeed(raw as any);
+      expect(() => rescale(s, 2)).toThrow(/khác bậc|đồng bậc|chu vi/i);
+    });
+  }
+  it("HỒI QUY DƯƠNG (RS-6): CHỈ diện tích (đơn bậc, deg=2) vẫn co giãn", () => {
+    const s = mkSeed({
+      statement_vi: "Cho hình lập phương có cạnh a. Tính diện tích đáy.",
+      answer: { canonical: "a^2", type: "surd" },
+      scale_degree: 2,
+    });
+    const v = rescale(s, 2);
+    expect(v.statement_vi).toContain("cạnh 2a");
+  });
+
+  // OS-2: dấu chấm GIỮA hai chữ HOA trong tên đỉnh ("S.ABCD") KHÔNG được cắt chuỗi [^.]* của asks*.
+  it("OS-2: 'S.ABCD … Tính thể tích' + scale_degree=2 => ném /bậc/ (không câm)", () => {
+    const s = mkSeed({
+      statement_vi: "Cho hình chóp S.ABCD có cạnh a. Tính thể tích khối chóp S.ABCD.",
+      answer: { canonical: "a^3", type: "surd" },
+      scale_degree: 2,
+    });
+    expect(() => rescale(s, 2)).toThrow(/bậc/);
+  });
+  it("OS-2: 'S.ABCD … Tính thể tích' + scale_degree=3 => EMIT (khớp bậc)", () => {
+    const s = mkSeed({
+      statement_vi: "Cho hình chóp S.ABCD có cạnh a. Tính thể tích khối chóp S.ABCD.",
+      answer: { canonical: "a^3", type: "surd" },
+      scale_degree: 3,
+    });
+    const v = rescale(s, 2);
+    expect(v.statement_vi).toContain("cạnh 2a");
+  });
+  it("OS-2 (LÀM PHẲNG có tác dụng): 'Tính thể tích … S.ABCD … diện tích' bị dấu chấm cắt => vẫn ném", () => {
+    // Không làm phẳng: [^.]* của asksArea bị cắt ở dấu chấm trong 'S.ABCD' => asksArea SAI => emit sai.
+    const s = mkSeed({
+      statement_vi:
+        "Cho khối chóp S.ABCD có cạnh a. Tính thể tích khối chóp S.ABCD, biết thêm diện tích xung quanh.",
+      answer: { canonical: "a^3 + a^2", type: "surd" },
+      scale_degree: 3,
+    });
+    expect(() => rescale(s, 2)).toThrow(/bậc/);
+  });
+});
+
+describe("RS-7 — rescale: đáp án type=ratio KHÔNG THỨ NGUYÊN (bậc 0) mà scale_degree≠0 => skip", () => {
+  const seeds: any[] = [
+    {"id":"vsgeo-0005","statement_vi":"Cho hình chóp S.ABCD có cạnh a. Tính MN so với AB.","answer":{"canonical":"1/2","type":"ratio"},"scale_degree":1},
+    {"id":"vsgeo-0002","statement_vi":"Cho hình chóp S.ABCD có cạnh a. Tính giá trị của AM/AN.","answer":{"canonical":"1/2","type":"ratio"},"scale_degree":1},
+  ];
+  for (const raw of seeds) {
+    it(`seed ${raw.id} ratio + scale_degree≠0 => rescale PHẢI ném`, () => {
+      const s = mkSeed(raw as any);
+      expect(() => rescale(s, 2)).toThrow(/tỉ số|ratio|thứ nguyên/i);
+    });
+  }
+  it("HỒI QUY DƯƠNG: ratio + scale_degree=0 => EMIT (bất biến, factor=1)", () => {
+    const s = mkSeed({
+      statement_vi: "Cho hình lập phương cạnh a. Tính giá trị của biểu thức đã cho.",
+      answer: { canonical: "1/2", type: "ratio" },
+      scale_degree: 0,
+    });
+    const v = rescale(s, 2);
+    expect(v.statement_vi).toContain("cạnh 2a");
+    expect(canonicalToNumber(v.answer.canonical)).toBeCloseTo(0.5, 6);
+  });
+});
+
+describe("RS-8 — rescale: chữ số phi-ASCII & số đo viết bằng CHỮ sau danh từ độ dài => skip", () => {
+  it("RS-8a: full-width '７' (U+FF17) — scaler/hậu-kiểm mù chữ số phi-ASCII => ném", () => {
+    const s = mkSeed({
+      statement_vi: "Cho khối lăng trụ có cạnh a và chiều cao ７. Tính thể tích khối lăng trụ.",
+      answer: { canonical: "7*a^2", type: "surd" },
+      scale_degree: 3,
+    });
+    expect(() => rescale(s, 2)).toThrow(/ASCII|chữ số|không co giãn/i);
+  });
+  it("RS-8b: 'bán kính ba' (số viết CHỮ sau danh từ độ dài) => ném", () => {
+    const s = mkSeed({
+      statement_vi: "Cho hình nón có bán kính ba và chiều cao bằng 4. Tính thể tích khối nón.",
+      answer: { canonical: "12*pi", type: "surd" },
+      scale_degree: 3,
+    });
+    expect(() => rescale(s, 2)).toThrow(/chữ|số đo|co giãn/i);
+  });
+  it("HỒI QUY DƯƠNG (RS-8a): 'chiều cao 7' (ASCII) vẫn co giãn => 'chiều cao 14'", () => {
+    const s = mkSeed({
+      statement_vi: "Cho khối lăng trụ có cạnh a và chiều cao 7. Tính thể tích khối lăng trụ.",
+      answer: { canonical: "7*a^2", type: "surd" },
+      scale_degree: 3,
+    });
+    const v = rescale(s, 2);
+    expect(v.statement_vi).toContain("chiều cao 14");
+    expect(v.statement_vi).toContain("cạnh 2a");
+  });
+  it("HỒI QUY DƯƠNG (RS-8b): 'bán kính 3' (chữ số) vẫn co giãn => 'bán kính 6'", () => {
+    const s = mkSeed({
+      statement_vi: "Cho hình nón có bán kính 3 và chiều cao bằng 4. Tính thể tích khối nón.",
+      answer: { canonical: "12*pi", type: "surd" },
+      scale_degree: 3,
+    });
+    const v = rescale(s, 2);
+    expect(v.statement_vi).toContain("bán kính 6");
+  });
+});
+
+describe("OS-1 — rescale: chỉ số HOA trong tên đỉnh ('A1B1C1') KHÔNG bị coi là đơn vị dính => EMIT", () => {
+  it("'ABC.A1B1C1' co giãn cạnh a bình thường (không ném oan)", () => {
+    const s = mkSeed({
+      statement_vi: "Cho lăng trụ ABC.A1B1C1 có cạnh a. Tính thể tích khối lăng trụ.",
+      answer: { canonical: "a^3*sqrt(3)/4", type: "surd" },
+      scale_degree: 3,
+    });
+    const v = rescale(s, 2);
+    expect(v.statement_vi).toContain("cạnh 2a");
+  });
+});
