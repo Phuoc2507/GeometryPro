@@ -5,6 +5,7 @@ import { runAny, RunPlanSchema, AnalysisPlanSchema, entityTableToGeometryData } 
 import { callVilao } from '../vilao.js';
 import { TRANSLATOR_PROMPT } from './translatorPrompt.js';
 import { answersAgree } from '../answerCompare.js';
+import { classifyTier, tierFromThrow } from './classifyTier.js';
 
 // Gỡ hàng rào ```json nếu model lỡ thêm dù đã dặn.
 function extractJson(raw) {
@@ -117,12 +118,23 @@ export function solvePlan(plan) {
 }
 
 export async function solveProblem(problem, options = {}) {
-  const plan = await planFromProblem(problem, options);
+  // Khước từ dịch (abstain / non-JSON / sai schema) TRẢ object Mức-3 có tier, thay vì để exception
+  // nổ. Route caller vẫn rơi về LLM fallback — nay có `tier` để render lời giải thích trung thực.
+  let plan;
+  try {
+    plan = await planFromProblem(problem, options);
+  } catch (e) {
+    return {
+      plan: null, ok: false, geometry: null, answers: [], violations: [],
+      errors: [{ message: e && e.message ? e.message : 'lỗi dịch' }],
+      tier: tierFromThrow(e),
+    };
+  }
+
   const result = { plan, ...solvePlan(plan) };
+  result.tier = classifyTier(result); // MỘT nguồn sự thật; draw/solve thừa hưởng object này.
 
   // A1 — ĐỐI CHIẾU 2 ĐƯỜNG (gated qua env KERNEL_CROSSCHECK='on'; mặc định TẮT ⇒ không tốn thêm).
-  // Dịch đề LẦN 2 độc lập rồi so ĐÁP SỐ. Lệch ⇒ engine không đủ tin ⇒ đánh dấu ok=false để route
-  // rơi về luồng LLM cũ (thay vì phục vụ một đáp có thể sai). Trùng ⇒ tin cao. Đây là lưới chống #1.
   if (String(process.env.KERNEL_CROSSCHECK || '').trim() === 'on' && result.ok && result.answers?.length) {
     try {
       const r2 = solvePlan(await planFromProblem(problem, options));
@@ -130,10 +142,12 @@ export async function solveProblem(problem, options = {}) {
       const a2num = r2.answers?.[0]?.approx;
       const agree = a2num != null && Number.isFinite(a2num) ? answersAgree(a1text, a2num, 1e-3) : null;
       if (agree === false) {
-        return {
+        const disagreed = {
           ...result, ok: false, crossCheck: 'disagree',
           errors: [...(result.errors || []), { message: `cross-check lệch: "${a1text}" vs "${r2.answers?.[0]?.text}"` }],
         };
+        disagreed.tier = classifyTier(disagreed); // ok flip false ⇒ tier phải tính lại (không stale).
+        return disagreed;
       }
       result.crossCheck = agree === true ? 'agree' : 'unverified';
     } catch { /* lỗi khi đối chiếu ⇒ giữ kết quả gốc, không chặn */ }
