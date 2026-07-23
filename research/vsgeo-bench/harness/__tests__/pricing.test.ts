@@ -18,8 +18,21 @@ describe("estimateCostUsd — ước tính chi phí theo số token", () => {
     expect(estimateCostUsd("test:demo", undefined)).toBeUndefined();
   });
 
-  it("bảng giá PRICING có ít nhất các model chính của đề tài", () => {
-    // Chỉ kiểm tra khoá tồn tại, KHÔNG kiểm tra con số (con số là cấu hình, sẽ đổi theo thời giá).
-    expect(PRICING["test:demo"]).toBeDefined();
+  it("bảng giá PRICING phủ MỖI nhà cung cấp chính (openai/gemini/anthropic/openrouter)", () => {
+    // Bản cũ chỉ kiểm PRICING["test:demo"] (khoá DEMO) — tên test hứa "model chính" nhưng
+    // KHÔNG canh dòng giá THẬT nào: ai lỡ xoá hết dòng thật thì mọi costUsd rỗng mà test vẫn
+    // XANH (bộ tự-phản-biện phát hiện). Kiểm THEO TIỀN TỐ nhà cung cấp, KHÔNG khoá cứng tên
+    // model (tên model đổi theo thời giá; con số càng không kiểm).
+    const providers = new Set(Object.keys(PRICING).map((key) => key.split(":")[0]));
+    for (const p of ["openai", "gemini", "anthropic", "openrouter"]) {
+      expect(providers).toContain(p);
+    }
+  });
+
+  it("estimateCostUsd ra số dương cho một model THẬT trong bảng (không chỉ demo)", () => {
+    const realKey = Object.keys(PRICING).find((key) => !key.startsWith("test:"));
+    expect(realKey).toBeDefined();
+    const cost = estimateCostUsd(realKey!, { in: 1000, out: 1000 });
+    expect(cost).toBeGreaterThan(0);
   });
 });

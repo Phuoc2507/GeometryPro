@@ -31,13 +31,29 @@ export function parseArgs(argv: string[]): CliArgs {
   const styles = (get("--styles") ?? "zero_shot")
     .split(",").map((s) => s.trim()).filter(Boolean) as PromptStyle[];
 
+  // Ép & KIỂM tham số số học. Bản cũ dùng Number() TRẦN: "--k abc" => NaN, vòng lặp
+  // `run <= NaN` sai ngay => 0 lượt, ghi JSONL rỗng, thoát 0 (bộ tự-phản-biện phát hiện:
+  // benchmark IM LẶNG không ra dữ liệu, đầu độc oracle bằng tập rỗng). Nay từ chối rõ ràng.
+  const kRaw = get("--k") ?? "3";
+  const k = Number(kRaw);
+  if (!Number.isInteger(k) || k < 1) {
+    throw new Error(`--k phải là số nguyên ≥ 1 (số lần lặp mỗi bài), nhận: "${kRaw}"`);
+  }
+  // Tương tự: "--temperature hot" => NaN => temperature:null lọt vào request (?? KHÔNG chặn
+  // NaN) => vỡ tính TÁI LẬP của benchmark. Chặn về [0, 2] (bao trọn dải của các nhà cung cấp).
+  const tempRaw = get("--temperature") ?? "0";
+  const temperature = Number(tempRaw);
+  if (!Number.isFinite(temperature) || temperature < 0 || temperature > 2) {
+    throw new Error(`--temperature phải là số trong [0, 2], nhận: "${tempRaw}"`);
+  }
+
   return {
     seedsPath,
     models: modelsRaw.split(",").map((s) => s.trim()).filter(Boolean),
-    k: Number(get("--k") ?? "3"),
+    k,
     styles,
     date,
-    temperature: Number(get("--temperature") ?? "0"),
+    temperature,
     outDir: get("--out") ?? "research/vsgeo-bench/results",
   };
 }

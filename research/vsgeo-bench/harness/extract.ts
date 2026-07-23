@@ -23,11 +23,13 @@ export function extractBoxed(raw: string): string | null {
       }
     }
     if (depth === 0) {
-      result = raw.slice(contentStart, i).trim();  // ghi đè => giữ cái CUỐI
-      searchFrom = i + 1;
-    } else {
-      break;                                // ngoặc không đóng => bỏ, tránh lặp vô tận
+      result = raw.slice(contentStart, i).trim();  // chỉ nhận khi ngoặc đóng cân; ghi đè => giữ CUỐI
     }
+    // LUÔN nhích qua marker này rồi quét tiếp — kể cả khi ngoặc KHÔNG đóng cân. Một \boxed{
+    // hỏng/bị cắt cụt ở phía TRƯỚC không được che mất \boxed{...} hợp lệ phía SAU (khớp cách
+    // grader/extract.ts làm; bộ tự-phản-biện phát hiện bản cũ `break` làm mất box sau).
+    // contentStart > start nên indexOf lần sau luôn tiến => không lặp vô tận.
+    searchFrom = contentStart;
   }
   return result;
 }
