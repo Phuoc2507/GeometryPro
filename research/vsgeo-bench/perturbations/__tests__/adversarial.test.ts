@@ -348,3 +348,26 @@ describe("F10 — reflect: từ chối MỌI phương trình/ràng buộc, khôn
     expect(v.answer.canonical).toBe("sqrt(22)");
   });
 });
+
+describe("F11 — rescale: assertFullyScaled không được nhầm NHÃN đỉnh 'A' là cạnh ký hiệu 'a'", () => {
+  // EDGE /.../gi bắt cả 'A' HOA (nhãn đỉnh) lẫn 'a' thường (cạnh ký hiệu). Sau khi "cạnh a"
+  // đã thành "cạnh 2a" (đã co giãn), hậu-kiểm vẫn quét thấy nhãn "A" đứng tự do => ném NHẦM
+  // => bài co-giãn-được BỊ BỎ (false-skip). Sửa /gi -> /g: chỉ 'a' thường mới là cạnh.
+  it("đề có 'cạnh a' và nhãn đỉnh 'A' => VẪN co giãn được (không ném nhầm)", () => {
+    const s = mkSeed({
+      statement_vi: "Cho hình lập phương có cạnh a. Gọi A là một đỉnh. Tính thể tích.",
+      answer: { canonical: "a^3", type: "rational" },
+    });
+    const v = rescale(s, 2);
+    expect(v.statement_vi).toContain("cạnh 2a");
+    expect(v.answer.canonical).toBe("8*(a^3)");
+  });
+
+  it("hồi quy: cạnh ký hiệu 'a' THẬT chưa co giãn ('SA = a') vẫn PHẢI ném", () => {
+    const s = mkSeed({
+      statement_vi: "Cho hình chóp S.ABC có SA = a. Tính thể tích.",
+      answer: { canonical: "a^3", type: "rational" },
+    });
+    expect(() => rescale(s, 2)).toThrow(/ký hiệu|chưa co giãn/i);
+  });
+});

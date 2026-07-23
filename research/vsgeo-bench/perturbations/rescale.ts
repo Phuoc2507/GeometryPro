@@ -40,8 +40,10 @@ function assertScalable(orig: string): void {
 // F1(d) HẬU-KIỂM: sau khi co giãn, không được còn độ dài KÝ HIỆU ('a', '2a') đứng tự do
 // mà chưa nhân k (vd "SA = a" bị bỏ sót trong khi "cạnh a" đã thành "cạnh 2a").
 // m[1] là tiền tố "cạnh " (đã co giãn) — chỉ ném khi độ dài ký hiệu KHÔNG có tiền tố này.
+// F11 PHÂN BIỆT HOA/THƯỜNG (/g KHÔNG /gi): 'a' thường là cạnh ký hiệu, 'A' HOA là NHÃN
+// đỉnh — cờ /i cũ khớp cả nhãn "A" đứng tự do ⇒ ném NHẦM ⇒ bài co-giãn-được bị bỏ oan.
 function assertFullyScaled(scaled: string): void {
-  const EDGE = /(?<=^|[\s=(:])(cạnh\s+)?(\d*)a(?=$|[\s.,;)√^])/gi;
+  const EDGE = /(?<=^|[\s=(:])(cạnh\s+)?(\d*)a(?=$|[\s.,;)√^])/g;
   for (const m of scaled.matchAll(EDGE)) {
     if (!m[1]) {
       throw new Error(
