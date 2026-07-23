@@ -248,10 +248,14 @@ export function executeOxyzOp(op: OxyzOp, et: EntityTable): void {
     case 'oxyz_intersect': {
       const r = computeIntersection(resolveEntityE(op.a, et), resolveEntityE(op.b, et));
       if (!r.ok) throw new Error(r.problem);
-      const pt = r.answer.result === 'point' ? r.answer.point : r.answer.result === 'tangent-point' ? r.answer.point : null;
-      if (!pt) throw new Error(`oxyz_intersect: ${op.a} ∩ ${op.b} is not a single point (${r.answer.result})`);
-      setPointE(et, op.name, pt.p, true);
-      break;
+      const res = r.answer.result;
+      if (res === 'point' || res === 'tangent-point') { setPointE(et, op.name, r.answer.point!.p, true); break; }
+      const why = res === 'parallel' ? 'hai đối tượng song song — không có giao điểm'
+        : res === 'coincident' ? 'hai đối tượng trùng nhau — vô số giao điểm, không xác định một điểm'
+        : res === 'none' ? 'hai đối tượng không cắt nhau (chéo nhau) — không có giao điểm'
+        : res === 'line' ? 'giao là một ĐƯỜNG (mặt×mặt) — dùng query intersection, không phải op oxyz_intersect'
+        : `không phải một điểm (${res})`;
+      throw new Error(`oxyz_intersect: ${op.a} ∩ ${op.b} — ${why}`);
     }
     case 'oxyz_circumsphere_offset': {
       const a = requirePointE(et, op.of[0]).p;
