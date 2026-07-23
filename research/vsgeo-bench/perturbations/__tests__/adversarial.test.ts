@@ -580,3 +580,97 @@ describe("F18 — rescale: 'số cạnh/mặt/đỉnh' là SỐ ĐẾM đa giác
     expect(() => rescale(seedSideCount as any, 2)).toThrow(/số cạnh|đa giác|đếm|số\b/i);
   });
 });
+
+describe("F17/F19/F21 — rescale: hậu-kiểm SỐ-ĐO độc lập từ khoá + phủ đường chéo/cạnh trần", () => {
+  // GỐC RỄ: scaleLengthsInText và assertNoUnscaledLength cũ dùng CHUNG một danh sách từ khoá
+  // {cạnh|dài|cao|bán kính|đường kính|chiều cao|đường cao} nên có CHUNG điểm mù: mọi độ dài
+  // diễn đạt khác (khoảng cách/đường chéo/cạnh trần "AB=3") thoát CẢ scaler LẪN lưới an toàn
+  // => câu giữ độ dài gốc trong khi đáp án ×k^bậc => sai-im-lặng (§4.3). Part A: hậu-kiểm mọi
+  // SỐ (trừ radicand/hệ-số-ký-hiệu/chỉ-số-nhãn) phải ×k. Part B: mở scaler cho đường chéo + cạnh trần.
+
+  // #2 (F17): "khoảng cách ... bằng 3" (chiều cao cho dưới dạng khoảng cách) — scaler không
+  // nắm được cụm giữa ("từ S đến (ABCD)") tuỳ ý, KHÔNG an toàn để co giãn bằng regex => PHẢI SKIP.
+  const seedKhoangCach = {
+    id: "vsgeo-0102",
+    source: { type: "synthetic", ref: "adversarial-F17" },
+    statement_vi:
+      "Cho hình chóp S.ABCD có đáy ABCD là hình vuông cạnh 2, khoảng cách từ S đến mặt phẳng (ABCD) bằng 3. Tính thể tích khối chóp S.ABCD.",
+    answer: { canonical: "4", type: "rational" },
+    tags: {
+      topic: ["the_tich"],
+      answer_form: "rational",
+      difficulty: 2,
+      requires_auxiliary_construction: false,
+    },
+    scale_degree: 3,
+  } as const;
+
+  it("#2 'khoảng cách ... bằng 3' (scaler không nắm được) => PHẢI ném (bỏ qua)", () => {
+    expect(() => rescale(seedKhoangCach as any, 2)).toThrow();
+  });
+
+  // #4 (F19): "AB = 3" gán cạnh TRẦN, không có từ khoá độ dài. Part B pattern-3 co giãn -> "AB = 6".
+  const seedBareEdge = {
+    id: "vsgeo-0104",
+    source: { type: "synthetic", ref: "adversarial-F19" },
+    statement_vi: "Cho tứ diện đều ABCD có AB = 3. Tính thể tích khối tứ diện ABCD.",
+    answer: { canonical: "9*sqrt(2)/4", type: "surd" },
+    tags: {
+      topic: ["the_tich"],
+      answer_form: "surd",
+      difficulty: 3,
+      requires_auxiliary_construction: false,
+    },
+    scale_degree: 3,
+  } as const;
+
+  it("#4 'AB = 3' (cạnh trần) => KHÔNG được giữ trạng thái sai; Part B emit 'AB = 6'", () => {
+    let v: any;
+    try {
+      v = rescale(seedBareEdge as any, 2);
+    } catch {
+      v = null;
+    }
+    // Bất biến an toàn: nếu CÓ emit thì cạnh phải đã co giãn (không còn "AB = 3").
+    if (v) expect(v.statement_vi).not.toMatch(/AB\s*=\s*3\b/);
+    // Có Part B: phải EMIT với cạnh đã co giãn thành 6.
+    expect(v && v.statement_vi).toMatch(/AB\s*=\s*6\b/);
+  });
+
+  // #6 (F21): "đường chéo bằng 2√3" — "đường chéo" chưa trong từ khoá scaler. Part B thêm -> "4√3".
+  const seedDiagonal = {
+    id: "vsgeo-0106",
+    source: { type: "synthetic", ref: "adversarial-F21" },
+    statement_vi: "Cho hình lập phương ABCD.A'B'C'D' có đường chéo bằng 2√3. Tính thể tích khối lập phương.",
+    answer: { canonical: "8", type: "rational" },
+    tags: {
+      topic: ["the_tich"],
+      answer_form: "rational",
+      difficulty: 2,
+      requires_auxiliary_construction: false,
+    },
+    scale_degree: 3,
+  } as const;
+
+  it("#6 'đường chéo bằng 2√3' => KHÔNG giữ '2√3' khi co giãn đáp án; Part B emit '4√3'", () => {
+    let v: any;
+    try {
+      v = rescale(seedDiagonal as any, 2);
+    } catch {
+      v = null;
+    }
+    if (v) expect(v.statement_vi).not.toContain("2√3"); // nếu emit, hệ số đường chéo phải ×k
+    expect(v && v.statement_vi).toContain("4√3"); // có Part B: emit đường chéo 4√3
+  });
+
+  // HỒI QUY DƯƠNG cho Part A (đảm bảo không over-refuse các dạng thường gặp):
+  it("hồi quy Part A: 'cạnh 2' vẫn co giãn (đáp án số exact => 64)", () => {
+    expect(rescale(seedNumeric, 2).answer.canonical).toBe("64");
+  });
+
+  it("hồi quy Part A: 'cạnh a' (không có số đo) VẪN emit, hệ số 2a được miễn", () => {
+    const v = rescale(seedSymbolic, 2);
+    expect(v.statement_vi).toContain("cạnh 2a");
+    expect(v.variant.kind).toBe("rescale");
+  });
+});

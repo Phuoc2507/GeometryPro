@@ -104,21 +104,45 @@ export function scaleLengthsInText(text: string, k: number): string {
   // F13 (a) NỚI RỘNG: cho phép bổ nghĩa "(đáy|bên|xung quanh|nghiêng)*" và liên từ "bằng"
   // giữa từ khoá và con số — "cạnh đáy bằng 3" trước đây bị bỏ sót (số không kề từ khoá) nên
   // câu giữ nguyên 3 trong khi đáp án ×k^bậc => mâu thuẫn. Thêm từ khoá chiều cao|đường cao.
+  // F21 THÊM từ khoá độ dài "đường chéo|đường sinh|trung đoạn" (đều là độ dài bậc-1) để
+  // "đường chéo bằng 2√3" -> "đường chéo bằng 4√3". Lookahead (?![\da-zA-Z]) đã cho dừng trước '√'.
   out = out.replace(
-    /(cạnh|dài|cao|bán kính|đường kính|chiều cao|đường cao)((?:\s+(?:đáy|bên|xung quanh|nghiêng|bằng))*\s+)(\d+(?:\.\d+)?)(?![\da-zA-Z])/gi,
+    /(cạnh|dài|cao|bán kính|đường kính|chiều cao|đường cao|đường chéo|đường sinh|trung đoạn)((?:\s+(?:đáy|bên|xung quanh|nghiêng|bằng))*\s+)(\d+(?:\.\d+)?)(?![\da-zA-Z])/gi,
     (_m, kw: string, mid: string, num: string) => `${kw}${mid}${Number(num) * k}`
+  );
+  // F19 3) gán cạnh TRẦN "AB = 3" (không có từ khoá độ dài) — tên đoạn = HAI chữ HOA.
+  //    Chỉ khớp RHS là SỐ (không phải ký hiệu 'a' -> để assertFullyScaled lo) và không dính chữ/số.
+  //    Lookahead (?![\da-zA-Z]) dừng sau số nguyên/thập-phân trọn vẹn (nhóm (?:\.\d+)? đã nuốt
+  //    phần thập phân) và VẪN cho phép dấu chấm CÂU cuối vế ("AB = 3." -> "AB = 6.").
+  out = out.replace(
+    /\b([A-Z][A-Z])(\s*=\s*)(\d+(?:\.\d+)?)(?![\da-zA-Z])/g,
+    (_m, seg: string, mid: string, num: string) => `${seg}${mid}${Number(num) * k}`
   );
   return out;
 }
 
-// F13 (b) HẬU-KIỂM AN TOÀN: dò các con số nằm sau từ khoá độ dài (dò RỘNG, mọi từ nối tới
-// hết câu) rồi so tập số-độ-dài của bản gốc (đã ×k) với bản đã co giãn. Nếu còn số-độ-dài
-// chưa nhân (scaler nới rộng vẫn không nắm được cách diễn đạt) => NÉM để bỏ qua, tránh emit
-// câu mâu thuẫn với đáp án. false-skip chấp nhận được, false-emit thì không (§4.3).
-const LENGTH_NUM_PROBE =
-  /(?:cạnh|dài|cao|bán kính|đường kính|chiều cao|đường cao)[^.\d]*?(\d+(?:\.\d+)?)(?![\da-zA-Z])/gi;
-function lengthContextNumbers(text: string): number[] {
-  return [...text.matchAll(LENGTH_NUM_PROBE)].map((m) => Number(m[1]));
+// HẬU-KIỂM ĐỘC LẬP VỚI TỪ KHOÁ (F17/F19/F21): mọi SỐ trong đề PHẢI co giãn ×k, trừ các số
+// được MIỄN vì bản chất không co giãn tuyến tính:
+//   (R) radicand/số mũ: đứng ngay sau √ , ^ , "sqrt(" , hoặc "căn …"  (vd '3' trong "2√3")
+//   (S) hệ số ký hiệu: đứng ngay TRƯỚC một chữ thường latin (vd '2' trong "2a") — pattern-1 lo
+//   (L) chỉ số nhãn: dính ngay sau một chữ/số (vd '1' trong "A1") — nhờ lookbehind loại luôn
+// Số còn lại = "số đo". Đòi multiset(số đo bản co giãn) == multiset(số đo gốc ×k), nếu lệch => bỏ.
+// KHÁC hẳn bản cũ (dò theo cùng danh sách từ khoá với scaler nên chung điểm mù): bản này thấy
+// MỌI số nên bắt được cả "khoảng cách", "đường chéo", "AB = 3" mà scaler không nắm.
+function measureNumbers(text: string): number[] {
+  const out: number[] = [];
+  // lookbehind (?<![\p{L}\d.]) : không khớp số dính ngay sau chữ/số/'.'  => tự loại (L) và tránh
+  // cắt giữa số thập phân ("2.5" khớp trọn ở '2', không khớp lại ở '5').
+  const re = /(?<![\p{L}\d.])\d+(?:\.\d+)?/gu;
+  for (const m of text.matchAll(re)) {
+    const i = m.index ?? 0;
+    const before = text.slice(Math.max(0, i - 24), i);
+    const after = text.slice(i + m[0].length);
+    if (/^[a-z]/.test(after)) continue; // (S) hệ số ký hiệu "2a"
+    if (/(?:√|\^|sqrt\s*\(|căn(?:\s+bậc\s+\S+)?(?:\s+của)?\s*)$/iu.test(before)) continue; // (R)
+    out.push(Number(m[0]));
+  }
+  return out;
 }
 function assertNoUnscaledLength(original: string, scaled: string, k: number): void {
   const key = (arr: number[]) =>
@@ -126,11 +150,11 @@ function assertNoUnscaledLength(original: string, scaled: string, k: number): vo
       .map((x) => Math.round(x * 1e6) / 1e6)
       .sort((a, b) => a - b)
       .join(",");
-  const expected = key(lengthContextNumbers(original).map((x) => x * k));
-  const actual = key(lengthContextNumbers(scaled));
+  const expected = key(measureNumbers(original).map((x) => x * k));
+  const actual = key(measureNumbers(scaled));
   if (expected !== actual) {
     throw new Error(
-      `rescale: còn số đo độ dài sau từ khoá cạnh/cao chưa được co giãn (scaler không nắm được cách diễn đạt) — câu sẽ mâu thuẫn đáp án (bỏ qua)`
+      `rescale: có SỐ ĐO trong đề chưa được co giãn ×${k} (scaler không nắm được cách diễn đạt: khoảng cách/đường chéo/cạnh trần…) — câu sẽ mâu thuẫn đáp án (bỏ qua §4.3)`
     );
   }
 }
