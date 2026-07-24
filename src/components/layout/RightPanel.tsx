@@ -367,29 +367,39 @@ function PanelContent() {
                 {(() => {
                   if (activeTab !== 'export') return null;
                   const fixedCamera = previewCamera;
-                  // Center the projected drawing inside the fixed SVG view box. The old preview
-                  // always treated the world origin as the centre, so drawings located away from
-                  // O(0, 0, 0) were pushed against an edge and could be clipped.
+                  // Keep a stable 3D framing while the camera rotates. Re-fitting from the 2D
+                  // bounds every frame causes visible jumps whenever another vertex becomes the
+                  // left/right/top/bottom projection extremity.
                   const projectedPoints = scaledGeometry.points.map(p => ({
                     ...p,
                     proj: project3DTo2D(p, fixedCamera.cameraPos, fixedCamera.target)
                   }));
-                  const previewPoints = projectedPoints.length > 0
-                    ? projectedPoints.map(p => p.proj)
-                    : [{ x: 0, y: 0 }];
-                  const minX = Math.min(...previewPoints.map(p => p.x));
-                  const maxX = Math.max(...previewPoints.map(p => p.x));
-                  const minY = Math.min(...previewPoints.map(p => -p.y));
-                  const maxY = Math.max(...previewPoints.map(p => -p.y));
-                  const projectedSize = Math.max(maxX - minX, maxY - minY, 1);
+                  const pointCount = scaledGeometry.points.length || 1;
+                  const previewCenter = scaledGeometry.points.reduce(
+                    (center, point) => ({
+                      x: center.x + point.x / pointCount,
+                      y: center.y + point.y / pointCount,
+                      z: center.z + point.z / pointCount,
+                    }),
+                    { x: 0, y: 0, z: 0 },
+                  );
+                  const previewRadius = Math.max(
+                    ...scaledGeometry.points.map((point) => Math.hypot(
+                      point.x - previewCenter.x,
+                      point.y - previewCenter.y,
+                      point.z - previewCenter.z,
+                    )),
+                    1,
+                  );
+                  const centerProjection = project3DTo2D(previewCenter, fixedCamera.cameraPos, fixedCamera.target);
 
-                  // Preserve the familiar canvas scale where it fits, while reserving a small
-                  // margin for point labels on large drawings.
+                  // A 3D bounding radius encloses every orthographic projection, so this scale
+                  // stays constant across camera angles while retaining a label margin.
                   const canvasScale = 30.4 * (fixedCamera.zoom || 1);
-                  const fitScale = Math.min(canvasScale, 204 / projectedSize);
+                  const fitScale = Math.min(canvasScale, 102 / previewRadius);
                   const scale = fitScale * (tikzScale / 1.2);
-                  const offsetX = -((minX + maxX) / 2) * scale;
-                  const offsetY = -((minY + maxY) / 2) * scale;
+                  const offsetX = -centerProjection.x * scale;
+                  const offsetY = centerProjection.y * scale;
 
                   // Removed grid (mặt phẳng z=0) to improve performance and clean up the view
 
