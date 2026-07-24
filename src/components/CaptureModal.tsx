@@ -298,7 +298,35 @@ export function CaptureModal({ isOpen, onClose, geometry, canvasRef, hiddenLines
 
   const svgContent = useMemo(() => {
     if (!scaledGeometry || !cameraState) return null;
-    const scale = 30.4 * fixedCamera.zoom;
+    const projectedPoints = scaledGeometry.points.map((point) => ({
+      point,
+      projection: project3DTo2D(point, fixedCamera.cameraPos, fixedCamera.target),
+    }));
+    const previewPoints = [
+      ...projectedPoints.map(({ projection }) => ({ x: projection.x, y: -projection.y })),
+      ...(scaledGeometry.spheres || []).flatMap((sphere) => {
+        const center = project3DTo2D(sphere.center, fixedCamera.cameraPos, fixedCamera.target);
+        const x = center.x;
+        const y = -center.y;
+        return [
+          { x: x - sphere.radius, y: y - sphere.radius },
+          { x: x + sphere.radius, y: y + sphere.radius },
+        ];
+      }),
+    ];
+    if (previewPoints.length === 0) previewPoints.push({ x: 0, y: 0 });
+    const minX = Math.min(...previewPoints.map((point) => point.x));
+    const maxX = Math.max(...previewPoints.map((point) => point.x));
+    const minY = Math.min(...previewPoints.map((point) => point.y));
+    const maxY = Math.max(...previewPoints.map((point) => point.y));
+    const projectedSize = Math.max(maxX - minX, maxY - minY, 1);
+
+    // Center from the projected geometry bounds rather than the world origin.
+    // The scale slider still controls zoom through the SVG viewBox below.
+    const canvasScale = 30.4 * fixedCamera.zoom;
+    const scale = Math.min(canvasScale, 252 / projectedSize);
+    const offsetX = -((minX + maxX) / 2) * scale;
+    const offsetY = -((minY + maxY) / 2) * scale;
     const scaleFactor = exportScale / 1.2;
     return (
       <>
@@ -312,6 +340,7 @@ export function CaptureModal({ isOpen, onClose, geometry, canvasRef, hiddenLines
             <stop offset="100%" stopColor="#1d4ed8" stopOpacity="0.45" />
           </radialGradient>
         </defs>
+        <g transform={`translate(${offsetX} ${offsetY})`}>
         {/* Mặt cầu — vẽ giống LIVE VIEW của panel (quả cầu bóng + xích đạo/kinh tuyến nét đứt) */}
         {(scaledGeometry.spheres || []).map(s => {
           const centerProj = project3DTo2D(s.center, fixedCamera.cameraPos, fixedCamera.target);
@@ -338,8 +367,7 @@ export function CaptureModal({ isOpen, onClose, geometry, canvasRef, hiddenLines
             <line key={line.id} x1={p1.x * scale} y1={-p1.y * scale} x2={p2.x * scale} y2={-p2.y * scale} stroke="black" strokeWidth={isHidden ? 1.5 : 2} strokeDasharray={isHidden ? "6,4" : "0"} strokeLinecap="round" />
           );
         })}
-        {scaledGeometry.points.map(p => {
-            const proj = project3DTo2D(p, fixedCamera.cameraPos, fixedCamera.target);
+        {projectedPoints.map(({ point: p, projection: proj }) => {
             
             let offsetX = 8;
             let offsetY = -12; // Default offset (top-right)
@@ -412,6 +440,7 @@ export function CaptureModal({ isOpen, onClose, geometry, canvasRef, hiddenLines
               </g>
             );
         })}
+        </g>
       </>
     );
   }, [scaledGeometry, cameraState, fixedCamera, hiddenLines, showPoints, isCustomLabelMode, labelOffsets, draggingLabelId, labelDragLastPos, exportScale]);
