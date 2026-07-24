@@ -120,18 +120,14 @@ export function AnimatedPlane3D({ plane, delay, isBuilding, opacityFactor = 1, e
     const geo = new THREE.BufferGeometry();
     const positions: number[] = [];
 
-    if (pts.length === 3) {
+    // Plane points describe the polygon boundary in order. Triangulate it as a
+    // fan so pentagons, hexagons, and larger cross-sections are fully filled.
+    // The previous implementation stopped after point 4, while the outline
+    // continued through every point, which produced visibly unfilled wedges.
+    for (let i = 1; i < pts.length - 1; i++) {
       positions.push(pts[0].x, pts[0].y, pts[0].z);
-      positions.push(pts[1].x, pts[1].y, pts[1].z);
-      positions.push(pts[2].x, pts[2].y, pts[2].z);
-    } else if (pts.length >= 4) {
-      // Two triangles for quad
-      positions.push(pts[0].x, pts[0].y, pts[0].z);
-      positions.push(pts[1].x, pts[1].y, pts[1].z);
-      positions.push(pts[2].x, pts[2].y, pts[2].z);
-      positions.push(pts[0].x, pts[0].y, pts[0].z);
-      positions.push(pts[2].x, pts[2].y, pts[2].z);
-      positions.push(pts[3].x, pts[3].y, pts[3].z);
+      positions.push(pts[i].x, pts[i].y, pts[i].z);
+      positions.push(pts[i + 1].x, pts[i + 1].y, pts[i + 1].z);
     }
 
     geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
