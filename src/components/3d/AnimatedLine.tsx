@@ -107,7 +107,7 @@ export function AnimatedLine({ line, points, delay, isBuilding, dynamicHidden = 
   return (
     <group>
       <Line
-        key={`${line.id}-${isDashed ? 'dashed' : 'solid'}-${highlighted ? 'hl' : ''}`}
+        key={line.id}
         points={[
           [start.x, start.y, start.z],
           [current.x, current.y, current.z],
