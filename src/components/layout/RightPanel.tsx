@@ -23,6 +23,8 @@ function PanelContent() {
   const [tikzScale, setTikzScale] = useState(1.2);
   const [activeTab, setActiveTab] = useState('export');
   const [isCaptureOpen, setIsCaptureOpen] = useState(false);
+  const [isPreviewDragging, setIsPreviewDragging] = useState(false);
+  const [previewDragLastPos, setPreviewDragLastPos] = useState<{ x: number; y: number } | null>(null);
   const context = useGeometryOptional();
   const camera = useCameraOptional();
   const cameraStateContext = useCameraStateOptional();
@@ -65,6 +67,54 @@ function PanelContent() {
   if (!context) return null;
 
   const { state } = context;
+
+  const previewRotationHandlers = {
+    onPointerDown: (event: React.PointerEvent<HTMLDivElement>) => {
+      event.currentTarget.setPointerCapture(event.pointerId);
+      setIsPreviewDragging(true);
+      setPreviewDragLastPos({ x: event.clientX, y: event.clientY });
+    },
+    onPointerMove: (event: React.PointerEvent<HTMLDivElement>) => {
+      const cameraState = cameraStateContext?.cameraState;
+      if (!isPreviewDragging || !previewDragLastPos || !cameraState || !cameraStateContext) return;
+
+      const dx = event.clientX - previewDragLastPos.x;
+      const dy = event.clientY - previewDragLastPos.y;
+      setPreviewDragLastPos({ x: event.clientX, y: event.clientY });
+      if (Math.abs(dx) < 0.1 && Math.abs(dy) < 0.1) return;
+
+      const { position, target, zoom } = cameraState;
+      const vx = position[0] - target[0];
+      const vy = position[1] - target[1];
+      const vz = position[2] - target[2];
+      const radius = Math.hypot(vx, vy, vz) || 1;
+      let theta = Math.atan2(vx, vz) - dx * 0.01;
+      let phi = Math.acos(Math.max(-1, Math.min(1, vy / radius))) - dy * 0.01;
+      phi = Math.max(0.001, Math.min(Math.PI - 0.001, phi));
+
+      cameraStateContext.setCameraState({
+        position: [
+          target[0] + radius * Math.sin(phi) * Math.sin(theta),
+          target[1] + radius * Math.cos(phi),
+          target[2] + radius * Math.sin(phi) * Math.cos(theta),
+        ],
+        target,
+        zoom,
+      });
+    },
+    onPointerUp: (event: React.PointerEvent<HTMLDivElement>) => {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+      setIsPreviewDragging(false);
+      setPreviewDragLastPos(null);
+    },
+    onPointerCancel: () => {
+      setIsPreviewDragging(false);
+      setPreviewDragLastPos(null);
+    },
+    onContextMenu: (event: React.MouseEvent<HTMLDivElement>) => {
+      event.preventDefault();
+    },
+  };
 
   const getDynamicLatex = () => {
     if (!state.geometry || !deferredCamera) return state.geometry?.latexCode || '';
@@ -300,7 +350,10 @@ function PanelContent() {
               </div>
 
           {/* Visual Preview */}
-          <div className="aspect-square w-full bg-white rounded-lg border border-border/50 flex items-center justify-center p-4 shadow-sm relative overflow-hidden group">
+          <div
+            className={`aspect-square w-full bg-white rounded-lg border border-border/50 flex items-center justify-center p-4 shadow-sm relative overflow-hidden group touch-none select-none ${isPreviewDragging ? 'cursor-grabbing' : 'cursor-grab'}`}
+            {...previewRotationHandlers}
+          >
             <div className="absolute inset-0 opacity-[0.03] pointer-events-none bg-[radial-gradient(#000_1px,transparent_1px)] [background-size:10px_10px]" />
             {scaledGeometry && fixedCamera && camera && (
               <svg
@@ -779,7 +832,7 @@ function PanelContent() {
               </svg>
             )}
             <div className="absolute bottom-2 right-2 bg-black/5 rounded px-1.5 py-0.5 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity">
-              <span className="text-[8px] font-bold text-black/40 uppercase tracking-tighter">Live View</span>
+              <span className="text-[8px] font-bold text-black/40 uppercase tracking-tighter">Kéo để xoay</span>
             </div>
           </div>
 
