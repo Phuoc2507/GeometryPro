@@ -90,23 +90,27 @@ function PanelContent() {
 
   // Defer the camera used for LaTeX string generation to keep the SVG 60fps smooth
   const deferredCamera = useDeferredValue(fixedCamera);
+  // Live preview updates must not also regenerate the complete TikZ source. Its
+  // camera deliberately changes only after the main camera has settled.
+  const dynamicLatex = useMemo(() => {
+    const geometry = context?.state.geometry;
+    if (!geometry || !deferredCamera) return geometry?.latexCode || '';
+    return generateProjectedLatex(
+      scaledGeometry || geometry,
+      deferredCamera.cameraPos,
+      deferredCamera.target,
+      camera?.hiddenLines,
+      context?.state.showPoints ?? true,
+      tikzScale * (deferredCamera.zoom || 1)
+    );
+  }, [camera?.hiddenLines, context?.state.geometry, context?.state.showPoints, deferredCamera, scaledGeometry, tikzScale]);
 
   // All hooks above must run even when this panel is rendered without a provider.
   if (!context) return null;
 
   const { state } = context;
 
-  const getDynamicLatex = () => {
-    if (!state.geometry || !deferredCamera) return state.geometry?.latexCode || '';
-    return generateProjectedLatex(
-      scaledGeometry || state.geometry,
-      deferredCamera.cameraPos,
-      deferredCamera.target,
-      camera?.hiddenLines,
-      state.showPoints,
-      tikzScale * (deferredCamera.zoom || 1)
-    );
-  };
+  const getDynamicLatex = () => dynamicLatex;
 
   const handleCopy = () => {
     const latex = getDynamicLatex();
@@ -172,10 +176,11 @@ function PanelContent() {
 
         <TabsContent value="problem" className="flex-1 p-0 m-0 min-h-0 data-[state=active]:flex flex-col">
           {/* Chưa gắn trừ credit cho /api/solve (chờ engine) -> không hiện creditNote sai. */}
-          <SolverContent />
+          {activeTab === 'problem' && <SolverContent />}
         </TabsContent>
 
         <TabsContent value="properties" className="flex-1 p-4">
+          {activeTab === 'properties' && (
           <ScrollArea className="h-full">
             <div className="space-y-4">
               {/* Dynamic Point Sliders */}
@@ -311,6 +316,7 @@ function PanelContent() {
               </Collapsible>
             </div>
           </ScrollArea>
+          )}
         </TabsContent>
 
         <TabsContent value="export" className="flex-1 overflow-hidden p-0">
@@ -861,7 +867,7 @@ function PanelContent() {
       </Tabs>
 
       {/* Modal xuất đầy đủ (PNG, kéo-thả nhãn) — mở từ nút "Mở rộng" ở tab Xuất */}
-      {camera && (
+      {camera && isCaptureOpen && (
         <CaptureModal
           isOpen={isCaptureOpen}
           onClose={() => setIsCaptureOpen(false)}
