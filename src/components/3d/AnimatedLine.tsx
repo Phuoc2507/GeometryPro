@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { memo, useEffect, useMemo, useState } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { Line3D, Point3D } from '@/types/geometry';
@@ -21,10 +21,9 @@ interface AnimatedLineProps {
   emphasize?: boolean;
 }
 
-export function AnimatedLine({ line, points, delay, isBuilding, dynamicHidden = false, highlighted = false, opacity = 1, emphasize = false }: AnimatedLineProps) {
+function AnimatedLineComponent({ line, points, delay, isBuilding, dynamicHidden = false, highlighted = false, opacity = 1, emphasize = false }: AnimatedLineProps) {
   const [visible, setVisible] = useState(true);
   const [progress, setProgress] = useState(1);
-  const [targetProgress, setTargetProgress] = useState(1);
 
   const defaultColor = useMemo(() => getCssHslVar('--foreground'), []);
 
@@ -64,19 +63,35 @@ export function AnimatedLine({ line, points, delay, isBuilding, dynamicHidden = 
     }
   });
 
-  if (!fromPoint || !toPoint) return null;
+  const renderData = useMemo(() => {
+    if (!fromPoint || !toPoint) return null;
 
-  // Swap Y and Z: Math uses Z as height (Oxyz), Three.js uses Y as height
-  const start = new THREE.Vector3(fromPoint.x, fromPoint.z, fromPoint.y);
-  const end = new THREE.Vector3(toPoint.x, toPoint.z, toPoint.y);
-  const current = start.clone().lerp(end, progress);
+    // Swap Y and Z: Math uses Z as height (Oxyz), Three.js uses Y as height.
+    const start = new THREE.Vector3(fromPoint.x, fromPoint.z, fromPoint.y);
+    const end = new THREE.Vector3(toPoint.x, toPoint.z, toPoint.y);
+    const current = start.clone().lerp(end, progress);
+    const distance = start.distanceTo(current);
+    const midPoint = start.clone().lerp(current, 0.5);
+    const direction = current.clone().sub(start).normalize();
+    const quaternion = new THREE.Quaternion().setFromUnitVectors(
+      new THREE.Vector3(0, 1, 0),
+      direction,
+    );
 
-  // Visibility is determined entirely by realtime raycast occlusion
-  const distance = start.distanceTo(current);
-  const midPoint = start.clone().lerp(current, 0.5);
-  // Default cylinder is aligned with Y axis. Rotate it to match the line direction.
-  const direction = current.clone().sub(start).normalize();
-  const quaternion = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), direction);
+    return {
+      distance,
+      hitboxArgs: [0.3, 0.3, distance, 8] as [number, number, number, number],
+      linePoints: [
+        [start.x, start.y, start.z],
+        [current.x, current.y, current.z],
+      ] as [[number, number, number], [number, number, number]],
+      midPoint,
+      quaternion,
+    };
+  }, [fromPoint, progress, toPoint]);
+
+  if (!renderData) return null;
+  const { distance, hitboxArgs, linePoints, midPoint, quaternion } = renderData;
 
   const isDashed = dynamicHidden;
 
@@ -110,10 +125,7 @@ export function AnimatedLine({ line, points, delay, isBuilding, dynamicHidden = 
           a face transition flips many edges at once creates a visible stall. */}
       <Line
         key={line.id}
-        points={[
-          [start.x, start.y, start.z],
-          [current.x, current.y, current.z],
-        ]}
+        points={linePoints}
         color={lineColor}
         lineWidth={isHighlighted ? 5 : (isDashed ? 1.5 : (emphasize ? 4 : 3))}
         dashed
@@ -134,10 +146,13 @@ export function AnimatedLine({ line, points, delay, isBuilding, dynamicHidden = 
           onPointerOut={handlePointerOut}
           userData={{ type: 'line', id: line.id }}
         >
-          <cylinderGeometry args={[0.3, 0.3, distance, 8]} />
+          <cylinderGeometry args={hitboxArgs} />
           <meshBasicMaterial transparent opacity={0} depthWrite={false} />
         </mesh>
       )}
     </group>
   );
 }
+
+export const AnimatedLine = memo(AnimatedLineComponent);
+AnimatedLine.displayName = 'AnimatedLine';

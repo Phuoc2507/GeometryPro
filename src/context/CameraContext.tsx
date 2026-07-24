@@ -16,7 +16,7 @@ interface CameraStateContextType {
 interface CameraContextType {
   canvasRef: React.RefObject<HTMLCanvasElement>;
   hiddenLines: Map<string, boolean>;
-  setHiddenLines: (lines: Map<string, boolean>) => void;
+  setHiddenLines: React.Dispatch<React.SetStateAction<Map<string, boolean>>>;
   highlightedIds: Set<string>;
   setHighlightedIds: (ids: Set<string>) => void;
   /** Bóc-lớp theo bước LỜI GIẢI: id nhìn thấy ở bước hiện tại (null = tắt, hiện đủ). */

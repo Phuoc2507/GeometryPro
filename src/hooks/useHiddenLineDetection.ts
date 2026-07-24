@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { GeometryData, Point3D } from '@/types/geometry';
@@ -10,11 +10,17 @@ import {
   buildOcclusionMesh,
   Triangle
 } from '@/lib/geometry/extractFaces';
+import {
+  confirmHiddenLineTransition,
+  resolveHiddenLineCandidate,
+  type PendingHiddenLineTransition,
+} from '@/lib/geometry/hiddenLineState';
 
 // Sample points along edge at these t values
 const SAMPLE_T_VALUES = [0.2, 0.4, 0.6, 0.8];
-// Minimum fraction of occluded samples to mark line as hidden
-const OCCLUSION_THRESHOLD = 0.5;
+const POSITION_THRESHOLD = 0.01;
+const HALF_DEGREE_QUATERNION_DELTA =
+  1 - Math.cos(THREE.MathUtils.degToRad(0.5) / 2);
 
 /**
  * Convert Point3D to THREE.Vector3, swapping Y and Z for Three.js coordinate system
@@ -34,6 +40,11 @@ export function useHiddenLineDetection(
   const lastCameraPosRef = useRef(new THREE.Vector3());
   const lastCameraQuatRef = useRef(new THREE.Quaternion());
   const raycasterRef = useRef(new THREE.Raycaster());
+  const hiddenLinesRef = useRef<Map<string, boolean>>(new Map());
+  const pendingTransitionsRef = useRef(new Map<string, PendingHiddenLineTransition>());
+  const samplePointRef = useRef(new THREE.Vector3());
+  const directionRef = useRef(new THREE.Vector3());
+  const intersectionsRef = useRef<THREE.Intersection[]>([]);
 
   // Extract faces from geometry (memoized)
   const faces = useMemo(() => {
@@ -98,6 +109,15 @@ export function useHiddenLineDetection(
     return Math.max(size.x, size.y, size.z, 0.1);
   }, [geometry]);
 
+  useEffect(() => {
+    const empty = new Map<string, boolean>();
+    hiddenLinesRef.current = empty;
+    pendingTransitionsRef.current.clear();
+    lastCameraPosRef.current.set(Number.POSITIVE_INFINITY, 0, 0);
+    lastCameraQuatRef.current.set(0, 0, 0, 1);
+    setHiddenLines(empty);
+  }, [geometry]);
+
   // Update hidden lines every frame based on camera position
   useFrame(({ camera }) => {
     if (!geometry || faces.length === 0 || !occlusionMesh) return;
@@ -106,21 +126,27 @@ export function useHiddenLineDetection(
     const cameraQuat = camera.quaternion;
     
     // Threshold to avoid recalculating on tiny movements
-    const posThreshold = 0.01;
-    const quatThreshold = 0.01; // ~0.5 degrees
-    
     const posDiff = lastCameraPosRef.current.distanceTo(cameraPos);
     const quatDiff = 1 - Math.abs(lastCameraQuatRef.current.dot(cameraQuat));
+    const hasPendingTransitions = pendingTransitionsRef.current.size > 0;
     
-    if (posDiff < posThreshold && quatDiff < quatThreshold) {
+    if (
+      !hasPendingTransitions &&
+      posDiff < POSITION_THRESHOLD &&
+      quatDiff < HALF_DEGREE_QUATERNION_DELTA
+    ) {
       return;
     }
-    
+
     lastCameraPosRef.current.copy(cameraPos);
     lastCameraQuatRef.current.copy(cameraQuat);
     
-    const newHiddenLines = new Map<string, boolean>();
     const raycaster = raycasterRef.current;
+    const samplePoint = samplePointRef.current;
+    const direction = directionRef.current;
+    const intersections = intersectionsRef.current;
+    const currentHiddenLines = hiddenLinesRef.current;
+    let nextHiddenLines: Map<string, boolean> | null = null;
     const eps = bboxSize * 1e-2;
     
     // Check each line for occlusion
@@ -131,22 +157,21 @@ export function useHiddenLineDetection(
       const toPoint = pointMap.get(line.to);
       
       if (!fromPoint || !toPoint) {
-        newHiddenLines.set(line.id, false);
         continue;
       }
       
       // Get face indices that contain this edge (to skip self-intersection)
-      const adjacentFaceIndices = edgeToFaceIndices.get(line.id) || new Set<number>();
+      const adjacentFaceIndices = edgeToFaceIndices.get(line.id);
       
       // Sample points along the edge and check occlusion
       let occludedCount = 0;
       
       for (const t of SAMPLE_T_VALUES) {
         // Sample point on edge
-        const samplePoint = fromPoint.clone().lerp(toPoint, t);
+        samplePoint.copy(fromPoint).lerp(toPoint, t);
         
         // Direction from camera to sample point
-        const direction = samplePoint.clone().sub(cameraPos);
+        direction.copy(samplePoint).sub(cameraPos);
         const distToPoint = direction.length();
         direction.normalize();
         
@@ -155,7 +180,8 @@ export function useHiddenLineDetection(
         raycaster.far = distToPoint + eps;
         
         // Check for intersections
-        const intersections = raycaster.intersectObject(occlusionMesh, false);
+        intersections.length = 0;
+        raycaster.intersectObject(occlusionMesh, false, intersections);
         
         // Check if any intersection is in front of the sample point
         // and NOT from an adjacent face
@@ -170,7 +196,7 @@ export function useHiddenLineDetection(
           const faceIndex = triangles[triIndex]?.faceIndex;
           
           // Skip if this is an adjacent face
-          if (faceIndex !== undefined && adjacentFaceIndices.has(faceIndex)) {
+          if (faceIndex !== undefined && adjacentFaceIndices?.has(faceIndex)) {
             continue;
           }
           
@@ -186,26 +212,39 @@ export function useHiddenLineDetection(
         }
       }
       
-      // Line is hidden if majority of sample points are occluded
-      const isHidden = occludedCount / SAMPLE_T_VALUES.length >= OCCLUSION_THRESHOLD;
-      newHiddenLines.set(line.id, isHidden);
-    }
-    
-    // Only update state if there are actual changes
-    setHiddenLines(prev => {
-      let changed = false;
-      if (prev.size !== newHiddenLines.size) {
-        changed = true;
+      const currentHidden = currentHiddenLines.get(line.id) ?? false;
+      const candidate = resolveHiddenLineCandidate(
+        currentHidden,
+        occludedCount,
+        SAMPLE_T_VALUES.length,
+      );
+      const transition = confirmHiddenLineTransition(
+        currentHidden,
+        candidate,
+        pendingTransitionsRef.current.get(line.id),
+      );
+
+      if (transition.pending) {
+        pendingTransitionsRef.current.set(line.id, transition.pending);
       } else {
-        for (const [key, value] of newHiddenLines) {
-          if (prev.get(key) !== value) {
-            changed = true;
-            break;
-          }
+        pendingTransitionsRef.current.delete(line.id);
+      }
+
+      if (transition.changed) {
+        nextHiddenLines ??= new Map(currentHiddenLines);
+        if (transition.value) {
+          nextHiddenLines.set(line.id, true);
+        } else {
+          nextHiddenLines.delete(line.id);
         }
       }
-      return changed ? newHiddenLines : prev;
-    });
+    }
+
+    // Allocate and publish a Map only when a confirmed edge actually changes.
+    if (nextHiddenLines) {
+      hiddenLinesRef.current = nextHiddenLines;
+      setHiddenLines(nextHiddenLines);
+    }
   });
 
   return hiddenLines;
