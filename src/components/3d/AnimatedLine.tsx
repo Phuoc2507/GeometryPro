@@ -40,7 +40,9 @@ function AnimatedLineComponent({
   const isManualMode = geometryCtx?.state.manualMode ?? false;
   const isSelected = geometryCtx?.state.selectedIds.includes(line.id) ?? false;
   const isHighlighted = highlighted || isSelected || hovered;
-  const isDashed = dynamicHidden && !isHighlighted;
+  // `line.style` expresses author intent; dynamic visibility may add dashes,
+  // but must never turn an explicitly dashed construction edge solid.
+  const isDashed = line.style === 'dashed' || dynamicHidden;
   const lineColor = isHighlighted ? '#f97316' : defaultColor;
 
   useFrame((_, delta) => {

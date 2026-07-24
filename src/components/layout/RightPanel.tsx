@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useRef } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { ChevronRight, ChevronLeft, Copy, Check, Box, MapPin, Ruler, Cuboid, Code, Download, Maximize2, FileDown, ChevronDown, BookOpen } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -18,6 +18,11 @@ import { SolverContent, ResizeHandle } from '@/components/SolverPanel';
 import { useResizableWidth } from '@/hooks/useResizableWidth';
 import { TierBanner } from './TierBanner';
 import { downloadBlob } from '@/lib/downloadBlob';
+import {
+  createHiddenLineDetector,
+  isLineDashed,
+  mergeLineDashStyles,
+} from '@/lib/geometry/hiddenLineDetection';
 
 function PanelContent() {
   const [copied, setCopied] = useState(false);
@@ -64,8 +69,23 @@ function PanelContent() {
     () => buildFixedCamera(cameraStateContext?.cameraState),
     [buildFixedCamera, cameraStateContext?.cameraState],
   );
-  const hiddenLinesRef = useRef(camera?.hiddenLines);
-  hiddenLinesRef.current = camera?.hiddenLines;
+  const settledHiddenLineDetector = useMemo(
+    () => scaledGeometry ? createHiddenLineDetector(scaledGeometry) : null,
+    [scaledGeometry],
+  );
+  const settledHiddenLines = useMemo(() => {
+    if (!scaledGeometry || !settledHiddenLineDetector || !settledFixedCamera) {
+      return undefined;
+    }
+    return mergeLineDashStyles(
+      scaledGeometry.lines,
+      settledHiddenLineDetector.detect(settledFixedCamera.cameraPos),
+    );
+  }, [
+    scaledGeometry,
+    settledFixedCamera,
+    settledHiddenLineDetector,
+  ]);
 
   // TikZ follows only the settled camera. Live camera updates therefore redraw
   // the lightweight SVG without rebuilding the source dozens of times a second.
@@ -76,11 +96,18 @@ function PanelContent() {
       scaledGeometry || geometry,
       settledFixedCamera.cameraPos,
       settledFixedCamera.target,
-      hiddenLinesRef.current,
+      settledHiddenLines,
       context?.state.showPoints,
       tikzScale * (settledFixedCamera.zoom || 1)
     );
-  }, [context?.state.geometry, context?.state.showPoints, scaledGeometry, settledFixedCamera, tikzScale]);
+  }, [
+    context?.state.geometry,
+    context?.state.showPoints,
+    scaledGeometry,
+    settledFixedCamera,
+    settledHiddenLines,
+    tikzScale,
+  ]);
 
   // All hooks above must run even when this panel is rendered without a provider.
   if (!context) return null;
@@ -642,7 +669,7 @@ function PanelContent() {
                     const p1 = project3DTo2D(from, fixedCamera.cameraPos, fixedCamera.target);
                     const p2 = project3DTo2D(to, fixedCamera.cameraPos, fixedCamera.target);
 
-                    const isHidden = camera.hiddenLines?.get(line.id) ?? line.style === 'dashed';
+                    const isHidden = isLineDashed(line, camera.hiddenLines);
                     return (
                       <line
                         key={line.id}

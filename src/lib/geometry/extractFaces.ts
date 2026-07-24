@@ -15,9 +15,7 @@ function toVector3(point: Point3D): THREE.Vector3 {
   return new THREE.Vector3(point.x, point.z, point.y);
 }
 
-/**
- * Build an adjacency map from lines (only solid lines for face detection)
- */
+/** Build an adjacency map from the legacy line graph. */
 function buildAdjacencyMap(lines: Line3D[]): Map<string, Set<string>> {
   const adjacency = new Map<string, Set<string>>();
   
@@ -31,14 +29,17 @@ function buildAdjacencyMap(lines: Line3D[]): Map<string, Set<string>> {
   return adjacency;
 }
 
-/**
- * Get line ID for an edge between two points
- */
-function getLineId(from: string, to: string, lines: Line3D[]): string | null {
-  const line = lines.find(
-    l => (l.from === from && l.to === to) || (l.from === to && l.to === from)
-  );
-  return line?.id ?? null;
+function edgeKey(from: string, to: string): string {
+  return from < to ? `${from}\u0000${to}` : `${to}\u0000${from}`;
+}
+
+function buildEdgeIndex(lines: Line3D[]): Map<string, string> {
+  return new Map(lines.map((line) => [edgeKey(line.from, line.to), line.id]));
+}
+
+/** Get a line ID without repeatedly scanning the entire line array. */
+function getLineId(from: string, to: string, edgeIndex: ReadonlyMap<string, string>): string | null {
+  return edgeIndex.get(edgeKey(from, to)) ?? null;
 }
 
 /**
@@ -47,7 +48,7 @@ function getLineId(from: string, to: string, lines: Line3D[]): string | null {
 function findTriangles(
   adjacency: Map<string, Set<string>>,
   points: Point3D[],
-  lines: Line3D[]
+  edgeIndex: ReadonlyMap<string, string>,
 ): Face[] {
   const faces: Face[] = [];
   const foundTriangles = new Set<string>();
@@ -86,9 +87,9 @@ function findTriangles(
         
         // Get edge IDs
         const edges: string[] = [];
-        const e1 = getLineId(a, b, lines);
-        const e2 = getLineId(b, c, lines);
-        const e3 = getLineId(c, a, lines);
+        const e1 = getLineId(a, b, edgeIndex);
+        const e2 = getLineId(b, c, edgeIndex);
+        const e3 = getLineId(c, a, edgeIndex);
         if (e1) edges.push(e1);
         if (e2) edges.push(e2);
         if (e3) edges.push(e3);
@@ -112,7 +113,7 @@ function findTriangles(
 function findQuads(
   adjacency: Map<string, Set<string>>,
   points: Point3D[],
-  lines: Line3D[]
+  edgeIndex: ReadonlyMap<string, string>,
 ): Face[] {
   const faces: Face[] = [];
   const foundQuads = new Set<string>();
@@ -163,10 +164,10 @@ function findQuads(
           
           // Get edge IDs (only the boundary edges, not diagonals)
           const edges: string[] = [];
-          const e1 = getLineId(a, b, lines);
-          const e2 = getLineId(b, c, lines);
-          const e3 = getLineId(c, d, lines);
-          const e4 = getLineId(d, a, lines);
+          const e1 = getLineId(a, b, edgeIndex);
+          const e2 = getLineId(b, c, edgeIndex);
+          const e3 = getLineId(c, d, edgeIndex);
+          const e4 = getLineId(d, a, edgeIndex);
           if (e1) edges.push(e1);
           if (e2) edges.push(e2);
           if (e3) edges.push(e3);
@@ -190,7 +191,11 @@ function findQuads(
  * Extract faces from geometry
  * Returns triangular and quadrilateral faces found from the line graph
  */
-function extractPlaneFaces(points: Point3D[], lines: Line3D[], planes: Plane3D[]): Face[] {
+function extractPlaneFaces(
+  points: Point3D[],
+  edgeIndex: ReadonlyMap<string, string>,
+  planes: Plane3D[],
+): Face[] {
   const pointMap = new Map(points.map((point) => [point.id, point]));
   return planes.flatMap((plane) => {
     let ids = plane.pointIds?.filter((id) => pointMap.has(id)) ?? [];
@@ -223,7 +228,7 @@ function extractPlaneFaces(points: Point3D[], lines: Line3D[], planes: Plane3D[]
     const edges: string[] = [];
     if (ids.length === vertices.length) {
       for (let index = 0; index < ids.length; index++) {
-        const edge = getLineId(ids[index], ids[(index + 1) % ids.length], lines);
+        const edge = getLineId(ids[index], ids[(index + 1) % ids.length], edgeIndex);
         if (edge) edges.push(edge);
       }
     }
@@ -232,17 +237,20 @@ function extractPlaneFaces(points: Point3D[], lines: Line3D[], planes: Plane3D[]
 }
 
 export function extractFaces(points: Point3D[], lines: Line3D[], planes: Plane3D[] = []): Face[] {
+  const edgeIndex = buildEdgeIndex(lines);
   if (planes.length > 0) {
-    const explicitFaces = extractPlaneFaces(points, lines, planes);
-    if (explicitFaces.length > 0) return explicitFaces;
+    // Once a producer supplies planes, they are authoritative. Falling back to
+    // graph cycles for only the invalid entries can invent surfaces from
+    // diagonals and construction lines.
+    return extractPlaneFaces(points, edgeIndex, planes);
   }
   if (points.length < 3 || lines.length < 3) return [];
   
-  // Build adjacency using only solid lines
+  // Compatibility fallback for legacy saved drawings that predate `planes`.
   const adjacency = buildAdjacencyMap(lines);
   
-  const triangles = findTriangles(adjacency, points, lines);
-  const quads = findQuads(adjacency, points, lines);
+  const triangles = findTriangles(adjacency, points, edgeIndex);
+  const quads = findQuads(adjacency, points, edgeIndex);
   
   return [...triangles, ...quads];
 }

@@ -26,6 +26,7 @@ import { AnimatedSurface } from './AnimatedSurface';
 import { AnimatedCurve } from './AnimatedCurve';
 import { useHiddenLineDetection } from '@/hooks/useHiddenLineDetection';
 import { mapsEqual } from '@/hooks/useHiddenLineDetection';
+import { mergeLineDashStyles } from '@/lib/geometry/hiddenLineDetection';
 import { TimelineGroup } from './TimelineGroup';
 import { AnimatedWater } from './AnimatedWater';
 import { AnimatedAgent } from './AnimatedAgent';
@@ -158,6 +159,10 @@ export function GeometryRenderer({ geometry: geometryProp, isBuilding }: Geometr
   }, [currentStep, solutionStep, advanceScene, reveal, solution, geometryProp, requestFocus]);
 
   const hiddenLines = useHiddenLineDetection(geometry);
+  const effectiveDashMap = React.useMemo(
+    () => mergeLineDashStyles(geometry?.lines ?? [], hiddenLines),
+    [geometry, hiddenLines],
+  );
   const isManualMode = geometryContext?.state.manualMode ?? false;
   const highlightedIds = cameraContext?.highlightedIds ?? new Set<string>();
   
@@ -168,8 +173,10 @@ export function GeometryRenderer({ geometry: geometryProp, isBuilding }: Geometr
   const setSharedHiddenLines = cameraContext?.setHiddenLines;
   useEffect(() => {
     if (!setSharedHiddenLines) return;
-    setSharedHiddenLines((previous) => mapsEqual(previous, hiddenLines) ? previous : new Map(hiddenLines));
-  }, [hiddenLines, setSharedHiddenLines]);
+    setSharedHiddenLines((previous) => mapsEqual(previous, effectiveDashMap)
+      ? previous
+      : effectiveDashMap);
+  }, [effectiveDashMap, setSharedHiddenLines]);
 
   const computedTotalDuration = React.useMemo(() => {
     if (!geometry) return 5000;

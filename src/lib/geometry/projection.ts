@@ -1,4 +1,5 @@
 import { Line3D, Point3D, PointCoordinates } from '@/types/geometry';
+import { isLineDashed } from './hiddenLineDetection';
 
 export interface ProjectedPoint extends Point3D {
     projected: { x: number; y: number };
@@ -93,7 +94,7 @@ export const generateProjectedLatex = (
     const dashedLines: Line3D[] = [];
 
     geometry.lines.forEach(line => {
-        const isHidden = hiddenLines?.get(line.id) ?? line.style === 'dashed';
+        const isHidden = isLineDashed(line, hiddenLines);
         if (isHidden) {
             dashedLines.push(line);
         } else {

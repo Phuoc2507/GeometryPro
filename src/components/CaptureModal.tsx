@@ -10,7 +10,11 @@ import { sanitizeLatexLabel, sanitizeLatexName } from '@/lib/sanitizeLatex';
 import { project3DTo2D, generateProjectedLatex } from '@/lib/geometry/projection';
 import { useGeometryOptional } from '@/context/GeometryContext';
 import { useCameraOptional, useCameraStateOptional, type CameraState } from '@/context/CameraContext';
-import { createHiddenLineDetector } from '@/lib/geometry/hiddenLineDetection';
+import {
+  createHiddenLineDetector,
+  isLineDashed,
+  mergeLineDashStyles,
+} from '@/lib/geometry/hiddenLineDetection';
 import { scaleGeometry } from '@/lib/geometry/scaleGeometry';
 import { canvasToBlob, downloadBlob } from '@/lib/downloadBlob';
 
@@ -91,9 +95,15 @@ export function CaptureModal({ isOpen, onClose, geometry, hiddenLines }: Capture
     () => scaledGeometry ? createHiddenLineDetector(scaledGeometry) : null,
     [scaledGeometry],
   );
-  const exportHiddenLines = useMemo(
+  const dynamicallyHiddenExportLines = useMemo(
     () => hiddenLineDetector && cameraState ? hiddenLineDetector.detect(fixedCamera.cameraPos) : hiddenLines,
     [cameraState, fixedCamera.cameraPos, hiddenLineDetector, hiddenLines],
+  );
+  const exportHiddenLines = useMemo(
+    () => scaledGeometry
+      ? mergeLineDashStyles(scaledGeometry.lines, dynamicallyHiddenExportLines ?? new Map())
+      : dynamicallyHiddenExportLines,
+    [dynamicallyHiddenExportLines, scaledGeometry],
   );
   const canExportImage = Boolean(scaledGeometry && cameraState && cameraContext);
 
@@ -391,7 +401,7 @@ export function CaptureModal({ isOpen, onClose, geometry, hiddenLines }: Capture
           if (!from || !to) return null;
           const p1 = project3DTo2D(from, fixedCamera.cameraPos, fixedCamera.target);
           const p2 = project3DTo2D(to, fixedCamera.cameraPos, fixedCamera.target);
-          const isHidden = exportHiddenLines?.get(line.id) ?? line.style === 'dashed';
+          const isHidden = isLineDashed(line, exportHiddenLines);
           return (
             <line key={line.id} x1={p1.x * scale} y1={-p1.y * scale} x2={p2.x * scale} y2={-p2.y * scale} stroke="black" strokeWidth={isHidden ? 1.5 : 2} strokeDasharray={isHidden ? "6,4" : "0"} strokeLinecap="round" />
           );
