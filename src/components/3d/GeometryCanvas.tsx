@@ -1,6 +1,6 @@
 import { useRef, useEffect, useMemo, useCallback } from 'react';
 import { Hexagon } from 'lucide-react';
-import { Canvas, useThree } from '@react-three/fiber';
+import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { OrbitControls, Grid, Environment, Html } from '@react-three/drei';
 import * as THREE from 'three';
 import { GeometryRenderer } from './GeometryRenderer';
@@ -219,7 +219,7 @@ function Scene({ geometry, isBuilding, autoRotate = false, is2D = false, focus =
     }, 180);
   }, [camera, cameraStateContext, centroid]);
 
-  const handleControlsChange = useCallback(() => {
+  const publishLiveCamera = useCallback(() => {
     if (!cameraContext) return;
     const pos = camera.position;
     const targetVec = new THREE.Vector3(...centroid);
@@ -232,6 +232,18 @@ function Scene({ geometry, isBuilding, autoRotate = false, is2D = false, focus =
       zoom,
     });
   }, [camera, cameraContext, centroid]);
+
+  // OrbitControls' event cadence varies with input device and damping. Sampling the
+  // rendered camera guarantees that the export preview can follow every visible
+  // rotation frame when Live is enabled, including auto-rotate.
+  const lastLivePoseRef = useRef('');
+  useFrame(() => {
+    const { x, y, z } = camera.position;
+    const poseKey = `${x.toFixed(5)},${y.toFixed(5)},${z.toFixed(5)},${camera.zoom.toFixed(5)}`;
+    if (poseKey === lastLivePoseRef.current) return;
+    lastLivePoseRef.current = poseKey;
+    publishLiveCamera();
+  });
 
   useEffect(() => () => {
     if (persistTimerRef.current) clearTimeout(persistTimerRef.current);
@@ -296,7 +308,6 @@ function Scene({ geometry, isBuilding, autoRotate = false, is2D = false, focus =
         enableDamping
         dampingFactor={0.05}
         target={centroid}
-        onChange={handleControlsChange}
         onEnd={handleControlsEnd}
         autoRotate={!is2D && autoRotate}
         autoRotateSpeed={1.5}
