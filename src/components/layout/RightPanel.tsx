@@ -1,12 +1,11 @@
-import { useState, useMemo, useCallback, useDeferredValue, useEffect } from 'react';
+import { useState, useMemo, useCallback, useDeferredValue } from 'react';
 import { ChevronRight, ChevronLeft, Copy, Check, Box, MapPin, Ruler, Cuboid, Code, Download, Maximize2, FileDown, ChevronDown, BookOpen } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { useGeometryOptional } from '@/context/GeometryContext';
-import { useCameraOptional, useCameraStateOptional, type CameraState } from '@/context/CameraContext';
+import { useCameraOptional, useCameraStateOptional } from '@/context/CameraContext';
 import { project3DTo2D, generateProjectedLatex } from '@/lib/geometry/projection';
 import { computeProperties, fmt } from '@/lib/geometry/calculations';
 import { DynamicPointControls } from '@/components/DynamicPointControls';
@@ -19,26 +18,11 @@ import { SolverContent, ResizeHandle } from '@/components/SolverPanel';
 import { useResizableWidth } from '@/hooks/useResizableWidth';
 import { TierBanner } from './TierBanner';
 
-function toPreviewCamera(cameraState: CameraState) {
-  const target: [number, number, number] = [0, 0, 0];
-  const viewDir = [
-    cameraState.position[0] - cameraState.target[0],
-    cameraState.position[1] - cameraState.target[1],
-    cameraState.position[2] - cameraState.target[2]
-  ];
-  return {
-    cameraPos: [target[0] + viewDir[0], target[1] + viewDir[1], target[2] + viewDir[2]] as [number, number, number],
-    target,
-    zoom: cameraState.zoom || 1,
-  };
-}
-
 function PanelContent() {
   const [copied, setCopied] = useState(false);
   const [tikzScale, setTikzScale] = useState(1.2);
   const [activeTab, setActiveTab] = useState('export');
   const [isCaptureOpen, setIsCaptureOpen] = useState(false);
-  const [isLivePreview, setIsLivePreview] = useState(false);
   const context = useGeometryOptional();
   const camera = useCameraOptional();
   const cameraStateContext = useCameraStateOptional();
@@ -59,60 +43,40 @@ function PanelContent() {
     if (!geometry || !camera || !st) return null;
     
     // Luôn khóa mục tiêu vào gốc tọa độ O(0,0,0) để tọa độ trong TikZ luôn chuẩn xác
-    return toPreviewCamera(st);
+    const target: [number, number, number] = [0, 0, 0];
+    
+    const viewDir = [
+      st.position[0] - st.target[0],
+      st.position[1] - st.target[1],
+      st.position[2] - st.target[2]
+    ];
+    const cameraPos: [number, number, number] = [
+      target[0] + viewDir[0],
+      target[1] + viewDir[1],
+      target[2] + viewDir[2]
+    ];
+    return { cameraPos, target, zoom: st.zoom || 1 };
   }, [context?.state.geometry, camera, cameraStateContext?.cameraState]);
-
-  // In normal mode, wait until rotation stops before projecting again. Live mode
-  // updates on every camera movement, which is useful when deliberately framing
-  // the exported image.
-  const [frozenPreviewCamera, setFrozenPreviewCamera] = useState<typeof fixedCamera>(null);
-  useEffect(() => {
-    if (!fixedCamera) return;
-    if (isLivePreview) {
-      setFrozenPreviewCamera(fixedCamera);
-      return;
-    }
-
-    const timeoutId = window.setTimeout(() => setFrozenPreviewCamera(fixedCamera), 180);
-    return () => window.clearTimeout(timeoutId);
-  }, [fixedCamera, isLivePreview]);
-  useEffect(() => {
-    if (!isLivePreview || !camera) return;
-    return camera.subscribeToLiveCamera((liveCamera) => {
-      // Live is a visual control: do not schedule it as a transition, otherwise
-      // React can defer several poses and make the preview jump forward.
-      setFrozenPreviewCamera(toPreviewCamera(liveCamera));
-    });
-  }, [camera, isLivePreview]);
-  const previewCamera = frozenPreviewCamera ?? fixedCamera;
-  const handleLivePreviewChange = useCallback((live: boolean) => {
-    if (live && fixedCamera) setFrozenPreviewCamera(fixedCamera);
-    setIsLivePreview(live);
-  }, [fixedCamera]);
 
   // Defer the camera used for LaTeX string generation to keep the SVG 60fps smooth
   const deferredCamera = useDeferredValue(fixedCamera);
-  // Live preview updates must not also regenerate the complete TikZ source. Its
-  // camera deliberately changes only after the main camera has settled.
-  const dynamicLatex = useMemo(() => {
-    const geometry = context?.state.geometry;
-    if (!geometry || !deferredCamera) return geometry?.latexCode || '';
-    return generateProjectedLatex(
-      scaledGeometry || geometry,
-      deferredCamera.cameraPos,
-      deferredCamera.target,
-      camera?.hiddenLines,
-      context?.state.showPoints ?? true,
-      tikzScale * (deferredCamera.zoom || 1)
-    );
-  }, [camera?.hiddenLines, context?.state.geometry, context?.state.showPoints, deferredCamera, scaledGeometry, tikzScale]);
 
   // All hooks above must run even when this panel is rendered without a provider.
   if (!context) return null;
 
   const { state } = context;
 
-  const getDynamicLatex = () => dynamicLatex;
+  const getDynamicLatex = () => {
+    if (!state.geometry || !deferredCamera) return state.geometry?.latexCode || '';
+    return generateProjectedLatex(
+      scaledGeometry || state.geometry,
+      deferredCamera.cameraPos,
+      deferredCamera.target,
+      camera?.hiddenLines,
+      state.showPoints,
+      tikzScale * (deferredCamera.zoom || 1)
+    );
+  };
 
   const handleCopy = () => {
     const latex = getDynamicLatex();
@@ -178,11 +142,10 @@ function PanelContent() {
 
         <TabsContent value="problem" className="flex-1 p-0 m-0 min-h-0 data-[state=active]:flex flex-col">
           {/* Chưa gắn trừ credit cho /api/solve (chờ engine) -> không hiện creditNote sai. */}
-          {activeTab === 'problem' && <SolverContent />}
+          <SolverContent />
         </TabsContent>
 
         <TabsContent value="properties" className="flex-1 p-4">
-          {activeTab === 'properties' && (
           <ScrollArea className="h-full">
             <div className="space-y-4">
               {/* Dynamic Point Sliders */}
@@ -318,25 +281,13 @@ function PanelContent() {
               </Collapsible>
             </div>
           </ScrollArea>
-          )}
         </TabsContent>
 
         <TabsContent value="export" className="flex-1 overflow-hidden p-0">
           <ScrollArea className="h-full w-full">
             <div className="p-4 flex flex-col gap-4">
-              <div className="flex items-center justify-between gap-2">
-                <div className="flex items-center gap-2">
-                  <h3 className="text-sm font-medium text-muted-foreground">Bản xem trước</h3>
-                  <label className="flex items-center gap-1.5 text-[10px] font-medium text-muted-foreground cursor-pointer">
-                    <Switch
-                      checked={isLivePreview}
-                      onCheckedChange={handleLivePreviewChange}
-                      aria-label="Cập nhật bản xem trước theo góc xoay"
-                      className="h-4 w-7 [&>span]:h-3 [&>span]:w-3 data-[state=checked]:[&>span]:translate-x-3"
-                    />
-                    Live
-                  </label>
-                </div>
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-medium text-muted-foreground">Bản xem trước</h3>
                 <div className="flex items-center gap-2">
                   <span className="text-[10px] text-muted-foreground">Scale {tikzScale.toFixed(1)}</span>
                   <input
@@ -351,7 +302,7 @@ function PanelContent() {
           {/* Visual Preview */}
           <div className="aspect-square w-full bg-white rounded-lg border border-border/50 flex items-center justify-center p-4 shadow-sm relative overflow-hidden group">
             <div className="absolute inset-0 opacity-[0.03] pointer-events-none bg-[radial-gradient(#000_1px,transparent_1px)] [background-size:10px_10px]" />
-            {scaledGeometry && previewCamera && camera && (
+            {scaledGeometry && fixedCamera && camera && (
               <svg
                 viewBox="-120 -120 240 240"
                 className="w-full h-full drop-shadow-sm"
@@ -366,40 +317,29 @@ function PanelContent() {
                 </defs>
                 {(() => {
                   if (activeTab !== 'export') return null;
-                  const fixedCamera = previewCamera;
-                  // Keep a stable 3D framing while the camera rotates. Re-fitting from the 2D
-                  // bounds every frame causes visible jumps whenever another vertex becomes the
-                  // left/right/top/bottom projection extremity.
+                  // Center the projected drawing inside the fixed SVG view box. The old preview
+                  // always treated the world origin as the centre, so drawings located away from
+                  // O(0, 0, 0) were pushed against an edge and could be clipped.
                   const projectedPoints = scaledGeometry.points.map(p => ({
                     ...p,
                     proj: project3DTo2D(p, fixedCamera.cameraPos, fixedCamera.target)
                   }));
-                  const pointCount = scaledGeometry.points.length || 1;
-                  const previewCenter = scaledGeometry.points.reduce(
-                    (center, point) => ({
-                      x: center.x + point.x / pointCount,
-                      y: center.y + point.y / pointCount,
-                      z: center.z + point.z / pointCount,
-                    }),
-                    { x: 0, y: 0, z: 0 },
-                  );
-                  const previewRadius = Math.max(
-                    ...scaledGeometry.points.map((point) => Math.hypot(
-                      point.x - previewCenter.x,
-                      point.y - previewCenter.y,
-                      point.z - previewCenter.z,
-                    )),
-                    1,
-                  );
-                  const centerProjection = project3DTo2D(previewCenter, fixedCamera.cameraPos, fixedCamera.target);
+                  const previewPoints = projectedPoints.length > 0
+                    ? projectedPoints.map(p => p.proj)
+                    : [{ x: 0, y: 0 }];
+                  const minX = Math.min(...previewPoints.map(p => p.x));
+                  const maxX = Math.max(...previewPoints.map(p => p.x));
+                  const minY = Math.min(...previewPoints.map(p => -p.y));
+                  const maxY = Math.max(...previewPoints.map(p => -p.y));
+                  const projectedSize = Math.max(maxX - minX, maxY - minY, 1);
 
-                  // A 3D bounding radius encloses every orthographic projection, so this scale
-                  // stays constant across camera angles while retaining a label margin.
+                  // Preserve the familiar canvas scale where it fits, while reserving a small
+                  // margin for point labels on large drawings.
                   const canvasScale = 30.4 * (fixedCamera.zoom || 1);
-                  const fitScale = Math.min(canvasScale, 102 / previewRadius);
+                  const fitScale = Math.min(canvasScale, 204 / projectedSize);
                   const scale = fitScale * (tikzScale / 1.2);
-                  const offsetX = -centerProjection.x * scale;
-                  const offsetY = centerProjection.y * scale;
+                  const offsetX = -((minX + maxX) / 2) * scale;
+                  const offsetY = -((minY + maxY) / 2) * scale;
 
                   // Removed grid (mặt phẳng z=0) to improve performance and clean up the view
 
@@ -879,7 +819,7 @@ function PanelContent() {
       </Tabs>
 
       {/* Modal xuất đầy đủ (PNG, kéo-thả nhãn) — mở từ nút "Mở rộng" ở tab Xuất */}
-      {camera && isCaptureOpen && (
+      {camera && (
         <CaptureModal
           isOpen={isCaptureOpen}
           onClose={() => setIsCaptureOpen(false)}

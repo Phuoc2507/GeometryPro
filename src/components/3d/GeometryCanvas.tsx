@@ -1,6 +1,6 @@
 import { useRef, useEffect, useMemo, useCallback } from 'react';
 import { Hexagon } from 'lucide-react';
-import { Canvas, useFrame, useThree } from '@react-three/fiber';
+import { Canvas, useThree } from '@react-three/fiber';
 import { OrbitControls, Grid, Environment, Html } from '@react-three/drei';
 import * as THREE from 'three';
 import { GeometryRenderer } from './GeometryRenderer';
@@ -131,7 +131,6 @@ interface SceneProps {
 
 function Scene({ geometry, isBuilding, autoRotate = false, is2D = false, focus = null, showCoordinateGrid = true }: SceneProps) {
   const geometryContext = useGeometryOptional();
-  const cameraContext = useCameraOptional();
   const { camera } = useThree();
   const cameraStateContext = useCameraStateOptional();
 
@@ -218,37 +217,6 @@ function Scene({ geometry, isBuilding, autoRotate = false, is2D = false, focus =
       });
     }, 180);
   }, [camera, cameraStateContext, centroid]);
-
-  const publishLiveCamera = useCallback(() => {
-    if (!cameraContext) return;
-    const pos = camera.position;
-    const targetVec = new THREE.Vector3(...centroid);
-    const zoom = (camera as any).isOrthographicCamera
-      ? (camera as any).zoom
-      : 10.59 / Math.max(0.1, pos.distanceTo(targetVec));
-    cameraContext.publishLiveCamera({
-      position: [pos.x, pos.y, pos.z],
-      target: centroid,
-      zoom,
-    });
-  }, [camera, cameraContext, centroid]);
-
-  // OrbitControls' event cadence varies with input device and damping. Sampling the
-  // rendered camera guarantees that the export preview can follow every visible
-  // rotation frame when Live is enabled, including auto-rotate.
-  const lastLivePoseRef = useRef('');
-  const lastLivePublishRef = useRef(0);
-  useFrame((frameState) => {
-    const { x, y, z } = camera.position;
-    const poseKey = `${x.toFixed(5)},${y.toFixed(5)},${z.toFixed(5)},${camera.zoom.toFixed(5)}`;
-    const now = frameState.clock.getElapsedTime();
-    // The preview is isolated from the heavier panel work, so it can follow the
-    // canvas at the display cadence without blocking OrbitControls.
-    if (poseKey === lastLivePoseRef.current || now - lastLivePublishRef.current < 1 / 60) return;
-    lastLivePoseRef.current = poseKey;
-    lastLivePublishRef.current = now;
-    publishLiveCamera();
-  });
 
   useEffect(() => () => {
     if (persistTimerRef.current) clearTimeout(persistTimerRef.current);

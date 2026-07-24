@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useRef, useMemo, useCallback } from 'react';
 
-export interface CameraState {
+interface CameraState {
   position: [number, number, number];
   target: [number, number, number];
   zoom: number;
@@ -16,7 +16,7 @@ interface CameraStateContextType {
 interface CameraContextType {
   canvasRef: React.RefObject<HTMLCanvasElement>;
   hiddenLines: Map<string, boolean>;
-  setHiddenLines: React.Dispatch<React.SetStateAction<Map<string, boolean>>>;
+  setHiddenLines: (lines: Map<string, boolean>) => void;
   highlightedIds: Set<string>;
   setHighlightedIds: (ids: Set<string>) => void;
   /** Bóc-lớp theo bước LỜI GIẢI: id nhìn thấy ở bước hiện tại (null = tắt, hiện đủ). */
@@ -33,10 +33,6 @@ interface CameraContextType {
   /** Bước LỜI GIẢI (inner) đang xem của câu hiện tại — để orchestrator biết bay tới điểm dựng nào. */
   solutionStep: number;
   setSolutionStep: (n: number) => void;
-  /** Emits a transient pose while OrbitControls is moving, without re-rendering all consumers. */
-  publishLiveCamera: (state: CameraState) => void;
-  /** Subscribe to transient camera movement for consumers that explicitly need live updates. */
-  subscribeToLiveCamera: (listener: (state: CameraState) => void) => () => void;
 }
 
 const CameraStateContext = createContext<CameraStateContextType | undefined>(undefined);
@@ -56,21 +52,13 @@ export function CameraProvider({ children }: { children: React.ReactNode }) {
   const resetCamera = useCallback(() => setResetNonce((n) => n + 1), []);
   const [cameraFocus, setCameraFocus] = useState<CameraFocus | null>(null);
   const [solutionStep, setSolutionStep] = useState(0);
-  const liveCameraListenersRef = useRef(new Set<(state: CameraState) => void>());
   const requestFocus = useCallback((pts: Array<{ x: number; y: number; z: number }>) => {
     if (!pts || pts.length === 0) return;
     setCameraFocus((prev) => ({ pts, nonce: (prev?.nonce ?? 0) + 1 }));
   }, []);
-  const publishLiveCamera = useCallback((state: CameraState) => {
-    liveCameraListenersRef.current.forEach((listener) => listener(state));
-  }, []);
-  const subscribeToLiveCamera = useCallback((listener: (state: CameraState) => void) => {
-    liveCameraListenersRef.current.add(listener);
-    return () => liveCameraListenersRef.current.delete(listener);
-  }, []);
 
   const stateValue = useMemo(() => ({ cameraState, setCameraState }), [cameraState]);
-  const mainValue = useMemo(() => ({ canvasRef, hiddenLines, setHiddenLines, highlightedIds, setHighlightedIds, revealVisibleIds, setRevealVisibleIds, resetNonce, resetCamera, cameraFocus, requestFocus, solutionStep, setSolutionStep, publishLiveCamera, subscribeToLiveCamera }), [hiddenLines, highlightedIds, revealVisibleIds, resetNonce, resetCamera, cameraFocus, requestFocus, solutionStep, publishLiveCamera, subscribeToLiveCamera]);
+  const mainValue = useMemo(() => ({ canvasRef, hiddenLines, setHiddenLines, highlightedIds, setHighlightedIds, revealVisibleIds, setRevealVisibleIds, resetNonce, resetCamera, cameraFocus, requestFocus, solutionStep, setSolutionStep }), [hiddenLines, highlightedIds, revealVisibleIds, resetNonce, resetCamera, cameraFocus, requestFocus, solutionStep]);
 
   return (
     <CameraStateContext.Provider value={stateValue}>

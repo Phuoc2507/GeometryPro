@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect } from 'react';
 import { useCameraOptional } from '@/context/CameraContext';
 import { useGeometryOptional } from '@/context/GeometryContext';
 import { GeometryData, Plane3D } from '@/types/geometry';
@@ -21,7 +21,6 @@ import { AnimatedDynamicPoint } from './AnimatedDynamicPoint';
 import { AnimatedSurface } from './AnimatedSurface';
 import { AnimatedCurve } from './AnimatedCurve';
 import { useHiddenLineDetection } from '@/hooks/useHiddenLineDetection';
-import { scheduleHiddenLinePublish } from '@/lib/geometry/hiddenLineState';
 import { TimelineGroup } from './TimelineGroup';
 import { AnimatedWater } from './AnimatedWater';
 import { AnimatedAgent } from './AnimatedAgent';
@@ -156,28 +155,16 @@ export function GeometryRenderer({ geometry: geometryProp, isBuilding }: Geometr
   const hiddenLines = useHiddenLineDetection(geometry);
   const isManualMode = geometryContext?.state.manualMode ?? false;
   const highlightedIds = cameraContext?.highlightedIds ?? new Set<string>();
-  const setSharedHiddenLines = cameraContext?.setHiddenLines;
-  const hiddenLinePublishTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   
   // Might be undefined if rendered outside App (e.g. test environments)
   const toolModeCtx = useToolMode();
   const mode = toolModeCtx?.mode || 'none';
 
   useEffect(() => {
-    if (!setSharedHiddenLines) return;
-    if (hiddenLinePublishTimerRef.current) clearTimeout(hiddenLinePublishTimerRef.current);
-    // Raycast visibility may flip several edges while crossing a face. Keep that
-    // responsive in the canvas, but wait until movement settles before propagating
-    // it to the global export/UI context.
-    hiddenLinePublishTimerRef.current = scheduleHiddenLinePublish(
-      setSharedHiddenLines,
-      hiddenLines,
-      180,
-    );
-    return () => {
-      if (hiddenLinePublishTimerRef.current) clearTimeout(hiddenLinePublishTimerRef.current);
-    };
-  }, [hiddenLines, setSharedHiddenLines]);
+    if (cameraContext && hiddenLines.size > 0) {
+      cameraContext.setHiddenLines(new Map(hiddenLines));
+    }
+  }, [hiddenLines]);
 
   const computedTotalDuration = React.useMemo(() => {
     if (!geometry) return 5000;
