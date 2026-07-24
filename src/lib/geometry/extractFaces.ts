@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { Point3D, Line3D, Plane3D } from '@/types/geometry';
+import { normalizePlanarPolygon } from './planeGeometry';
 
 export interface Face {
   vertices: THREE.Vector3[];
@@ -208,31 +209,35 @@ function extractPlaneFaces(
         return match?.id ?? '';
       }).filter(Boolean);
     }
-    const vertices = ids.length >= 3
-      ? ids.map((id) => toVector3(pointMap.get(id)!))
-      : plane.points.map((point) => new THREE.Vector3(point.x, point.z, point.y));
-    if (vertices.length < 3) return [];
+    const coordinates = ids.length >= 3
+      ? ids.map((id) => {
+        const point = pointMap.get(id)!;
+        return { x: point.x, y: point.y, z: point.z };
+      })
+      : plane.points;
+    const polygon = normalizePlanarPolygon(coordinates);
+    if (!polygon) return [];
 
-    const normal = new THREE.Vector3();
-    for (let index = 0; index < vertices.length; index++) {
-      const current = vertices[index];
-      const next = vertices[(index + 1) % vertices.length];
-      normal.x += (current.y - next.y) * (current.z + next.z);
-      normal.y += (current.z - next.z) * (current.x + next.x);
-      normal.z += (current.x - next.x) * (current.y + next.y);
-    }
-    if (normal.lengthSq() < 1e-12) return [];
-    normal.normalize();
-    const centroid = vertices.reduce((sum, vertex) => sum.add(vertex), new THREE.Vector3())
-      .multiplyScalar(1 / vertices.length);
+    const orderedIds = ids.length >= 3
+      ? polygon.sourceIndices.map((index) => ids[index])
+      : [];
     const edges: string[] = [];
-    if (ids.length === vertices.length) {
-      for (let index = 0; index < ids.length; index++) {
-        const edge = getLineId(ids[index], ids[(index + 1) % ids.length], edgeIndex);
+    if (orderedIds.length === polygon.vertices.length) {
+      for (let index = 0; index < orderedIds.length; index++) {
+        const edge = getLineId(
+          orderedIds[index],
+          orderedIds[(index + 1) % orderedIds.length],
+          edgeIndex,
+        );
         if (edge) edges.push(edge);
       }
     }
-    return [{ vertices, normal, centroid, edges }];
+    return [{
+      vertices: polygon.vertices,
+      normal: polygon.normal,
+      centroid: polygon.center,
+      edges,
+    }];
   });
 }
 

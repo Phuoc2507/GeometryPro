@@ -47,3 +47,57 @@ describe('normalizeGeometryData — giữ animation (chống bug cắt timeline/
     expect(n.agents).toBeUndefined();
   });
 });
+
+describe('normalizeGeometryData plane references', () => {
+  it('links plane coordinates to canonical point IDs and clamps opacity', () => {
+    const normalized = normalizeGeometryData({
+      name: 'plane',
+      points: [
+        { id: 'A', x: 0, y: 0, z: 0 },
+        { id: 'B', x: 2, y: 0, z: 0 },
+        { id: 'C', x: 0, y: 2, z: 0 },
+      ],
+      lines: [],
+      planes: [{
+        id: 'ABC',
+        points: [
+          { x: 0, y: 0, z: 0 },
+          { x: 2, y: 0, z: 0 },
+          { x: 0, y: 2, z: 0 },
+        ],
+        opacity: 0.9,
+      }],
+    });
+
+    expect(normalized.planes[0].pointIds).toEqual(['A', 'B', 'C']);
+    expect(normalized.planes[0].points).toEqual([
+      { x: 0, y: 0, z: 0 },
+      { x: 2, y: 0, z: 0 },
+      { x: 0, y: 2, z: 0 },
+    ]);
+    expect(normalized.planes[0].opacity).toBe(0.35);
+  });
+
+  it('falls back to coordinates when a pointIds list is incomplete', () => {
+    const normalized = normalizeGeometryData({
+      points: [
+        { id: 'A', x: 0, y: 0, z: 0 },
+        { id: 'B', x: 2, y: 0, z: 0 },
+        { id: 'C', x: 2, y: 2, z: 0 },
+        { id: 'D', x: 0, y: 2, z: 0 },
+      ],
+      planes: [{
+        pointIds: ['A', 'B', 'missing', 'D'],
+        points: [
+          { x: 0, y: 0, z: 0 },
+          { x: 2, y: 0, z: 0 },
+          { x: 2, y: 2, z: 0 },
+          { x: 0, y: 2, z: 0 },
+        ],
+      }],
+    });
+
+    expect(normalized.planes[0].pointIds).toEqual(['A', 'B', 'C', 'D']);
+    expect(normalized.planes[0].points).toHaveLength(4);
+  });
+});

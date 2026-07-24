@@ -7,7 +7,11 @@ import { Line } from '@react-three/drei';
 import { useAnimationOptional } from '@/context/AnimationContext';
 import { useGeometryOptional } from '@/context/GeometryContext';
 import { handleAddPoint } from './ClickToPlacePoint';
-import { buildPlanarPolygonGeometry } from '@/lib/geometry/planeGeometry';
+import {
+  buildPlanarPolygonGeometry,
+  getOutwardHullNormal,
+} from '@/lib/geometry/planeGeometry';
+import { collectPlanePointIds } from '@/lib/geometry/planeReferences';
 
 interface AnimatedPlane3DProps {
   plane: Plane3D;
@@ -27,7 +31,7 @@ export function AnimatedPlane3D({
   emphasize = false,
 }: AnimatedPlane3DProps) {
   const groupRef = useRef<THREE.Group>(null);
-  const materialRef = useRef<THREE.MeshStandardMaterial>(null);
+  const materialRef = useRef<THREE.MeshBasicMaterial>(null);
   const outlineRef = useRef<ComponentRef<typeof Line>>(null);
   const animationOpacityRef = useRef(isBuilding ? 0 : 1);
   const [hovered, setHovered] = useState(false);
@@ -49,7 +53,35 @@ export function AnimatedPlane3D({
     () => geometryCtx?.state.geometry?.timeline?.tracks?.filter((track) => track.targetId === plane.id) ?? [],
     [geometryCtx?.state.geometry?.timeline?.tracks, plane.id],
   );
-  const polygon = useMemo(() => buildPlanarPolygonGeometry(plane.points || []), [plane.points]);
+  const resolvedPlanePoints = useMemo(() => {
+    const geometryPoints = geometryCtx?.state.geometry?.points;
+    if (!plane.pointIds?.length || !geometryPoints) return plane.points || [];
+    const pointMap = new Map(geometryPoints.map((point) => [point.id, point]));
+    const resolved = plane.pointIds.map((id) => pointMap.get(id));
+    const valid = resolved.filter((point) => point !== undefined);
+    return valid.length === plane.pointIds.length
+      ? valid
+      : plane.points || [];
+  }, [geometryCtx?.state.geometry?.points, plane.pointIds, plane.points]);
+  const polygon = useMemo(
+    () => buildPlanarPolygonGeometry(resolvedPlanePoints),
+    [resolvedPlanePoints],
+  );
+  const solidReferencePoints = useMemo(() => {
+    const geometry = geometryCtx?.state.geometry;
+    if (!geometry) return [];
+    const referencedIds = new Set<string>();
+    for (const candidate of geometry.planes ?? []) {
+      for (const id of collectPlanePointIds(candidate, geometry.points)) {
+        referencedIds.add(id);
+      }
+    }
+    return geometry.points.filter((point) => referencedIds.has(point.id));
+  }, [geometryCtx?.state.geometry]);
+  const outwardNormal = useMemo(
+    () => polygon ? getOutwardHullNormal(polygon, solidReferencePoints) : null,
+    [polygon, solidReferencePoints],
+  );
   useEffect(() => () => polygon?.geometry.dispose(), [polygon]);
 
   const scratch = useMemo(() => ({
@@ -61,7 +93,7 @@ export function AnimatedPlane3D({
     direction: new THREE.Vector3(),
   }), []);
 
-  useFrame((_, delta) => {
+  useFrame(({ camera }, delta) => {
     const group = groupRef.current;
     const material = materialRef.current;
     if (!group || !material) return;
@@ -108,9 +140,20 @@ export function AnimatedPlane3D({
       animationOpacityRef.current = Math.min(1, animationOpacityRef.current + delta * 4);
       nextOpacity = animationOpacityRef.current;
     }
-
     animationOpacityRef.current = nextOpacity;
-    group.visible = nextVisible;
+
+    // For actual hull faces, fade the back side out and keep only the faces
+    // visible from the current camera. Internal/cross-section planes have
+    // points on both sides and deliberately remain double-sided.
+    if (polygon && outwardNormal && tracks.length === 0 && !isHighlighted) {
+      scratch.direction.subVectors(camera.position, polygon.center);
+      if (scratch.direction.lengthSq() > 1e-12) {
+        const facing = outwardNormal.dot(scratch.direction.normalize());
+        nextOpacity *= THREE.MathUtils.smoothstep(facing, -0.08, 0.08);
+      }
+    }
+
+    group.visible = nextVisible && nextOpacity > 0.01;
     if (!group.matrix.equals(scratch.matrix)) {
       group.matrix.copy(scratch.matrix);
       group.matrixWorldNeedsUpdate = true;
@@ -159,7 +202,7 @@ export function AnimatedPlane3D({
           document.body.style.cursor = 'auto';
         }}
       >
-        <meshStandardMaterial
+        <meshBasicMaterial
           ref={materialRef}
           color={displayColor}
           transparent

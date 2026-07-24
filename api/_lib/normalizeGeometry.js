@@ -20,7 +20,7 @@ export function normalizeGeometryData(data) {
     circles: [],
     cylinders: data.cylinders || [],
     cones: data.cones || [],
-    planes: data.planes || [],
+    planes: [],
   };
 
   if (Array.isArray(data.points)) {
@@ -58,6 +58,60 @@ export function normalizeGeometryData(data) {
       return { x: Number(center.x) || 0, y: Number(center.y) || 0, z: Number(center.z) || 0 };
     }
     return null;
+  }
+
+  if (Array.isArray(data.planes)) {
+    normalized.planes = data.planes.map((plane, index) => {
+      const rawPointIds = Array.isArray(plane.pointIds)
+        ? plane.pointIds
+        : Array.isArray(plane.points) && plane.points.every((point) => typeof point === 'string')
+          ? plane.points
+          : [];
+      const normalizedPointIds = rawPointIds.map((id) => normalizeId(id));
+      const pointIds = normalizedPointIds
+        .filter((id) => normalized.points.some((point) => point.id === id));
+      const hasCompletePointIds = pointIds.length >= 3
+        && pointIds.length === normalizedPointIds.length;
+
+      let points = hasCompletePointIds
+        ? pointIds.map((id) => pointMap[id])
+        : (Array.isArray(plane.points) ? plane.points : [])
+          .filter((point) => point && typeof point === 'object')
+          .map((point) => ({
+            x: Number(point.x),
+            y: Number(point.y),
+            z: Number(point.z),
+          }))
+          .filter((point) => [point.x, point.y, point.z].every(Number.isFinite));
+      if (points.length < 3) return null;
+
+      let resolvedPointIds = pointIds;
+      if (resolvedPointIds.length !== points.length) {
+        resolvedPointIds = points.map((corner) => {
+          const match = normalized.points.find((point) =>
+            Math.abs(point.x - corner.x) <= 1e-6
+            && Math.abs(point.y - corner.y) <= 1e-6
+            && Math.abs(point.z - corner.z) <= 1e-6);
+          return match?.id;
+        }).filter(Boolean);
+      }
+
+      // Prefer canonical coordinates from referenced geometry points. Besides
+      // avoiding drift, this keeps plane edits attached to their vertices.
+      if (resolvedPointIds.length === points.length) {
+        points = resolvedPointIds.map((id) => pointMap[id]);
+      }
+
+      return {
+        ...plane,
+        id: plane.id || `plane-${index + 1}`,
+        pointIds: resolvedPointIds.length === points.length ? resolvedPointIds : undefined,
+        points,
+        opacity: Number.isFinite(Number(plane.opacity))
+          ? Math.min(0.35, Math.max(0.03, Number(plane.opacity)))
+          : 0.12,
+      };
+    }).filter(Boolean);
   }
 
   if (Array.isArray(data.lines)) {

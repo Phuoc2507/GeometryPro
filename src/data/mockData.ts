@@ -24,6 +24,59 @@ export const PYRAMID_MOCK_DATA: GeometryData = {
     { id: 'AC', from: 'A', to: 'C', style: 'dashed' },
     { id: 'BD', from: 'B', to: 'D', style: 'dashed' },
   ],
+  planes: [
+    {
+      id: 'face_ABCD',
+      pointIds: ['A', 'B', 'C', 'D'],
+      points: [
+        { x: -2, y: 0, z: -2 },
+        { x: 2, y: 0, z: -2 },
+        { x: 2, y: 0, z: 2 },
+        { x: -2, y: 0, z: 2 },
+      ],
+      opacity: 0.1,
+    },
+    {
+      id: 'face_SAB',
+      pointIds: ['S', 'A', 'B'],
+      points: [
+        { x: 0, y: 5, z: 0 },
+        { x: -2, y: 0, z: -2 },
+        { x: 2, y: 0, z: -2 },
+      ],
+      opacity: 0.1,
+    },
+    {
+      id: 'face_SBC',
+      pointIds: ['S', 'B', 'C'],
+      points: [
+        { x: 0, y: 5, z: 0 },
+        { x: 2, y: 0, z: -2 },
+        { x: 2, y: 0, z: 2 },
+      ],
+      opacity: 0.1,
+    },
+    {
+      id: 'face_SCD',
+      pointIds: ['S', 'C', 'D'],
+      points: [
+        { x: 0, y: 5, z: 0 },
+        { x: 2, y: 0, z: 2 },
+        { x: -2, y: 0, z: 2 },
+      ],
+      opacity: 0.1,
+    },
+    {
+      id: 'face_SDA',
+      pointIds: ['S', 'D', 'A'],
+      points: [
+        { x: 0, y: 5, z: 0 },
+        { x: -2, y: 0, z: 2 },
+        { x: -2, y: 0, z: -2 },
+      ],
+      opacity: 0.1,
+    },
+  ],
   latexCode: `\\begin{tikzpicture}[scale=1.5]
   % Define coordinates
   \\coordinate (A) at (-2, 0, -2);

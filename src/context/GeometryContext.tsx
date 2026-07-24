@@ -8,6 +8,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/context/AuthContext';
 import { cacheQuotaFromResponse } from '@/lib/quota';
 import { collectPlanePointIds, planeReferencesPoint } from '@/lib/geometry/planeReferences';
+import { normalizePlanarPolygon } from '@/lib/geometry/planeGeometry';
 const LOCAL_API = import.meta.env.VITE_LOCAL_API_URL ?? '';
 
 interface LocalApiError {
@@ -413,7 +414,7 @@ export interface GeometryContextType {
   addPoint: (label: string, x: number, y: number, z: number) => void;
   addLine: (fromId: string, toId: string, style: 'solid' | 'dashed') => void;
   addMidpoint: (p1Id: string, p2Id: string) => void;
-  addPlane: (pointIds: string[]) => void;
+  addPlane: (pointIds: string[]) => boolean;
   addPlaneFromEquation: (a: number, b: number, c: number, d: number) => void;
   removeElement: (type: 'point' | 'line' | 'plane' | 'curve' | 'sphere' | 'cylinder' | 'circle' | 'cone', id: string) => void;
   updatePoint: (id: string, x: number, y: number, z: number) => void;
@@ -1161,12 +1162,26 @@ export function GeometryProvider({ children }: { children: React.ReactNode }) {
 
   const addPlane = useCallback((pointIds: string[]) => {
     const geo = stateRef.current.geometry;
-    if (!geo) return;
+    if (!geo) return false;
     const pts = pointIds.map(id => geo.points.find(p => p.id === id)).filter(Boolean) as Point3D[];
-    if (pts.length < 3) return;
-    const id = `plane_${pointIds.join('_')}`;
-    const label = `(${pts.map(p => p.label).join('')})`;
-    dispatch({ type: 'ADD_PLANE', plane: { id, label, pointIds, points: pts.map(p => ({ x: p.x, y: p.y, z: p.z })), opacity: 0.15 } });
+    if (pts.length !== pointIds.length || pts.length < 3) return false;
+    const polygon = normalizePlanarPolygon(pts);
+    if (!polygon) return false;
+    const orderedPointIds = polygon.sourceIndices.map((index) => pointIds[index]);
+    const orderedPoints = polygon.sourceIndices.map((index) => pts[index]);
+    const id = `plane_${orderedPointIds.join('_')}`;
+    const label = `(${orderedPoints.map(p => p.label).join('')})`;
+    dispatch({
+      type: 'ADD_PLANE',
+      plane: {
+        id,
+        label,
+        pointIds: orderedPointIds,
+        points: orderedPoints.map(p => ({ x: p.x, y: p.y, z: p.z })),
+        opacity: 0.15,
+      },
+    });
+    return true;
   }, []);
 
   const addPlaneFromEquation = useCallback((a: number, b: number, c: number, d: number) => {

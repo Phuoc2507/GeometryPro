@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { buildPlanarPolygonGeometry } from './planeGeometry';
+import * as THREE from 'three';
+import {
+  buildPlanarPolygonGeometry,
+  getOutwardHullNormal,
+  normalizePlanarPolygon,
+} from './planeGeometry';
 
 describe('buildPlanarPolygonGeometry', () => {
   it('triangulates a concave five-vertex polygon in its own plane', () => {
@@ -44,6 +49,56 @@ describe('buildPlanarPolygonGeometry', () => {
       { x: 0, y: 0, z: 0 },
       { x: 1, y: 1, z: 1 },
       { x: 2, y: 2, z: 2 },
+    ])).toBeNull();
+  });
+
+  it('repairs a self-crossing selection into perimeter order', () => {
+    const result = buildPlanarPolygonGeometry([
+      { x: 0, y: 0, z: 0 },
+      { x: 2, y: 2, z: 0 },
+      { x: 2, y: 0, z: 0 },
+      { x: 0, y: 2, z: 0 },
+    ]);
+
+    expect(result?.geometry.index?.count).toBe(6);
+    const edges = result?.edgePoints ?? [];
+    for (let index = 0; index < edges.length - 1; index++) {
+      const from = new THREE.Vector3(...edges[index]);
+      const to = new THREE.Vector3(...edges[index + 1]);
+      expect(from.distanceTo(to)).toBeCloseTo(2);
+    }
+    result?.geometry.dispose();
+  });
+
+  it('rejects a non-coplanar face instead of drawing a diagonal sheet', () => {
+    expect(normalizePlanarPolygon([
+      { x: 0, y: 0, z: 0 },
+      { x: 2, y: 0, z: 0 },
+      { x: 2, y: 2, z: 0 },
+      { x: 0, y: 2, z: 0.5 },
+    ])).toBeNull();
+  });
+
+  it('orients hull faces outward but keeps internal sections double-sided', () => {
+    const polygon = normalizePlanarPolygon([
+      { x: -1, y: -1, z: 0 },
+      { x: 1, y: -1, z: 0 },
+      { x: 1, y: 1, z: 0 },
+      { x: -1, y: 1, z: 0 },
+    ]);
+    expect(polygon).not.toBeNull();
+    if (!polygon) return;
+
+    const outward = getOutwardHullNormal(polygon, [
+      { x: 0, y: 0, z: 1 },
+    ]);
+    const towardInterior = new THREE.Vector3(0, 1, 0)
+      .sub(polygon.center)
+      .normalize();
+    expect(outward?.dot(towardInterior)).toBeLessThan(0);
+    expect(getOutwardHullNormal(polygon, [
+      { x: 0, y: 0, z: 1 },
+      { x: 0, y: 0, z: -1 },
     ])).toBeNull();
   });
 });
