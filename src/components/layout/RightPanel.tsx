@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useDeferredValue, useEffect } from 'react';
+import { startTransition, useState, useMemo, useCallback, useDeferredValue, useEffect } from 'react';
 import { ChevronRight, ChevronLeft, Copy, Check, Box, MapPin, Ruler, Cuboid, Code, Download, Maximize2, FileDown, ChevronDown, BookOpen } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
@@ -79,7 +79,7 @@ function PanelContent() {
   useEffect(() => {
     if (!isLivePreview || !camera) return;
     return camera.subscribeToLiveCamera((liveCamera) => {
-      setFrozenPreviewCamera(toPreviewCamera(liveCamera));
+      startTransition(() => setFrozenPreviewCamera(toPreviewCamera(liveCamera)));
     });
   }, [camera, isLivePreview]);
   const previewCamera = frozenPreviewCamera ?? fixedCamera;

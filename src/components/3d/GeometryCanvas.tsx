@@ -237,11 +237,16 @@ function Scene({ geometry, isBuilding, autoRotate = false, is2D = false, focus =
   // rendered camera guarantees that the export preview can follow every visible
   // rotation frame when Live is enabled, including auto-rotate.
   const lastLivePoseRef = useRef('');
-  useFrame(() => {
+  const lastLivePublishRef = useRef(0);
+  useFrame((frameState) => {
     const { x, y, z } = camera.position;
     const poseKey = `${x.toFixed(5)},${y.toFixed(5)},${z.toFixed(5)},${camera.zoom.toFixed(5)}`;
-    if (poseKey === lastLivePoseRef.current) return;
+    const now = frameState.clock.getElapsedTime();
+    // Rendering the SVG preview at 60fps competes with the 3D canvas. 30fps is
+    // still continuous to the eye while leaving enough time for orbit controls.
+    if (poseKey === lastLivePoseRef.current || now - lastLivePublishRef.current < 1 / 30) return;
     lastLivePoseRef.current = poseKey;
+    lastLivePublishRef.current = now;
     publishLiveCamera();
   });
 
