@@ -138,6 +138,7 @@ function Scene({ geometry, isBuilding, autoRotate = false, is2D = false, focus =
   const cameraStateContext = useCameraStateOptional();
   const setCameraState = cameraStateContext?.setCameraState;
   const isExportPreviewOpen = cameraContext?.isExportPreviewOpen ?? false;
+  const isLivePreviewEnabled = cameraContext?.isLivePreviewEnabled ?? false;
 
   // Ref tới OrbitControls (three-stdlib instance) để CameraFlyer điều khiển
   // controls.target trực tiếp trong lúc bay.
@@ -229,12 +230,12 @@ function Scene({ geometry, isBuilding, autoRotate = false, is2D = false, focus =
   }, [camera, centroid, setCameraState]);
 
   const handleControlsChange = useCallback(() => {
-    if (!setCameraState || liveSyncFrameRef.current !== null) return;
+    if (!isLivePreviewEnabled || !setCameraState || liveSyncFrameRef.current !== null) return;
     liveSyncFrameRef.current = requestAnimationFrame(() => {
       liveSyncFrameRef.current = null;
       publishCameraState();
     });
-  }, [publishCameraState, setCameraState]);
+  }, [isLivePreviewEnabled, publishCameraState, setCameraState]);
 
   const handleControlsEnd = useCallback(() => {
     if (!setCameraState) return;
