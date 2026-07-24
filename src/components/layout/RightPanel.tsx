@@ -37,18 +37,14 @@ function PanelContent() {
     return computeProperties(context.state.geometry);
   }, [context?.state.geometry]);
 
-  // Guard against rendering outside provider
-  if (!context) return null;
-
-  const { state } = context;
-
   const fixedCamera = useMemo(() => {
-    if (!state.geometry || !camera) return null;
+    const geometry = context?.state.geometry;
+    const st = cameraStateContext?.cameraState;
+    if (!geometry || !camera || !st) return null;
     
     // Luôn khóa mục tiêu vào gốc tọa độ O(0,0,0) để tọa độ trong TikZ luôn chuẩn xác
     const target: [number, number, number] = [0, 0, 0];
     
-    const st = cameraStateContext?.cameraState;
     const viewDir = [
       st.position[0] - st.target[0],
       st.position[1] - st.target[1],
@@ -60,10 +56,15 @@ function PanelContent() {
       target[2] + viewDir[2]
     ];
     return { cameraPos, target, zoom: st.zoom || 1 };
-  }, [state.geometry, cameraStateContext?.cameraState]);
+  }, [context?.state.geometry, camera, cameraStateContext?.cameraState]);
 
   // Defer the camera used for LaTeX string generation to keep the SVG 60fps smooth
   const deferredCamera = useDeferredValue(fixedCamera);
+
+  // All hooks above must run even when this panel is rendered without a provider.
+  if (!context) return null;
+
+  const { state } = context;
 
   const getDynamicLatex = () => {
     if (!state.geometry || !deferredCamera) return state.geometry?.latexCode || '';

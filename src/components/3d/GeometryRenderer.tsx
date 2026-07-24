@@ -34,6 +34,7 @@ interface GeometryRendererProps {
 import { DynamicCrossSection } from './DynamicCrossSection';
 import { DynamicUnfolding } from './DynamicUnfolding';
 import { useToolMode } from '@/context/ToolModeContext';
+import { collectPlanePointIds } from '@/lib/geometry/planeReferences';
 
 // Advance mode: cờ dim → mờ (giữ ngữ cảnh câu trước), highlight/không cờ → đầy.
 const DIM_OPACITY = 0.25;
@@ -206,8 +207,8 @@ export function GeometryRenderer({ geometry: geometryProp, isBuilding }: Geometr
     const planes = geometry.planes || [];
     if (planes.length > 0) {
       const solidPointIds = new Set<string>();
-      planes.forEach(plane => {
-        plane.points.forEach(pid => solidPointIds.add(pid));
+      planes.forEach((plane) => {
+        collectPlanePointIds(plane, geometry.points).forEach((id) => solidPointIds.add(id));
       });
       return geometry.points.filter(p => solidPointIds.has(p.id));
     }

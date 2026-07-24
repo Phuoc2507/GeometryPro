@@ -59,7 +59,7 @@ export function useGeometryHistory() {
         .limit(50);
 
       if (error) throw error;
-      setHistory(data as HistoryItem[] || []);
+      setHistory((data as unknown as HistoryItem[]) || []);
     } catch (err) {
       handleSupabaseError(err, 'fetching history');
     } finally {

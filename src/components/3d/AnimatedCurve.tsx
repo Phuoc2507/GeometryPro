@@ -125,14 +125,14 @@ export function AnimatedCurve({ curve, delay, isBuilding, opacityFactor = 1 }: A
   const handleClick = (e: any) => {
     if (e.delta > 2) return;
     if (!isManualMode || !geometryCtx) return;
-    if (geometryCtx.state.manualTool === 'deleteLine') {
+    if (geometryCtx.state.manualTool === 'delete') {
       e.stopPropagation();
       geometryCtx.toggleSelection(curve.id);
     }
   };
 
   const handlePointerOver = (e: any) => {
-    if (!isManualMode || geometryCtx?.state.manualTool !== 'deleteLine') return;
+    if (!isManualMode || geometryCtx?.state.manualTool !== 'delete') return;
     e.stopPropagation();
     setHovered(true);
     document.body.style.cursor = 'crosshair';

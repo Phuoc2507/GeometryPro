@@ -86,7 +86,7 @@ export function useSolver() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [openAuthModal, user]);
 
   const reset = useCallback(() => {
     setResult(null);

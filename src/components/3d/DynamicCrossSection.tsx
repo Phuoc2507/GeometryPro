@@ -11,9 +11,8 @@ interface DynamicCrossSectionProps {
 export function DynamicCrossSection({ points }: DynamicCrossSectionProps) {
   const { mode, sliderValue } = useToolMode();
   
-  if (mode !== 'cut' || points.length < 4) return null;
-
   const baseGeometry = useMemo(() => {
+    if (points.length < 4) return null;
     // Math uses Z as height, Three.js uses Y. Must swap Y and Z!
     const vecPoints = points.map(p => new THREE.Vector3(p.x, p.z, p.y));
     const geom = createConvexHull(vecPoints);
@@ -23,7 +22,7 @@ export function DynamicCrossSection({ points }: DynamicCrossSectionProps) {
   }, [points]);
 
   const yBounds = useMemo(() => {
-    if (!baseGeometry.boundingBox) return { min: -5, max: 5 };
+    if (!baseGeometry?.boundingBox) return { min: -5, max: 5 };
     return { min: baseGeometry.boundingBox.min.y, max: baseGeometry.boundingBox.max.y };
   }, [baseGeometry]);
 
@@ -101,6 +100,8 @@ export function DynamicCrossSection({ points }: DynamicCrossSectionProps) {
 
     return { baseMat: base, backMat: back, frontMat: front, capMat: cap };
   }, [clipPlane]);
+
+  if (mode !== 'cut' || points.length < 4 || !baseGeometry) return null;
 
   return (
     <group>

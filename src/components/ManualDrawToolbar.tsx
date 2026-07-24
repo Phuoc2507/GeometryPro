@@ -7,7 +7,6 @@ import { AddLineTool } from '@/components/manual-tools/AddLineTool';
 import { MidpointTool } from '@/components/manual-tools/MidpointTool';
 import { AddPlaneTool } from '@/components/manual-tools/AddPlaneTool';
 import { DeleteTool } from '@/components/manual-tools/DeleteTool';
-import { DeleteLineTool } from '@/components/manual-tools/DeleteLineTool';
 import { EquationTool } from '@/components/manual-tools/EquationTool';
 import { ManualTool } from '@/types/geometry';
 

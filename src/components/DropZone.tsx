@@ -286,7 +286,9 @@ export function DropZone() {
                         onClick={() => {
                           if (demo.geometry && demo.geometry.points && demo.geometry.points.length > 0) {
                             if (context.startDemo) {
-                              context.startDemo({ ...demo.geometry, name: demo.title });
+                              // Demo fixtures are intentionally permissive; normalize their
+                              // literal styles to the application's GeometryData contract.
+                              context.startDemo({ ...demo.geometry, name: demo.title } as import('@/types/geometry').GeometryData);
                             }
                           } else {
                             setShowTextInput(true);

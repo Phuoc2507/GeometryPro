@@ -19,11 +19,9 @@ export function AnimatedVector({ vector, points, delay, isBuilding }: AnimatedVe
 
   const fromPt = points.find(p => p.id === vector.from);
   const toPt = points.find(p => p.id === vector.to);
-  if (!fromPt || !toPt) return null;
-
   // Math coords → Three.js (swap Y/Z)
-  const origin = useMemo(() => new THREE.Vector3(fromPt.x, fromPt.z, fromPt.y), [fromPt]);
-  const target = useMemo(() => new THREE.Vector3(toPt.x, toPt.z, toPt.y), [toPt]);
+  const origin = useMemo(() => new THREE.Vector3(fromPt?.x ?? 0, fromPt?.z ?? 0, fromPt?.y ?? 0), [fromPt]);
+  const target = useMemo(() => new THREE.Vector3(toPt?.x ?? 0, toPt?.z ?? 0, toPt?.y ?? 0), [toPt]);
   const direction = useMemo(() => target.clone().sub(origin), [origin, target]);
   const length = useMemo(() => direction.length(), [direction]);
   const dirNorm = useMemo(() => direction.clone().normalize(), [direction]);
@@ -48,7 +46,7 @@ export function AnimatedVector({ vector, points, delay, isBuilding }: AnimatedVe
     const mid = origin.clone().add(target).multiplyScalar(0.5);
 
     return { shaftGeo: sg, coneGeo: cg, quaternion: q, midpoint: mid };
-  }, [origin, dirNorm, length, headLength]);
+  }, [origin, target, dirNorm, length, headLength]);
 
   const animCtx = useAnimationOptional();
   const geometryCtx = useGeometryOptional();
@@ -76,6 +74,8 @@ export function AnimatedVector({ vector, points, delay, isBuilding }: AnimatedVe
       if (groupRef.current) groupRef.current.scale.setScalar(progressRef.current);
     }
   });
+
+  if (!fromPt || !toPt) return null;
 
   return (
     <group ref={groupRef} position={origin} quaternion={quaternion}>

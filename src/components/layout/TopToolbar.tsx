@@ -29,6 +29,7 @@ export function TopToolbar() {
   const context = useGeometryOptional();
   const cameraContext = useCameraOptional();
   const { isPro } = useAuth();
+  const navigate = useNavigate();
   
   const { mode, setMode } = useToolMode();
   const location = useLocation();
@@ -36,7 +37,6 @@ export function TopToolbar() {
 
   if (!context) return null;
   
-  const navigate = useNavigate();
   const { state, clearGeometry, setManualMode, setVideoMode, undo, redo, canUndo, canRedo } = context;
   const isManualMode = state.manualMode;
 

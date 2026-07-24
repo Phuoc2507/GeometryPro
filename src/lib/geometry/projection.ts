@@ -1,4 +1,4 @@
-import { Point3D } from '@/types/geometry';
+import { Point3D, PointCoordinates } from '@/types/geometry';
 
 export interface ProjectedPoint extends Point3D {
     projected: { x: number; y: number };
@@ -9,7 +9,7 @@ export interface ProjectedPoint extends Point3D {
  * based on the current Three.js camera state (y=up).
  */
 export const project3DTo2D = (
-    point: Point3D,
+    point: PointCoordinates,
     cameraPos: [number, number, number],
     target: [number, number, number]
 ): { x: number; y: number } => {

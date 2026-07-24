@@ -44,6 +44,13 @@ export type Database = {
           created_at: string
           display_name: string | null
           id: string
+          plan_code: string
+          plan_credits: number
+          plan_expires_at: string | null
+          plan_tier: string
+          plan_type: string | null
+          purchased_credits: number
+          credits_reset_at: string
           updated_at: string
           user_id: string
         }
@@ -52,6 +59,13 @@ export type Database = {
           created_at?: string
           display_name?: string | null
           id?: string
+          plan_code?: string
+          plan_credits?: number
+          plan_expires_at?: string | null
+          plan_tier?: string
+          plan_type?: string | null
+          purchased_credits?: number
+          credits_reset_at?: string
           updated_at?: string
           user_id: string
         }
@@ -60,9 +74,49 @@ export type Database = {
           created_at?: string
           display_name?: string | null
           id?: string
+          plan_code?: string
+          plan_credits?: number
+          plan_expires_at?: string | null
+          plan_tier?: string
+          plan_type?: string | null
+          purchased_credits?: number
+          credits_reset_at?: string
           updated_at?: string
           user_id?: string
         }
+        Relationships: []
+      }
+      orders: {
+        Row: { amount: number; created_at: string | null; id: string; order_code: number; plan_code: string | null; status: string | null; updated_at: string | null; user_id: string }
+        Insert: { amount: number; created_at?: string | null; id?: string; order_code: number; plan_code?: string | null; status?: string | null; updated_at?: string | null; user_id: string }
+        Update: { amount?: number; created_at?: string | null; id?: string; order_code?: number; plan_code?: string | null; status?: string | null; updated_at?: string | null; user_id?: string }
+        Relationships: [
+          { foreignKeyName: "orders_plan_code_fkey"; columns: ["plan_code"]; isOneToOne: false; referencedRelation: "plans"; referencedColumns: ["code"] },
+          { foreignKeyName: "orders_user_id_fkey"; columns: ["user_id"]; isOneToOne: false; referencedRelation: "profiles"; referencedColumns: ["user_id"] }
+        ]
+      }
+      plans: {
+        Row: { active: boolean; code: string; credits_per_cycle: number; cycle_days: number; duration_days: number; name: string; price_vnd: number; tier: string }
+        Insert: { active?: boolean; code: string; credits_per_cycle: number; cycle_days: number; duration_days: number; name: string; price_vnd: number; tier: string }
+        Update: { active?: boolean; code?: string; credits_per_cycle?: number; cycle_days?: number; duration_days?: number; name?: string; price_vnd?: number; tier?: string }
+        Relationships: []
+      }
+      pricing_config: {
+        Row: { key: string; value: number }
+        Insert: { key: string; value: number }
+        Update: { key?: string; value?: number }
+        Relationships: []
+      }
+      usage_counters: {
+        Row: { feature: string; used: number; user_id: string; window_start: string }
+        Insert: { feature: string; used?: number; user_id: string; window_start?: string }
+        Update: { feature?: string; used?: number; user_id?: string; window_start?: string }
+        Relationships: []
+      }
+      credit_ledger: {
+        Row: { balance_after: number; created_at: string; delta: number; id: string; reason: string; ref: string | null; user_id: string }
+        Insert: { balance_after: number; created_at?: string; delta: number; id?: string; reason: string; ref?: string | null; user_id: string }
+        Update: { balance_after?: number; created_at?: string; delta?: number; id?: string; reason?: string; ref?: string | null; user_id?: string }
         Relationships: []
       }
       saved_geometries: {
@@ -117,7 +171,26 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      consume_quota: {
+        Args: { p_feature: string; p_max: number; p_period_days: number; p_user_id: string }
+        Returns: Json
+      }
+      effective_tier: {
+        Args: { p: Database["public"]["Tables"]["profiles"]["Row"] }
+        Returns: string
+      }
+      grant_credits: {
+        Args: { p_amount: number; p_reason: string; p_ref: string; p_to_purchased?: boolean; p_user_id: string }
+        Returns: Json
+      }
+      refund_credits: {
+        Args: { p_amount: number; p_ref: string; p_user_id: string }
+        Returns: Json
+      }
+      spend_credits: {
+        Args: { p_cost: number; p_reason: string; p_ref?: string | null; p_user_id: string }
+        Returns: Json
+      }
     }
     Enums: {
       [_ in never]: never

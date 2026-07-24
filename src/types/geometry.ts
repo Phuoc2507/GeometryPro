@@ -11,6 +11,12 @@ export interface Point3D {
   highlight?: boolean;  // mới ở câu hiện tại → nổi
 }
 
+export interface PointCoordinates {
+  x: number;
+  y: number;
+  z: number;
+}
+
 export interface Line3D {
   id: string;
   from: string; // Point ID
@@ -68,7 +74,10 @@ export interface Cone3D extends AdvanceFlags {
 export interface Plane3D {
   id: string;
   label?: string;
-  points: { x: number; y: number; z: number }[]; // 3-4 corner points defining the plane
+  /** Corner coordinates are retained for API and saved-geometry compatibility. */
+  points: PointCoordinates[];
+  /** Point identities when this plane was created from existing points. */
+  pointIds?: string[];
   color?: string;
   opacity?: number;
   hidden?: boolean;     // ∉ visibleIds ở câu hiện tại → không vẽ
@@ -231,6 +240,7 @@ export interface GeometryData {
   surfaces?: Surface3D[];
   curves?: Curve3D[];
   latexCode?: string;
+  llmPrompt?: string;
   /** Ràng buộc từ step1, có thể kèm kết quả verify */
   constraints?: GeometryConstraint[];
   /** 0–1: mức độ tin cậy từ ConstraintVerifier (1 = pass hết) */

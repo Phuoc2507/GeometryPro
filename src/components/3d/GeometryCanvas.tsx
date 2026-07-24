@@ -120,7 +120,6 @@ function CameraTracker() {
 }
 
 interface SceneProps {
-  geometries: any[];
   geometry: any;
   isBuilding: boolean;
   autoRotate?: boolean;
@@ -262,7 +261,6 @@ function Scene({ geometry, isBuilding, autoRotate = false, is2D = false, focus =
         fadeStrength={1}
         infiniteGrid
         position={[0, -0.01, 0]}
-        depthWrite={false}
       />
 
       {/* Coordinate Grid with axis labels */}

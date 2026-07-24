@@ -12,9 +12,8 @@ interface DynamicUnfoldingProps {
 export function DynamicUnfolding({ points }: DynamicUnfoldingProps) {
   const { mode, sliderValue } = useToolMode();
 
-  if (mode !== 'unfold' || points.length < 4) return null;
-
   const { tree, flatFaces } = useMemo(() => {
+    if (points.length < 4) return { tree: null, flatFaces: [] };
     // 1. Swap Y and Z for Three.js coordinates
     const vecPoints = points.map(p => new THREE.Vector3(p.x, p.z, p.y));
     const geom = createConvexHull(vecPoints);
@@ -51,7 +50,7 @@ export function DynamicUnfolding({ points }: DynamicUnfoldingProps) {
     return computeUnfoldMatrices(tree, t);
   }, [tree, sliderValue]);
 
-  if (!tree) return null;
+  if (mode !== 'unfold' || points.length < 4 || !tree) return null;
 
   return (
     <group>

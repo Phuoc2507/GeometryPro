@@ -7,6 +7,7 @@ import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/context/AuthContext';
 import { checkAndIncrementGuestQuota } from '@/lib/quota';
+import { collectPlanePointIds, planeReferencesPoint } from '@/lib/geometry/planeReferences';
 const LOCAL_API = import.meta.env.VITE_LOCAL_API_URL ?? '';
 
 async function invokeLocalApi(endpoint: string, body: Record<string, unknown>): Promise<{ data: any; error: any }> {
@@ -104,7 +105,7 @@ import { tryLocalCommand } from '@/lib/geometry/localCommands';
 import { DrawMode } from '@/components/DrawModeSelector';
 import { useGeometryHistory } from '@/hooks/useGeometryHistory';
 
-const initialState: GeometryState = {
+export const initialGeometryState: GeometryState = {
   geometry: null,
   undoStack: [],
   redoStack: [],
@@ -143,7 +144,7 @@ function saveHistory(state: GeometryState): GeometryState {
   };
 }
 
-function rawGeometryReducer(state: GeometryState, action: GeometryAction): GeometryState {
+export function rawGeometryReducer(state: GeometryState, action: GeometryAction): GeometryState {
   switch (action.type) {
     case 'UNDO': {
       if (state.undoStack.length === 0 || !state.geometry) return state;
@@ -247,6 +248,7 @@ function rawGeometryReducer(state: GeometryState, action: GeometryAction): Geome
       const g = { ...stateWithHistory.geometry! };
       
       if (action.elementType === 'point') {
+        const pointToRemove = g.points.find((point) => point.id === action.elementId);
         // Fully delete the point
         g.points = g.points.filter(p => p.id !== action.elementId);
         
@@ -254,7 +256,9 @@ function rawGeometryReducer(state: GeometryState, action: GeometryAction): Geome
         g.lines = g.lines.filter(l => l.from !== action.elementId && l.to !== action.elementId);
         
         // Fully delete any planes containing it
-        g.planes = (g.planes || []).filter(p => !p.points.includes(action.elementId));
+        if (pointToRemove) {
+          g.planes = (g.planes || []).filter((plane) => !planeReferencesPoint(plane, pointToRemove));
+        }
       } else if (action.elementType === 'line') {
         const lineToRemove = g.lines.find(l => l.id === action.elementId);
         g.lines = g.lines.filter(l => l.id !== action.elementId);
@@ -265,7 +269,7 @@ function rawGeometryReducer(state: GeometryState, action: GeometryAction): Geome
             const pt = g.points.find(p => p.id === ptId);
             if (pt && pt.hidden) {
               const stillUsedByLine = g.lines.some(l => l.from === ptId || l.to === ptId);
-              const stillUsedByPlane = (g.planes || []).some(p => p.points.includes(ptId));
+              const stillUsedByPlane = (g.planes || []).some((plane) => planeReferencesPoint(plane, pt));
               if (!stillUsedByLine && !stillUsedByPlane) {
                 g.points = g.points.filter(p => p.id !== ptId);
               }
@@ -278,11 +282,11 @@ function rawGeometryReducer(state: GeometryState, action: GeometryAction): Geome
 
         // Garbage collection for hidden points
         if (planeToRemove) {
-          planeToRemove.points.forEach(ptId => {
+          collectPlanePointIds(planeToRemove, g.points).forEach((ptId) => {
             const pt = g.points.find(p => p.id === ptId);
             if (pt && pt.hidden) {
               const stillUsedByLine = g.lines.some(l => l.from === ptId || l.to === ptId);
-              const stillUsedByPlane = (g.planes || []).some(p => p.points.includes(ptId));
+              const stillUsedByPlane = (g.planes || []).some((plane) => planeReferencesPoint(plane, pt));
               if (!stillUsedByLine && !stillUsedByPlane) {
                 g.points = g.points.filter(p => p.id !== ptId);
               }
@@ -351,7 +355,7 @@ function rawGeometryReducer(state: GeometryState, action: GeometryAction): Geome
 
 export interface GeometryContextType {
   state: GeometryState;
-  startDemo: (type?: 'pyramid' | 'satellite') => void;
+  startDemo: (type?: 'pyramid' | 'satellite' | 'lod4' | GeometryData) => void;
   analyzeImage: (imageBase64: string) => Promise<void>;
   analyzeText: (prompt: string, mode?: DrawMode) => Promise<void>;
   analyzeAdvance: (prompt: string, imageBase64?: string) => Promise<void>;
@@ -399,7 +403,7 @@ let queueIdCounter = 0;
 export function GeometryProvider({ children }: { children: React.ReactNode }) {
   const [state, dispatch] = useReducer(
     rawGeometryReducer,
-    initialState,
+    initialGeometryState,
     (base): GeometryState => {
       const prefs = loadPreferences();
       return {
@@ -479,9 +483,9 @@ export function GeometryProvider({ children }: { children: React.ReactNode }) {
         });
       }, 2000);
     }, 500);
-  }, []);
+  }, [refreshProfile]);
 
-  const startDemo = useCallback((type: 'pyramid' | 'satellite' | 'lod4' | any = 'pyramid') => {
+  const startDemo = useCallback((type: 'pyramid' | 'satellite' | 'lod4' | GeometryData = 'pyramid') => {
     dispatch({ type: 'START_SCANNING' });
     simulateScanProgress(() => {
       let demoData = PYRAMID_MOCK_DATA;
@@ -569,7 +573,7 @@ export function GeometryProvider({ children }: { children: React.ReactNode }) {
       toast({ title: "Lỗi", description: "Không thể xử lý hình ảnh", variant: "destructive" });
       dispatch({ type: 'CLEAR_GEOMETRY' });
     }
-  }, [finishWithGeometry]);
+  }, [finishWithGeometry, openAuthModal, openUpgradeModal, user]);
 
   const analyzeText = useCallback(async (prompt: string, mode: DrawMode = 'quick') => {
     if (!user && !checkAndIncrementGuestQuota()) {
@@ -654,7 +658,7 @@ export function GeometryProvider({ children }: { children: React.ReactNode }) {
       toast({ title: "Lỗi", description: "Không thể xử lý đề bài", variant: "destructive" });
       dispatch({ type: 'CLEAR_GEOMETRY' });
     }
-  }, [finishWithGeometry]);
+  }, [finishWithGeometry, openAuthModal, openUpgradeModal, user]);
 
   const analyzeAdvance = useCallback(async (prompt: string, imageBase64?: string) => {
     const sessionId = ++scanSessionRef.current;
@@ -841,7 +845,7 @@ export function GeometryProvider({ children }: { children: React.ReactNode }) {
         toast({ title: "❌ Lỗi", description: `Không thể xử lý "${prompt.substring(0, 40)}...": ${msg}`, variant: "destructive" });
       }
     })();
-  }, []);
+  }, [addToHistory, openUpgradeModal, refreshProfile]);
 
   const queueAnalyzeImage = useCallback((imageBase64: string, mode: DrawMode = 'quick') => {
     const id = `q_${Date.now()}_${++queueIdCounter}`;
@@ -944,7 +948,7 @@ export function GeometryProvider({ children }: { children: React.ReactNode }) {
         toast({ title: "❌ Lỗi", description: "Không thể xử lý ảnh đề bài", variant: "destructive" });
       }
     })();
-  }, []);
+  }, [addToHistory, openUpgradeModal]);
 
   const viewQueueItem = useCallback((id: string) => {
     const item = stateRef.current.queue.find(q => q.id === id);
@@ -1128,7 +1132,7 @@ export function GeometryProvider({ children }: { children: React.ReactNode }) {
     if (pts.length < 3) return;
     const id = `plane_${pointIds.join('_')}`;
     const label = `(${pts.map(p => p.label).join('')})`;
-    dispatch({ type: 'ADD_PLANE', plane: { id, label, points: pts.map(p => ({ x: p.x, y: p.y, z: p.z })), opacity: 0.15 } });
+    dispatch({ type: 'ADD_PLANE', plane: { id, label, pointIds, points: pts.map(p => ({ x: p.x, y: p.y, z: p.z })), opacity: 0.15 } });
   }, []);
 
   const addPlaneFromEquation = useCallback((a: number, b: number, c: number, d: number) => {
