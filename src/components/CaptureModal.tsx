@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Camera, Image as ImageIcon, Code, Download, Copy, Settings2, Sparkles } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -9,7 +9,7 @@ import { sanitizeLatexLabel, sanitizeLatexName } from '@/lib/sanitizeLatex';
 
 import { project3DTo2D, generateProjectedLatex } from '@/lib/geometry/projection';
 import { useGeometryOptional } from '@/context/GeometryContext';
-import { useCameraStateOptional } from '@/context/CameraContext';
+import { useCameraOptional, useCameraStateOptional, type CameraState } from '@/context/CameraContext';
 import { scaleGeometry } from '@/lib/geometry/scaleGeometry';
 
 interface CaptureModalProps {
@@ -31,9 +31,34 @@ export function CaptureModal({ isOpen, onClose, geometry, canvasRef, hiddenLines
 
   const geometryContext = useGeometryOptional();
   const cameraStateContext = useCameraStateOptional();
+  const cameraContext = useCameraOptional();
   const showPoints = geometryContext?.state.showPoints ?? true;
+  const sharedCameraStateRef = useRef(cameraStateContext?.cameraState);
+  const [exportCameraState, setExportCameraState] = useState<CameraState | null>(null);
 
-  const cameraState = cameraStateContext?.cameraState;
+  sharedCameraStateRef.current = cameraStateContext?.cameraState;
+
+  // The export editor gets a snapshot of the main camera, then rotates locally.
+  // This keeps the canvas and the small right-panel preview still while editing
+  // PNG/TikZ, so the expensive secondary previews do not compete for frames.
+  useEffect(() => {
+    cameraContext?.setExportPreviewOpen(isOpen);
+    if (!isOpen) {
+      setExportCameraState(null);
+      return;
+    }
+
+    const sharedCameraState = sharedCameraStateRef.current;
+    setExportCameraState(sharedCameraState ? {
+      position: [...sharedCameraState.position] as [number, number, number],
+      target: [...sharedCameraState.target] as [number, number, number],
+      zoom: sharedCameraState.zoom,
+    } : null);
+
+    return () => cameraContext?.setExportPreviewOpen(false);
+  }, [isOpen, cameraContext?.setExportPreviewOpen]);
+
+  const cameraState = exportCameraState;
 
   const fixedCamera = useMemo(() => {
     if (!cameraState) return { cameraPos: [0, 0, 0] as [number, number, number], target: [0, 0, 0] as [number, number, number], zoom: 1 };
@@ -238,7 +263,7 @@ export function CaptureModal({ isOpen, onClose, geometry, canvasRef, hiddenLines
       setLastMousePos({ x: e.clientX, y: e.clientY });
     },
     onPointerMove: (e: React.PointerEvent) => {
-      if (!isDragging || !lastMousePos || !cameraState || !cameraStateContext) return;
+      if (!isDragging || !lastMousePos || !cameraState) return;
       
       const dx = e.clientX - lastMousePos.x;
       const dy = e.clientY - lastMousePos.y;
@@ -269,7 +294,7 @@ export function CaptureModal({ isOpen, onClose, geometry, canvasRef, hiddenLines
       const newVy = r * Math.cos(phi);
       const newVz = r * Math.sin(phi) * Math.cos(theta);
 
-      cameraStateContext.setCameraState({
+      setExportCameraState({
         position: [target[0] + newVx, target[1] + newVy, target[2] + newVz],
         target,
         zoom

@@ -133,9 +133,11 @@ interface SceneProps {
 
 function Scene({ geometry, isBuilding, autoRotate = false, is2D = false, focus = null, showCoordinateGrid = true }: SceneProps) {
   const geometryContext = useGeometryOptional();
+  const cameraContext = useCameraOptional();
   const { camera } = useThree();
   const cameraStateContext = useCameraStateOptional();
   const setCameraState = cameraStateContext?.setCameraState;
+  const isExportPreviewOpen = cameraContext?.isExportPreviewOpen ?? false;
 
   // Ref tới OrbitControls (three-stdlib instance) để CameraFlyer điều khiển
   // controls.target trực tiếp trong lúc bay.
@@ -308,9 +310,11 @@ function Scene({ geometry, isBuilding, autoRotate = false, is2D = false, focus =
         target={centroid}
         onChange={handleControlsChange}
         onEnd={handleControlsEnd}
-        autoRotate={!is2D && autoRotate}
+        autoRotate={!is2D && autoRotate && !isExportPreviewOpen}
         autoRotateSpeed={1.5}
-        enableRotate={!is2D}
+        enableRotate={!is2D && !isExportPreviewOpen}
+        enablePan={!isExportPreviewOpen}
+        enableZoom={!isExportPreviewOpen}
         maxPolarAngle={is2D ? Math.PI / 2 : Math.PI}
         minPolarAngle={is2D ? Math.PI / 2 : 0}
         minAzimuthAngle={is2D ? 0 : -Infinity}

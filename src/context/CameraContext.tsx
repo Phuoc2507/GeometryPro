@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useRef, useMemo, useCallback } from 'react';
 
-interface CameraState {
+export interface CameraState {
   position: [number, number, number];
   target: [number, number, number];
   zoom: number;
@@ -33,6 +33,9 @@ interface CameraContextType {
   /** Bước LỜI GIẢI (inner) đang xem của câu hiện tại — để orchestrator biết bay tới điểm dựng nào. */
   solutionStep: number;
   setSolutionStep: (n: number) => void;
+  /** The expanded PNG/TikZ editor owns its own camera while it is open. */
+  isExportPreviewOpen: boolean;
+  setExportPreviewOpen: (open: boolean) => void;
 }
 
 const CameraStateContext = createContext<CameraStateContextType | undefined>(undefined);
@@ -52,13 +55,14 @@ export function CameraProvider({ children }: { children: React.ReactNode }) {
   const resetCamera = useCallback(() => setResetNonce((n) => n + 1), []);
   const [cameraFocus, setCameraFocus] = useState<CameraFocus | null>(null);
   const [solutionStep, setSolutionStep] = useState(0);
+  const [isExportPreviewOpen, setExportPreviewOpen] = useState(false);
   const requestFocus = useCallback((pts: Array<{ x: number; y: number; z: number }>) => {
     if (!pts || pts.length === 0) return;
     setCameraFocus((prev) => ({ pts, nonce: (prev?.nonce ?? 0) + 1 }));
   }, []);
 
   const stateValue = useMemo(() => ({ cameraState, setCameraState }), [cameraState]);
-  const mainValue = useMemo(() => ({ canvasRef, hiddenLines, setHiddenLines, highlightedIds, setHighlightedIds, revealVisibleIds, setRevealVisibleIds, resetNonce, resetCamera, cameraFocus, requestFocus, solutionStep, setSolutionStep }), [hiddenLines, highlightedIds, revealVisibleIds, resetNonce, resetCamera, cameraFocus, requestFocus, solutionStep]);
+  const mainValue = useMemo(() => ({ canvasRef, hiddenLines, setHiddenLines, highlightedIds, setHighlightedIds, revealVisibleIds, setRevealVisibleIds, resetNonce, resetCamera, cameraFocus, requestFocus, solutionStep, setSolutionStep, isExportPreviewOpen, setExportPreviewOpen }), [hiddenLines, highlightedIds, revealVisibleIds, resetNonce, resetCamera, cameraFocus, requestFocus, solutionStep, isExportPreviewOpen]);
 
   return (
     <CameraStateContext.Provider value={stateValue}>
