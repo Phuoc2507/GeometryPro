@@ -1,7 +1,6 @@
 import { useState, useMemo, useCallback, useDeferredValue } from 'react';
 import { ChevronRight, ChevronLeft, Copy, Check, Box, MapPin, Ruler, Cuboid, Code, Download, Maximize2, FileDown, ChevronDown, BookOpen } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
@@ -290,15 +289,16 @@ function PanelContent() {
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <h3 className="text-sm font-medium text-muted-foreground">Bản xem trước</h3>
-                  <label className="flex items-center gap-1.5 text-[10px] font-medium text-muted-foreground cursor-pointer select-none">
-                    <span>Live</span>
-                    <Switch
-                      checked={camera?.isLivePreviewEnabled ?? false}
-                      onCheckedChange={(enabled) => camera?.setLivePreviewEnabled(enabled)}
-                      aria-label="Đồng bộ preview theo thời gian thực"
-                      className="scale-75 origin-left"
-                    />
-                  </label>
+                  <Button
+                    type="button"
+                    variant={camera?.isLivePreviewEnabled ? 'default' : 'outline'}
+                    size="sm"
+                    className="h-6 px-2 text-[10px] font-semibold"
+                    onClick={() => camera?.setLivePreviewEnabled(!(camera?.isLivePreviewEnabled ?? false))}
+                    aria-pressed={camera?.isLivePreviewEnabled ?? false}
+                  >
+                    Live
+                  </Button>
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="text-[10px] text-muted-foreground">Scale {tikzScale.toFixed(1)}</span>
