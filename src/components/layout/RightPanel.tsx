@@ -61,22 +61,27 @@ function PanelContent() {
   // Defer the camera used for LaTeX string generation to keep the SVG 60fps smooth
   const deferredCamera = useDeferredValue(fixedCamera);
 
+  // Generating TikZ walks the entire geometry. Cache it so Live Preview only
+  // redraws the SVG instead of rebuilding the source on every camera frame.
+  const dynamicLatex = useMemo(() => {
+    const geometry = context?.state.geometry;
+    if (!geometry || !deferredCamera) return geometry?.latexCode || '';
+    return generateProjectedLatex(
+      scaledGeometry || geometry,
+      deferredCamera.cameraPos,
+      deferredCamera.target,
+      camera?.hiddenLines,
+      context?.state.showPoints,
+      tikzScale * (deferredCamera.zoom || 1)
+    );
+  }, [camera?.hiddenLines, context?.state.geometry, context?.state.showPoints, deferredCamera, scaledGeometry, tikzScale]);
+
   // All hooks above must run even when this panel is rendered without a provider.
   if (!context) return null;
 
   const { state } = context;
 
-  const getDynamicLatex = () => {
-    if (!state.geometry || !deferredCamera) return state.geometry?.latexCode || '';
-    return generateProjectedLatex(
-      scaledGeometry || state.geometry,
-      deferredCamera.cameraPos,
-      deferredCamera.target,
-      camera?.hiddenLines,
-      state.showPoints,
-      tikzScale * (deferredCamera.zoom || 1)
-    );
-  };
+  const getDynamicLatex = () => dynamicLatex;
 
   const handleCopy = () => {
     const latex = getDynamicLatex();

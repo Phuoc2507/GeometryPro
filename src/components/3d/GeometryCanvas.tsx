@@ -205,6 +205,7 @@ function Scene({ geometry, isBuilding, autoRotate = false, is2D = false, focus =
   // for every intermediate camera pose.
   const persistTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const liveSyncFrameRef = useRef<number | null>(null);
+  const lastLivePublishAtRef = useRef(0);
   const lastPublishedCameraRef = useRef<{ position: [number, number, number]; target: [number, number, number]; zoom: number } | null>(null);
 
   const publishCameraState = useCallback(() => {
@@ -231,8 +232,13 @@ function Scene({ geometry, isBuilding, autoRotate = false, is2D = false, focus =
 
   const handleControlsChange = useCallback(() => {
     if (!isLivePreviewEnabled || !setCameraState || liveSyncFrameRef.current !== null) return;
-    liveSyncFrameRef.current = requestAnimationFrame(() => {
+    liveSyncFrameRef.current = requestAnimationFrame((timestamp) => {
       liveSyncFrameRef.current = null;
+      // The main WebGL scene keeps rendering at the display refresh rate. The
+      // SVG export preview is more expensive, so 30 fps is a much smoother
+      // overall experience while still being visibly realtime.
+      if (timestamp - lastLivePublishAtRef.current < 1000 / 30) return;
+      lastLivePublishAtRef.current = timestamp;
       publishCameraState();
     });
   }, [isLivePreviewEnabled, publishCameraState, setCameraState]);
