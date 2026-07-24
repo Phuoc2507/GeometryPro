@@ -317,9 +317,29 @@ function PanelContent() {
                 </defs>
                 {(() => {
                   if (activeTab !== 'export') return null;
-                  // Use a fixed scale factor (30.4) that precisely matches the 3D canvas perspective 
-                  // to viewport height ratio (viewport=300px, 3D FOV=50deg, dist=10.59)
-                  const scale = 30.4 * (tikzScale / 1.2) * (fixedCamera.zoom || 1);
+                  // Center the projected drawing inside the fixed SVG view box. The old preview
+                  // always treated the world origin as the centre, so drawings located away from
+                  // O(0, 0, 0) were pushed against an edge and could be clipped.
+                  const projectedPoints = scaledGeometry.points.map(p => ({
+                    ...p,
+                    proj: project3DTo2D(p, fixedCamera.cameraPos, fixedCamera.target)
+                  }));
+                  const previewPoints = projectedPoints.length > 0
+                    ? projectedPoints.map(p => p.proj)
+                    : [{ x: 0, y: 0 }];
+                  const minX = Math.min(...previewPoints.map(p => p.x));
+                  const maxX = Math.max(...previewPoints.map(p => p.x));
+                  const minY = Math.min(...previewPoints.map(p => -p.y));
+                  const maxY = Math.max(...previewPoints.map(p => -p.y));
+                  const projectedSize = Math.max(maxX - minX, maxY - minY, 1);
+
+                  // Preserve the familiar canvas scale where it fits, while reserving a small
+                  // margin for point labels on large drawings.
+                  const canvasScale = 30.4 * (fixedCamera.zoom || 1);
+                  const fitScale = Math.min(canvasScale, 204 / projectedSize);
+                  const scale = fitScale * (tikzScale / 1.2);
+                  const offsetX = -((minX + maxX) / 2) * scale;
+                  const offsetY = -((minY + maxY) / 2) * scale;
 
                   // Removed grid (mặt phẳng z=0) to improve performance and clean up the view
 
@@ -619,11 +639,6 @@ function PanelContent() {
                   });
 
                   // 4. Vẽ các điểm và nhãn chữ
-                  const projectedPoints = scaledGeometry.points.map(p => ({
-                    ...p,
-                    proj: project3DTo2D(p, fixedCamera.cameraPos, fixedCamera.target)
-                  }));
-
                   const avgX = projectedPoints.reduce((sum, p) => sum + p.proj.x, 0) / (projectedPoints.length || 1);
                   const avgY = projectedPoints.reduce((sum, p) => sum + p.proj.y, 0) / (projectedPoints.length || 1);
 
@@ -748,7 +763,7 @@ function PanelContent() {
                   });
 
                   return (
-                    <>
+                    <g transform={`translate(${offsetX} ${offsetY})`}>
                       {spheresSvg}
                       {surfacesSvg}
                       {conesSvg}
@@ -758,7 +773,7 @@ function PanelContent() {
                       {linesSvg}
                       {pointsSvg}
                       {agentsSvg}
-                    </>
+                    </g>
                   );
                 })()}
               </svg>
