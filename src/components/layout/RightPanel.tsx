@@ -6,7 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { useGeometryOptional } from '@/context/GeometryContext';
-import { useCameraOptional, useCameraStateOptional } from '@/context/CameraContext';
+import { useCameraOptional, useCameraStateOptional, type CameraState } from '@/context/CameraContext';
 import { project3DTo2D, generateProjectedLatex } from '@/lib/geometry/projection';
 import { computeProperties, fmt } from '@/lib/geometry/calculations';
 import { DynamicPointControls } from '@/components/DynamicPointControls';
@@ -18,6 +18,20 @@ import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { SolverContent, ResizeHandle } from '@/components/SolverPanel';
 import { useResizableWidth } from '@/hooks/useResizableWidth';
 import { TierBanner } from './TierBanner';
+
+function toPreviewCamera(cameraState: CameraState) {
+  const target: [number, number, number] = [0, 0, 0];
+  const viewDir = [
+    cameraState.position[0] - cameraState.target[0],
+    cameraState.position[1] - cameraState.target[1],
+    cameraState.position[2] - cameraState.target[2]
+  ];
+  return {
+    cameraPos: [target[0] + viewDir[0], target[1] + viewDir[1], target[2] + viewDir[2]] as [number, number, number],
+    target,
+    zoom: cameraState.zoom || 1,
+  };
+}
 
 function PanelContent() {
   const [copied, setCopied] = useState(false);
@@ -45,19 +59,7 @@ function PanelContent() {
     if (!geometry || !camera || !st) return null;
     
     // Luôn khóa mục tiêu vào gốc tọa độ O(0,0,0) để tọa độ trong TikZ luôn chuẩn xác
-    const target: [number, number, number] = [0, 0, 0];
-    
-    const viewDir = [
-      st.position[0] - st.target[0],
-      st.position[1] - st.target[1],
-      st.position[2] - st.target[2]
-    ];
-    const cameraPos: [number, number, number] = [
-      target[0] + viewDir[0],
-      target[1] + viewDir[1],
-      target[2] + viewDir[2]
-    ];
-    return { cameraPos, target, zoom: st.zoom || 1 };
+    return toPreviewCamera(st);
   }, [context?.state.geometry, camera, cameraStateContext?.cameraState]);
 
   // In normal mode, wait until rotation stops before projecting again. Live mode
@@ -74,7 +76,13 @@ function PanelContent() {
     const timeoutId = window.setTimeout(() => setFrozenPreviewCamera(fixedCamera), 180);
     return () => window.clearTimeout(timeoutId);
   }, [fixedCamera, isLivePreview]);
-  const previewCamera = isLivePreview ? fixedCamera : frozenPreviewCamera ?? fixedCamera;
+  useEffect(() => {
+    if (!isLivePreview || !camera) return;
+    return camera.subscribeToLiveCamera((liveCamera) => {
+      setFrozenPreviewCamera(toPreviewCamera(liveCamera));
+    });
+  }, [camera, isLivePreview]);
+  const previewCamera = frozenPreviewCamera ?? fixedCamera;
   const handleLivePreviewChange = useCallback((live: boolean) => {
     if (live && fixedCamera) setFrozenPreviewCamera(fixedCamera);
     setIsLivePreview(live);

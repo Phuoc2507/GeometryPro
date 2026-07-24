@@ -131,6 +131,7 @@ interface SceneProps {
 
 function Scene({ geometry, isBuilding, autoRotate = false, is2D = false, focus = null, showCoordinateGrid = true }: SceneProps) {
   const geometryContext = useGeometryOptional();
+  const cameraContext = useCameraOptional();
   const { camera } = useThree();
   const cameraStateContext = useCameraStateOptional();
 
@@ -218,6 +219,20 @@ function Scene({ geometry, isBuilding, autoRotate = false, is2D = false, focus =
     }, 180);
   }, [camera, cameraStateContext, centroid]);
 
+  const handleControlsChange = useCallback(() => {
+    if (!cameraContext) return;
+    const pos = camera.position;
+    const targetVec = new THREE.Vector3(...centroid);
+    const zoom = (camera as any).isOrthographicCamera
+      ? (camera as any).zoom
+      : 10.59 / Math.max(0.1, pos.distanceTo(targetVec));
+    cameraContext.publishLiveCamera({
+      position: [pos.x, pos.y, pos.z],
+      target: centroid,
+      zoom,
+    });
+  }, [camera, cameraContext, centroid]);
+
   useEffect(() => () => {
     if (persistTimerRef.current) clearTimeout(persistTimerRef.current);
   }, []);
@@ -281,6 +296,7 @@ function Scene({ geometry, isBuilding, autoRotate = false, is2D = false, focus =
         enableDamping
         dampingFactor={0.05}
         target={centroid}
+        onChange={handleControlsChange}
         onEnd={handleControlsEnd}
         autoRotate={!is2D && autoRotate}
         autoRotateSpeed={1.5}
