@@ -60,17 +60,23 @@ function PanelContent() {
     return { cameraPos, target, zoom: st.zoom || 1 };
   }, [context?.state.geometry, camera, cameraStateContext?.cameraState]);
 
-  // Keep the preview at the first available camera angle by default. This avoids
-  // re-projecting the export image while the user is simply inspecting the 3D model.
+  // In normal mode, wait until rotation stops before projecting again. Live mode
+  // updates on every camera movement, which is useful when deliberately framing
+  // the exported image.
   const [frozenPreviewCamera, setFrozenPreviewCamera] = useState<typeof fixedCamera>(null);
   useEffect(() => {
-    if (fixedCamera && (isLivePreview || !frozenPreviewCamera)) {
+    if (!fixedCamera) return;
+    if (isLivePreview) {
       setFrozenPreviewCamera(fixedCamera);
+      return;
     }
-  }, [fixedCamera, frozenPreviewCamera, isLivePreview]);
+
+    const timeoutId = window.setTimeout(() => setFrozenPreviewCamera(fixedCamera), 180);
+    return () => window.clearTimeout(timeoutId);
+  }, [fixedCamera, isLivePreview]);
   const previewCamera = isLivePreview ? fixedCamera : frozenPreviewCamera ?? fixedCamera;
   const handleLivePreviewChange = useCallback((live: boolean) => {
-    if (fixedCamera) setFrozenPreviewCamera(fixedCamera);
+    if (live && fixedCamera) setFrozenPreviewCamera(fixedCamera);
     setIsLivePreview(live);
   }, [fixedCamera]);
 
