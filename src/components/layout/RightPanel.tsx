@@ -1,6 +1,7 @@
-import { useState, useMemo, useCallback, useDeferredValue } from 'react';
+import { useState, useMemo, useCallback, useDeferredValue, useEffect } from 'react';
 import { ChevronRight, ChevronLeft, Copy, Check, Box, MapPin, Ruler, Cuboid, Code, Download, Maximize2, FileDown, ChevronDown, BookOpen } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
@@ -23,6 +24,7 @@ function PanelContent() {
   const [tikzScale, setTikzScale] = useState(1.2);
   const [activeTab, setActiveTab] = useState('export');
   const [isCaptureOpen, setIsCaptureOpen] = useState(false);
+  const [isLivePreview, setIsLivePreview] = useState(false);
   const context = useGeometryOptional();
   const camera = useCameraOptional();
   const cameraStateContext = useCameraStateOptional();
@@ -57,6 +59,20 @@ function PanelContent() {
     ];
     return { cameraPos, target, zoom: st.zoom || 1 };
   }, [context?.state.geometry, camera, cameraStateContext?.cameraState]);
+
+  // Keep the preview at the first available camera angle by default. This avoids
+  // re-projecting the export image while the user is simply inspecting the 3D model.
+  const [frozenPreviewCamera, setFrozenPreviewCamera] = useState<typeof fixedCamera>(null);
+  useEffect(() => {
+    if (fixedCamera && (isLivePreview || !frozenPreviewCamera)) {
+      setFrozenPreviewCamera(fixedCamera);
+    }
+  }, [fixedCamera, frozenPreviewCamera, isLivePreview]);
+  const previewCamera = isLivePreview ? fixedCamera : frozenPreviewCamera ?? fixedCamera;
+  const handleLivePreviewChange = useCallback((live: boolean) => {
+    if (fixedCamera) setFrozenPreviewCamera(fixedCamera);
+    setIsLivePreview(live);
+  }, [fixedCamera]);
 
   // Defer the camera used for LaTeX string generation to keep the SVG 60fps smooth
   const deferredCamera = useDeferredValue(fixedCamera);
@@ -286,8 +302,19 @@ function PanelContent() {
         <TabsContent value="export" className="flex-1 overflow-hidden p-0">
           <ScrollArea className="h-full w-full">
             <div className="p-4 flex flex-col gap-4">
-              <div className="flex items-center justify-between">
-                <h3 className="text-sm font-medium text-muted-foreground">Bản xem trước</h3>
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <h3 className="text-sm font-medium text-muted-foreground">Bản xem trước</h3>
+                  <label className="flex items-center gap-1.5 text-[10px] font-medium text-muted-foreground cursor-pointer">
+                    <Switch
+                      checked={isLivePreview}
+                      onCheckedChange={handleLivePreviewChange}
+                      aria-label="Cập nhật bản xem trước theo góc xoay"
+                      className="h-4 w-7 [&>span]:h-3 [&>span]:w-3 data-[state=checked]:[&>span]:translate-x-3"
+                    />
+                    Live
+                  </label>
+                </div>
                 <div className="flex items-center gap-2">
                   <span className="text-[10px] text-muted-foreground">Scale {tikzScale.toFixed(1)}</span>
                   <input
@@ -302,7 +329,7 @@ function PanelContent() {
           {/* Visual Preview */}
           <div className="aspect-square w-full bg-white rounded-lg border border-border/50 flex items-center justify-center p-4 shadow-sm relative overflow-hidden group">
             <div className="absolute inset-0 opacity-[0.03] pointer-events-none bg-[radial-gradient(#000_1px,transparent_1px)] [background-size:10px_10px]" />
-            {scaledGeometry && fixedCamera && camera && (
+            {scaledGeometry && previewCamera && camera && (
               <svg
                 viewBox="-120 -120 240 240"
                 className="w-full h-full drop-shadow-sm"
@@ -317,6 +344,7 @@ function PanelContent() {
                 </defs>
                 {(() => {
                   if (activeTab !== 'export') return null;
+                  const fixedCamera = previewCamera;
                   // Center the projected drawing inside the fixed SVG view box. The old preview
                   // always treated the world origin as the centre, so drawings located away from
                   // O(0, 0, 0) were pushed against an edge and could be clipped.
