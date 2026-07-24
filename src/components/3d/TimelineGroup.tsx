@@ -20,7 +20,7 @@ export function TimelineGroup({ tracks, children }: Props) {
 
     const t = animCtx.globalTimeRef.current / 1000;
     
-    let currentPos = new THREE.Vector3(0, 0, 0);
+    const currentPos = new THREE.Vector3(0, 0, 0);
 
     for (const track of translateTracks) {
       if (t >= track.start && t <= track.end) {

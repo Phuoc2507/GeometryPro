@@ -1,28 +1,52 @@
-// api/analyze-geometry-v2.js
-// "Kernel mode" — route MỚI, chạy SONG SONG với /api/analyze-geometry cũ (không đụng luồng cũ).
-// Đề → engine tất định → hình đúng + đáp số exact. Không để LLM tự sinh toạ độ.
-//
-// POST body:
-//   { problem: "..." }  → dịch bằng LLM (Vilao) rồi chạy engine.
-//   { plan: {...} }      → chạy thẳng Plan JSON qua engine (dry-run, không cần LLM — để test).
+import crypto from 'crypto';
 import { solveProblem, solvePlan } from './_lib/kernel-bridge/solveWithKernel.js';
+import { accessError, resolveAiAccess, withQuota } from './_lib/aiAccess.js';
+import { refund } from './_lib/credits.js';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method Not Allowed' });
   }
+
   const { problem, plan } = req.body || {};
+  if (plan) {
+    // Raw plans are a deterministic developer/test entrypoint, not a public
+    // production API.
+    if (process.env.NODE_ENV === 'production') {
+      return res.status(404).json({ error: 'Not Found' });
+    }
+    return res.json({ mode: 'dry-run', ...solvePlan(plan) });
+  }
+
+  if (!problem || typeof problem !== 'string' || problem.trim().length < 1) {
+    return res.status(400).json({ error: 'Provide { problem: string }' });
+  }
+  if (problem.trim().length > 5000) {
+    return res.status(400).json({ error: 'Mô tả quá dài (tối đa 5000 ký tự)' });
+  }
+
+  const access = await resolveAiAccess(req, res, {
+    feature: 'draw',
+    action: 'draw_quick',
+    allowGuest: true,
+    guestFeature: 'draw_quick',
+    guestMax: 2,
+  });
+  if (!access.ok) return accessError(res, access);
+
+  const creditCharge = access.actorType === 'account' && access.gate.mode === 'credit'
+    ? { cost: access.gate.cost, reqId: crypto.randomUUID() }
+    : null;
+
   try {
-    if (plan) {
-      // Dry-run: kiểm nửa engine mà không cần LLM.
-      return res.json({ mode: 'dry-run', ...solvePlan(plan) });
+    const out = await solveProblem(problem.trim());
+    return res.json(withQuota({ mode: 'kernel', ...out }, access));
+  } catch (error) {
+    if (creditCharge && access.userId) {
+      await refund(access.userId, creditCharge.cost, creditCharge.reqId);
     }
-    if (!problem || typeof problem !== 'string') {
-      return res.status(400).json({ error: 'Provide { problem: string } (LLM) hoặc { plan } (dry-run engine)' });
-    }
-    const out = await solveProblem(problem);
-    return res.json({ mode: 'kernel', ...out });
-  } catch (e) {
-    return res.status(500).json({ error: e.message || 'kernel-mode failed' });
+    return res.status(500).json({
+      error: error instanceof Error ? error.message : 'kernel-mode failed',
+    });
   }
 }

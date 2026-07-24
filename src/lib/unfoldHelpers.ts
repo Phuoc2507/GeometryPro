@@ -161,7 +161,7 @@ export function buildUnfoldTree(geometry: THREE.BufferGeometry): UnfoldNode | nu
         
         // Calculate dihedral angle.
         const dot = Math.max(-1, Math.min(1, poly.normal.dot(childPoly.normal)));
-        let angle = Math.acos(dot);
+        const angle = Math.acos(dot);
         
         const childNode = buildNode(n.neighborId);
         node.children.push({

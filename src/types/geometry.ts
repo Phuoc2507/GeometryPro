@@ -174,7 +174,31 @@ export interface AnimationTrack {
   end: number;   // time in seconds
   type: 'water_level' | 'translate' | 'parametric_path' | 'fold' | 'fade';
   targetId?: string; // which object to animate (e.g., 'tent', 'rescuer', 'victim')
-  params: Record<string, any>; // vx, vy, vz, function strings, etc.
+  params: {
+    displacement_function?: string;
+    D?: string;
+    height_function?: string;
+    h?: string;
+    path?: string;
+    equations?: { x: string; y: string; z: string };
+    final_position?: [number, number, number];
+    landing_point?: [number, number, number];
+    axisPoint?: PointCoordinates;
+    axisDir?: PointCoordinates;
+    x_start?: number;
+    y_start?: number;
+    z_start?: number;
+    vx?: number;
+    vy?: number;
+    vz?: number;
+    final_height?: number;
+    max_height?: number;
+    opacityStart?: number;
+    opacityEnd?: number;
+    angleStart?: number;
+    angleEnd?: number;
+    [key: string]: unknown;
+  };
 }
 
 export interface AnimationTimeline {
@@ -211,7 +235,7 @@ export interface Agent3D {
 export interface Curve3D extends AdvanceFlags {
   id: string;
   type: 'parabola' | 'cubic' | 'rational';
-  params: any; // e.g. {a, b, c, d, xMin, xMax}
+  params: Record<string, number>; // e.g. {a, b, c, d, xMin, xMax}
   color?: string;
   style?: 'solid' | 'dashed';
   plane?: 'xy' | 'xz' | 'yz'; // Which mathematical plane the curve is drawn on

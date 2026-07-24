@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/context/AuthContext';
 import { GeometryData } from '@/types/geometry';
 import { useToast } from '@/hooks/use-toast';
+import type { Json } from '@/integrations/supabase/types';
 
 export interface HistoryItem {
   id: string;
@@ -13,16 +14,38 @@ export interface HistoryItem {
   project_id?: string | null;
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
+}
+
+function parseLocalHistory(raw: string | null): HistoryItem[] {
+  if (!raw) return [];
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter((item): item is HistoryItem => (
+      isRecord(item)
+      && typeof item.id === 'string'
+      && typeof item.name === 'string'
+      && isRecord(item.geometry_data)
+    ));
+  } catch {
+    return [];
+  }
+}
+
 export function useGeometryHistory() {
   const { user, signOut } = useAuth();
   const { toast } = useToast();
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
-  const handleSupabaseError = useCallback(async (err: any, context: string) => {
+  const handleSupabaseError = useCallback(async (err: unknown, context: string) => {
     console.error(`Error ${context}:`, err);
     // 42501 = RLS/insufficient_privilege (lỗi QUYỀN dữ liệu, KHÔNG phải hết phiên) -> KHÔNG đăng xuất.
-    const looksAuth = err?.status === 401 || (typeof err?.message === 'string' && err.message.includes('JWT'));
+    const errorRecord = isRecord(err) ? err : {};
+    const looksAuth = errorRecord.status === 401
+      || (typeof errorRecord.message === 'string' && errorRecord.message.includes('JWT'));
     if (!looksAuth) return;
     // Access token có thể chỉ HẾT HẠN TẠM và refresh được — thử refresh trước, chỉ đăng xuất khi refresh thất bại.
     try {
@@ -43,7 +66,7 @@ export function useGeometryHistory() {
       if (!user) {
         const local = localStorage.getItem('geo3d_anonymous_history');
         if (local) {
-          setHistory(JSON.parse(local));
+          setHistory(parseLocalHistory(local));
         } else {
           setHistory([]);
         }
@@ -94,7 +117,7 @@ export function useGeometryHistory() {
           project_id
         };
         const local = localStorage.getItem('geo3d_anonymous_history');
-        const prev = local ? JSON.parse(local) : [];
+        const prev = parseLocalHistory(local);
         // Mục Advance có thể lớn → localStorage (~5MB) có thể TRÀN. Trước đây QuotaExceededError bị
         // nuốt (handleSupabaseError chỉ xử lỗi auth) ⇒ mục mới im lặng KHÔNG lưu, "chạy xong mất tiêu".
         // Giờ: nếu tràn thì BỎ BỚT mục CŨ NHẤT (cuối mảng) rồi thử lại, để mục MỚI luôn lưu được.
@@ -121,7 +144,7 @@ export function useGeometryHistory() {
           user_id: user.id,
           name: prompt ? `${prompt.substring(0, 40)}${prompt.length > 40 ? '…' : ''}` : 'Bản vẽ thủ công',
           prompt,
-          geometry_data: geometry as any,
+          geometry_data: geometry as unknown as Json,
           is_history: true,
           project_id
         })
@@ -146,8 +169,8 @@ export function useGeometryHistory() {
       if (!user) {
         const local = localStorage.getItem('geo3d_anonymous_history');
         if (local) {
-          const prev = JSON.parse(local);
-          const newHistory = prev.map((h: any) => h.id === id ? { ...h, geometry_data: geometry } : h);
+          const prev = parseLocalHistory(local);
+          const newHistory = prev.map((item) => item.id === id ? { ...item, geometry_data: geometry } : item);
           localStorage.setItem('geo3d_anonymous_history', JSON.stringify(newHistory));
           triggerSync();
         }
@@ -155,7 +178,7 @@ export function useGeometryHistory() {
       }
       const { error } = await supabase
         .from('saved_geometries')
-        .update({ geometry_data: geometry as any })
+        .update({ geometry_data: geometry as unknown as Json })
         .eq('id', id)
         .eq('user_id', user.id);
       if (error) throw error;
@@ -170,8 +193,8 @@ export function useGeometryHistory() {
       if (!user) {
         const local = localStorage.getItem('geo3d_anonymous_history');
         if (local) {
-          const prev = JSON.parse(local);
-          const newHistory = prev.filter((h: any) => h.id !== id);
+          const prev = parseLocalHistory(local);
+          const newHistory = prev.filter((item) => item.id !== id);
           localStorage.setItem('geo3d_anonymous_history', JSON.stringify(newHistory));
           triggerSync();
         }
@@ -215,8 +238,8 @@ export function useGeometryHistory() {
       if (!user) {
         const local = localStorage.getItem('geo3d_anonymous_history');
         if (local) {
-          const prev = JSON.parse(local);
-          const newHistory = prev.map((h: any) => h.id === id ? { ...h, name: newName } : h);
+          const prev = parseLocalHistory(local);
+          const newHistory = prev.map((item) => item.id === id ? { ...item, name: newName } : item);
           localStorage.setItem('geo3d_anonymous_history', JSON.stringify(newHistory));
           triggerSync();
         }
@@ -241,8 +264,8 @@ export function useGeometryHistory() {
       if (!user) {
         const local = localStorage.getItem('geo3d_anonymous_history');
         if (local) {
-          const prev = JSON.parse(local);
-          const newHistory = prev.map((h: any) => h.id === id ? { ...h, project_id } : h);
+          const prev = parseLocalHistory(local);
+          const newHistory = prev.map((item) => item.id === id ? { ...item, project_id } : item);
           localStorage.setItem('geo3d_anonymous_history', JSON.stringify(newHistory));
           triggerSync();
         }

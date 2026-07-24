@@ -28,6 +28,10 @@ export default defineConfig(({ mode }) => {
       },
     },
     build: {
+      // Three.js is intentionally isolated as a cacheable vendor chunk. Its
+      // minified size is below 1 MB, so use that as the meaningful warning
+      // threshold instead of Vite's generic 500 KB default.
+      chunkSizeWarningLimit: 1000,
       rollupOptions: {
         output: {
           manualChunks: {

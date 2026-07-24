@@ -1,5 +1,5 @@
 import { useRef, useState, useCallback, useEffect } from 'react';
-import { useThree, useFrame } from '@react-three/fiber';
+import { useThree, useFrame, type ThreeEvent } from '@react-three/fiber';
 import { Html } from '@react-three/drei';
 import * as THREE from 'three';
 import { Point3D, Line3D } from '@/types/geometry';
@@ -82,7 +82,7 @@ export function DraggablePoint({ point, allPoints, allLines, delay, isBuilding }
     return () => { gl.domElement.style.cursor = ''; };
   }, [hovered, isDragging, isManualMode, gl]);
 
-  const onPointerDown = useCallback((e: any) => {
+  const onPointerDown = useCallback((e: ThreeEvent<PointerEvent>) => {
     if (!isManualMode || !context) return;
     e.stopPropagation();
 
@@ -108,10 +108,12 @@ export function DraggablePoint({ point, allPoints, allLines, delay, isBuilding }
     }
 
     // Capture pointer
-    (e.target as any)?.setPointerCapture?.(e.pointerId);
+    if (e.target instanceof Element && 'setPointerCapture' in e.target) {
+      e.target.setPointerCapture(e.pointerId);
+    }
   }, [isManualMode, context, point, camera, raycaster]);
 
-  const onPointerMove = useCallback((e: any) => {
+  const onPointerMove = useCallback((e: ThreeEvent<PointerEvent>) => {
     if (!isDragging || !context) return;
     e.stopPropagation();
 
@@ -183,10 +185,12 @@ export function DraggablePoint({ point, allPoints, allLines, delay, isBuilding }
     context.updatePoint(point.id, rx, ry, rz);
   }, [isDragging, context, gl, camera, raycaster, allLines, allPoints, point.id]);
 
-  const onPointerUp = useCallback((e: any) => {
+  const onPointerUp = useCallback((e: ThreeEvent<PointerEvent>) => {
     if (!isDragging) return;
     setIsDragging(false);
-    (e.target as any)?.releasePointerCapture?.(e.pointerId);
+    if (e.target instanceof Element && 'releasePointerCapture' in e.target) {
+      e.target.releasePointerCapture(e.pointerId);
+    }
   }, [isDragging]);
 
   const showPoints = context?.state.showPoints ?? true;

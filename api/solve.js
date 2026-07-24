@@ -1,11 +1,11 @@
-import { createClient } from '@supabase/supabase-js';
 import { callVilao } from './_lib/vilao.js';
 import { SOLVE_SYSTEM_PROMPT, buildSolveUserMessage } from './_lib/solvePrompts.js';
 import { engineSolved, assembleSolveResult } from './_lib/solveAssemble.js';
 // parseSolveResponse rút sang solveCore.js (dùng chung với solveSteps) — 1 nguồn sự thật.
 import { parseSolveResponse } from './_lib/solveCore.js';
 import { tierFromThrow } from './_lib/kernel-bridge/classifyTier.js';
-import { creditsConfigured, checkAndConsume, refund } from './_lib/credits.js';
+import { refund } from './_lib/credits.js';
+import { accessError, resolveAiAccess, withQuota } from './_lib/aiAccess.js';
 import crypto from 'crypto';
 
 export default async function handler(req, res) {
@@ -15,22 +15,6 @@ export default async function handler(req, res) {
 
   const { problem, geometry, tags } = req.body || {};
 
-  const authHeader = req.headers.authorization;
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return res.status(401).json({ error: 'Unauthorized: Bạn cần đăng nhập để giải bài' });
-  }
-  const token = authHeader.split(' ')[1];
-
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.VITE_SUPABASE_URL,
-    process.env.SUPABASE_SERVICE_ROLE_KEY
-  );
-
-  const { data: { user }, error: authError } = await supabase.auth.getUser(token);
-  if (authError || !user) {
-    return res.status(401).json({ error: 'Unauthorized: Phiên đăng nhập không hợp lệ' });
-  }
-  
   // Validate đầu vào TRƯỚC khi trừ credit (không trừ cho request hỏng).
   if (!problem || typeof problem !== 'string' || problem.trim().length < 10) {
     return res.status(400).json({ error: 'problem text is required (min 10 chars)' });
@@ -41,21 +25,21 @@ export default async function handler(req, res) {
     });
   }
 
-  // Cổng credit/quota theo GÓI (mirror /api/analyze-geometry): free = 3 lượt giải/tháng,
-  // gói trả phí (Giáo viên/Chuyên nghiệp/Trường) trừ CREDIT_COST.solve (2 credit). Bỏ gate cứng
-  // "plan_type='pro'" cũ vì nó chặn nhầm user gói school/teacher dù đã mua. Fail-open khi credit chưa cấu hình.
-  let creditCharge = null;
-  if (creditsConfigured()) {
-    const gate = await checkAndConsume(user.id, 'solve', 'solve');
-    if (!gate.ok) {
-      const status = (gate.reason === 'insufficient' || gate.reason === 'quota_exceeded') ? 402 : 403;
-      return res.status(status).json({ error: gate.message || 'Không dùng được tính năng Giải bài với gói hiện tại.', code: gate.reason });
-    }
-    if (gate.mode === 'credit') creditCharge = { cost: gate.cost, reqId: crypto.randomUUID() };
-  }
+  const access = await resolveAiAccess(req, res, {
+    feature: 'solve',
+    action: 'solve',
+    allowGuest: true,
+    guestFeature: 'solve',
+    guestMax: 1,
+  });
+  if (!access.ok) return accessError(res, access);
+
+  let creditCharge = access.actorType === 'account' && access.gate.mode === 'credit'
+    ? { cost: access.gate.cost, reqId: crypto.randomUUID() }
+    : null;
   const refundIfCharged = async () => {
-    if (creditCharge) {
-      try { await refund(user.id, creditCharge.cost, creditCharge.reqId); }
+    if (creditCharge && access.userId) {
+      try { await refund(access.userId, creditCharge.cost, creditCharge.reqId); }
       catch (e) { console.warn('[solve] refund credit lỗi:', e?.message); }
       creditCharge = null;
     }
@@ -106,5 +90,5 @@ export default async function handler(req, res) {
   const out = assembleSolveResult(eng, parsed);
   // Ưu tiên: tier từ solveProblem → tier lỗi (catch) → classification tái dùng từ hình (nhánh reuse).
   const tier = (eng && eng.tier) || engTier || (geometry && geometry.classification) || null;
-  return res.json({ ...out, tier, geometry });
+  return res.json(withQuota({ ...out, tier, geometry }, access));
 }

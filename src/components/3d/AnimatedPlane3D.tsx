@@ -1,205 +1,183 @@
-import { useEffect, useMemo, useState } from 'react';
-import { useFrame } from '@react-three/fiber';
+import { useEffect, useMemo, useRef, useState, type ComponentRef } from 'react';
+import { useFrame, type ThreeEvent } from '@react-three/fiber';
 import * as THREE from 'three';
-import { Plane3D } from '@/types/geometry';
+import type { Plane3D } from '@/types/geometry';
 import { getCssHslVar } from '@/lib/getCssHslVar';
 import { Line } from '@react-three/drei';
 import { useAnimationOptional } from '@/context/AnimationContext';
 import { useGeometryOptional } from '@/context/GeometryContext';
 import { handleAddPoint } from './ClickToPlacePoint';
+import { buildPlanarPolygonGeometry } from '@/lib/geometry/planeGeometry';
 
 interface AnimatedPlane3DProps {
   plane: Plane3D;
   delay: number;
   isBuilding: boolean;
-  /** Advance mode: hệ số nhân opacity (dim → 0.25). Mặc định 1 = hành vi cũ. */
   opacityFactor?: number;
-  /** Advance mode: mặt mới ở câu hiện tại → viền dày hơn chút. */
   emphasize?: boolean;
 }
 
-export function AnimatedPlane3D({ plane, delay, isBuilding, opacityFactor = 1, emphasize = false }: AnimatedPlane3DProps) {
-  const [visible, setVisible] = useState(false);
-  const [opacity, setOpacity] = useState(0);
-  const [matrix, setMatrix] = useState(() => new THREE.Matrix4());
-  
+type OpacityMaterial = THREE.Material & { opacity: number };
+
+export function AnimatedPlane3D({
+  plane,
+  delay,
+  isBuilding,
+  opacityFactor = 1,
+  emphasize = false,
+}: AnimatedPlane3DProps) {
+  const groupRef = useRef<THREE.Group>(null);
+  const materialRef = useRef<THREE.MeshStandardMaterial>(null);
+  const outlineRef = useRef<ComponentRef<typeof Line>>(null);
+  const animationOpacityRef = useRef(isBuilding ? 0 : 1);
+  const [hovered, setHovered] = useState(false);
   const animCtx = useAnimationOptional();
   const geometryCtx = useGeometryOptional();
-  
-  const autoColor = geometryCtx?.state.autoColor ?? false;
-  const color = useMemo(() => {
-    if (autoColor) {
-      return plane.color || getCssHslVar('--accent');
-    }
-    return '#94a3b8'; // neutral gray
-  }, [plane.color, autoColor]);
 
+  const autoColor = geometryCtx?.state.autoColor ?? false;
+  const color = useMemo(
+    () => autoColor ? (plane.color || getCssHslVar('--accent')) : '#94a3b8',
+    [autoColor, plane.color],
+  );
   const isManualMode = geometryCtx?.state.manualMode ?? false;
   const isVideoMode = geometryCtx?.state.videoMode ?? false;
-  
   const isSelected = geometryCtx?.state.selectedIds.includes(plane.id) ?? false;
-  const [hovered, setHovered] = useState(false);
   const isHighlighted = isSelected || hovered;
   const displayColor = isHighlighted ? '#f97316' : color;
 
-  const DURATION = 500;
-  
-  // Find tracks targeting this plane
-  const tracks = useMemo(() => {
-    if (!geometryCtx?.state.geometry?.timeline?.tracks) return [];
-    return geometryCtx.state.geometry.timeline.tracks.filter(t => t.targetId === plane.id);
-  }, [geometryCtx?.state.geometry?.timeline, plane.id]);
+  const tracks = useMemo(
+    () => geometryCtx?.state.geometry?.timeline?.tracks?.filter((track) => track.targetId === plane.id) ?? [],
+    [geometryCtx?.state.geometry?.timeline?.tracks, plane.id],
+  );
+  const polygon = useMemo(() => buildPlanarPolygonGeometry(plane.points || []), [plane.points]);
+  useEffect(() => () => polygon?.geometry.dispose(), [polygon]);
+
+  const scratch = useMemo(() => ({
+    matrix: new THREE.Matrix4(),
+    rotation: new THREE.Matrix4(),
+    translateToOrigin: new THREE.Matrix4(),
+    translateBack: new THREE.Matrix4(),
+    point: new THREE.Vector3(),
+    direction: new THREE.Vector3(),
+  }), []);
 
   useFrame((_, delta) => {
+    const group = groupRef.current;
+    const material = materialRef.current;
+    if (!group || !material) return;
+
+    let nextOpacity = 1;
+    let nextVisible = true;
+    scratch.matrix.identity();
+
     if (animCtx && !isManualMode) {
-      const t = animCtx.globalTimeRef.current;
-      const tSec = t / 1000;
-
-      let newOpacity = 1;
-      let newVisible = true;
-      let newMatrix = new THREE.Matrix4();
-
-      if (isVideoMode) {
-        // Video mode: Use timeline tracks completely
-        if (tracks.length > 0) {
-          for (const track of tracks) {
-            const p = Math.max(0, Math.min(1, (tSec - track.start) / (track.end - track.start)));
-            
-            if (track.type === 'fade') {
-              const startOpacity = track.params.opacityStart ?? 1;
-              const endOpacity = track.params.opacityEnd ?? 0;
-              newOpacity = startOpacity + (endOpacity - startOpacity) * p;
-            }
-            
-            if (track.type === 'fold') {
-              const startAngle = track.params.angleStart ?? 0;
-              const endAngle = track.params.angleEnd ?? 0;
-              const currentAngle = startAngle + (endAngle - startAngle) * p;
-              
-              if (track.params.axisPoint && track.params.axisDir) {
-                const {x: px, y: py, z: pz} = track.params.axisPoint;
-                const {x: dx, y: dy, z: dz} = track.params.axisDir;
-                const pt = new THREE.Vector3(px, pz, py);
-                const dir = new THREE.Vector3(dx, dz, dy).normalize();
-                const rot = new THREE.Matrix4().makeRotationAxis(dir, currentAngle);
-                const trans1 = new THREE.Matrix4().makeTranslation(-pt.x, -pt.y, -pt.z);
-                const trans2 = new THREE.Matrix4().makeTranslation(pt.x, pt.y, pt.z);
-                newMatrix = trans2.multiply(rot).multiply(trans1);
-              }
-            }
+      const timeMs = animCtx.globalTimeRef.current;
+      const timeSeconds = timeMs / 1000;
+      if (isVideoMode && tracks.length > 0) {
+        for (const track of tracks) {
+          const duration = Math.max(1e-6, track.end - track.start);
+          const progress = THREE.MathUtils.clamp((timeSeconds - track.start) / duration, 0, 1);
+          if (track.type === 'fade') {
+            const from = track.params.opacityStart ?? 1;
+            const to = track.params.opacityEnd ?? 0;
+            nextOpacity = THREE.MathUtils.lerp(from, to, progress);
+          } else if (track.type === 'fold' && track.params.axisPoint && track.params.axisDir) {
+            const angle = THREE.MathUtils.lerp(
+              track.params.angleStart ?? 0,
+              track.params.angleEnd ?? 0,
+              progress,
+            );
+            const { x: px, y: py, z: pz } = track.params.axisPoint;
+            const { x: dx, y: dy, z: dz } = track.params.axisDir;
+            scratch.point.set(px, pz, py);
+            scratch.direction.set(dx, dz, dy).normalize();
+            scratch.rotation.makeRotationAxis(scratch.direction, angle);
+            scratch.translateToOrigin.makeTranslation(-scratch.point.x, -scratch.point.y, -scratch.point.z);
+            scratch.translateBack.makeTranslation(scratch.point.x, scratch.point.y, scratch.point.z);
+            scratch.matrix.copy(scratch.translateBack)
+              .multiply(scratch.rotation)
+              .multiply(scratch.translateToOrigin);
           }
-          if (newOpacity <= 0.01) newVisible = false;
         }
-      } else {
-        // Normal interactive mode: use build-in animation
-        if (isBuilding) {
-          newOpacity = Math.max(0, Math.min(1, (t - delay) / DURATION));
-          newVisible = t >= delay;
-        }
+        nextVisible = nextOpacity > 0.01;
+      } else if (isBuilding) {
+        nextOpacity = THREE.MathUtils.clamp((timeMs - delay) / 500, 0, 1);
+        nextVisible = timeMs >= delay;
       }
+    } else if (isBuilding && !isManualMode) {
+      animationOpacityRef.current = Math.min(1, animationOpacityRef.current + delta * 4);
+      nextOpacity = animationOpacityRef.current;
+    }
 
-      if (opacity !== newOpacity) setOpacity(newOpacity);
-      if (visible !== newVisible) setVisible(newVisible);
-      setMatrix(newMatrix);
-    } else {
-      // Manual mode or not building
-      if (!isBuilding || isManualMode) {
-        if (!visible) setVisible(true);
-        if (opacity < 1) setOpacity((prev) => Math.min(prev + delta * 4, 1));
-      }
+    animationOpacityRef.current = nextOpacity;
+    group.visible = nextVisible;
+    if (!group.matrix.equals(scratch.matrix)) {
+      group.matrix.copy(scratch.matrix);
+      group.matrixWorldNeedsUpdate = true;
+    }
+
+    const baseOpacity = (plane.opacity ?? 0.2) * nextOpacity * opacityFactor;
+    material.opacity = isHighlighted ? Math.min(1, baseOpacity * 2) : baseOpacity;
+    material.needsUpdate = false;
+    const outlineMaterial = (outlineRef.current as { material?: OpacityMaterial } | null)?.material;
+    if (outlineMaterial) {
+      outlineMaterial.opacity = isHighlighted ? 1 : nextOpacity * 0.6 * opacityFactor;
     }
   });
 
-  const { vertices, edgePoints } = useMemo(() => {
-    if (!plane.points || plane.points.length < 3) return { vertices: null, edgePoints: null };
+  if (!polygon) return null;
 
-    // Swap Y/Z for Three.js
-    const pts = plane.points.map(p => new THREE.Vector3(p.x, p.z, p.y));
-
-    // Create geometry from points
-    const geo = new THREE.BufferGeometry();
-    const positions: number[] = [];
-
-    // Plane points describe the polygon boundary in order. Triangulate it as a
-    // fan so pentagons, hexagons, and larger cross-sections are fully filled.
-    // The previous implementation stopped after point 4, while the outline
-    // continued through every point, which produced visibly unfilled wedges.
-    for (let i = 1; i < pts.length - 1; i++) {
-      positions.push(pts[0].x, pts[0].y, pts[0].z);
-      positions.push(pts[i].x, pts[i].y, pts[i].z);
-      positions.push(pts[i + 1].x, pts[i + 1].y, pts[i + 1].z);
+  const handleClick = (event: ThreeEvent<MouseEvent>) => {
+    if (!isManualMode || !geometryCtx) return;
+    const hasLine = event.intersections.some((intersection) => intersection.object.userData?.type === 'line');
+    if (hasLine && geometryCtx.state.manualTool === 'delete') return;
+    if (geometryCtx.state.manualTool === 'delete') {
+      event.stopPropagation();
+      geometryCtx.toggleSelection(plane.id);
+    } else if (geometryCtx.state.manualTool === 'addPoint') {
+      handleAddPoint(event, geometryCtx, false);
     }
+  };
 
-    geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
-    geo.computeVertexNormals();
-
-    // Edge points for outline
-    const edges: [number, number, number][] = pts.map(p => [p.x, p.y, p.z]);
-    edges.push([pts[0].x, pts[0].y, pts[0].z]); // close the loop
-
-    return { vertices: geo, edgePoints: edges };
-  }, [plane.points]);
-
-  if (!visible || !vertices || !edgePoints) return null;
-
-  const finalOpacity = (plane.opacity ?? 0.2) * opacity * opacityFactor;
+  const handlePointerOver = (event: ThreeEvent<PointerEvent>) => {
+    if (!isManualMode || (geometryCtx?.state.manualTool !== 'delete' && geometryCtx?.state.manualTool !== 'addPoint')) return;
+    const hasLine = event.intersections.some((intersection) => intersection.object.userData?.type === 'line');
+    if (hasLine && geometryCtx?.state.manualTool === 'delete') return;
+    event.stopPropagation();
+    setHovered(true);
+    document.body.style.cursor = 'crosshair';
+  };
 
   return (
-    <group matrixAutoUpdate={false} matrix={matrix}>
-      {/* Main Plane Mesh */}
+    <group ref={groupRef} matrixAutoUpdate={false} visible={!isBuilding}>
       <mesh
-        geometry={vertices}
-        onClick={(e) => {
-          if (!isManualMode || !geometryCtx) return;
-
-          // Check if there is a line under the cursor. If so, yield to it.
-          const hasLine = e.intersections.some(x => x.object.userData?.type === 'line');
-          if (hasLine && geometryCtx.state.manualTool === 'delete') {
-            return; // Let the line handle the click
-          }
-
-          if (geometryCtx.state.manualTool === 'delete') {
-            e.stopPropagation();
-            geometryCtx.toggleSelection(plane.id);
-          } else if (geometryCtx.state.manualTool === 'addPoint') {
-            handleAddPoint(e, geometryCtx, false);
-          }
-        }}
-        onPointerOver={(e) => {
-          if (!isManualMode || (geometryCtx?.state.manualTool !== 'delete' && geometryCtx?.state.manualTool !== 'addPoint')) return;
-
-          // If deleting and hovering over a line, don't highlight the plane
-          const hasLine = e.intersections.some(x => x.object.userData?.type === 'line');
-          if (hasLine && geometryCtx?.state.manualTool === 'delete') return;
-
-          e.stopPropagation();
-          setHovered(true);
-          document.body.style.cursor = 'crosshair';
-        }}
+        geometry={polygon.geometry}
+        onClick={handleClick}
+        onPointerOver={handlePointerOver}
         onPointerOut={() => {
           setHovered(false);
           document.body.style.cursor = 'auto';
         }}
       >
         <meshStandardMaterial
+          ref={materialRef}
           color={displayColor}
           transparent
-          opacity={isHighlighted ? finalOpacity * 2 : finalOpacity}
+          opacity={(plane.opacity ?? 0.2) * opacityFactor}
           side={THREE.DoubleSide}
           depthWrite={false}
-          polygonOffset={true}
+          polygonOffset
           polygonOffsetFactor={1}
           polygonOffsetUnits={1}
         />
       </mesh>
-
-      {/* Edge outline */}
       <Line
-        points={edgePoints}
+        ref={outlineRef}
+        points={polygon.edgePoints}
         color={displayColor}
         lineWidth={isHighlighted ? 3 : (emphasize ? 2.5 : 1.5)}
         transparent
-        opacity={isHighlighted ? 1 : opacity * 0.6 * opacityFactor}
+        opacity={opacityFactor * 0.6}
       />
     </group>
   );

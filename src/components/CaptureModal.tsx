@@ -12,16 +12,16 @@ import { useGeometryOptional } from '@/context/GeometryContext';
 import { useCameraOptional, useCameraStateOptional, type CameraState } from '@/context/CameraContext';
 import { createHiddenLineDetector } from '@/lib/geometry/hiddenLineDetection';
 import { scaleGeometry } from '@/lib/geometry/scaleGeometry';
+import { canvasToBlob, downloadBlob } from '@/lib/downloadBlob';
 
 interface CaptureModalProps {
   isOpen: boolean;
   onClose: () => void;
   geometry: GeometryData | null;
-  canvasRef: React.RefObject<HTMLCanvasElement>;
   hiddenLines?: Map<string, boolean>;
 }
 
-export function CaptureModal({ isOpen, onClose, geometry, canvasRef, hiddenLines }: CaptureModalProps) {
+export function CaptureModal({ isOpen, onClose, geometry, hiddenLines }: CaptureModalProps) {
   const [isExporting, setIsExporting] = useState(false);
   const [exportScale, setExportScale] = useState(1.2);
   const [transparentBg, setTransparentBg] = useState(false);
@@ -33,6 +33,7 @@ export function CaptureModal({ isOpen, onClose, geometry, canvasRef, hiddenLines
   const geometryContext = useGeometryOptional();
   const cameraStateContext = useCameraStateOptional();
   const cameraContext = useCameraOptional();
+  const setExportPreviewOpen = cameraContext?.setExportPreviewOpen;
   const showPoints = geometryContext?.state.showPoints ?? true;
   const sharedCameraStateRef = useRef(cameraStateContext?.cameraState);
   const [exportCameraState, setExportCameraState] = useState<CameraState | null>(null);
@@ -43,7 +44,7 @@ export function CaptureModal({ isOpen, onClose, geometry, canvasRef, hiddenLines
   // This keeps the canvas and the small right-panel preview still while editing
   // PNG/TikZ, so the expensive secondary previews do not compete for frames.
   useEffect(() => {
-    cameraContext?.setExportPreviewOpen(isOpen);
+    setExportPreviewOpen?.(isOpen);
     if (!isOpen) {
       setExportCameraState(null);
       return;
@@ -56,8 +57,8 @@ export function CaptureModal({ isOpen, onClose, geometry, canvasRef, hiddenLines
       zoom: sharedCameraState.zoom,
     } : null);
 
-    return () => cameraContext?.setExportPreviewOpen(false);
-  }, [isOpen, cameraContext?.setExportPreviewOpen]);
+    return () => setExportPreviewOpen?.(false);
+  }, [isOpen, setExportPreviewOpen]);
 
   const cameraState = exportCameraState;
 
@@ -94,6 +95,7 @@ export function CaptureModal({ isOpen, onClose, geometry, canvasRef, hiddenLines
     () => hiddenLineDetector && cameraState ? hiddenLineDetector.detect(fixedCamera.cameraPos) : hiddenLines,
     [cameraState, fixedCamera.cameraPos, hiddenLineDetector, hiddenLines],
   );
+  const canExportImage = Boolean(scaledGeometry && cameraState && cameraContext);
 
   const getDynamicLatex = () => {
     if (!scaledGeometry || !cameraState) return '';
@@ -101,10 +103,10 @@ export function CaptureModal({ isOpen, onClose, geometry, canvasRef, hiddenLines
   };
 
   const captureImage = async (mode: 'color' | 'bw') => {
-    if (!canvasRef.current) {
+    if (!scaledGeometry || !cameraState) {
       toast({
         title: "Lỗi",
-        description: "Không tìm thấy canvas",
+        description: "Không có dữ liệu hình để xuất",
         variant: "destructive"
       });
       return;
@@ -113,7 +115,6 @@ export function CaptureModal({ isOpen, onClose, geometry, canvasRef, hiddenLines
     setIsExporting(true);
 
     try {
-      const canvas = canvasRef.current;
       const exportCanvas = document.createElement('canvas');
       const ctx = exportCanvas.getContext('2d');
       if (!ctx) throw new Error('Cannot get canvas context');
@@ -151,13 +152,13 @@ export function CaptureModal({ isOpen, onClose, geometry, canvasRef, hiddenLines
           ctx.drawImage(img, 0, 0, exportCanvas.width, exportCanvas.height);
           URL.revokeObjectURL(blobURL);
           
-          const link = document.createElement('a');
-          link.download = `${geometry?.name || 'geometry'}_bw.png`;
-          link.href = exportCanvas.toDataURL('image/png');
-          link.click();
-          
-          setIsExporting(false);
-          toast({ title: "Thành công!", description: "Đã xuất ảnh trắng đen" });
+          void canvasToBlob(exportCanvas).then((blob) => {
+            downloadBlob(blob, `${geometry?.name || 'geometry'}_bw.png`);
+            toast({ title: "Thành công!", description: "Đã xuất ảnh trắng đen" });
+          }).catch((error: unknown) => {
+            console.error('Black-and-white export error:', error);
+            toast({ title: "Lỗi", description: "Không thể tạo file PNG", variant: "destructive" });
+          }).finally(() => setIsExporting(false));
         };
         img.onerror = () => {
            URL.revokeObjectURL(blobURL);
@@ -167,6 +168,14 @@ export function CaptureModal({ isOpen, onClose, geometry, canvasRef, hiddenLines
         img.src = blobURL;
         return; 
       } else {
+        if (!cameraContext) throw new Error('The 3D renderer is unavailable');
+        const captured = await cameraContext.captureAtCamera(
+          cameraState,
+          exportHiddenLines ?? new Map(),
+          scaledGeometry.points,
+          transparentBg,
+        );
+        const canvas = captured.canvas;
         exportCanvas.width = canvas.width * scaleFactor;
         exportCanvas.height = canvas.height * scaleFactor;
 
@@ -179,49 +188,37 @@ export function CaptureModal({ isOpen, onClose, geometry, canvasRef, hiddenLines
         ctx.scale(scaleFactor, scaleFactor);
         ctx.drawImage(canvas, 0, 0);
         ctx.restore();
+
+        if (showPoints) {
+          const scaleX = exportCanvas.width / canvas.width;
+          const scaleY = exportCanvas.height / canvas.height;
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+
+          for (const point of scaledGeometry.points) {
+            if (!point.label) continue;
+            const projected = captured.labelPositions.get(point.id);
+            if (!projected?.visible) continue;
+            const offset = labelOffsets[point.id] ?? { offsetX: 8, offsetY: -12 };
+            const scaledX = projected.x * scaleX + offset.offsetX * scaleFactor;
+            const scaledY = projected.y * scaleY + offset.offsetY * scaleFactor;
+            const fontSize = 18 * scaleX;
+            ctx.font = `italic ${fontSize}px serif`;
+            ctx.fillStyle = transparentBg ? '#000000' : '#ffffff';
+            if (!transparentBg) {
+              ctx.shadowColor = 'rgba(0,0,0,0.8)';
+              ctx.shadowBlur = 4 * scaleX;
+            }
+            ctx.fillText(point.label, scaledX, scaledY);
+            if (!transparentBg) {
+              ctx.shadowBlur = 2 * scaleX;
+              ctx.fillText(point.label, scaledX, scaledY);
+            }
+          }
+        }
       }
 
-      if (showPoints && mode === 'color') {
-        const labels = document.querySelectorAll('.math-label');
-        const canvasRect = canvas.getBoundingClientRect();
-        
-        const scaleX = exportCanvas.width / canvasRect.width;
-        const scaleY = exportCanvas.height / canvasRect.height;
-        
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        
-        labels.forEach((labelEl) => {
-          const text = labelEl.textContent || '';
-          if (!text.trim()) return;
-          
-          const rect = labelEl.getBoundingClientRect();
-          const x = rect.left - canvasRect.left + rect.width / 2;
-          const y = rect.top - canvasRect.top + rect.height / 2;
-          
-          const scaledX = x * scaleX;
-          const scaledY = y * scaleY;
-          
-          const fontSize = 18 * scaleX;
-          ctx.font = `italic ${fontSize}px serif`;
-          
-          ctx.fillStyle = transparentBg ? '#000000' : '#ffffff';
-          if (!transparentBg) {
-            ctx.shadowColor = 'rgba(0,0,0,0.8)';
-            ctx.shadowBlur = 4 * scaleX;
-          }
-          ctx.fillText(text, scaledX, scaledY);
-          if (!transparentBg) {
-            ctx.shadowBlur = 2 * scaleX;
-            ctx.fillText(text, scaledX, scaledY);
-          }
-        });
-      }
-
-      const link = document.createElement('a');
-      link.download = `${geometry?.name || 'geometry'}_${mode}.png`;
-      link.href = exportCanvas.toDataURL('image/png');
-      link.click();
+      downloadBlob(await canvasToBlob(exportCanvas), `${geometry?.name || 'geometry'}_${mode}.png`);
 
       toast({
         title: "Thành công!",
@@ -251,10 +248,7 @@ export function CaptureModal({ isOpen, onClose, geometry, canvasRef, hiddenLines
   const downloadLatex = () => {
     const latex = getDynamicLatex();
     const blob = new Blob([latex], { type: 'text/plain' });
-    const link = document.createElement('a');
-    link.download = `${geometry?.name || 'geometry'}.tex`;
-    link.href = URL.createObjectURL(blob);
-    link.click();
+    downloadBlob(blob, `${geometry?.name || 'geometry'}.tex`);
 
     toast({
       title: "Thành công!",
@@ -601,11 +595,11 @@ export function CaptureModal({ isOpen, onClose, geometry, canvasRef, hiddenLines
             <div className="flex flex-col gap-3">
               <h4 className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest">Tải xuống hình ảnh (PNG)</h4>
               <div className="grid grid-cols-2 gap-2">
-                <Button variant="outline" className="h-auto py-3 flex-col gap-1.5 hover:border-primary/50 hover:bg-primary/5" onClick={() => captureImage('bw')} disabled={isExporting}>
+                <Button variant="outline" className="h-auto py-3 flex-col gap-1.5 hover:border-primary/50 hover:bg-primary/5" onClick={() => captureImage('bw')} disabled={isExporting || !canExportImage}>
                   <ImageIcon className="w-5 h-5" />
                   <span className="text-xs font-medium">Trắng Đen</span>
                 </Button>
-                <Button variant="outline" className="h-auto py-3 flex-col gap-1.5 hover:border-primary/50 hover:bg-primary/5" onClick={() => captureImage('color')} disabled={isExporting}>
+                <Button variant="outline" className="h-auto py-3 flex-col gap-1.5 hover:border-primary/50 hover:bg-primary/5" onClick={() => captureImage('color')} disabled={isExporting || !canExportImage}>
                   <ImageIcon className="w-5 h-5 text-primary" />
                   <span className="text-xs font-medium">Màu 3D</span>
                 </Button>

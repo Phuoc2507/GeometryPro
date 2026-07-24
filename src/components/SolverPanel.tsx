@@ -10,7 +10,7 @@
  * Desktop: fixed panel on right (lg:w-80)
  * Mobile:  Sheet trigger at bottom-right
  */
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import type { Dispatch, SetStateAction } from 'react';
 import {
   ChevronLeft, ChevronRight, Sparkles, Loader2,
@@ -67,7 +67,7 @@ function useLastProblem(): string {
   if (fromQueue && !IMAGE_PLACEHOLDERS.includes(fromQueue)) return fromQueue;
 
   // 3) Hình nạp lại (Lưu / URL) → đề đã đọc lưu ở geometry.llmPrompt.
-  const fromGeom = ((ctx.state.geometry as any)?.llmPrompt || '').trim();
+  const fromGeom = (ctx.state.geometry?.llmPrompt || '').trim();
   if (fromGeom && !IMAGE_PLACEHOLDERS.includes(fromGeom)) return fromGeom;
 
   // 4) Fallback: hình cũ chưa có llmPrompt → dùng tạm text đã cắt trong nhãn hàng đợi ảnh.
@@ -348,6 +348,13 @@ export function SolverContent({ creditNote }: { creditNote?: string } = {}) {
   const lastProblem = useLastProblem();
   const { solve, reset, hydrate, result, loading, error, currentStep, setCurrentStep } = useSolver();
   const { updateGeometryData } = useGeometryHistory();
+  const geometry = ctx?.state.geometry ?? null;
+  const geometryKey = useMemo(() => {
+    if (!geometry) return '';
+    const points = geometry.points.map((point) => `${point.id}:${point.x},${point.y},${point.z}`).join('|');
+    const lines = geometry.lines.map((line) => `${line.id}:${line.from}>${line.to}`).join('|');
+    return `${geometry.name}:${points}:${lines}`;
+  }, [geometry]);
 
   const [problem, setProblem]     = useState('');
   const [reveal, setReveal]       = useState<SolveReveal | null>(null);
@@ -362,15 +369,23 @@ export function SolverContent({ creditNote }: { creditNote?: string } = {}) {
     }
   }, [lastProblem, result]);
 
-  // Khôi phục lời giải đã LƯU kèm hình khi tải lại (không gọi API).
+  const geometryKeyRef = useRef('');
+
+  // Bind solver state to the actual geometry, excluding the `solve` metadata so
+  // saving a result back onto the same figure does not reset itself.
   useEffect(() => {
-    const saved = (ctx?.state.geometry as any)?.solve;
-    if (saved?.result && !result && !loading) {
+    if (geometryKeyRef.current === geometryKey) return;
+    geometryKeyRef.current = geometryKey;
+    shouldSaveRef.current = false;
+    setReveal(null);
+    const saved = geometry?.solve;
+    if (saved?.result) {
       setProblem(saved.problem || '');
       hydrate(saved.result);
+    } else {
+      reset();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ctx?.state.geometry]);
+  }, [geometry, geometryKey, hydrate, reset]);
 
   // Khi có KẾT QUẢ: (1) dựng điểm lời giải giới thiệu & ghép vào hình, (2) LƯU lời giải kèm hình
   // để tải lại không mất. Deps CHỈ [result] để không lặp khi commit làm đổi state.geometry.
@@ -405,8 +420,7 @@ export function SolverContent({ creditNote }: { creditNote?: string } = {}) {
       // Khôi phục mà hình thiếu điểm dựng (hiếm) -> ghép tạm, KHÔNG lưu lại.
       ctx!.loadGeometry(merged, { silent: true });
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [result]);
+  }, [ctx, result, updateGeometryData]);
 
   // Bóc-lớp + nhấn mạnh theo bước hiện tại.
   useEffect(() => {
@@ -426,7 +440,6 @@ export function SolverContent({ creditNote }: { creditNote?: string } = {}) {
     return () => { camera.setHighlightedIds(new Set()); camera.setRevealVisibleIds(null); };
   }, [result, currentStep, camera, reveal]);
 
-  const geometry = ctx?.state.geometry ?? null;
   const canSolve = !!geometry && problem.trim().length >= 10 && !loading;
 
   const handleSolve = () => {

@@ -14,8 +14,8 @@ export function AuthModal() {
     try {
       const { error } = await signInWithGoogle();
       if (error) throw error;
-    } catch (error: any) {
-      toast.error(error.message || 'Có lỗi xảy ra khi đăng nhập');
+    } catch (error: unknown) {
+      toast.error(error instanceof Error ? error.message : 'Có lỗi xảy ra khi đăng nhập');
     }
   };
 

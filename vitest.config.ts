@@ -8,5 +8,10 @@ export default defineConfig({
   test: {
     include: ['api/_lib/kernel/**/*.test.ts', 'api/_lib/__tests__/**/*.test.js', 'api/_lib/advance/__tests__/**/*.test.js', 'src/**/*.test.ts', 'src/**/*.test.tsx'],
     environment: 'node',
+    // Several numerical kernel suites enforce wall-clock convergence limits.
+    // Run files serially so a concurrent optimizer cannot consume that budget.
+    fileParallelism: false,
+    maxWorkers: 1,
+    minWorkers: 1,
   },
 });

@@ -30,6 +30,7 @@ export function entityTableToGeometryData(et: EntityTable, name: string): Geomet
     .map(([key, verts]) => ({
       id: key,
       label: key,
+      pointIds: [...verts],
       points: verts.map((n) => {
         const p = et.points.get(n)!;
         return { x: p.p.x.approx, y: p.p.y.approx, z: p.p.z.approx };

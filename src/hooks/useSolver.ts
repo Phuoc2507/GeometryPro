@@ -9,7 +9,7 @@ import { useState, useCallback } from 'react';
 import { GeometryData } from '@/types/geometry';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/context/AuthContext';
-import { checkAndIncrementGuestQuota } from '@/lib/quota';
+import { cacheQuotaFromResponse } from '@/lib/quota';
 import type { ConstructSpec } from '@/lib/solveReveal';
 import type { SafetyClassification } from '@/lib/safetyTier';
 
@@ -40,14 +40,9 @@ export function useSolver() {
   const [error, setError]             = useState<string | null>(null);
   const [currentStep, setCurrentStep] = useState(0);
   
-  const { user, openAuthModal } = useAuth();
+  const { openAuthModal } = useAuth();
 
   const solve = useCallback(async (problem: string, geometry: GeometryData, tags?: string[]) => {
-    if (!user && !checkAndIncrementGuestQuota()) {
-      openAuthModal('quota');
-      return;
-    }
-
     setLoading(true);
     setError(null);
     setResult(null);
@@ -63,12 +58,17 @@ export function useSolver() {
       const res = await fetch('/api/solve', {
         method: 'POST',
         headers,
+        credentials: 'same-origin',
         body: JSON.stringify({ problem, geometry, tags }),
       });
 
       const data = await res.json();
+      cacheQuotaFromResponse(res, data);
 
       if (!res.ok) {
+        if (res.status === 429 || data.code === 'guest_quota_exceeded' || data.code === 'guest_ip_quota_exceeded') {
+          openAuthModal('quota');
+        }
         throw new Error(data.error || `HTTP ${res.status}`);
       }
 
@@ -86,7 +86,7 @@ export function useSolver() {
     } finally {
       setLoading(false);
     }
-  }, [openAuthModal, user]);
+  }, [openAuthModal]);
 
   const reset = useCallback(() => {
     setResult(null);

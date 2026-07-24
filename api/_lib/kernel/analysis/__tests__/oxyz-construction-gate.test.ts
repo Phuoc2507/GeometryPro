@@ -24,7 +24,6 @@ describe('Oxyz construction gate (Task 1) — dò op có sẵn', () => {
       ],
     });
     const F = res.entities.points.get('F');
-    // eslint-disable-next-line no-console
     console.log('[Câu 5] ok=', res.ok, 'errors=', JSON.stringify(res.errors),
       'F=', F ? [F.p.x.approx, F.p.y.approx, F.p.z.approx] : null,
       'hasLineT=', res.entities.lines.has('T'));
@@ -56,7 +55,6 @@ describe('Oxyz construction gate (Task 1) — dò op có sẵn', () => {
         report: { kind: 'distance', a: 'M', b: 'N' },
       },
     });
-    // eslint-disable-next-line no-console
     console.log('[Câu 1] ok=', r.ok, 'k=', r.parameter.value, 'answer=', r.answer.approx, 'errors=', JSON.stringify(r.errors));
     expect(r.ok).toBe(true);                          // sau fix: giải được
     expect(Number.isFinite(r.parameter.value)).toBe(true); // tìm được offset k hữu hạn
@@ -81,7 +79,6 @@ describe('Oxyz construction gate (Task 1) — dò op có sẵn', () => {
         report: { kind: 'point_coord', target: 'K', axis: 'x' },
       },
     });
-    // eslint-disable-next-line no-console
     console.log('[oxyz_ratio.t] ok=', r.ok, 't=', r.parameter.value, 'K.x=', r.answer.approx, 'errors=', JSON.stringify(r.errors));
     expect(r.ok).toBe(true);
     expect(r.parameter.value).toBeCloseTo(0.6, 3); // t=0.6
@@ -105,7 +102,6 @@ describe('Oxyz construction gate (Task 1) — dò op có sẵn', () => {
       ],
     });
     const I = buildI.entities.points.get('I');
-    // eslint-disable-next-line no-console
     console.log('[Câu 6A] ok=', buildI.ok, 'I=', I ? [I.p.x.approx, I.p.y.approx, I.p.z.approx] : null);
     expect(buildI.ok).toBe(true);
     expect(buildI.entities.points.has('I')).toBe(true); // giao điểm dựng được
@@ -127,7 +123,6 @@ describe('Oxyz construction gate (Task 1) — dò op có sẵn', () => {
         report: { kind: 'point_coord', target: 'K', axis: 'x' },
       },
     });
-    // eslint-disable-next-line no-console
     console.log('[Câu 6B] ok=', r.ok, 's=', r.parameter.value, 'K.x=', r.answer.approx, 'errors=', JSON.stringify(r.errors));
     // Sau fix: s được thay vào oxyz_ratio.t ⇒ giải được. dist(I,K)=2|s|=3 ⇒ |s|=1.5 (nghiệm đầu s=−1.5).
     expect(r.ok).toBe(true);

@@ -78,9 +78,9 @@ export const AnimationProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     return () => window.removeEventListener('playAnimation', handlePlay);
   }, [play]);
   
-  const seek = (timeMs: number) => {
+  const seek = useCallback((timeMs: number) => {
     globalTimeRef.current = Math.max(0, Math.min(timeMs, totalDuration));
-  };
+  }, [totalDuration]);
 
   // Memoize value to avoid unnecessary re-renders of consumers
   const value = React.useMemo(() => ({
@@ -91,7 +91,7 @@ export const AnimationProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     pause,
     seek,
     setTotalDuration,
-  }), [isPlaying, totalDuration]);
+  }), [isPlaying, totalDuration, play, pause, seek]);
 
   return (
     <AnimationContext.Provider value={value}>

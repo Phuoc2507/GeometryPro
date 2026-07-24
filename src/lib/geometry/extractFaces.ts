@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { Point3D, Line3D } from '@/types/geometry';
+import { Point3D, Line3D, Plane3D } from '@/types/geometry';
 
 export interface Face {
   vertices: THREE.Vector3[];
@@ -190,7 +190,52 @@ function findQuads(
  * Extract faces from geometry
  * Returns triangular and quadrilateral faces found from the line graph
  */
-export function extractFaces(points: Point3D[], lines: Line3D[]): Face[] {
+function extractPlaneFaces(points: Point3D[], lines: Line3D[], planes: Plane3D[]): Face[] {
+  const pointMap = new Map(points.map((point) => [point.id, point]));
+  return planes.flatMap((plane) => {
+    let ids = plane.pointIds?.filter((id) => pointMap.has(id)) ?? [];
+    if (ids.length < 3) {
+      ids = plane.points.map((coordinate) => {
+        const match = points.find((point) =>
+          Math.abs(point.x - coordinate.x) <= 1e-6
+          && Math.abs(point.y - coordinate.y) <= 1e-6
+          && Math.abs(point.z - coordinate.z) <= 1e-6);
+        return match?.id ?? '';
+      }).filter(Boolean);
+    }
+    const vertices = ids.length >= 3
+      ? ids.map((id) => toVector3(pointMap.get(id)!))
+      : plane.points.map((point) => new THREE.Vector3(point.x, point.z, point.y));
+    if (vertices.length < 3) return [];
+
+    const normal = new THREE.Vector3();
+    for (let index = 0; index < vertices.length; index++) {
+      const current = vertices[index];
+      const next = vertices[(index + 1) % vertices.length];
+      normal.x += (current.y - next.y) * (current.z + next.z);
+      normal.y += (current.z - next.z) * (current.x + next.x);
+      normal.z += (current.x - next.x) * (current.y + next.y);
+    }
+    if (normal.lengthSq() < 1e-12) return [];
+    normal.normalize();
+    const centroid = vertices.reduce((sum, vertex) => sum.add(vertex), new THREE.Vector3())
+      .multiplyScalar(1 / vertices.length);
+    const edges: string[] = [];
+    if (ids.length === vertices.length) {
+      for (let index = 0; index < ids.length; index++) {
+        const edge = getLineId(ids[index], ids[(index + 1) % ids.length], lines);
+        if (edge) edges.push(edge);
+      }
+    }
+    return [{ vertices, normal, centroid, edges }];
+  });
+}
+
+export function extractFaces(points: Point3D[], lines: Line3D[], planes: Plane3D[] = []): Face[] {
+  if (planes.length > 0) {
+    const explicitFaces = extractPlaneFaces(points, lines, planes);
+    if (explicitFaces.length > 0) return explicitFaces;
+  }
   if (points.length < 3 || lines.length < 3) return [];
   
   // Build adjacency using only solid lines
@@ -249,32 +294,23 @@ export function triangulateFaces(faces: Face[]): Triangle[] {
     const face = faces[faceIndex];
     const verts = face.vertices;
     
-    if (verts.length === 3) {
-      // Triangle face
+    if (verts.length < 3) continue;
+    const center = verts.reduce((sum, vertex) => sum.add(vertex), new THREE.Vector3())
+      .multiplyScalar(1 / verts.length);
+    const basisU = verts[0].clone().sub(center).normalize();
+    const basisV = new THREE.Vector3().crossVectors(face.normal, basisU).normalize();
+    const contour = verts.map((vertex) => {
+      const relative = vertex.clone().sub(center);
+      return new THREE.Vector2(relative.dot(basisU), relative.dot(basisV));
+    });
+    for (const [a, b, c] of THREE.ShapeUtils.triangulateShape(contour, [])) {
       triangles.push({
-        a: verts[0].clone(),
-        b: verts[1].clone(),
-        c: verts[2].clone(),
-        faceIndex
-      });
-    } else if (verts.length === 4) {
-      // Quad face: split into 2 triangles
-      // Triangle 1: A, B, C
-      triangles.push({
-        a: verts[0].clone(),
-        b: verts[1].clone(),
-        c: verts[2].clone(),
-        faceIndex
-      });
-      // Triangle 2: A, C, D
-      triangles.push({
-        a: verts[0].clone(),
-        b: verts[2].clone(),
-        c: verts[3].clone(),
-        faceIndex
+        a: verts[a].clone(),
+        b: verts[b].clone(),
+        c: verts[c].clone(),
+        faceIndex,
       });
     }
-    // Polygons with more vertices can be added if needed
   }
   
   return triangles;

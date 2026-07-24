@@ -1,4 +1,4 @@
-import { useRef, useEffect, useMemo, useCallback } from 'react';
+import { useRef, useEffect, useMemo, useCallback, type ComponentRef } from 'react';
 import { Hexagon } from 'lucide-react';
 import { Canvas, useThree } from '@react-three/fiber';
 import { OrbitControls, Grid, Environment, Html } from '@react-three/drei';
@@ -9,14 +9,20 @@ import { ClickToPlacePoint } from './ClickToPlacePoint';
 import { ToolPreviewRenderer } from './ToolPreviewRenderer';
 import { CameraFlyer } from './CameraFlyer';
 import { useGeometryOptional } from '@/context/GeometryContext';
-import { useCameraOptional, useCameraStateOptional } from '@/context/CameraContext';
+import {
+  useCameraOptional,
+  useCameraStateOptional,
+  type CaptureHandler,
+} from '@/context/CameraContext';
 import { scaleGeometry } from '@/lib/geometry/scaleGeometry';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
+import type { GeometryData } from '@/types/geometry';
 
-function CameraFitter({ geometry, is2D }: { geometry: any; is2D?: boolean }) {
+function CameraFitter({ geometry, is2D }: { geometry: GeometryData | null; is2D?: boolean }) {
   const { camera, size: canvasSize } = useThree();
   const cameraCtx = useCameraOptional();
   const cameraStateCtx = useCameraStateOptional();
+  const commitCameraState = cameraStateCtx?.setCameraState;
   const prevNameRef = useRef<string>('');
   const resetNonce = cameraCtx?.resetNonce ?? 0;
   const prevNonceRef = useRef<number>(resetNonce);
@@ -35,7 +41,7 @@ function CameraFitter({ geometry, is2D }: { geometry: any; is2D?: boolean }) {
     let minY = Infinity, maxY = -Infinity; // three Y = math Z
     let minZ = Infinity, maxZ = -Infinity; // three Z = math Y
 
-    geometry.points.forEach((p: any) => {
+    geometry.points.forEach((p) => {
       const x = Number(p.x), y = Number(p.z), z = Number(p.y);
       if (!isNaN(x)) { minX = Math.min(minX, x); maxX = Math.max(maxX, x); }
       if (!isNaN(y)) { minY = Math.min(minY, y); maxY = Math.max(maxY, y); }
@@ -76,20 +82,20 @@ function CameraFitter({ geometry, is2D }: { geometry: any; is2D?: boolean }) {
 
     // Đồng bộ pose vào cameraState để CaptureModal/CameraTracker khớp góc nhìn.
     // CameraTracker sẽ no-op vì camera đã ở đúng vị trí -> không lặp vô hạn.
-    if (cameraStateCtx) {
+    if (commitCameraState) {
       const pos = camera.position;
       const targetVec = new THREE.Vector3(cx, cy, cz);
-      const zoom = (camera as any).isOrthographicCamera
-        ? (camera as any).zoom
+      const zoom = camera instanceof THREE.OrthographicCamera
+        ? camera.zoom
         : 10.59 / Math.max(0.1, pos.distanceTo(targetVec));
-      cameraStateCtx.setCameraState({
+      commitCameraState({
         position: [pos.x, pos.y, pos.z],
         target: [cx, cy, cz],
         zoom,
       });
     }
     // cameraStateCtx.setCameraState là setter ổn định của useState -> không cần vào deps.
-  }, [geometry, camera, is2D, canvasSize, resetNonce]);
+  }, [geometry, camera, is2D, canvasSize, resetNonce, commitCameraState]);
 
   return null;
 }
@@ -97,11 +103,12 @@ function CameraFitter({ geometry, is2D }: { geometry: any; is2D?: boolean }) {
 function CameraTracker() {
   const { camera } = useThree();
   const cameraStateContext = useCameraStateOptional();
+  const sharedCameraState = cameraStateContext?.cameraState;
 
   // Sync FROM CameraState TO WebGL Camera (e.g. when modified by CaptureModal)
   useEffect(() => {
-    if (!cameraStateContext) return;
-    const { position, target: stTarget, zoom } = cameraStateContext.cameraState;
+    if (!sharedCameraState) return;
+    const { position, target: stTarget, zoom } = sharedCameraState;
     const currentPos = new THREE.Vector3(...position);
 
     // If the state is different from the WebGL camera, it means it was updated externally
@@ -111,18 +118,120 @@ function CameraTracker() {
       camera.position.copy(currentPos);
       camera.lookAt(new THREE.Vector3(...stTarget));
 
-      if ((camera as any).isOrthographicCamera) {
+      if (camera instanceof THREE.OrthographicCamera) {
          camera.zoom = zoom;
          camera.updateProjectionMatrix();
       }
     }
-  }, [cameraStateContext?.cameraState, camera]);
+  }, [sharedCameraState, camera]);
+
+  return null;
+}
+
+function CanvasCaptureBridge() {
+  const { camera, gl, scene, size } = useThree();
+  const registerCaptureHandler = useCameraOptional()?.registerCaptureHandler;
+
+  useEffect(() => {
+    if (!registerCaptureHandler) return;
+
+    const capture: CaptureHandler = async (state, hiddenLines, points, transparent) => {
+      const width = Math.max(1, Math.round(size.width * gl.getPixelRatio()));
+      const height = Math.max(1, Math.round(size.height * gl.getPixelRatio()));
+      const exportRenderer = new THREE.WebGLRenderer({
+        antialias: true,
+        alpha: true,
+        preserveDrawingBuffer: true,
+      });
+      exportRenderer.setPixelRatio(1);
+      exportRenderer.setSize(width, height, false);
+      exportRenderer.localClippingEnabled = true;
+      exportRenderer.outputColorSpace = gl.outputColorSpace;
+      exportRenderer.toneMapping = gl.toneMapping;
+      exportRenderer.toneMappingExposure = gl.toneMappingExposure;
+      exportRenderer.setClearColor(transparent ? 0x000000 : 0x09090b, transparent ? 0 : 1);
+
+      const exportCamera = camera.clone();
+      exportCamera.position.set(...state.position);
+      exportCamera.up.copy(camera.up);
+      exportCamera.lookAt(new THREE.Vector3(...state.target));
+      if (exportCamera instanceof THREE.PerspectiveCamera) {
+        exportCamera.aspect = width / height;
+      } else if (exportCamera instanceof THREE.OrthographicCamera) {
+        exportCamera.zoom = state.zoom;
+      }
+      exportCamera.updateProjectionMatrix();
+      exportCamera.updateMatrixWorld(true);
+
+      type DashMaterial = THREE.Material & {
+        dashSize?: number;
+        gapSize?: number;
+        needsUpdate: boolean;
+      };
+      const changedMaterials: Array<{
+        material: DashMaterial;
+        dashSize?: number;
+        gapSize?: number;
+      }> = [];
+
+      scene.traverse((object) => {
+        if (object.userData?.type !== 'geometry-line') return;
+        const materialValue = (object as THREE.Object3D & { material?: THREE.Material }).material;
+        if (!materialValue || Array.isArray(materialValue)) return;
+        const material = materialValue as DashMaterial;
+        changedMaterials.push({
+          material,
+          dashSize: material.dashSize,
+          gapSize: material.gapSize,
+        });
+        const isHidden = hiddenLines.get(String(object.userData.lineId)) ?? false;
+        material.dashSize = isHidden ? 0.3 : 1e6;
+        material.gapSize = isHidden ? 0.4 : 0;
+      });
+
+      try {
+        scene.updateMatrixWorld(true);
+        exportRenderer.render(scene, exportCamera);
+
+        const copiedCanvas = document.createElement('canvas');
+        copiedCanvas.width = width;
+        copiedCanvas.height = height;
+        const copiedContext = copiedCanvas.getContext('2d');
+        if (!copiedContext) throw new Error('Cannot create the export canvas');
+        copiedContext.drawImage(exportRenderer.domElement, 0, 0);
+
+        const labelPositions = new Map<string, { x: number; y: number; visible: boolean }>();
+        const projected = new THREE.Vector3();
+        for (const point of points) {
+          // Geometry data is z-up; the WebGL scene is y-up.
+          projected.set(point.x, point.z, point.y).project(exportCamera);
+          labelPositions.set(point.id, {
+            x: (projected.x * 0.5 + 0.5) * width,
+            y: (-projected.y * 0.5 + 0.5) * height,
+            visible: projected.z >= -1 && projected.z <= 1,
+          });
+        }
+
+        return { canvas: copiedCanvas, labelPositions };
+      } finally {
+        for (const previous of changedMaterials) {
+          previous.material.dashSize = previous.dashSize;
+          previous.material.gapSize = previous.gapSize;
+        }
+        exportRenderer.dispose();
+        exportRenderer.forceContextLoss();
+      }
+    };
+
+    registerCaptureHandler(capture);
+    return () => registerCaptureHandler(null);
+  }, [camera, gl, registerCaptureHandler, scene, size.height, size.width]);
 
   return null;
 }
 
 interface SceneProps {
-  geometry: any;
+  geometry: GeometryData | null;
   isBuilding: boolean;
   autoRotate?: boolean;
   showCoordinateGrid?: boolean;
@@ -137,12 +246,13 @@ function Scene({ geometry, isBuilding, autoRotate = false, is2D = false, focus =
   const { camera } = useThree();
   const cameraStateContext = useCameraStateOptional();
   const setCameraState = cameraStateContext?.setCameraState;
+  const setLiveCameraState = cameraStateContext?.setLiveCameraState;
   const isExportPreviewOpen = cameraContext?.isExportPreviewOpen ?? false;
   const isLivePreviewEnabled = cameraContext?.isLivePreviewEnabled ?? false;
 
   // Ref tới OrbitControls (three-stdlib instance) để CameraFlyer điều khiển
   // controls.target trực tiếp trong lúc bay.
-  const controlsRef = useRef<any>(null);
+  const controlsRef = useRef<ComponentRef<typeof OrbitControls>>(null);
 
   // Calculate the centroid (center of mass) of the geometry
   // and convert math coords (z=up) to Three.js (y=up)
@@ -160,7 +270,7 @@ function Scene({ geometry, isBuilding, autoRotate = false, is2D = false, focus =
     let sx = 0, sy = 0, sz = 0;
     let validCount = 0;
 
-    geometry.points.forEach((p: any) => {
+    geometry.points.forEach((p) => {
       const x = Number(p.x);
       const y = Number(p.y);
       const z = Number(p.z);
@@ -186,7 +296,7 @@ function Scene({ geometry, isBuilding, autoRotate = false, is2D = false, focus =
   const gridSize = useMemo(() => {
     if (!geometry || !geometry.points || geometry.points.length === 0) return 10;
     let max = 0;
-    geometry.points.forEach((p: any) => {
+    geometry.points.forEach((p) => {
       const x = Math.abs(Number(p.x));
       const y = Math.abs(Number(p.y));
       const z = Math.abs(Number(p.z));
@@ -203,13 +313,12 @@ function Scene({ geometry, isBuilding, autoRotate = false, is2D = false, focus =
   // update is limited to one state write per browser frame, and the LaTeX source
   // consumes the deferred camera value in RightPanel so it does not recalculate
   // for every intermediate camera pose.
-  const persistTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const liveSyncFrameRef = useRef<number | null>(null);
   const lastLivePublishAtRef = useRef(0);
   const lastPublishedCameraRef = useRef<{ position: [number, number, number]; target: [number, number, number]; zoom: number } | null>(null);
 
-  const publishCameraState = useCallback(() => {
-    if (!setCameraState) return;
+  const publishCameraState = useCallback((commit: boolean) => {
+    if (!setCameraState || !setLiveCameraState) return;
     const pos = camera.position;
     const targetVec = new THREE.Vector3(...centroid);
     const next = {
@@ -224,14 +333,15 @@ function Scene({ geometry, isBuilding, autoRotate = false, is2D = false, focus =
       && previous.position.every((value, index) => Math.abs(value - next.position[index]) < 0.0001)
       && previous.target.every((value, index) => Math.abs(value - next.target[index]) < 0.0001)
       && Math.abs(previous.zoom - next.zoom) < 0.0001;
-    if (unchanged) return;
+    if (unchanged && !commit) return;
 
     lastPublishedCameraRef.current = next;
-    setCameraState(next);
-  }, [camera, centroid, setCameraState]);
+    if (commit) setCameraState(next);
+    else setLiveCameraState(next);
+  }, [camera, centroid, setCameraState, setLiveCameraState]);
 
   const handleControlsChange = useCallback(() => {
-    if (!isLivePreviewEnabled || !setCameraState || liveSyncFrameRef.current !== null) return;
+    if (!isLivePreviewEnabled || isExportPreviewOpen || !setLiveCameraState || liveSyncFrameRef.current !== null) return;
     liveSyncFrameRef.current = requestAnimationFrame((timestamp) => {
       liveSyncFrameRef.current = null;
       // The main WebGL scene keeps rendering at the display refresh rate. The
@@ -239,20 +349,15 @@ function Scene({ geometry, isBuilding, autoRotate = false, is2D = false, focus =
       // overall experience while still being visibly realtime.
       if (timestamp - lastLivePublishAtRef.current < 1000 / 30) return;
       lastLivePublishAtRef.current = timestamp;
-      publishCameraState();
+      publishCameraState(false);
     });
-  }, [isLivePreviewEnabled, publishCameraState, setCameraState]);
+  }, [isExportPreviewOpen, isLivePreviewEnabled, publishCameraState, setLiveCameraState]);
 
   const handleControlsEnd = useCallback(() => {
-    if (!setCameraState) return;
-    if (persistTimerRef.current) clearTimeout(persistTimerRef.current);
-    persistTimerRef.current = setTimeout(() => {
-      publishCameraState();
-    }, 180);
-  }, [publishCameraState, setCameraState]);
+    publishCameraState(true);
+  }, [publishCameraState]);
 
   useEffect(() => () => {
-    if (persistTimerRef.current) clearTimeout(persistTimerRef.current);
     if (liveSyncFrameRef.current !== null) cancelAnimationFrame(liveSyncFrameRef.current);
   }, []);
 
@@ -260,6 +365,7 @@ function Scene({ geometry, isBuilding, autoRotate = false, is2D = false, focus =
     <>
       {/* Camera Tracker with Dynamic Target */}
       <CameraTracker />
+      <CanvasCaptureBridge />
       <CameraFitter geometry={geometry} is2D={is2D} />
       <CameraFlyer controlsRef={controlsRef} focus={focus} />
 

@@ -260,7 +260,6 @@ export function TopToolbar() {
         isOpen={isCaptureOpen}
         onClose={() => setIsCaptureOpen(false)}
         geometry={state.geometry}
-        canvasRef={cameraContext?.canvasRef!}
         hiddenLines={cameraContext?.hiddenLines}
       />
       <UpgradeModal open={isUpgradeOpen} onOpenChange={setIsUpgradeOpen} />

@@ -19,7 +19,8 @@ import { getDescriptionsForTags } from './_lib/tagDescriptions.js';
 import { logEngineDecision } from './_lib/engineDecisionLog.js';
 import { createClient } from '@supabase/supabase-js';
 import crypto from 'crypto';
-import { creditsConfigured, checkAndConsume, refund } from './_lib/credits.js';
+import { refund } from './_lib/credits.js';
+import { accessError, resolveAiAccess, withQuota } from './_lib/aiAccess.js';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -35,6 +36,7 @@ export default async function handler(req, res) {
 
   let userId = null;        // ví credit: cần ở scope hàm để catch ngoài cùng hoàn được
   let creditCharge = null;  // { cost, reqId } nếu đã TRỪ credit (paid tier) -> hoàn khi lỗi
+  let access = null;
   try {
     const isStream = req.query.stream === 'true';
 
@@ -45,36 +47,6 @@ export default async function handler(req, res) {
         res.write(`data: ${JSON.stringify(payload)}\n\n`);
       }
     };
-
-    if (isStream) {
-      res.setHeader('Content-Type', 'text/event-stream');
-      res.setHeader('Cache-Control', 'no-cache');
-      res.setHeader('Connection', 'keep-alive');
-      res.flushHeaders();
-      sendEvent('Bắt đầu kết nối...', 5);
-    }
-
-    const authHeader = req.headers.authorization;
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      const errMsg = 'Unauthorized: Missing or invalid token';
-      if (isStream) { res.write(`data: ${JSON.stringify({ error: errMsg })}\n\n`); return res.end(); }
-      return res.status(401).json({ error: errMsg });
-    }
-    const token = authHeader.split(' ')[1];
-    
-    if (supabase) {
-      const { data: { user }, error: authError } = await supabase.auth.getUser(token);
-      if (authError || !user) {
-        const errMsg = 'Unauthorized: Invalid token';
-        if (isStream) { res.write(`data: ${JSON.stringify({ error: errMsg })}\n\n`); return res.end(); }
-        return res.status(401).json({ error: errMsg });
-      }
-      userId = user.id;
-      // NOTE: Drawing is a free feature (guests are limited client-side by quota).
-      // The previous Pro gate keyed on aiModel==='high' blocked every default draw
-      // because the client sends aiModel:'high' by default, and there is no separate
-      // premium model anymore (all requests route to gemini). Gate removed.
-    }
 
     let { imageBase64, prompt, mode = 'quick', ocrOnly = false, aiModel, useReasoning } = req.body;
 
@@ -106,20 +78,29 @@ export default async function handler(req, res) {
     }
 
     const trimmedPrompt = prompt.trim();
+    const validModes = ['quick', 'detailed'];
+    const drawMode = validModes.includes(mode) ? mode : 'quick';
 
-    // ===== TRỪ CREDIT / QUOTA CHO LƯỢT VẼ =====
-    // Trừ TRƯỚC khi làm việc nặng; hoàn ở catch ngoài cùng nếu lỗi (chỉ hoàn credit,
-    // quota free không hoàn). Fail-open khi credit CHƯA cấu hình (env chưa set) để
-    // không làm hỏng chức năng vẽ khi deploy chưa đủ biến môi trường.
-    const drawAction = mode === 'detailed' ? 'draw_detailed' : 'draw_quick';
-    if (userId && creditsConfigured()) {
-      const gate = await checkAndConsume(userId, 'draw', drawAction);
-      if (!gate.ok) {
-        const errMsg = gate.message || 'Bạn đã hết lượt/credit để vẽ.';
-        if (isStream) { res.write(`data: ${JSON.stringify({ error: errMsg, code: gate.reason })}\n\n`); return res.end(); }
-        return res.status(402).json({ error: errMsg, code: gate.reason });
-      }
-      if (gate.mode === 'credit') creditCharge = { cost: gate.cost, reqId: crypto.randomUUID() };
+    const drawAction = drawMode === 'detailed' ? 'draw_detailed' : 'draw_quick';
+    access = await resolveAiAccess(req, res, {
+      feature: 'draw',
+      action: drawAction,
+      allowGuest: true,
+      guestFeature: drawAction,
+      guestMax: drawMode === 'detailed' ? 1 : 2,
+    });
+    if (!access.ok) return accessError(res, access);
+    userId = access.userId;
+    if (access.actorType === 'account' && access.gate.mode === 'credit') {
+      creditCharge = { cost: access.gate.cost, reqId: crypto.randomUUID() };
+    }
+
+    if (isStream) {
+      res.setHeader('Content-Type', 'text/event-stream');
+      res.setHeader('Cache-Control', 'no-cache');
+      res.setHeader('Connection', 'keep-alive');
+      res.flushHeaders();
+      sendEvent('Bắt đầu kết nối...', 5);
     }
 
     // -- Bắt đầu Caching --
@@ -154,17 +135,16 @@ export default async function handler(req, res) {
         creditCharge = null;
       }
       sendEvent('Lấy kết quả từ bộ nhớ đệm (Cache)...', 100);
+      const cachedPayload = withQuota(cachedResponse, access);
       if (isStream) {
-        res.write(`data: ${JSON.stringify({ status: 'done', data: cachedResponse })}\n\n`);
+        res.write(`data: ${JSON.stringify({ status: 'done', data: cachedPayload })}\n\n`);
         return res.end();
       } else {
-        return res.status(200).json(cachedResponse);
+        return res.status(200).json(cachedPayload);
       }
     }
     // -- Kết thúc Caching --
 
-    const validModes = ['quick', 'detailed'];
-    const drawMode = validModes.includes(mode) ? mode : 'quick';
     let detailLevel = 'static';
 
     // ===== KERNEL MODE: engine tất định thử TRƯỚC, hỏng thì rơi về luồng LLM cũ =====
@@ -230,11 +210,12 @@ export default async function handler(req, res) {
           console.log('[kernel] phục vụ:', trimmedPrompt.substring(0, 60));
           logEngineDecision({ mode: 'quick', served: true, reason: '', ms: _kms, promptLen: trimmedPrompt.length, approx: (k.answers || []).some((a) => a.approximate) });
           sendEvent('Hoàn tất (engine)!', 100);
+          const responsePayload = withQuota(enginePayload, access);
           if (isStream) {
-            res.write(`data: ${JSON.stringify({ status: 'done', data: enginePayload })}\n\n`);
+            res.write(`data: ${JSON.stringify({ status: 'done', data: responsePayload })}\n\n`);
             return res.end();
           }
-          return res.json(enginePayload);
+          return res.json(responsePayload);
         }
         console.log('[kernel] không dùng được → rơi về LLM:', JSON.stringify({
           ok: k.ok, violations: k.violations?.length ?? 0, errors: k.errors?.length ?? 0,
@@ -357,11 +338,12 @@ Hãy:
             console.log('[kernel] phục vụ (detailed/static):', trimmedPrompt.substring(0, 60));
             logEngineDecision({ mode: 'detailed', served: true, reason: '', ms: _kms, promptLen: trimmedPrompt.length, approx: (k.answers || []).some((a) => a.approximate) });
             sendEvent('Hoàn tất (engine)!', 100);
+            const responsePayload = withQuota(enginePayload, access);
             if (isStream) {
-              res.write(`data: ${JSON.stringify({ status: 'done', data: enginePayload })}\n\n`);
+              res.write(`data: ${JSON.stringify({ status: 'done', data: responsePayload })}\n\n`);
               return res.end();
             }
-            return res.json(enginePayload);
+            return res.json(responsePayload);
           }
           console.log('[kernel] detailed/static không dùng được → LLM:', JSON.stringify({
             ok: k.ok, violations: k.violations?.length ?? 0, errors: k.errors?.length ?? 0,
@@ -543,11 +525,12 @@ KẾT QUẢ TRƯỚC BỊ PHẲNG (mọi điểm có z≈0). Hãy dựng lại h
       });
     }
 
+    const responsePayload = withQuota(finalPayload, access);
     if (isStream) {
-      res.write(`data: ${JSON.stringify({ status: 'done', data: finalPayload })}\n\n`);
+      res.write(`data: ${JSON.stringify({ status: 'done', data: responsePayload })}\n\n`);
       return res.end();
     } else {
-      return res.json(finalPayload);
+      return res.json(responsePayload);
     }
 
   } catch (error) {

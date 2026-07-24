@@ -1,11 +1,11 @@
-import { useState, useMemo, useCallback, useDeferredValue } from 'react';
+import { useState, useMemo, useCallback, useRef } from 'react';
 import { ChevronRight, ChevronLeft, Copy, Check, Box, MapPin, Ruler, Cuboid, Code, Download, Maximize2, FileDown, ChevronDown, BookOpen } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { useGeometryOptional } from '@/context/GeometryContext';
-import { useCameraOptional, useCameraStateOptional } from '@/context/CameraContext';
+import { useCameraOptional, useCameraStateOptional, type CameraState } from '@/context/CameraContext';
 import { project3DTo2D, generateProjectedLatex } from '@/lib/geometry/projection';
 import { computeProperties, fmt } from '@/lib/geometry/calculations';
 import { DynamicPointControls } from '@/components/DynamicPointControls';
@@ -17,6 +17,7 @@ import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { SolverContent, ResizeHandle } from '@/components/SolverPanel';
 import { useResizableWidth } from '@/hooks/useResizableWidth';
 import { TierBanner } from './TierBanner';
+import { downloadBlob } from '@/lib/downloadBlob';
 
 function PanelContent() {
   const [copied, setCopied] = useState(false);
@@ -37,10 +38,11 @@ function PanelContent() {
     return computeProperties(context.state.geometry);
   }, [context?.state.geometry]);
 
-  const fixedCamera = useMemo(() => {
-    const geometry = context?.state.geometry;
-    const st = cameraStateContext?.cameraState;
-    if (!geometry || !camera || !st) return null;
+  const visualCameraState = camera?.isLivePreviewEnabled
+    ? cameraStateContext?.previewCameraState
+    : cameraStateContext?.cameraState;
+  const buildFixedCamera = useCallback((st: CameraState | undefined) => {
+    if (!st) return null;
     
     // Luôn khóa mục tiêu vào gốc tọa độ O(0,0,0) để tọa độ trong TikZ luôn chuẩn xác
     const target: [number, number, number] = [0, 0, 0];
@@ -56,25 +58,29 @@ function PanelContent() {
       target[2] + viewDir[2]
     ];
     return { cameraPos, target, zoom: st.zoom || 1 };
-  }, [context?.state.geometry, camera, cameraStateContext?.cameraState]);
+  }, []);
+  const fixedCamera = useMemo(() => buildFixedCamera(visualCameraState), [buildFixedCamera, visualCameraState]);
+  const settledFixedCamera = useMemo(
+    () => buildFixedCamera(cameraStateContext?.cameraState),
+    [buildFixedCamera, cameraStateContext?.cameraState],
+  );
+  const hiddenLinesRef = useRef(camera?.hiddenLines);
+  hiddenLinesRef.current = camera?.hiddenLines;
 
-  // Defer the camera used for LaTeX string generation to keep the SVG 60fps smooth
-  const deferredCamera = useDeferredValue(fixedCamera);
-
-  // Generating TikZ walks the entire geometry. Cache it so Live Preview only
-  // redraws the SVG instead of rebuilding the source on every camera frame.
+  // TikZ follows only the settled camera. Live camera updates therefore redraw
+  // the lightweight SVG without rebuilding the source dozens of times a second.
   const dynamicLatex = useMemo(() => {
     const geometry = context?.state.geometry;
-    if (!geometry || !deferredCamera) return geometry?.latexCode || '';
+    if (!geometry || !settledFixedCamera) return geometry?.latexCode || '';
     return generateProjectedLatex(
       scaledGeometry || geometry,
-      deferredCamera.cameraPos,
-      deferredCamera.target,
-      camera?.hiddenLines,
+      settledFixedCamera.cameraPos,
+      settledFixedCamera.target,
+      hiddenLinesRef.current,
       context?.state.showPoints,
-      tikzScale * (deferredCamera.zoom || 1)
+      tikzScale * (settledFixedCamera.zoom || 1)
     );
-  }, [camera?.hiddenLines, context?.state.geometry, context?.state.showPoints, deferredCamera, scaledGeometry, tikzScale]);
+  }, [context?.state.geometry, context?.state.showPoints, scaledGeometry, settledFixedCamera, tikzScale]);
 
   // All hooks above must run even when this panel is rendered without a provider.
   if (!context) return null;
@@ -96,10 +102,7 @@ function PanelContent() {
     const latex = getDynamicLatex();
     if (!latex) return;
     const blob = new Blob([latex], { type: 'text/plain' });
-    const link = document.createElement('a');
-    link.download = `${state.geometry?.name || 'geometry'}.tex`;
-    link.href = URL.createObjectURL(blob);
-    link.click();
+    downloadBlob(blob, `${state.geometry?.name || 'geometry'}.tex`);
   };
 
   if (!state.geometry) {
@@ -841,7 +844,6 @@ function PanelContent() {
           isOpen={isCaptureOpen}
           onClose={() => setIsCaptureOpen(false)}
           geometry={state.geometry}
-          canvasRef={camera.canvasRef}
           hiddenLines={camera.hiddenLines}
         />
       )}

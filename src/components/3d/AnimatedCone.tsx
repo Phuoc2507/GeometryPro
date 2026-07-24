@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useFrame } from '@react-three/fiber';
+import { useFrame, type ThreeEvent } from '@react-three/fiber';
 import { useAnimationOptional } from '@/context/AnimationContext';
 import { useGeometryOptional } from '@/context/GeometryContext';
 import * as THREE from 'three';
@@ -79,7 +79,7 @@ export function AnimatedCone({ cone, delay, isBuilding, opacityFactor = 1 }: Ani
   const currentRadius = cone.radius * scale;
   const currentHeight = height * scale;
 
-  const handleClick = (e: any) => {
+  const handleClick = (e: ThreeEvent<MouseEvent>) => {
     if (e.delta > 2) return;
     if (!isManualMode || !geometryCtx) return;
     if (geometryCtx.state.manualTool === 'delete') {
@@ -88,7 +88,7 @@ export function AnimatedCone({ cone, delay, isBuilding, opacityFactor = 1 }: Ani
     }
   };
 
-  const handlePointerOver = (e: any) => {
+  const handlePointerOver = (e: ThreeEvent<PointerEvent>) => {
     if (!isManualMode || geometryCtx?.state.manualTool !== 'delete') return;
     e.stopPropagation();
     setHovered(true);

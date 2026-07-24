@@ -25,6 +25,11 @@ import { GeometryData } from '@/types/geometry';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 
+interface LocalHistoryItem {
+  id: string;
+  geometry_data: GeometryData;
+}
+
 function GeometryLoader() {
   const location = useLocation();
   const navigate = useNavigate();
@@ -43,8 +48,8 @@ function GeometryLoader() {
         if (id.startsWith('local_')) {
           const localStr = localStorage.getItem('geo3d_anonymous_history');
           if (localStr) {
-            const history = JSON.parse(localStr);
-            const item = history.find((h: any) => h.id === id);
+            const history = JSON.parse(localStr) as LocalHistoryItem[];
+            const item = history.find((entry) => entry.id === id);
             if (item) {
               hasLoaded.current = true;
               context.loadGeometry(item.geometry_data as unknown as GeometryData);

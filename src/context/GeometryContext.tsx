@@ -1,16 +1,40 @@
 import React, { createContext, useContext, useReducer, useCallback, useRef, useEffect } from 'react';
-import { GeometryState, GeometryAction, GeometryData, QueueItem, Point3D, Line3D, Plane3D, ManualTool } from '@/types/geometry';
+import { GeometryState, GeometryAction, GeometryData, QueueItem, Point3D, Line3D, Plane3D, ManualTool, AdvanceScene, DetailLevel } from '@/types/geometry';
 import { loadPreferences, savePreferences } from '@/lib/preferences';
 import { PYRAMID_MOCK_DATA, SATELLITE_DEMO_DATA, SCAN_STATUSES } from '@/data/mockData';
 import { lod4DemoData } from '@/lib/lod4DemoData';
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/context/AuthContext';
-import { checkAndIncrementGuestQuota } from '@/lib/quota';
+import { cacheQuotaFromResponse } from '@/lib/quota';
 import { collectPlanePointIds, planeReferencesPoint } from '@/lib/geometry/planeReferences';
 const LOCAL_API = import.meta.env.VITE_LOCAL_API_URL ?? '';
 
-async function invokeLocalApi(endpoint: string, body: Record<string, unknown>): Promise<{ data: any; error: any }> {
+interface LocalApiError {
+  message: string;
+  code?: string;
+  status?: number;
+}
+
+interface LocalApiData {
+  error?: string;
+  code?: string;
+  mode?: string;
+  scene?: AdvanceScene;
+  geometry?: GeometryData;
+  step1?: { text?: string; tags?: string[]; detailLevel?: DetailLevel };
+  step2?: { geometry?: GeometryData; llmPrompt?: string };
+  needsClarification?: boolean;
+  message?: string;
+  addedElements?: { points?: unknown[]; lines?: unknown[] };
+}
+
+interface LocalApiResult {
+  data: LocalApiData | null;
+  error: LocalApiError | null;
+}
+
+async function invokeLocalApi(endpoint: string, body: Record<string, unknown>): Promise<LocalApiResult> {
   try {
     const { data: sessionData } = await supabase.auth.getSession();
     const token = sessionData.session?.access_token;
@@ -21,13 +45,15 @@ async function invokeLocalApi(endpoint: string, body: Record<string, unknown>): 
     const res = await fetch(`${LOCAL_API}${endpoint}`, {
       method: 'POST',
       headers,
+      credentials: 'same-origin',
       body: JSON.stringify(body),
     });
-    const data = await res.json();
+    const data = await res.json() as LocalApiData;
+    cacheQuotaFromResponse(res, data);
     if (!res.ok) return { data: null, error: { message: data?.error || `HTTP ${res.status}`, code: data?.code, status: res.status } };
     return { data, error: null };
-  } catch (err: any) {
-    return { data: null, error: { message: err?.message || 'Network error' } };
+  } catch (err: unknown) {
+    return { data: null, error: { message: err instanceof Error ? err.message : 'Network error' } };
   }
 }
 
@@ -35,7 +61,7 @@ async function invokeLocalApiStream(
   endpoint: string, 
   body: Record<string, unknown>, 
   onProgress: (statusText: string, progress: number, chunk?: string) => void
-): Promise<{ data: any; error: any }> {
+): Promise<LocalApiResult> {
   try {
     const { data: sessionData } = await supabase.auth.getSession();
     const token = sessionData.session?.access_token;
@@ -46,19 +72,22 @@ async function invokeLocalApiStream(
     const res = await fetch(`${LOCAL_API}${endpoint}?stream=true`, {
       method: 'POST',
       headers,
+      credentials: 'same-origin',
       body: JSON.stringify(body),
     });
 
     if (!res.ok) {
-      const data = await res.json().catch(() => null);
+      const data = await res.json().catch(() => null) as LocalApiData | null;
+      cacheQuotaFromResponse(res, data);
       return { data: null, error: { message: data?.error || `HTTP ${res.status}`, code: data?.code, status: res.status } };
     }
+    cacheQuotaFromResponse(res);
 
     const reader = res.body?.getReader();
     if (!reader) throw new Error("Stream not supported");
     const decoder = new TextDecoder("utf-8");
     let buffer = "";
-    let finalData = null;
+    let finalData: LocalApiData | null = null;
 
     while (true) {
       const { done, value } = await reader.read();
@@ -71,7 +100,13 @@ async function invokeLocalApiStream(
         if (chunk.startsWith('data: ')) {
           try {
             const dataStr = chunk.slice(6);
-            const parsed = JSON.parse(dataStr);
+            const parsed = JSON.parse(dataStr) as LocalApiData & {
+              status?: string;
+              data?: LocalApiData;
+              statusText?: string;
+              progress?: number;
+              chunk?: string;
+            };
             if (parsed.error) {
               return { data: null, error: { message: parsed.error, code: parsed.code } };
             }
@@ -89,16 +124,21 @@ async function invokeLocalApiStream(
       }
     }
     
+    cacheQuotaFromResponse(res, finalData);
     return { data: finalData, error: null };
-  } catch (err: any) {
-    return { data: null, error: { message: err?.message || 'Network error' } };
+  } catch (err: unknown) {
+    return { data: null, error: { message: err instanceof Error ? err.message : 'Network error' } };
   }
 }
 
 // Lỗi hết credit/quota (từ API 402) -> nên mở modal nâng cấp.
 const NEEDS_UPGRADE_CODES = ['insufficient', 'quota_exceeded', 'blocked'];
-function needsUpgrade(err: any): boolean {
+function needsUpgrade(err: LocalApiError | null): boolean {
   return err?.status === 402 || NEEDS_UPGRADE_CODES.includes(err?.code);
+}
+const NEEDS_AUTH_CODES = ['auth_required', 'guest_quota_exceeded', 'guest_ip_quota_exceeded'];
+function needsAuth(err: LocalApiError | null): boolean {
+  return err?.status === 401 || err?.status === 429 || NEEDS_AUTH_CODES.includes(err?.code);
 }
 import { generateLatexCode } from '@/lib/geometry/generateLatex';
 import { tryLocalCommand } from '@/lib/geometry/localCommands';
@@ -430,7 +470,7 @@ export function GeometryProvider({ children }: { children: React.ReactNode }) {
       showCoordinateGrid: state.showCoordinateGrid,
     });
   }, [state.showPoints, state.autoColor, state.autoRotate, state.showCoordinateGrid]);
-  const { user, openAuthModal, openUpgradeModal, refreshProfile } = useAuth();
+  const { openAuthModal, openUpgradeModal, refreshProfile } = useAuth();
   stateRef.current = state;
 
   const undo = useCallback(() => {
@@ -509,11 +549,6 @@ export function GeometryProvider({ children }: { children: React.ReactNode }) {
   }, [simulateScanProgress, finishWithGeometry]);
 
   const analyzeImage = useCallback(async (imageBase64: string) => {
-    if (!user && !checkAndIncrementGuestQuota()) {
-      openAuthModal('quota');
-      return;
-    }
-
     dispatch({ type: 'START_SCANNING' });
 
     try {
@@ -554,6 +589,7 @@ export function GeometryProvider({ children }: { children: React.ReactNode }) {
         if (errorMessage.includes('Missing or invalid token')) {
           errorMessage = "Vui lòng đăng nhập để sử dụng tính năng AI phân tích ảnh.";
         }
+        if (needsAuth(geminiError)) openAuthModal('quota');
         if (needsUpgrade(geminiError)) openUpgradeModal();
 
         toast({ title: "❌ Lỗi", description: errorMessage, variant: "destructive" });
@@ -573,14 +609,9 @@ export function GeometryProvider({ children }: { children: React.ReactNode }) {
       toast({ title: "Lỗi", description: "Không thể xử lý hình ảnh", variant: "destructive" });
       dispatch({ type: 'CLEAR_GEOMETRY' });
     }
-  }, [finishWithGeometry, openAuthModal, openUpgradeModal, user]);
+  }, [finishWithGeometry, openAuthModal, openUpgradeModal]);
 
   const analyzeText = useCallback(async (prompt: string, mode: DrawMode = 'quick') => {
-    if (!user && !checkAndIncrementGuestQuota()) {
-      openAuthModal('quota');
-      return;
-    }
-
     const sessionId = ++scanSessionRef.current;
     dispatch({ type: 'START_SCANNING' });
 
@@ -637,6 +668,7 @@ export function GeometryProvider({ children }: { children: React.ReactNode }) {
         if (errorMessage.includes('Missing or invalid token')) {
           errorMessage = "Vui lòng đăng nhập để sử dụng tính năng AI vẽ hình.";
         }
+        if (needsAuth(geminiError)) openAuthModal('quota');
         if (needsUpgrade(geminiError)) openUpgradeModal();
         
         toast({ title: "❌ Lỗi", description: errorMessage, variant: "destructive" });
@@ -658,7 +690,7 @@ export function GeometryProvider({ children }: { children: React.ReactNode }) {
       toast({ title: "Lỗi", description: "Không thể xử lý đề bài", variant: "destructive" });
       dispatch({ type: 'CLEAR_GEOMETRY' });
     }
-  }, [finishWithGeometry, openAuthModal, openUpgradeModal, user]);
+  }, [finishWithGeometry, openAuthModal, openUpgradeModal]);
 
   const analyzeAdvance = useCallback(async (prompt: string, imageBase64?: string) => {
     const sessionId = ++scanSessionRef.current;
@@ -758,7 +790,7 @@ export function GeometryProvider({ children }: { children: React.ReactNode }) {
           useReasoning: stateRef.current.useReasoning
         };
         const { data, error } = await invokeLocalApiStream('/api/analyze-geometry', payload, (statusText, progress, chunk) => {
-          const updates: any = { progress, statusText };
+          const updates: Partial<QueueItem> = { progress, statusText };
           if (chunk !== undefined) updates.streamingText = chunk; 
           dispatch({ type: 'QUEUE_UPDATE', id, updates });
         });
@@ -769,6 +801,7 @@ export function GeometryProvider({ children }: { children: React.ReactNode }) {
           if (errorMessage.includes('Missing or invalid token')) {
             errorMessage = "Vui lòng đăng nhập để sử dụng tính năng AI vẽ hình.";
           }
+          if (needsAuth(error)) openAuthModal('quota');
           if (needsUpgrade(error)) openUpgradeModal();
           
           dispatch({
@@ -845,7 +878,7 @@ export function GeometryProvider({ children }: { children: React.ReactNode }) {
         toast({ title: "❌ Lỗi", description: `Không thể xử lý "${prompt.substring(0, 40)}...": ${msg}`, variant: "destructive" });
       }
     })();
-  }, [addToHistory, openUpgradeModal, refreshProfile]);
+  }, [addToHistory, openAuthModal, openUpgradeModal, refreshProfile]);
 
   const queueAnalyzeImage = useCallback((imageBase64: string, mode: DrawMode = 'quick') => {
     const id = `q_${Date.now()}_${++queueIdCounter}`;
@@ -883,6 +916,7 @@ export function GeometryProvider({ children }: { children: React.ReactNode }) {
           if (errorMessage.includes('Missing or invalid token')) {
             errorMessage = "Vui lòng đăng nhập để sử dụng tính năng AI phân tích ảnh.";
           }
+          if (needsAuth(error)) openAuthModal('quota');
           if (needsUpgrade(error)) openUpgradeModal();
           
           dispatch({ type: 'QUEUE_UPDATE', id, updates: { status: 'error', progress: 0, statusText: errorMessage, error: errorMessage } });
@@ -948,7 +982,7 @@ export function GeometryProvider({ children }: { children: React.ReactNode }) {
         toast({ title: "❌ Lỗi", description: "Không thể xử lý ảnh đề bài", variant: "destructive" });
       }
     })();
-  }, [addToHistory, openUpgradeModal]);
+  }, [addToHistory, openAuthModal, openUpgradeModal]);
 
   const viewQueueItem = useCallback((id: string) => {
     const item = stateRef.current.queue.find(q => q.id === id);
@@ -981,7 +1015,7 @@ export function GeometryProvider({ children }: { children: React.ReactNode }) {
     const localResult = tryLocalCommand(prompt, state.geometry);
     if (localResult) {
       // Giữ lại đề bài đã đọc (llmPrompt) — lệnh sửa chỉ đổi hình, không được mất đề để ô "Giải" còn tự điền.
-      dispatch({ type: 'SET_GEOMETRY', geometry: { ...localResult.geometry, llmPrompt: (localResult.geometry as any).llmPrompt ?? (state.geometry as any)?.llmPrompt } });
+      dispatch({ type: 'SET_GEOMETRY', geometry: { ...localResult.geometry, llmPrompt: localResult.geometry.llmPrompt ?? state.geometry?.llmPrompt } });
       dispatch({ type: 'START_BUILDING' });
 
       setTimeout(() => {
@@ -1019,7 +1053,7 @@ export function GeometryProvider({ children }: { children: React.ReactNode }) {
 
       if (data?.geometry) {
         // Giữ đề bài đã đọc qua lần sửa bằng AI (server trả hình mới, không kèm llmPrompt).
-        dispatch({ type: 'SET_GEOMETRY', geometry: { ...data.geometry, llmPrompt: data.geometry.llmPrompt ?? (state.geometry as any)?.llmPrompt } });
+        dispatch({ type: 'SET_GEOMETRY', geometry: { ...data.geometry, llmPrompt: data.geometry.llmPrompt ?? state.geometry?.llmPrompt } });
         dispatch({ type: 'START_BUILDING' });
 
         setTimeout(() => {

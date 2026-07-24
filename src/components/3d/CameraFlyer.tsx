@@ -2,6 +2,11 @@ import { useEffect, useRef } from 'react';
 import { useThree, useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 
+interface OrbitControlsLike {
+  target: THREE.Vector3;
+  update: () => void;
+}
+
 /**
  * CameraFlyer — bay (animate) camera mượt tới một tập điểm của hình.
  *
@@ -20,7 +25,7 @@ export function CameraFlyer({
   controlsRef,
   focus,
 }: {
-  controlsRef: React.MutableRefObject<any>;
+  controlsRef: React.RefObject<OrbitControlsLike>;
   focus: { pts: Array<{ x: number; y: number; z: number }>; nonce: number } | null;
 }) {
   const { camera, size } = useThree();
@@ -44,7 +49,7 @@ export function CameraFlyer({
     let minX = Infinity, maxX = -Infinity;
     let minY = Infinity, maxY = -Infinity;
     let minZ = Infinity, maxZ = -Infinity;
-    pts.forEach((p: any) => {
+    pts.forEach((p) => {
       const x = Number(p.x), y = Number(p.z), z = Number(p.y);
       if (!isNaN(x)) { minX = Math.min(minX, x); maxX = Math.max(maxX, x); }
       if (!isNaN(y)) { minY = Math.min(minY, y); maxY = Math.max(maxY, y); }
@@ -87,8 +92,7 @@ export function CameraFlyer({
     };
     // Chỉ trigger khi nonce đổi; focus.pts/camera/size được đọc từ closure của
     // render hiện tại (đã fresh vì đổi focus kèm re-render).
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [focus?.nonce]);
+  }, [camera, controlsRef, focus, size.height, size.width]);
 
   useFrame((_, delta) => {
     const a = anim.current;

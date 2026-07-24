@@ -25,7 +25,7 @@ export function useProjects() {
 
       if (error) throw error;
       setProjects(data || []);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error fetching projects:', err);
     } finally {
       setIsLoading(false);
@@ -52,7 +52,7 @@ export function useProjects() {
       if (error) throw error;
       setProjects(prev => [data, ...prev]);
       return data;
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error creating project:', err);
       toast({
         title: "Lỗi",
@@ -74,7 +74,7 @@ export function useProjects() {
       if (error) throw error;
       setProjects(prev => prev.map(p => p.id === id ? { ...p, name: newName } : p));
       return true;
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error renaming project:', err);
       toast({
         title: "Lỗi",
@@ -102,7 +102,7 @@ export function useProjects() {
       if (error) throw error;
       setProjects(prev => prev.filter(p => p.id !== id));
       return true;
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error deleting project:', err);
       toast({
         title: "Lỗi",

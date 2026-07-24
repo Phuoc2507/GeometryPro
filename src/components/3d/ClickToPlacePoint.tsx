@@ -1,14 +1,20 @@
 import { useRef, useCallback } from 'react';
-import { useThree } from '@react-three/fiber';
+import { useThree, type ThreeEvent } from '@react-three/fiber';
 import * as THREE from 'three';
 import { useGeometryOptional } from '@/context/GeometryContext';
+
+type GeometryContextValue = NonNullable<ReturnType<typeof useGeometryOptional>>;
 
 /**
  * Invisible plane on y=0 (Three.js coords) that captures clicks
  * to place points when manual mode + addPoint tool is active.
  * Converts Three.js coords (y-up) back to math coords (z-up).
  */
-export function handleAddPoint(e: any, context: any, snapToGrid: boolean = false) {
+export function handleAddPoint(
+  e: ThreeEvent<MouseEvent>,
+  context: GeometryContextValue,
+  snapToGrid = false,
+) {
   if (!context) return;
   const { state, addPoint } = context;
   if (!state.manualMode || state.manualTool !== 'addPoint') return;
@@ -36,7 +42,7 @@ export function handleAddPoint(e: any, context: any, snapToGrid: boolean = false
   }
 
   // Generate next label
-  const existingLabels = new Set((state.geometry?.points || []).map((p: any) => p.label));
+  const existingLabels = new Set((state.geometry?.points || []).map((point) => point.label));
   let label = '';
   for (let i = 0; i < 26; i++) {
     const ch = String.fromCharCode(65 + i);
@@ -51,8 +57,8 @@ export function ClickToPlacePoint() {
   const context = useGeometryOptional();
   const planeRef = useRef<THREE.Mesh>(null);
 
-  const handleClick = useCallback((e: any) => {
-    handleAddPoint(e, context, true); // Snap to grid for the background plane
+  const handleClick = useCallback((e: ThreeEvent<MouseEvent>) => {
+    if (context) handleAddPoint(e, context, true); // Snap to grid for the background plane
   }, [context]);
 
   if (!context?.state.manualMode || context.state.manualTool !== 'addPoint') {

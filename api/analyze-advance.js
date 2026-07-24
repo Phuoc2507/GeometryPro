@@ -10,13 +10,9 @@
 // KHÔNG import tĩnh — vì solveWithKernel.js kéo theo api/_lib/kernel-dist/ (BỊ GITIGNORE, chỉ sinh
 // bởi `npm run build:kernel`). Import tĩnh sẽ giết route lúc load nếu kernel chưa build; nạp động ⇒
 // lỗi rơi vào try/catch và trả lỗi sạch (đồng thời hoàn credit).
-import { createClient } from '@supabase/supabase-js';
 import crypto from 'crypto';
-import { creditsConfigured, checkAndConsume, refund, creditCostFor } from './_lib/credits.js';
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-const supabase = supabaseUrl && supabaseKey ? createClient(supabaseUrl, supabaseKey) : null;
+import { refund, creditCostFor } from './_lib/credits.js';
+import { accessError, resolveAiAccess, withQuota } from './_lib/aiAccess.js';
 
 // ===== LÕI THUẦN (deps-injected) — test 3 nhánh KHÔNG cần mạng =====
 // deps = { splitProblem, buildAdvanceScene, solveProblem, transcribeImage }. Xem test analyze-advance.test.js.
@@ -72,20 +68,6 @@ export default async function handler(req, res) {
   let userId = null;        // ví credit: cần ở scope hàm để catch ngoài cùng hoàn được
   let creditCharge = null;  // { cost, reqId } nếu đã TRỪ credit (paid tier) → hoàn khi lỗi
   try {
-    // ---- Auth Bearer (Supabase) — copy pattern analyze-geometry.js ----
-    const authHeader = req.headers.authorization;
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return res.status(401).json({ error: 'Unauthorized: Missing or invalid token' });
-    }
-    const token = authHeader.split(' ')[1];
-    if (supabase) {
-      const { data: { user }, error: authError } = await supabase.auth.getUser(token);
-      if (authError || !user) {
-        return res.status(401).json({ error: 'Unauthorized: Invalid token' });
-      }
-      userId = user.id;
-    }
-
     // ---- Đề bài ---- (Advance nhận CHỮ hoặc ẢNH: có ảnh thì Pass -1 CHÉP đề ảnh ra chữ trong lõi)
     const { prompt, imageBase64 } = req.body || {};
     const hasText = typeof prompt === 'string' && prompt.trim().length >= 1;
@@ -98,14 +80,15 @@ export default async function handler(req, res) {
     // Seed CHỮ: có chữ thì dùng chữ; chỉ-ảnh → '' (Pass -1 transcribeImage trong lõi sẽ điền đề vào).
     const problemSeed = hasText ? prompt.trim() : '';
 
-    // ---- TRỪ CREDIT cho lượt Advance (feature 'draw', action 'draw_advance') ----
-    // Trừ TRƯỚC khi làm việc nặng; hoàn ở catch nếu lỗi. Fail-open khi credit CHƯA cấu hình.
-    if (userId && creditsConfigured()) {
-      const gate = await checkAndConsume(userId, 'draw', 'draw_advance');
-      if (!gate.ok) {
-        return res.status(402).json({ error: gate.message || 'Bạn đã hết lượt/credit để vẽ.', code: gate.reason });
-      }
-      if (gate.mode === 'credit') creditCharge = { cost: gate.cost, reqId: crypto.randomUUID() };
+    const access = await resolveAiAccess(req, res, {
+      feature: 'draw',
+      action: 'draw_advance',
+      allowGuest: false,
+    });
+    if (!access.ok) return accessError(res, access);
+    userId = access.userId;
+    if (access.gate.mode === 'credit') {
+      creditCharge = { cost: access.gate.cost, reqId: crypto.randomUUID() };
     }
 
     // ---- Nạp ĐỘNG các mảnh pipeline (lỗi import ⇒ rơi vào catch, hoàn credit) ----
@@ -133,7 +116,7 @@ export default async function handler(req, res) {
       }
     }
 
-    return res.json(result);
+    return res.json(withQuota(result, access));
   } catch (error) {
     console.error('Error in analyze-advance:', error);
     // Lỗi sau khi đã trừ ⇒ HOÀN credit đã trừ (nếu có). Quota free không hoàn.

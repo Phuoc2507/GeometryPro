@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useFrame } from '@react-three/fiber';
+import { useFrame, type ThreeEvent } from '@react-three/fiber';
 import { useAnimationOptional } from '@/context/AnimationContext';
 import { useGeometryOptional } from '@/context/GeometryContext';
 import { Line } from '@react-three/drei';
@@ -99,7 +99,7 @@ export function AnimatedCircle({ circle, delay, isBuilding, opacityFactor = 1 }:
     ] as [number, number, number];
   });
 
-  const handleClick = (e: any) => {
+  const handleClick = (e: ThreeEvent<MouseEvent>) => {
     if (e.delta > 2) return;
     if (!isManualMode || !geometryCtx) return;
     if (geometryCtx.state.manualTool === 'delete') {
@@ -108,7 +108,7 @@ export function AnimatedCircle({ circle, delay, isBuilding, opacityFactor = 1 }:
     }
   };
 
-  const handlePointerOver = (e: any) => {
+  const handlePointerOver = (e: ThreeEvent<PointerEvent>) => {
     if (!isManualMode || geometryCtx?.state.manualTool !== 'delete') return;
     e.stopPropagation();
     setHovered(true);

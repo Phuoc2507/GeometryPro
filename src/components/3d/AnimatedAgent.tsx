@@ -21,11 +21,11 @@ export function AnimatedAgent({ agent, tracks }: Props) {
     if (!meshRef.current || !animCtx) return;
     const t = animCtx.globalTimeRef.current / 1000;
 
-    let currentPos = new THREE.Vector3(agent.initialPosition[0], agent.initialPosition[2], agent.initialPosition[1]);
+    const currentPos = new THREE.Vector3(agent.initialPosition[0], agent.initialPosition[2], agent.initialPosition[1]);
 
     // 1. Base translation: if it's on the tent, it moves with the tent until a certain time
     // For simplicity, let's assume it follows tent translation until its specific track starts
-    let basePos = new THREE.Vector3().copy(currentPos);
+    const basePos = new THREE.Vector3().copy(currentPos);
     
     // Apply tent translation ONLY if agent is rescuer
     if (agent.id === 'rescuer') {
@@ -41,7 +41,9 @@ export function AnimatedAgent({ agent, tracks }: Props) {
             const funcZ = new Function('t', `return ${parts[2]}`);
             basePos.add(new THREE.Vector3(funcX(t), funcZ(t), funcY(t)));
           }
-        } catch (e) {}
+        } catch (error: unknown) {
+          console.warn('Error evaluating translation track', error);
+        }
       } else if (t > track.end) {
         if (track.params.final_position) {
           const fp = track.params.final_position;

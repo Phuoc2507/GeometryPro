@@ -4,7 +4,7 @@ var __export = (target, all) => {
     __defProp(target, name, { get: all[name], enumerable: true });
 };
 
-// node_modules/zod/v3/external.js
+// node_modules/.pnpm/zod@3.25.76/node_modules/zod/v3/external.js
 var external_exports = {};
 __export(external_exports, {
   BRAND: () => BRAND,
@@ -116,7 +116,7 @@ __export(external_exports, {
   void: () => voidType
 });
 
-// node_modules/zod/v3/helpers/util.js
+// node_modules/.pnpm/zod@3.25.76/node_modules/zod/v3/helpers/util.js
 var util;
 (function(util2) {
   util2.assertEqual = (_) => {
@@ -250,7 +250,7 @@ var getParsedType = (data) => {
   }
 };
 
-// node_modules/zod/v3/ZodError.js
+// node_modules/.pnpm/zod@3.25.76/node_modules/zod/v3/ZodError.js
 var ZodIssueCode = util.arrayToEnum([
   "invalid_type",
   "invalid_literal",
@@ -368,7 +368,7 @@ ZodError.create = (issues) => {
   return error;
 };
 
-// node_modules/zod/v3/locales/en.js
+// node_modules/.pnpm/zod@3.25.76/node_modules/zod/v3/locales/en.js
 var errorMap = (issue, _ctx) => {
   let message;
   switch (issue.code) {
@@ -471,7 +471,7 @@ var errorMap = (issue, _ctx) => {
 };
 var en_default = errorMap;
 
-// node_modules/zod/v3/errors.js
+// node_modules/.pnpm/zod@3.25.76/node_modules/zod/v3/errors.js
 var overrideErrorMap = en_default;
 function setErrorMap(map) {
   overrideErrorMap = map;
@@ -480,7 +480,7 @@ function getErrorMap() {
   return overrideErrorMap;
 }
 
-// node_modules/zod/v3/helpers/parseUtil.js
+// node_modules/.pnpm/zod@3.25.76/node_modules/zod/v3/helpers/parseUtil.js
 var makeIssue = (params) => {
   const { data, path, errorMaps, issueData } = params;
   const fullPath = [...path, ...issueData.path || []];
@@ -590,14 +590,14 @@ var isDirty = (x) => x.status === "dirty";
 var isValid = (x) => x.status === "valid";
 var isAsync = (x) => typeof Promise !== "undefined" && x instanceof Promise;
 
-// node_modules/zod/v3/helpers/errorUtil.js
+// node_modules/.pnpm/zod@3.25.76/node_modules/zod/v3/helpers/errorUtil.js
 var errorUtil;
 (function(errorUtil2) {
   errorUtil2.errToObj = (message) => typeof message === "string" ? { message } : message || {};
   errorUtil2.toString = (message) => typeof message === "string" ? message : message?.message;
 })(errorUtil || (errorUtil = {}));
 
-// node_modules/zod/v3/types.js
+// node_modules/.pnpm/zod@3.25.76/node_modules/zod/v3/types.js
 var ParseInputLazyPath = class {
   constructor(parent, value, path, key) {
     this._cachedPath = [];
@@ -5451,6 +5451,16 @@ function iLineSphere(l, s) {
     chord: sqrt(div(disc, a))
   };
 }
+function iLineLine(l1, l2) {
+  const cross2 = crossV(l1.dir, l2.dir);
+  const w = subV(l2.p, l1.p);
+  if (isZeroS(lenSqV(cross2))) {
+    return isZeroS(lenSqV(crossV(w, l1.dir))) ? { kind: "intersection", result: "coincident" } : { kind: "intersection", result: "parallel" };
+  }
+  if (!isZeroS(dotV(w, cross2))) return { kind: "intersection", result: "none" };
+  const t = div(dotV(crossV(w, l2.dir), cross2), lenSqV(cross2));
+  return { kind: "intersection", result: "point", point: pointFromCoords(addV(l1.p, scaleV(l1.dir, t))) };
+}
 function computeIntersection(a, b) {
   const deg = firstDegenerate([a, b]);
   if (deg) return { ok: false, problem: deg };
@@ -5470,6 +5480,8 @@ function computeIntersection(a, b) {
       return { ok: true, answer: iLineSphere(a, b) };
     case "sphere-line":
       return { ok: true, answer: iLineSphere(b, a) };
+    case "line-line":
+      return { ok: true, answer: iLineLine(a, b) };
     default:
       return { ok: false, problem: `intersection not supported for ${key}` };
   }
@@ -5731,10 +5743,13 @@ function executeOxyzOp(op, et) {
     case "oxyz_intersect": {
       const r = computeIntersection(resolveEntityE(op.a, et), resolveEntityE(op.b, et));
       if (!r.ok) throw new Error(r.problem);
-      const pt2 = r.answer.result === "point" ? r.answer.point : r.answer.result === "tangent-point" ? r.answer.point : null;
-      if (!pt2) throw new Error(`oxyz_intersect: ${op.a} \u2229 ${op.b} is not a single point (${r.answer.result})`);
-      setPointE(et, op.name, pt2.p, true);
-      break;
+      const res = r.answer.result;
+      if (res === "point" || res === "tangent-point") {
+        setPointE(et, op.name, r.answer.point.p, true);
+        break;
+      }
+      const why = res === "parallel" ? "hai \u0111\u1ED1i t\u01B0\u1EE3ng song song \u2014 kh\xF4ng c\xF3 giao \u0111i\u1EC3m" : res === "coincident" ? "hai \u0111\u1ED1i t\u01B0\u1EE3ng tr\xF9ng nhau \u2014 v\xF4 s\u1ED1 giao \u0111i\u1EC3m, kh\xF4ng x\xE1c \u0111\u1ECBnh m\u1ED9t \u0111i\u1EC3m" : res === "none" ? "hai \u0111\u1ED1i t\u01B0\u1EE3ng kh\xF4ng c\u1EAFt nhau (ch\xE9o nhau) \u2014 kh\xF4ng c\xF3 giao \u0111i\u1EC3m" : res === "line" ? "giao l\xE0 m\u1ED9t \u0110\u01AF\u1EDCNG (m\u1EB7t\xD7m\u1EB7t) \u2014 d\xF9ng query intersection, kh\xF4ng ph\u1EA3i op oxyz_intersect" : `kh\xF4ng ph\u1EA3i m\u1ED9t \u0111i\u1EC3m (${res})`;
+      throw new Error(`oxyz_intersect: ${op.a} \u2229 ${op.b} \u2014 ${why}`);
     }
     case "oxyz_circumsphere_offset": {
       const a = requirePointE(et, op.of[0]).p;
@@ -6447,6 +6462,7 @@ function entityTableToGeometryData(et, name) {
   const planes = Array.from(et.faces.entries()).filter(([, verts]) => verts.length >= 3).map(([key, verts]) => ({
     id: key,
     label: key,
+    pointIds: [...verts],
     points: verts.map((n) => {
       const p = et.points.get(n);
       return { x: p.p.x.approx, y: p.p.y.approx, z: p.p.z.approx };
@@ -7322,6 +7338,49 @@ function runAnalysis(raw) {
       return null;
     }
   };
+  const evalQueriesEnv = (env, sources) => {
+    const values = new Array(sources.length).fill(null);
+    const geometric = [];
+    sources.forEach((source, index) => {
+      if (isExprSrc(source)) {
+        try {
+          values[index] = evalExpr(source.expr, env, fitAt(env).funcs);
+        } catch {
+          values[index] = null;
+        }
+      } else if (isSolidVolSrc(source)) {
+        try {
+          values[index] = solidVolumeAt(env, source);
+        } catch {
+          values[index] = null;
+        }
+      } else {
+        geometric.push({ index, source });
+      }
+    });
+    if (geometric.length === 0) return values;
+    let ops;
+    try {
+      ops = concreteOpsEnv(env);
+    } catch {
+      return values;
+    }
+    const result = run({
+      solidName: plan.solidName,
+      ops,
+      asserts: [],
+      queries: geometric.map(({ source }) => source)
+    });
+    if (!result.ok || result.answers.length !== geometric.length) return values;
+    geometric.forEach(({ index }, answerIndex) => {
+      try {
+        values[index] = scalarOf(result.answers[answerIndex]);
+      } catch {
+        values[index] = null;
+      }
+    });
+    return values;
+  };
   if (plan.analyze.kind === "integrate") {
     const az = plan.analyze;
     try {
@@ -7409,30 +7468,31 @@ function runAnalysis(raw) {
         });
         return env;
       };
-      const residOf = (env, c) => {
-        const q = evalQueryEnv(env, c.of);
-        if (q === null || !Number.isFinite(q)) return null;
-        return q - evalExpr(String(c.equals), env);
+      const residualsOf = (env) => {
+        const queryValues = evalQueriesEnv(env, az.constraints.map((constraint) => constraint.of));
+        return az.constraints.map((constraint, index) => {
+          const value = queryValues[index];
+          if (value === null || !Number.isFinite(value)) return null;
+          return value - evalExpr(String(constraint.equals), env);
+        });
       };
       const objective = (xs) => {
         const env = envOf(xs);
         let sum = 0;
-        for (const c of az.constraints) {
-          const r = residOf(env, c);
-          if (r === null) return Number.POSITIVE_INFINITY;
-          sum += r * r;
+        for (const residual of residualsOf(env)) {
+          if (residual === null) return Number.POSITIVE_INFINITY;
+          sum += residual * residual;
         }
         return sum;
       };
       const SOLVE_MULTI_BUDGET_MS = 2e4;
-      const best = optimizeMulti(objective, los, his, "min", 12, 6, 2, Date.now() + SOLVE_MULTI_BUDGET_MS);
+      const best = optimizeMulti(objective, los, his, "min", 8, 0, 4, Date.now() + SOLVE_MULTI_BUDGET_MS);
       const envBest = envOf(best.xs);
       const RESID_TOL = 1e-4;
       let maxResid = 0;
-      for (const c of az.constraints) {
-        const r = residOf(envBest, c);
-        if (r === null) return fail2(az.parameters.join(","), "r\xE0ng bu\u1ED9c kh\xF4ng \u0111\xE1nh gi\xE1 \u0111\u01B0\u1EE3c t\u1EA1i nghi\u1EC7m");
-        maxResid = Math.max(maxResid, Math.abs(r));
+      for (const residual of residualsOf(envBest)) {
+        if (residual === null) return fail2(az.parameters.join(","), "r\xE0ng bu\u1ED9c kh\xF4ng \u0111\xE1nh gi\xE1 \u0111\u01B0\u1EE3c t\u1EA1i nghi\u1EC7m");
+        maxResid = Math.max(maxResid, Math.abs(residual));
       }
       if (maxResid > RESID_TOL) return fail2(az.parameters.join(","), `kh\xF4ng gi\u1EA3i \u0111\u01B0\u1EE3c (residual ${maxResid.toExponential(2)})`);
       let violations = [], errors = [], geometry = null;

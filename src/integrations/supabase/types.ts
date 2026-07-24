@@ -87,9 +87,9 @@ export type Database = {
         Relationships: []
       }
       orders: {
-        Row: { amount: number; created_at: string | null; id: string; order_code: number; plan_code: string | null; status: string | null; updated_at: string | null; user_id: string }
-        Insert: { amount: number; created_at?: string | null; id?: string; order_code: number; plan_code?: string | null; status?: string | null; updated_at?: string | null; user_id: string }
-        Update: { amount?: number; created_at?: string | null; id?: string; order_code?: number; plan_code?: string | null; status?: string | null; updated_at?: string | null; user_id?: string }
+        Row: { amount: number; created_at: string | null; credit_amount: number | null; fulfilled_at: string | null; id: string; order_code: number; plan_code: string | null; status: string | null; updated_at: string | null; user_id: string }
+        Insert: { amount: number; created_at?: string | null; credit_amount?: number | null; fulfilled_at?: string | null; id?: string; order_code?: number; plan_code?: string | null; status?: string | null; updated_at?: string | null; user_id: string }
+        Update: { amount?: number; created_at?: string | null; credit_amount?: number | null; fulfilled_at?: string | null; id?: string; order_code?: number; plan_code?: string | null; status?: string | null; updated_at?: string | null; user_id?: string }
         Relationships: [
           { foreignKeyName: "orders_plan_code_fkey"; columns: ["plan_code"]; isOneToOne: false; referencedRelation: "plans"; referencedColumns: ["code"] },
           { foreignKeyName: "orders_user_id_fkey"; columns: ["user_id"]; isOneToOne: false; referencedRelation: "profiles"; referencedColumns: ["user_id"] }
@@ -111,6 +111,12 @@ export type Database = {
         Row: { feature: string; used: number; user_id: string; window_start: string }
         Insert: { feature: string; used?: number; user_id: string; window_start?: string }
         Update: { feature?: string; used?: number; user_id?: string; window_start?: string }
+        Relationships: []
+      }
+      guest_usage_counters: {
+        Row: { feature: string; scope: string; subject_hash: string; used: number; window_start: string }
+        Insert: { feature: string; scope: string; subject_hash: string; used?: number; window_start?: string }
+        Update: { feature?: string; scope?: string; subject_hash?: string; used?: number; window_start?: string }
         Relationships: []
       }
       credit_ledger: {
@@ -175,12 +181,20 @@ export type Database = {
         Args: { p_feature: string; p_max: number; p_period_days: number; p_user_id: string }
         Returns: Json
       }
+      consume_guest_quota: {
+        Args: { p_feature: string; p_ip_hash: string; p_ip_max: number; p_max: number; p_period_days: number; p_subject_hash: string }
+        Returns: Json
+      }
       effective_tier: {
         Args: { p: Database["public"]["Tables"]["profiles"]["Row"] }
         Returns: string
       }
       grant_credits: {
         Args: { p_amount: number; p_reason: string; p_ref: string; p_to_purchased?: boolean; p_user_id: string }
+        Returns: Json
+      }
+      fulfill_paid_order: {
+        Args: { p_order_code: number }
         Returns: Json
       }
       refund_credits: {

@@ -260,6 +260,39 @@ export function runAnalysis(raw: unknown): AnalysisResult {
     try { return scalarOf(res.answers[0]); } catch { return null; }
   };
 
+  // Evaluate geometric sources in one kernel run. solve_multi often has several
+  // constraints over the same parameterized construction; rebuilding it once
+  // per constraint made convergence depend on wall-clock speed.
+  const evalQueriesEnv = (env: Env, sources: unknown[]): (number | null)[] => {
+    const values: (number | null)[] = new Array(sources.length).fill(null);
+    const geometric: { index: number; source: unknown }[] = [];
+
+    sources.forEach((source, index) => {
+      if (isExprSrc(source)) {
+        try { values[index] = evalExpr(source.expr, env, fitAt(env).funcs); } catch { values[index] = null; }
+      } else if (isSolidVolSrc(source)) {
+        try { values[index] = solidVolumeAt(env, source); } catch { values[index] = null; }
+      } else {
+        geometric.push({ index, source });
+      }
+    });
+
+    if (geometric.length === 0) return values;
+    let ops: unknown[];
+    try { ops = concreteOpsEnv(env); } catch { return values; }
+    const result = run({
+      solidName: plan.solidName,
+      ops,
+      asserts: [],
+      queries: geometric.map(({ source }) => source),
+    });
+    if (!result.ok || result.answers.length !== geometric.length) return values;
+    geometric.forEach(({ index }, answerIndex) => {
+      try { values[index] = scalarOf(result.answers[answerIndex]); } catch { values[index] = null; }
+    });
+    return values;
+  };
+
   // ---- integrate: thuần hàm số, không cần tham số/hình học ----
   if (plan.analyze.kind === 'integrate') {
     const az = plan.analyze;
@@ -330,25 +363,34 @@ export function runAnalysis(raw: unknown): AnalysisResult {
       const los = decls.map((d) => evalExpr(String(d!.domain[0]), {}));
       const his = decls.map((d) => evalExpr(String(d!.domain[1]), {}));
       const envOf = (xs: number[]): Env => { const env: Env = {}; az.parameters.forEach((nm, i) => { env[nm] = xs[i]; }); return env; };
-      const residOf = (env: Env, c: { of: unknown; equals: number | string }): number | null => {
-        const q = evalQueryEnv(env, c.of);
-        if (q === null || !Number.isFinite(q)) return null;
-        return q - evalExpr(String(c.equals), env);
+      const residualsOf = (env: Env): (number | null)[] => {
+        const queryValues = evalQueriesEnv(env, az.constraints.map((constraint) => constraint.of));
+        return az.constraints.map((constraint, index) => {
+          const value = queryValues[index];
+          if (value === null || !Number.isFinite(value)) return null;
+          return value - evalExpr(String(constraint.equals), env);
+        });
       };
       const objective = (xs: number[]): number => {
         const env = envOf(xs); let sum = 0;
-        for (const c of az.constraints) { const r = residOf(env, c); if (r === null) return Number.POSITIVE_INFINITY; sum += r * r; }
+        for (const residual of residualsOf(env)) {
+          if (residual === null) return Number.POSITIVE_INFINITY;
+          sum += residual * residual;
+        }
         return sum;
       };
-      // Lưới/rounds NHỎ + CẮT THỜI GIAN: objective gọi run() (dựng hình) mỗi eval nên rất đắt. 12/6/2 +
-      // deadline 15s ⇒ nếu quá chậm (CPU serverless), optimizeMulti dừng sớm, residual chưa đạt ⇒ rơi về
-      // (chống chờ 40s+ / timeout 500). Bài điều-kiện-tốt vẫn hội tụ trong ngân sách.
+      // Use a coarse deterministic seed grid, then spend the remaining budget
+      // on Nelder-Mead. Coordinate descent repeatedly rebuilds the same geometry
+      // and can consume the entire deadline before the diagonal-valley polish.
       const SOLVE_MULTI_BUDGET_MS = 20000;
-      const best = optimizeMulti(objective, los, his, 'min', 12, 6, 2, Date.now() + SOLVE_MULTI_BUDGET_MS);
+      const best = optimizeMulti(objective, los, his, 'min', 8, 0, 4, Date.now() + SOLVE_MULTI_BUDGET_MS);
       const envBest = envOf(best.xs);
       const RESID_TOL = 1e-4;
       let maxResid = 0;
-      for (const c of az.constraints) { const r = residOf(envBest, c); if (r === null) return fail(az.parameters.join(','), 'ràng buộc không đánh giá được tại nghiệm'); maxResid = Math.max(maxResid, Math.abs(r)); }
+      for (const residual of residualsOf(envBest)) {
+        if (residual === null) return fail(az.parameters.join(','), 'ràng buộc không đánh giá được tại nghiệm');
+        maxResid = Math.max(maxResid, Math.abs(residual));
+      }
       if (maxResid > RESID_TOL) return fail(az.parameters.join(','), `không giải được (residual ${maxResid.toExponential(2)})`);
       let violations: unknown[] = [], errors: { message: string }[] = [], geometry: unknown = null;
       try {

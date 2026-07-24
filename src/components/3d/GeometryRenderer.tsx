@@ -1,7 +1,11 @@
 import React, { useEffect } from 'react';
 import { useCameraOptional } from '@/context/CameraContext';
 import { useGeometryOptional } from '@/context/GeometryContext';
-import { GeometryData, Plane3D } from '@/types/geometry';
+import {
+  GeometryData,
+  Plane3D,
+  Point3D,
+} from '@/types/geometry';
 import { projectScene } from '@/lib/advanceProject';
 import { buildSolveReveal } from '@/lib/solveReveal';
 import { AnimatedPoint } from './AnimatedPoint';
@@ -21,6 +25,7 @@ import { AnimatedDynamicPoint } from './AnimatedDynamicPoint';
 import { AnimatedSurface } from './AnimatedSurface';
 import { AnimatedCurve } from './AnimatedCurve';
 import { useHiddenLineDetection } from '@/hooks/useHiddenLineDetection';
+import { mapsEqual } from '@/hooks/useHiddenLineDetection';
 import { TimelineGroup } from './TimelineGroup';
 import { AnimatedWater } from './AnimatedWater';
 import { AnimatedAgent } from './AnimatedAgent';
@@ -108,10 +113,10 @@ export function GeometryRenderer({ geometry: geometryProp, isBuilding }: Geometr
     const steps = advanceScene.steps;
 
     // giải id -> toạ độ math từ một geometry (base đã scale, hoặc merged đã scale)
-    const ptsFromIds = (ids: string[], geom: any) => {
-      const byId = new Map<string, any>((geom?.points || []).map((p: any) => [p.id, p]));
+    const ptsFromIds = (ids: string[], geom: GeometryData | null) => {
+      const byId = new Map<string, Point3D>((geom?.points ?? []).map((point) => [point.id, point]));
       return ids.map((id) => byId.get(id)).filter(Boolean)
-        .map((p: any) => ({ x: Number(p.x), y: Number(p.y), z: Number(p.z) }))
+        .map((point) => ({ x: Number(point?.x), y: Number(point?.y), z: Number(point?.z) }))
         .filter((p) => Number.isFinite(p.x) && Number.isFinite(p.y) && Number.isFinite(p.z));
     };
 
@@ -160,11 +165,11 @@ export function GeometryRenderer({ geometry: geometryProp, isBuilding }: Geometr
   const toolModeCtx = useToolMode();
   const mode = toolModeCtx?.mode || 'none';
 
+  const setSharedHiddenLines = cameraContext?.setHiddenLines;
   useEffect(() => {
-    if (cameraContext && hiddenLines.size > 0) {
-      cameraContext.setHiddenLines(new Map(hiddenLines));
-    }
-  }, [hiddenLines]);
+    if (!setSharedHiddenLines) return;
+    setSharedHiddenLines((previous) => mapsEqual(previous, hiddenLines) ? previous : new Map(hiddenLines));
+  }, [hiddenLines, setSharedHiddenLines]);
 
   const computedTotalDuration = React.useMemo(() => {
     if (!geometry) return 5000;
@@ -304,13 +309,13 @@ export function GeometryRenderer({ geometry: geometryProp, isBuilding }: Geometr
         const opacityFactor = f.dim ? DIM_OPACITY : 1;
         switch (shape.type) {
           case 'sphere':
-            return <AnimatedSphere key={`sphere-${shape.data.id}`} sphere={shape.data as any} delay={d} isBuilding={effectiveIsBuilding} opacityFactor={opacityFactor} />;
+            return <AnimatedSphere key={`sphere-${shape.data.id}`} sphere={shape.data} delay={d} isBuilding={effectiveIsBuilding} opacityFactor={opacityFactor} />;
           case 'circle':
-            return <AnimatedCircle key={`circle-${shape.data.id}`} circle={shape.data as any} delay={d} isBuilding={effectiveIsBuilding} opacityFactor={opacityFactor} />;
+            return <AnimatedCircle key={`circle-${shape.data.id}`} circle={shape.data} delay={d} isBuilding={effectiveIsBuilding} opacityFactor={opacityFactor} />;
           case 'cylinder':
-            return <AnimatedCylinder key={`cyl-${shape.data.id}`} cylinder={shape.data as any} delay={d} isBuilding={effectiveIsBuilding} opacityFactor={opacityFactor} />;
+            return <AnimatedCylinder key={`cyl-${shape.data.id}`} cylinder={shape.data} delay={d} isBuilding={effectiveIsBuilding} opacityFactor={opacityFactor} />;
           case 'cone':
-            return <AnimatedCone key={`cone-${shape.data.id}`} cone={shape.data as any} delay={d} isBuilding={effectiveIsBuilding} opacityFactor={opacityFactor} />;
+            return <AnimatedCone key={`cone-${shape.data.id}`} cone={shape.data} delay={d} isBuilding={effectiveIsBuilding} opacityFactor={opacityFactor} />;
           case 'plane': {
             const pl = shape.data as Plane3D;
             return <AnimatedPlane3D key={`plane-${pl.id}`} plane={pl} delay={d} isBuilding={effectiveIsBuilding} opacityFactor={opacityFactor} emphasize={!!pl.highlight} />;

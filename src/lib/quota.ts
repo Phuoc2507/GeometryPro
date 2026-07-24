@@ -1,64 +1,60 @@
-const QUOTA_KEY = 'geo3d_guest_ai_usage';
-const MAX_GUEST_AI_CALLS = 3;
+const CACHE_KEY = 'geometrypro_quota_display';
 
-interface QuotaData {
-  date: string;
-  count: number;
+export interface QuotaMetadata {
+  actorType: 'guest' | 'account';
+  feature: string;
+  remaining: number | null;
+  resetAt: string | null;
 }
 
-export function checkAndIncrementGuestQuota(): boolean {
-  // Check if we have localStorage available
-  if (typeof window === 'undefined' || !window.localStorage) {
-    return true; // Allow by default if no localStorage
-  }
+type QuotaCache = Record<string, QuotaMetadata>;
 
-  const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
-  const quotaDataStr = localStorage.getItem(QUOTA_KEY);
-  
-  let quotaData: QuotaData = { date: today, count: 0 };
-  
-  if (quotaDataStr) {
-    try {
-      const parsed = JSON.parse(quotaDataStr);
-      // If it's the same day, use the existing count
-      if (parsed.date === today) {
-        quotaData = parsed;
-      }
-    } catch (e) {
-      // Ignore parse errors and reset
-    }
+function readCache(): QuotaCache {
+  if (typeof window === 'undefined') return {};
+  try {
+    const parsed: unknown = JSON.parse(window.localStorage.getItem(CACHE_KEY) || '{}');
+    return parsed && typeof parsed === 'object' ? parsed as QuotaCache : {};
+  } catch {
+    return {};
   }
-
-  // Check if quota is exceeded
-  if (quotaData.count >= MAX_GUEST_AI_CALLS) {
-    return false; // Quota exceeded
-  }
-
-  // Increment quota
-  quotaData.count += 1;
-  localStorage.setItem(QUOTA_KEY, JSON.stringify(quotaData));
-  
-  return true; // Allowed
 }
 
-export function getGuestQuotaRemaining(): number {
-  if (typeof window === 'undefined' || !window.localStorage) {
-    return MAX_GUEST_AI_CALLS;
+export function cacheQuota(quota: QuotaMetadata | null | undefined): void {
+  if (!quota || typeof window === 'undefined') return;
+  const cache = readCache();
+  cache[quota.feature] = quota;
+  window.localStorage.setItem(CACHE_KEY, JSON.stringify(cache));
+  window.dispatchEvent(new CustomEvent('geometrypro:quota', { detail: quota }));
+}
+
+export function cacheQuotaFromResponse(response: Response, payload?: unknown): void {
+  const bodyQuota = payload && typeof payload === 'object' && 'quota' in payload
+    ? (payload as { quota?: QuotaMetadata }).quota
+    : undefined;
+  if (bodyQuota) {
+    cacheQuota(bodyQuota);
+    return;
   }
 
-  const today = new Date().toISOString().split('T')[0];
-  const quotaDataStr = localStorage.getItem(QUOTA_KEY);
-  
-  if (quotaDataStr) {
-    try {
-      const parsed = JSON.parse(quotaDataStr);
-      if (parsed.date === today) {
-        return Math.max(0, MAX_GUEST_AI_CALLS - parsed.count);
-      }
-    } catch (e) {
-      // Ignore parse errors
-    }
+  const actorType = response.headers.get('X-Quota-Actor');
+  const feature = response.headers.get('X-Quota-Feature');
+  if ((actorType !== 'guest' && actorType !== 'account') || !feature) return;
+  const remainingHeader = response.headers.get('X-Quota-Remaining');
+  cacheQuota({
+    actorType,
+    feature,
+    remaining: remainingHeader == null ? null : Number(remainingHeader),
+    resetAt: response.headers.get('X-Quota-Reset'),
+  });
+}
+
+export function getGuestQuotaRemaining(feature: 'draw_quick' | 'draw_detailed' | 'solve'): number | null {
+  const cached = readCache()[feature];
+  if (!cached || cached.actorType !== 'guest') {
+    return feature === 'draw_quick' ? 2 : 1;
   }
-  
-  return MAX_GUEST_AI_CALLS;
+  if (cached.resetAt && Date.now() >= new Date(cached.resetAt).getTime()) {
+    return feature === 'draw_quick' ? 2 : 1;
+  }
+  return cached.remaining;
 }

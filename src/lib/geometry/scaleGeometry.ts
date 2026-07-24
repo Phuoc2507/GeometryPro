@@ -1,182 +1,146 @@
-import { GeometryData } from '@/types/geometry';
+import type { GeometryData, PointCoordinates } from '@/types/geometry';
 
 /**
- * Returns a scaled copy of the geometry data if the coordinates are too large.
- * This keeps the geometry within standard bounds [-8, 8] for rendering and projection.
+ * Returns a normalized, scaled copy of geometry that fits the renderer's
+ * standard bounds. Legacy payloads may reference a point by id where newer
+ * payloads carry coordinates, so normalization deliberately accepts unknown.
  */
 export function scaleGeometry(geometry: GeometryData | null): GeometryData | null {
   if (!geometry) return null;
 
-  const resolveCoord = (obj: any, prop: 'x' | 'y' | 'z') => {
-    if (typeof obj === 'string') {
-      const pt = geometry.points?.find((p: any) => p.id === obj);
-      return Number(pt?.[prop]) || 0;
-    }
-    return Number(obj?.[prop]) || 0;
+  const pointById = new Map(geometry.points.map((point) => [point.id, point]));
+  const finite = (value: unknown): number => {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : 0;
   };
-
-  const getPoint = (obj: any) => {
-    if (typeof obj === 'string') {
-      const pt = geometry.points?.find((p: any) => p.id === obj);
-      if (pt) {
-        return {
-          ...pt,
-          x: Number(pt.x) || 0,
-          y: Number(pt.y) || 0,
-          z: Number(pt.z) || 0,
-        };
-      }
-      return { x: 0, y: 0, z: 0 };
+  const coordinates = (value: unknown): PointCoordinates => {
+    if (typeof value === 'string') {
+      const point = pointById.get(value);
+      return point
+        ? { x: finite(point.x), y: finite(point.y), z: finite(point.z) }
+        : { x: 0, y: 0, z: 0 };
     }
-    if (obj) {
-      return {
-        ...obj,
-        x: Number(obj.x) || 0,
-        y: Number(obj.y) || 0,
-        z: Number(obj.z) || 0,
-      };
+    if (typeof value === 'object' && value !== null) {
+      const record = value as Record<string, unknown>;
+      return { x: finite(record.x), y: finite(record.y), z: finite(record.z) };
     }
     return { x: 0, y: 0, z: 0 };
   };
 
-  let maxVal = 0;
-
-  if (geometry.points) {
-    geometry.points.forEach((p: any) => {
-      maxVal = Math.max(maxVal, Math.abs(Number(p.x) || 0));
-      maxVal = Math.max(maxVal, Math.abs(Number(p.y) || 0));
-      maxVal = Math.max(maxVal, Math.abs(Number(p.z) || 0));
-    });
-  }
-
-  if (geometry.spheres) {
-    geometry.spheres.forEach((s: any) => {
-      maxVal = Math.max(maxVal, Math.abs(resolveCoord(s.center, 'x')));
-      maxVal = Math.max(maxVal, Math.abs(resolveCoord(s.center, 'y')));
-      maxVal = Math.max(maxVal, Math.abs(resolveCoord(s.center, 'z')));
-      maxVal = Math.max(maxVal, Math.abs(Number(s.radius) || 0));
-    });
-  }
-
-  if (geometry.circles) {
-    geometry.circles.forEach((c: any) => {
-      maxVal = Math.max(maxVal, Math.abs(resolveCoord(c.center, 'x')));
-      maxVal = Math.max(maxVal, Math.abs(resolveCoord(c.center, 'y')));
-      maxVal = Math.max(maxVal, Math.abs(resolveCoord(c.center, 'z')));
-      maxVal = Math.max(maxVal, Math.abs(Number(c.radius) || 0));
-    });
-  }
-
-  if (geometry.cylinders) {
-    geometry.cylinders.forEach((cy: any) => {
-      maxVal = Math.max(maxVal, Math.abs(resolveCoord(cy.center1, 'x')));
-      maxVal = Math.max(maxVal, Math.abs(resolveCoord(cy.center1, 'y')));
-      maxVal = Math.max(maxVal, Math.abs(resolveCoord(cy.center1, 'z')));
-      maxVal = Math.max(maxVal, Math.abs(resolveCoord(cy.center2, 'x')));
-      maxVal = Math.max(maxVal, Math.abs(resolveCoord(cy.center2, 'y')));
-      maxVal = Math.max(maxVal, Math.abs(resolveCoord(cy.center2, 'z')));
-      maxVal = Math.max(maxVal, Math.abs(Number(cy.radius) || 0));
-    });
-  }
-
-  if (geometry.cones) {
-    geometry.cones.forEach((co: any) => {
-      maxVal = Math.max(maxVal, Math.abs(resolveCoord(co.apex, 'x')));
-      maxVal = Math.max(maxVal, Math.abs(resolveCoord(co.apex, 'y')));
-      maxVal = Math.max(maxVal, Math.abs(resolveCoord(co.apex, 'z')));
-      maxVal = Math.max(maxVal, Math.abs(resolveCoord(co.baseCenter, 'x')));
-      maxVal = Math.max(maxVal, Math.abs(resolveCoord(co.baseCenter, 'y')));
-      maxVal = Math.max(maxVal, Math.abs(resolveCoord(co.baseCenter, 'z')));
-      maxVal = Math.max(maxVal, Math.abs(Number(co.radius) || 0));
-    });
-  }
-
-  const resolveAndScale = (geometryObj: any) => {
-    // If not scaling, we still want to resolve string IDs to objects
-    if (maxVal <= 20) {
-      return {
-        ...geometryObj,
-        points: geometryObj.points?.map((p: any) => ({
-          ...p,
-          x: Number(p.x) || 0,
-          y: Number(p.y) || 0,
-          z: Number(p.z) || 0,
-        })) || [],
-        spheres: geometryObj.spheres?.map((s: any) => ({ ...s, center: getPoint(s.center), radius: Number(s.radius) || 0 })),
-        circles: geometryObj.circles?.map((c: any) => ({ ...c, center: getPoint(c.center), radius: Number(c.radius) || 0 })),
-        cylinders: geometryObj.cylinders?.map((cy: any) => ({ ...cy, center1: getPoint(cy.center1), center2: getPoint(cy.center2), radius: Number(cy.radius) || 0 })),
-        cones: geometryObj.cones?.map((co: any) => ({ ...co, apex: getPoint(co.apex), baseCenter: getPoint(co.baseCenter), radius: Number(co.radius) || 0 })),
-        planes: geometryObj.planes?.map((pl: any) => ({ ...pl, points: pl.points?.map((pt: any) => getPoint(pt)) || [] })),
-      };
-    }
-
-    const scaleFactor = maxVal / 8;
-    const scaleCoords = (obj: any) => {
-      const pt = getPoint(obj);
-      if (!pt) return pt;
-      return {
-        x: (Number(pt.x) || 0) / scaleFactor,
-        y: (Number(pt.y) || 0) / scaleFactor,
-        z: (Number(pt.z) || 0) / scaleFactor,
-      };
-    };
-
-    return {
-      ...geometryObj,
-      points: geometryObj.points?.map((p: any) => ({
-        ...p,
-        x: (Number(p.x) || 0) / scaleFactor,
-        y: (Number(p.y) || 0) / scaleFactor,
-        z: (Number(p.z) || 0) / scaleFactor,
-      })) || [],
-      spheres: geometryObj.spheres?.map((s: any) => ({
-        ...s,
-        center: scaleCoords(s.center),
-        radius: (Number(s.radius) || 0) / scaleFactor,
-      })),
-      circles: geometryObj.circles?.map((c: any) => ({
-        ...c,
-        center: scaleCoords(c.center),
-        radius: (Number(c.radius) || 0) / scaleFactor,
-      })),
-      cylinders: geometryObj.cylinders?.map((cy: any) => ({
-        ...cy,
-        center1: scaleCoords(cy.center1),
-        center2: scaleCoords(cy.center2),
-        radius: (Number(cy.radius) || 0) / scaleFactor,
-      })),
-      cones: geometryObj.cones?.map((co: any) => ({
-        ...co,
-        apex: scaleCoords(co.apex),
-        baseCenter: scaleCoords(co.baseCenter),
-        radius: (Number(co.radius) || 0) / scaleFactor,
-      })),
-      planes: geometryObj.planes?.map((pl: any) => ({
-        ...pl,
-        points: pl.points?.map((pt: any) => scaleCoords(pt)) || [],
-      })),
-      curves: geometryObj.curves?.map((curve: any) => {
-        if (!curve.params) return curve;
-        const p = { ...curve.params };
-        if (p.xMin !== undefined) p.xMin /= scaleFactor;
-        if (p.xMax !== undefined) p.xMax /= scaleFactor;
-        
-        if (curve.type === 'parabola') {
-          if (p.a !== undefined) p.a *= scaleFactor;
-          if (p.c !== undefined) p.c /= scaleFactor;
-        } else if (curve.type === 'cubic') {
-          if (p.a !== undefined) p.a *= scaleFactor * scaleFactor;
-          if (p.b !== undefined) p.b *= scaleFactor;
-          if (p.d !== undefined) p.d /= scaleFactor;
-        } else if (curve.type === 'rational') {
-          if (p.numB !== undefined) p.numB /= scaleFactor;
-          if (p.denA !== undefined) p.denA *= scaleFactor;
-        }
-        
-        return { ...curve, params: p };
-      }),
-    };
+  const normalized: GeometryData = {
+    ...geometry,
+    points: geometry.points.map((point) => ({
+      ...point,
+      x: finite(point.x),
+      y: finite(point.y),
+      z: finite(point.z),
+    })),
+    spheres: geometry.spheres?.map((sphere) => ({
+      ...sphere,
+      center: coordinates(sphere.center),
+      radius: finite(sphere.radius),
+    })),
+    circles: geometry.circles?.map((circle) => ({
+      ...circle,
+      center: coordinates(circle.center),
+      radius: finite(circle.radius),
+    })),
+    cylinders: geometry.cylinders?.map((cylinder) => ({
+      ...cylinder,
+      center1: coordinates(cylinder.center1),
+      center2: coordinates(cylinder.center2),
+      radius: finite(cylinder.radius),
+    })),
+    cones: geometry.cones?.map((cone) => ({
+      ...cone,
+      apex: coordinates(cone.apex),
+      baseCenter: coordinates(cone.baseCenter),
+      radius: finite(cone.radius),
+    })),
+    planes: geometry.planes?.map((plane) => ({
+      ...plane,
+      points: plane.points.map(coordinates),
+    })),
   };
 
-  return resolveAndScale(geometry);
+  let maximum = 0;
+  const includePoint = (point: PointCoordinates) => {
+    maximum = Math.max(maximum, Math.abs(point.x), Math.abs(point.y), Math.abs(point.z));
+  };
+  normalized.points.forEach(includePoint);
+  normalized.spheres?.forEach((sphere) => {
+    includePoint(sphere.center);
+    maximum = Math.max(maximum, Math.abs(sphere.radius));
+  });
+  normalized.circles?.forEach((circle) => {
+    includePoint(circle.center);
+    maximum = Math.max(maximum, Math.abs(circle.radius));
+  });
+  normalized.cylinders?.forEach((cylinder) => {
+    includePoint(cylinder.center1);
+    includePoint(cylinder.center2);
+    maximum = Math.max(maximum, Math.abs(cylinder.radius));
+  });
+  normalized.cones?.forEach((cone) => {
+    includePoint(cone.apex);
+    includePoint(cone.baseCenter);
+    maximum = Math.max(maximum, Math.abs(cone.radius));
+  });
+
+  if (maximum <= 20) return normalized;
+
+  const factor = maximum / 8;
+  const scalePoint = (point: PointCoordinates): PointCoordinates => ({
+    x: point.x / factor,
+    y: point.y / factor,
+    z: point.z / factor,
+  });
+
+  return {
+    ...normalized,
+    points: normalized.points.map((point) => ({ ...point, ...scalePoint(point) })),
+    spheres: normalized.spheres?.map((sphere) => ({
+      ...sphere,
+      center: scalePoint(sphere.center),
+      radius: sphere.radius / factor,
+    })),
+    circles: normalized.circles?.map((circle) => ({
+      ...circle,
+      center: scalePoint(circle.center),
+      radius: circle.radius / factor,
+    })),
+    cylinders: normalized.cylinders?.map((cylinder) => ({
+      ...cylinder,
+      center1: scalePoint(cylinder.center1),
+      center2: scalePoint(cylinder.center2),
+      radius: cylinder.radius / factor,
+    })),
+    cones: normalized.cones?.map((cone) => ({
+      ...cone,
+      apex: scalePoint(cone.apex),
+      baseCenter: scalePoint(cone.baseCenter),
+      radius: cone.radius / factor,
+    })),
+    planes: normalized.planes?.map((plane) => ({
+      ...plane,
+      points: plane.points.map(scalePoint),
+    })),
+    curves: normalized.curves?.map((curve) => {
+      const params = { ...curve.params };
+      if (params.xMin !== undefined) params.xMin /= factor;
+      if (params.xMax !== undefined) params.xMax /= factor;
+      if (curve.type === 'parabola') {
+        if (params.a !== undefined) params.a *= factor;
+        if (params.c !== undefined) params.c /= factor;
+      } else if (curve.type === 'cubic') {
+        if (params.a !== undefined) params.a *= factor * factor;
+        if (params.b !== undefined) params.b *= factor;
+        if (params.d !== undefined) params.d /= factor;
+      } else if (curve.type === 'rational') {
+        if (params.numB !== undefined) params.numB /= factor;
+        if (params.denA !== undefined) params.denA *= factor;
+      }
+      return { ...curve, params };
+    }),
+  };
 }

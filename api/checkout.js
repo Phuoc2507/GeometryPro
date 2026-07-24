@@ -2,130 +2,164 @@ import { PayOS } from '@payos/node';
 import { createClient } from '@supabase/supabase-js';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.VITE_SUPABASE_URL;
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY; // Must use service role to bypass RLS for inserts
-const supabase = supabaseUrl && supabaseKey ? createClient(supabaseUrl, supabaseKey) : null;
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const supabase = supabaseUrl && supabaseKey
+  ? createClient(supabaseUrl, supabaseKey, { auth: { persistSession: false, autoRefreshToken: false } })
+  : null;
+
+function configuredAppUrl() {
+  return process.env.NEXT_PUBLIC_APP_URL || process.env.VITE_APP_URL || 'http://localhost:8080';
+}
+
+function sameOriginUrl(candidate, fallback) {
+  if (!candidate) return fallback;
+  try {
+    const expected = new URL(configuredAppUrl());
+    const parsed = new URL(candidate, expected);
+    return parsed.origin === expected.origin ? parsed.toString() : fallback;
+  } catch {
+    return fallback;
+  }
+}
 
 export default async function handler(req, res) {
-  // Bật CORS nếu được gọi từ frontend
-  res.setHeader('Access-Control-Allow-Origin', '*');
+  const appOrigin = new URL(configuredAppUrl()).origin;
+  if (req.headers.origin === appOrigin) {
+    res.setHeader('Access-Control-Allow-Origin', appOrigin);
+    res.setHeader('Vary', 'Origin');
+  }
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
 
-  if (req.method === 'OPTIONS') {
-    return res.status(200).end();
-  }
+  if (req.method === 'OPTIONS') return res.status(204).end();
+  if (req.method !== 'POST') return res.status(405).json({ error: 'Method Not Allowed' });
 
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method Not Allowed' });
-  }
-
+  let orderCode = null;
   try {
-    // planCode xác định gói + giá. KHÔNG nhận giá từ client. Mặc định 'pro_1m'
-    // để giữ tương thích với nút "Nâng cấp" cũ (chưa gửi planCode).
     const { returnUrl, cancelUrl, planCode, creditPack } = req.body || {};
     const isCreditPack = creditPack != null && planCode == null;
 
     if (!supabase) {
-      return res.status(500).json({ error: 'Supabase credentials are not configured correctly' });
+      return res.status(500).json({ error: 'Supabase service role chưa được cấu hình' });
     }
 
-    // Identify the buyer from their JWT. Never from the request body: trusting a
-    // client-supplied userId lets anyone create orders against another account.
     const authHeader = req.headers.authorization;
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return res.status(401).json({ error: 'Unauthorized: Bạn cần đăng nhập để mua gói Pro' });
+      return res.status(401).json({ error: 'Bạn cần đăng nhập để thanh toán' });
     }
-    const { data: { user }, error: authError } = await supabase.auth.getUser(authHeader.split(' ')[1]);
+    const { data: { user }, error: authError } = await supabase.auth.getUser(authHeader.slice(7));
     if (authError || !user) {
-      return res.status(401).json({ error: 'Unauthorized: Phiên đăng nhập không hợp lệ' });
+      return res.status(401).json({ error: 'Phiên đăng nhập không hợp lệ' });
     }
-    const userId = user.id;
 
     const clientId = process.env.PAYOS_CLIENT_ID;
     const apiKey = process.env.PAYOS_API_KEY;
     const checksumKey = process.env.PAYOS_CHECKSUM_KEY;
-
     if (!clientId || !apiKey || !checksumKey) {
-      return res.status(500).json({ error: 'PayOS credentials are not configured on server' });
+      return res.status(500).json({ error: 'PayOS chưa được cấu hình trên server' });
     }
 
-    const payos = new PayOS({ clientId, apiKey, checksumKey });
+    let finalAmount;
+    let orderPlanCode;
+    let creditAmount = null;
+    let description;
 
-    // GIÁ tính ở server (nguồn sự thật). Giá client gửi lên luôn bị bỏ qua.
-    let finalAmount, orderPlanCode, description;
     if (isCreditPack) {
-      // Nạp credit lẻ: số credit × đơn giá trong DB. plan_code = null để webhook
-      // biết đây là đơn NẠP CREDIT (không phải mua gói).
-      const n = parseInt(creditPack, 10);
-      if (!Number.isInteger(n) || n < 10 || n > 10000) {
+      const amount = Number(creditPack);
+      if (!Number.isInteger(amount) || amount < 10 || amount > 10000) {
         return res.status(400).json({ error: 'Số credit không hợp lệ (10–10000)' });
       }
-      const { data: pc } = await supabase
-        .from('pricing_config').select('value').eq('key', 'credit_price_vnd').maybeSingle();
-      const creditPrice = pc?.value || 500;
-      finalAmount = n * creditPrice;
+      const { data: pricing, error: pricingError } = await supabase
+        .from('pricing_config')
+        .select('value')
+        .eq('key', 'credit_price_vnd')
+        .maybeSingle();
+      if (pricingError || !pricing || Number(pricing.value) <= 0) {
+        return res.status(503).json({ error: 'Không đọc được đơn giá credit' });
+      }
+      finalAmount = amount * Number(pricing.value);
       orderPlanCode = null;
-      description = `Geo3D +${n}cr`.slice(0, 25);
+      creditAmount = amount;
+      description = `Geo3D +${amount}cr`.slice(0, 25);
     } else {
-      const code = planCode || 'pro_1m';
+      const code = typeof planCode === 'string' && planCode ? planCode : 'pro_1m';
       const { data: plan, error: planError } = await supabase
-        .from('plans').select('code, name, price_vnd, active').eq('code', code).maybeSingle();
+        .from('plans')
+        .select('code, price_vnd, active')
+        .eq('code', code)
+        .maybeSingle();
       if (planError || !plan || plan.active === false) {
         return res.status(400).json({ error: `Gói không hợp lệ: ${code}` });
       }
-      finalAmount = plan.price_vnd;
-      orderPlanCode = code;
-      description = `Geo3D ${code}`.slice(0, 25);
+      finalAmount = Number(plan.price_vnd);
+      orderPlanCode = plan.code;
+      description = `Geo3D ${plan.code}`.slice(0, 25);
     }
 
-    // Tạo mã đơn hàng duy nhất (số nguyên < 2147483647)
-    const orderCode = Math.floor(Math.random() * 900000) + 100000;
-
-    // orders.user_id FKs to profiles(user_id), so a missing profile makes the
-    // insert below fail. Signup normally creates it via the on_auth_user_created
-    // trigger; ensure it here too so checkout can never dead-end.
     const { error: profileError } = await supabase
       .from('profiles')
-      .upsert({ user_id: userId }, { onConflict: 'user_id', ignoreDuplicates: true });
-
+      .upsert({ user_id: user.id }, { onConflict: 'user_id', ignoreDuplicates: true });
     if (profileError) {
-      console.error('Lỗi khi đảm bảo profile tồn tại:', profileError);
-      return res.status(500).json({ error: 'Failed to prepare account for checkout' });
+      console.error('[checkout] prepare profile:', profileError);
+      return res.status(500).json({ error: 'Không chuẩn bị được tài khoản thanh toán' });
     }
 
-    // 1. Lưu order vào database ở trạng thái pending
-    const { error: dbError } = await supabase.from('orders').insert({
-      order_code: orderCode,
-      user_id: userId,
-      amount: finalAmount,
-      plan_code: orderPlanCode,
-      status: 'pending'
-    });
-
-    if (dbError) {
-      console.error('Lỗi khi lưu order vào Supabase:', dbError);
-      return res.status(500).json({ error: 'Failed to create order in database' });
+    const { data: order, error: orderError } = await supabase
+      .from('orders')
+      .insert({
+        user_id: user.id,
+        amount: finalAmount,
+        plan_code: orderPlanCode,
+        credit_amount: creditAmount,
+        status: 'pending',
+      })
+      .select('order_code')
+      .single();
+    if (orderError || !order) {
+      console.error('[checkout] create order:', orderError);
+      return res.status(500).json({ error: 'Không tạo được đơn hàng' });
     }
+    orderCode = Number(order.order_code);
 
-    // 2. Tạo payment link với PayOS
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.VITE_APP_URL || 'http://localhost:8080';
-    
-    const requestData = {
-      orderCode: orderCode,
+    const baseUrl = configuredAppUrl();
+    const successFallback = `${baseUrl.replace(/\/$/, '')}/?payment=success`;
+    const cancelFallback = baseUrl;
+    const payos = new PayOS({ clientId, apiKey, checksumKey });
+    const paymentRequest = {
+      orderCode,
       amount: finalAmount,
       description,
-      returnUrl: returnUrl || `${baseUrl}/?payment=success`,
-      cancelUrl: cancelUrl || baseUrl
+      returnUrl: sameOriginUrl(returnUrl, successFallback),
+      cancelUrl: sameOriginUrl(cancelUrl, cancelFallback),
     };
+    let payment;
+    try {
+      payment = await payos.paymentRequests.create(paymentRequest);
+    } catch (createError) {
+      // The upstream request may have succeeded even if its response was lost.
+      // Recover the existing link by the stable order code instead of creating
+      // another order or charging a different amount.
+      try {
+        payment = await payos.paymentRequests.get(orderCode);
+      } catch {
+        throw createError;
+      }
+    }
+    if (!payment?.checkoutUrl) {
+      throw new Error('PayOS không trả về checkout URL');
+    }
 
-    const paymentLinkRes = await payos.paymentRequests.create(requestData);
-
-    return res.status(200).json({
-      checkoutUrl: paymentLinkRes.checkoutUrl,
-      orderCode: orderCode
-    });
+    return res.status(200).json({ checkoutUrl: payment.checkoutUrl, orderCode });
   } catch (error) {
-    console.error('Lỗi khi tạo payment link:', error);
-    return res.status(500).json({ error: error.message || 'Internal Server Error' });
+    if (orderCode && supabase) {
+      await supabase
+        .from('orders')
+        .update({ status: 'failed', updated_at: new Date().toISOString() })
+        .eq('order_code', orderCode);
+    }
+    console.error('[checkout]', error);
+    return res.status(500).json({
+      error: error instanceof Error ? error.message : 'Internal Server Error',
+    });
   }
 }

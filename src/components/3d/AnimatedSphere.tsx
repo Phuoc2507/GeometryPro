@@ -3,6 +3,7 @@ import { useFrame } from '@react-three/fiber';
 import { useAnimationOptional } from '@/context/AnimationContext';
 import { useGeometryOptional } from '@/context/GeometryContext';
 import { Sphere, Html } from '@react-three/drei';
+import type { ThreeEvent } from '@react-three/fiber';
 import { Sphere3D } from '@/types/geometry';
 import { getCssHslVar } from '@/lib/getCssHslVar';
 
@@ -78,7 +79,7 @@ export function AnimatedSphere({ sphere, delay, isBuilding, opacityFactor = 1 }:
   const { center, radius, label } = sphere;
   const currentRadius = radius * scale;
 
-  const handleClick = (e: any) => {
+  const handleClick = (e: ThreeEvent<MouseEvent>) => {
     if (e.delta > 2) return;
     if (!isManualMode || !geometryCtx) return;
     if (geometryCtx.state.manualTool === 'delete') {
@@ -87,7 +88,7 @@ export function AnimatedSphere({ sphere, delay, isBuilding, opacityFactor = 1 }:
     }
   };
 
-  const handlePointerOver = (e: any) => {
+  const handlePointerOver = (e: ThreeEvent<PointerEvent>) => {
     if (!isManualMode || geometryCtx?.state.manualTool !== 'delete') return;
     e.stopPropagation();
     setHovered(true);

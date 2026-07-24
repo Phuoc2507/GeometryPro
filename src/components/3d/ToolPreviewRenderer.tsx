@@ -1,26 +1,27 @@
-import React, { useRef, useMemo } from 'react';
+import React, { useRef, useMemo, type ComponentRef } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import { Line } from '@react-three/drei';
 import * as THREE from 'three';
 import { useGeometryOptional } from '@/context/GeometryContext';
+import type { Point3D } from '@/types/geometry';
 
 export function ToolPreviewRenderer() {
   const context = useGeometryOptional();
   const { camera, mouse, raycaster } = useThree();
-  const previewLineRef = useRef<any>(null);
-  const previewPlaneRef = useRef<any>(null);
+  const previewLineRef = useRef<ComponentRef<typeof Line>>(null);
+  const previewPlaneRef = useRef<ComponentRef<typeof Line>>(null);
 
   const dragPlane = useMemo(() => new THREE.Plane(), []);
   
   const tool = context?.state.manualTool;
-  const selectedIds = context?.state.selectedIds || [];
-  const points = context?.state.geometry?.points || [];
   
   const selectedPoints = useMemo(() => {
+    const selectedIds = context?.state.selectedIds ?? [];
+    const points = context?.state.geometry?.points ?? [];
     return selectedIds
       .map(id => points.find(p => p.id === id))
-      .filter(Boolean) as any[];
-  }, [selectedIds, points]);
+      .filter((point): point is Point3D => point !== undefined);
+  }, [context?.state.geometry?.points, context?.state.selectedIds]);
 
   useFrame(() => {
     if (!context || !context.state.manualMode) return;

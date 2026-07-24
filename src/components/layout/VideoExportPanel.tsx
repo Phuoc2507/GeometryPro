@@ -19,13 +19,16 @@ export function VideoExportPanel() {
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<BlobPart[]>([]);
   const rafRef = useRef<number>();
+  const recordedBlobUrlRef = useRef<string | null>(null);
+  const disposedRef = useRef(false);
 
   const startRecording = () => {
     if (!cameraCtx?.canvasRef.current || !animCtx) return;
 
     // Clean up previous
-    if (recordedBlobUrl) {
-      URL.revokeObjectURL(recordedBlobUrl);
+    if (recordedBlobUrlRef.current) {
+      URL.revokeObjectURL(recordedBlobUrlRef.current);
+      recordedBlobUrlRef.current = null;
       setRecordedBlobUrl(null);
     }
 
@@ -54,7 +57,9 @@ export function VideoExportPanel() {
 
     recorder.onstop = () => {
       const blob = new Blob(chunksRef.current, { type: 'video/webm' });
+      if (disposedRef.current) return;
       const url = URL.createObjectURL(blob);
+      recordedBlobUrlRef.current = url;
       setRecordedBlobUrl(url);
       setIsRecording(false);
       setProgress(100);
@@ -95,13 +100,16 @@ export function VideoExportPanel() {
   };
 
   useEffect(() => {
+    disposedRef.current = false;
     return () => {
+      disposedRef.current = true;
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
       if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
         mediaRecorderRef.current.stop();
       }
-      if (recordedBlobUrl) {
-        URL.revokeObjectURL(recordedBlobUrl);
+      if (recordedBlobUrlRef.current) {
+        URL.revokeObjectURL(recordedBlobUrlRef.current);
+        recordedBlobUrlRef.current = null;
       }
     };
   }, []);

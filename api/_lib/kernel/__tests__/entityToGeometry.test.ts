@@ -38,5 +38,6 @@ describe('entityTableToGeometryData', () => {
     const geo = entityTableToGeometryData(res.entities, 'sq');
     expect(geo.lines.length).toBe(4); // 4 base edges
     expect(geo.points).toHaveLength(4);
+    expect(geo.planes?.[0].pointIds).toEqual(['A', 'B', 'C', 'D']);
   });
 });

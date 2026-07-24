@@ -61,8 +61,8 @@ export function UserMenu() {
       const data = await res.json();
       if (data.checkoutUrl) window.location.href = data.checkoutUrl;
       else alert('Lỗi tạo link thanh toán: ' + (data.error || 'Unknown'));
-    } catch (e: any) {
-      alert('Lỗi: ' + e.message);
+    } catch (error: unknown) {
+      alert('Lỗi: ' + (error instanceof Error ? error.message : 'Unknown'));
     }
   };
 

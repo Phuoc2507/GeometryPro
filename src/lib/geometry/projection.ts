@@ -1,4 +1,4 @@
-import { Point3D, PointCoordinates } from '@/types/geometry';
+import { Line3D, Point3D, PointCoordinates } from '@/types/geometry';
 
 export interface ProjectedPoint extends Point3D {
     projected: { x: number; y: number };
@@ -89,8 +89,8 @@ export const generateProjectedLatex = (
 
     latex += `\n  % Vẽ các cạnh nét liền\n`;
 
-    const solidLines: any[] = [];
-    const dashedLines: any[] = [];
+    const solidLines: Line3D[] = [];
+    const dashedLines: Line3D[] = [];
 
     geometry.lines.forEach(line => {
         const isHidden = hiddenLines?.get(line.id) ?? line.style === 'dashed';
@@ -168,7 +168,7 @@ export const generateProjectedLatex = (
     if (geometry.curves && geometry.curves.length > 0) {
         latex += `\n  % Vẽ các đường cong\n`;
         geometry.curves.forEach(curve => {
-            const pts: any[] = [];
+            const pts: PointCoordinates[] = [];
             const numPoints = 50;
             
             if (curve.type === 'parabola') {
@@ -176,21 +176,21 @@ export const generateProjectedLatex = (
                 for (let i = 0; i <= numPoints; i++) {
                     const x = xMin + (xMax - xMin) * (i / numPoints);
                     const y = a * x * x + b * x + c;
-                    pts.push({ id: '', label: '', x, y: 0, z: y });
+                    pts.push({ x, y: 0, z: y });
                 }
             } else if (curve.type === 'cubic') {
                 const { a, b, c, d, xMin, xMax } = curve.params;
                 for (let i = 0; i <= numPoints; i++) {
                     const x = xMin + (xMax - xMin) * (i / numPoints);
                     const y = a * x * x * x + b * x * x + c * x + d;
-                    pts.push({ id: '', label: '', x, y: 0, z: y });
+                    pts.push({ x, y: 0, z: y });
                 }
             } else if (curve.type === 'rational') {
                 const { numA, numB, denA, denB, xMin, xMax } = curve.params;
                 for (let i = 0; i <= numPoints; i++) {
                     const x = xMin + (xMax - xMin) * (i / numPoints);
                     const y = (numA * x + numB) / (denA * x + denB);
-                    pts.push({ id: '', label: '', x, y: 0, z: y });
+                    pts.push({ x, y: 0, z: y });
                 }
             }
             
@@ -420,19 +420,17 @@ export const generateProjectedLatex = (
     const getBestLabelAngle = (
         pointId: string,
         pProj: { x: number; y: number },
-        lines: any[],
-        allProjected: any[],
-        _cameraPos: any,
-        _target: any
+        lines: Line3D[],
+        allProjected: ProjectedPoint[],
     ): number => {
         const neighborIds = new Set<string>();
-        (lines || []).forEach((ln: any) => {
+        lines.forEach((ln) => {
             if (ln.from === pointId) neighborIds.add(ln.to);
             else if (ln.to === pointId) neighborIds.add(ln.from);
         });
 
         let sx = 0, sy = 0, count = 0;
-        (allProjected || []).forEach((q: any) => {
+        allProjected.forEach((q) => {
             if (!q || !neighborIds.has(q.id) || !q.projected) return;
             const dx = q.projected.x - pProj.x;
             const dy = q.projected.y - pProj.y;
@@ -452,8 +450,8 @@ export const generateProjectedLatex = (
         return Math.atan2(-sy, -sx);
     };
 
-    const getTikzAnchor = (p: any) => {
-        const bestAngle = getBestLabelAngle(p.id, p.projected, geometry.lines, projected, cameraPos, target);
+    const getTikzAnchor = (p: ProjectedPoint) => {
+        const bestAngle = getBestLabelAngle(p.id, p.projected, geometry.lines, projected);
         let angleDeg = (bestAngle * 180) / Math.PI;
         
         while (angleDeg <= -180) angleDeg += 360;

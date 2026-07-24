@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useState } from 'react';
-import { useFrame } from '@react-three/fiber';
+import React, { useMemo, useState } from 'react';
+import { useFrame, type ThreeEvent } from '@react-three/fiber';
 import * as THREE from 'three';
-import { Line3D, Point3D } from '@/types/geometry';
+import type { Line3D, Point3D } from '@/types/geometry';
 import { Line } from '@react-three/drei';
 import { getCssHslVar } from '@/lib/getCssHslVar';
 import { useAnimationOptional } from '@/context/AnimationContext';
@@ -15,127 +15,126 @@ interface AnimatedLineProps {
   isBuilding: boolean;
   dynamicHidden?: boolean;
   highlighted?: boolean;
-  /** Advance mode: opacity hiển thị (dim → 0.25). Mặc định 1 = hành vi cũ. */
   opacity?: number;
-  /** Advance mode: đường mới ở câu hiện tại → dày hơn chút. */
   emphasize?: boolean;
 }
 
-export function AnimatedLine({ line, points, delay, isBuilding, dynamicHidden = false, highlighted = false, opacity = 1, emphasize = false }: AnimatedLineProps) {
+function AnimatedLineComponent({
+  line,
+  points,
+  delay,
+  isBuilding,
+  dynamicHidden = false,
+  highlighted = false,
+  opacity = 1,
+  emphasize = false,
+}: AnimatedLineProps) {
   const [visible, setVisible] = useState(true);
   const [progress, setProgress] = useState(1);
-  const [targetProgress, setTargetProgress] = useState(1);
-
+  const [hovered, setHovered] = useState(false);
   const defaultColor = useMemo(() => getCssHslVar('--foreground'), []);
-
-  const fromPoint = points.find((p) => p.id === line.from);
-  const toPoint = points.find((p) => p.id === line.to);
-
+  const fromPoint = points.find((point) => point.id === line.from);
+  const toPoint = points.find((point) => point.id === line.to);
   const animCtx = useAnimationOptional();
   const geometryCtx = useGeometryOptional();
   const isManualMode = geometryCtx?.state.manualMode ?? false;
-  
   const isSelected = geometryCtx?.state.selectedIds.includes(line.id) ?? false;
-  const [hovered, setHovered] = useState(false);
-  
   const isHighlighted = highlighted || isSelected || hovered;
+  const isDashed = dynamicHidden && !isHighlighted;
   const lineColor = isHighlighted ? '#f97316' : defaultColor;
-
-  const DURATION = 600; // time to draw line
 
   useFrame((_, delta) => {
     if (animCtx && !isManualMode && isBuilding) {
-      const t = animCtx.globalTimeRef.current;
-      const p = Math.max(0, Math.min(1, (t - delay) / DURATION));
-      if (progress !== p) setProgress(p);
-      if (visible !== (t >= delay)) setVisible(t >= delay);
+      const time = animCtx.globalTimeRef.current;
+      const nextProgress = THREE.MathUtils.clamp((time - delay) / 600, 0, 1);
+      if (Math.abs(progress - nextProgress) > 1e-4) setProgress(nextProgress);
+      const nextVisible = time >= delay;
+      if (visible !== nextVisible) setVisible(nextVisible);
       return;
     }
-
     if (!isBuilding) {
       if (progress !== 1) setProgress(1);
       if (!visible) setVisible(true);
-      return;
-    }
-
-    // Fallback
-    if (visible && progress < 1) {
-      setProgress((p) => Math.min(1, p + delta * 1.5));
+    } else if (visible && progress < 1) {
+      setProgress((value) => Math.min(1, value + delta * 1.5));
     }
   });
 
-  if (!fromPoint || !toPoint) return null;
+  const shape = useMemo(() => {
+    if (!fromPoint || !toPoint) return null;
+    const start = new THREE.Vector3(fromPoint.x, fromPoint.z, fromPoint.y);
+    const end = new THREE.Vector3(toPoint.x, toPoint.z, toPoint.y);
+    const current = start.clone().lerp(end, progress);
+    const distance = start.distanceTo(current);
+    const midpoint = start.clone().lerp(current, 0.5);
+    const direction = current.clone().sub(start);
+    const quaternion = direction.lengthSq() > 1e-12
+      ? new THREE.Quaternion().setFromUnitVectors(
+        new THREE.Vector3(0, 1, 0),
+        direction.normalize(),
+      )
+      : new THREE.Quaternion();
+    const linePoints: [number, number, number][] = [
+      [start.x, start.y, start.z],
+      [current.x, current.y, current.z],
+    ];
+    return { distance, linePoints, midpoint, quaternion };
+  }, [fromPoint, progress, toPoint]);
 
-  // Swap Y and Z: Math uses Z as height (Oxyz), Three.js uses Y as height
-  const start = new THREE.Vector3(fromPoint.x, fromPoint.z, fromPoint.y);
-  const end = new THREE.Vector3(toPoint.x, toPoint.z, toPoint.y);
-  const current = start.clone().lerp(end, progress);
+  if (!shape || !visible) return null;
 
-  // Visibility is determined entirely by realtime raycast occlusion
-  const distance = start.distanceTo(current);
-  const midPoint = start.clone().lerp(current, 0.5);
-  // Default cylinder is aligned with Y axis. Rotate it to match the line direction.
-  const direction = current.clone().sub(start).normalize();
-  const quaternion = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), direction);
-
-  const isDashed = dynamicHidden;
-
-  const handleClick = (e: any) => {
-    if (e.delta > 2) return; // ignore drags
-    if (!isManualMode || !geometryCtx) return;
-    // Only allow selecting lines for tools that support lines, e.g. delete
+  const handleClick = (event: ThreeEvent<MouseEvent>) => {
+    if (event.delta > 2 || !isManualMode || !geometryCtx) return;
     if (geometryCtx.state.manualTool === 'delete') {
-      e.stopPropagation();
+      event.stopPropagation();
       geometryCtx.toggleSelection(line.id);
     } else if (geometryCtx.state.manualTool === 'addPoint') {
-      handleAddPoint(e, geometryCtx, false);
+      handleAddPoint(event, geometryCtx, false);
     }
   };
 
-  const handlePointerOver = (e: any) => {
+  const handlePointerOver = (event: ThreeEvent<PointerEvent>) => {
     if (!isManualMode || (geometryCtx?.state.manualTool !== 'delete' && geometryCtx?.state.manualTool !== 'addPoint')) return;
-    e.stopPropagation();
+    event.stopPropagation();
     setHovered(true);
     document.body.style.cursor = 'crosshair';
-  };
-
-  const handlePointerOut = () => {
-    setHovered(false);
-    document.body.style.cursor = 'auto';
   };
 
   return (
     <group>
       <Line
-        key={`${line.id}-${isDashed ? 'dashed' : 'solid'}-${highlighted ? 'hl' : ''}`}
-        points={[
-          [start.x, start.y, start.z],
-          [current.x, current.y, current.z],
-        ]}
+        points={shape.linePoints}
         color={lineColor}
         lineWidth={isHighlighted ? 5 : (isDashed ? 1.5 : (emphasize ? 4 : 3))}
-        dashed={isDashed && !isHighlighted}
-        dashSize={0.3}
+        // Keep USE_DASH compiled for both states. A huge dash with no gap is
+        // visually solid and avoids a shader recompile/remount at face changes.
+        dashed
+        dashSize={isDashed ? 0.3 : 1e6}
         dashScale={1}
-        gapSize={0.4}
+        gapSize={isDashed ? 0.4 : 0}
         frustumCulled={false}
         transparent={opacity < 1}
         opacity={opacity}
+        userData={{ type: 'geometry-line', lineId: line.id }}
       />
-      {/* Invisible hitbox for easier clicking/hovering */}
-      {distance > 0 && (
+      {shape.distance > 0 && (
         <mesh
-          position={midPoint}
-          quaternion={quaternion}
+          position={shape.midpoint}
+          quaternion={shape.quaternion}
           onClick={handleClick}
           onPointerOver={handlePointerOver}
-          onPointerOut={handlePointerOut}
+          onPointerOut={() => {
+            setHovered(false);
+            document.body.style.cursor = 'auto';
+          }}
           userData={{ type: 'line', id: line.id }}
         >
-          <cylinderGeometry args={[0.3, 0.3, distance, 8]} />
+          <cylinderGeometry args={[0.3, 0.3, shape.distance, 8]} />
           <meshBasicMaterial transparent opacity={0} depthWrite={false} />
         </mesh>
       )}
     </group>
   );
 }
+
+export const AnimatedLine = React.memo(AnimatedLineComponent);
