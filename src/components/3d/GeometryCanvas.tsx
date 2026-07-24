@@ -105,7 +105,9 @@ function CameraTracker() {
     const currentPos = new THREE.Vector3(...position);
 
     // If the state is different from the WebGL camera, it means it was updated externally
-    if (camera.position.distanceTo(currentPos) > 0.05 || Math.abs(camera.zoom - zoom) > 0.05) {
+    const zoomChanged = (camera as THREE.OrthographicCamera).isOrthographicCamera
+      && Math.abs(camera.zoom - zoom) > 0.05;
+    if (camera.position.distanceTo(currentPos) > 0.05 || zoomChanged) {
       camera.position.copy(currentPos);
       camera.lookAt(new THREE.Vector3(...stTarget));
 
@@ -133,6 +135,7 @@ function Scene({ geometry, isBuilding, autoRotate = false, is2D = false, focus =
   const geometryContext = useGeometryOptional();
   const { camera } = useThree();
   const cameraStateContext = useCameraStateOptional();
+  const setCameraState = cameraStateContext?.setCameraState;
 
   // Ref tới OrbitControls (three-stdlib instance) để CameraFlyer điều khiển
   // controls.target trực tiếp trong lúc bay.
@@ -193,33 +196,55 @@ function Scene({ geometry, isBuilding, autoRotate = false, is2D = false, focus =
     return Math.max(10, Math.ceil(max + 1) * 2);
   }, [geometry]);
 
-  // Persist camera pose to React state when the user finishes interacting.
-  // Writing on every frame (via useFrame) made rotation stutter; additionally,
-  // wheel-zoom fires OrbitControls' 'end' on EVERY notch, so we debounce here to
-  // persist once the interaction settles. Otherwise each notch triggers a React
-  // state write that re-renders heavy consumers (the LaTeX panel) and stutters.
+  // Keep the right-panel preview in sync while the main scene is rotating. The
+  // update is limited to one state write per browser frame, and the LaTeX source
+  // consumes the deferred camera value in RightPanel so it does not recalculate
+  // for every intermediate camera pose.
   const persistTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const liveSyncFrameRef = useRef<number | null>(null);
+  const lastPublishedCameraRef = useRef<{ position: [number, number, number]; target: [number, number, number]; zoom: number } | null>(null);
+
+  const publishCameraState = useCallback(() => {
+    if (!setCameraState) return;
+    const pos = camera.position;
+    const targetVec = new THREE.Vector3(...centroid);
+    const next = {
+      position: [pos.x, pos.y, pos.z] as [number, number, number],
+      target: centroid,
+      zoom: (camera as THREE.OrthographicCamera).isOrthographicCamera
+        ? (camera as THREE.OrthographicCamera).zoom
+        : (10.59 / Math.max(0.1, pos.distanceTo(targetVec))),
+    };
+    const previous = lastPublishedCameraRef.current;
+    const unchanged = previous
+      && previous.position.every((value, index) => Math.abs(value - next.position[index]) < 0.0001)
+      && previous.target.every((value, index) => Math.abs(value - next.target[index]) < 0.0001)
+      && Math.abs(previous.zoom - next.zoom) < 0.0001;
+    if (unchanged) return;
+
+    lastPublishedCameraRef.current = next;
+    setCameraState(next);
+  }, [camera, centroid, setCameraState]);
+
+  const handleControlsChange = useCallback(() => {
+    if (!setCameraState || liveSyncFrameRef.current !== null) return;
+    liveSyncFrameRef.current = requestAnimationFrame(() => {
+      liveSyncFrameRef.current = null;
+      publishCameraState();
+    });
+  }, [publishCameraState, setCameraState]);
 
   const handleControlsEnd = useCallback(() => {
-    if (!cameraStateContext) return;
+    if (!setCameraState) return;
     if (persistTimerRef.current) clearTimeout(persistTimerRef.current);
     persistTimerRef.current = setTimeout(() => {
-      const pos = camera.position;
-      const targetVec = new THREE.Vector3(...centroid);
-      const currentZoom = (camera as any).isOrthographicCamera
-        ? (camera as any).zoom
-        : (10.59 / Math.max(0.1, pos.distanceTo(targetVec)));
-
-      cameraStateContext.setCameraState({
-        position: [pos.x, pos.y, pos.z],
-        target: centroid,
-        zoom: currentZoom,
-      });
+      publishCameraState();
     }, 180);
-  }, [camera, cameraStateContext, centroid]);
+  }, [publishCameraState, setCameraState]);
 
   useEffect(() => () => {
     if (persistTimerRef.current) clearTimeout(persistTimerRef.current);
+    if (liveSyncFrameRef.current !== null) cancelAnimationFrame(liveSyncFrameRef.current);
   }, []);
 
   return (
@@ -281,6 +306,7 @@ function Scene({ geometry, isBuilding, autoRotate = false, is2D = false, focus =
         enableDamping
         dampingFactor={0.05}
         target={centroid}
+        onChange={handleControlsChange}
         onEnd={handleControlsEnd}
         autoRotate={!is2D && autoRotate}
         autoRotateSpeed={1.5}
