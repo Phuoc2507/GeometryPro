@@ -106,6 +106,8 @@ export function AnimatedLine({ line, points, delay, isBuilding, dynamicHidden = 
 
   return (
     <group>
+      {/* Keep USE_DASH compiled for every line. Toggling the shader define when
+          a face transition flips many edges at once creates a visible stall. */}
       <Line
         key={line.id}
         points={[
@@ -114,10 +116,10 @@ export function AnimatedLine({ line, points, delay, isBuilding, dynamicHidden = 
         ]}
         color={lineColor}
         lineWidth={isHighlighted ? 5 : (isDashed ? 1.5 : (emphasize ? 4 : 3))}
-        dashed={isDashed && !isHighlighted}
-        dashSize={0.3}
+        dashed
+        dashSize={isDashed && !isHighlighted ? 0.3 : 1}
         dashScale={1}
-        gapSize={0.4}
+        gapSize={isDashed && !isHighlighted ? 0.4 : 0}
         frustumCulled={false}
         transparent={opacity < 1}
         opacity={opacity}
