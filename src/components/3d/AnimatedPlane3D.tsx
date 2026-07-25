@@ -132,8 +132,15 @@ export function AnimatedPlane3D({
       group.matrixWorldNeedsUpdate = true;
     }
 
-    const baseOpacity = (plane.opacity ?? 0.2) * nextOpacity * opacityFactor;
-    material.opacity = isHighlighted ? Math.min(1, baseOpacity * 2) : baseOpacity;
+    // Surface faces render see-through now: the shaded fill is fully
+    // transparent, leaving only the outline. Animated cross-sections (fold /
+    // fade tracks) keep their fill so the animation stays visible.
+    if (tracks.length > 0) {
+      const baseOpacity = (plane.opacity ?? 0.2) * nextOpacity * opacityFactor;
+      material.opacity = isHighlighted ? Math.min(1, baseOpacity * 2) : baseOpacity;
+    } else {
+      material.opacity = 0;
+    }
     material.needsUpdate = false;
     const outlineMaterial = (outlineRef.current as { material?: OpacityMaterial } | null)?.material;
     if (outlineMaterial) {
@@ -179,7 +186,7 @@ export function AnimatedPlane3D({
           ref={materialRef}
           color={displayColor}
           transparent
-          opacity={(plane.opacity ?? 0.2) * opacityFactor}
+          opacity={tracks.length > 0 ? (plane.opacity ?? 0.2) * opacityFactor : 0}
           side={THREE.DoubleSide}
           depthWrite={false}
           polygonOffset
