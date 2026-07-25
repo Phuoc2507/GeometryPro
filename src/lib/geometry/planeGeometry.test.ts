@@ -70,6 +70,19 @@ describe('buildPlanarPolygonGeometry', () => {
     result?.geometry.dispose();
   });
 
+  it('accepts a plane whose corners were rounded to a few decimals', () => {
+    // The (MEB') section from a real figure: K rounded to 1.667 instead of 5/3,
+    // which nudges it a hair off the exact plane. It must still be a valid quad.
+    const result = normalizePlanarPolygon([
+      { x: 1, y: 0.577, z: 0 },
+      { x: 0, y: 2.309, z: 1.667 },
+      { x: -2, y: -1.155, z: 5 },
+      { x: 1, y: -1.155, z: 0 },
+    ]);
+    expect(result).not.toBeNull();
+    expect(result?.vertices).toHaveLength(4);
+  });
+
   it('rejects a non-coplanar face instead of drawing a diagonal sheet', () => {
     expect(normalizePlanarPolygon([
       { x: 0, y: 0, z: 0 },
