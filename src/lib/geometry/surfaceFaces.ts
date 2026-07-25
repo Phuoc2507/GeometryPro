@@ -301,12 +301,24 @@ function toFace(candidate: SurfaceCandidate): Face {
 
 type SurfaceScene = Pick<GeometryData, 'points' | 'lines'> & { planes?: Plane3D[] };
 
-/** Kept surface faces as rich candidates (used by both public entry points). */
-function deriveSurfaceCandidates(geometry: SurfaceScene): SurfaceCandidate[] {
+interface DerivedSurfaces {
+  /** Outer hull faces — the transparent occluders (surface + hidden lines). */
+  surface: SurfaceCandidate[];
+  /** Explicitly supplied planes that cut through the solid: cross-sections. */
+  sections: SurfaceCandidate[];
+}
+
+/**
+ * Split every candidate face into the solid's outer hull versus the
+ * cross-sections. A cut through the solid is discarded from the hull, but when
+ * it came from an explicitly supplied plane it is a thiết diện the user drew on
+ * purpose — routed to `sections` so it can still be shown prominently.
+ */
+function deriveSurfaces(geometry: SurfaceScene): DerivedSurfaces {
   const points = geometry.points ?? [];
   const lines = geometry.lines ?? [];
   const planes = geometry.planes ?? [];
-  if (points.length < 3) return [];
+  if (points.length < 3) return { surface: [], sections: [] };
 
   const pointMap = new Map(points.map((point) => [point.id, point]));
   const edgeIndex = buildEdgeIndex(lines);
@@ -317,7 +329,7 @@ function deriveSurfaceCandidates(geometry: SurfaceScene): SurfaceCandidate[] {
     ...findGraphQuads(adjacency, pointMap, edgeIndex),
     ...findPlaneCandidates(planes, points, pointMap, edgeIndex),
   ]);
-  if (candidates.length === 0) return [];
+  if (candidates.length === 0) return { surface: [], sections: [] };
 
   // The solid's vertex cloud is exactly the points that take part in a face.
   const solidIds = new Set<string>();
@@ -335,14 +347,27 @@ function deriveSurfaceCandidates(geometry: SurfaceScene): SurfaceCandidate[] {
 
   const edgeFaceCounts = buildEdgeFaceCounts(candidates);
 
-  const kept = candidates.filter((candidate) => {
+  const surface: SurfaceCandidate[] = [];
+  const sections: SurfaceCandidate[] = [];
+  for (const candidate of candidates) {
     const classification = classifyFace(candidate, solidVertices, tolerance);
-    if (classification !== 'interior') return true;
-    // Reflex-face rescue: an interior-looking face that is a clean manifold seam.
-    return isManifoldFace(candidate, edgeFaceCounts);
-  });
+    // A hull face, a standalone figure, or a reflex face on a clean manifold
+    // seam all belong to the surface.
+    if (classification !== 'interior' || isManifoldFace(candidate, edgeFaceCounts)) {
+      surface.push(candidate);
+    } else if (candidate.plane) {
+      // Interior cut from an explicit plane → a cross-section to display.
+      sections.push(candidate);
+    }
+    // else: a graph-derived interior diagonal → discard entirely.
+  }
 
-  return removeContainedFaces(kept);
+  return { surface: removeContainedFaces(surface), sections };
+}
+
+/** Kept surface faces as rich candidates (used by both public entry points). */
+function deriveSurfaceCandidates(geometry: SurfaceScene): SurfaceCandidate[] {
+  return deriveSurfaces(geometry).surface;
 }
 
 /**
@@ -373,4 +398,28 @@ export function deriveSurfacePlanes(geometry: SurfaceScene): Plane3D[] {
       pointIds: candidate.pointIds,
     };
   });
+}
+
+/**
+ * Cross-section planes (thiết diện): explicitly supplied planes that cut
+ * through the solid. They are NOT part of the occluding hull, so they render
+ * prominently (filled, solid outline) instead of transparent.
+ */
+export function deriveSectionPlanes(geometry: SurfaceScene): Plane3D[] {
+  return deriveSurfaces(geometry).sections
+    .map((candidate) => candidate.plane)
+    .filter((plane): plane is Plane3D => !!plane);
+}
+
+/**
+ * Line ids that form the boundary of a cross-section. These edges stay solid
+ * (never dashed by hidden-line detection) so the section reads clearly even
+ * where it passes behind the solid.
+ */
+export function deriveSectionEdgeIds(geometry: SurfaceScene): Set<string> {
+  const ids = new Set<string>();
+  for (const candidate of deriveSurfaces(geometry).sections) {
+    for (const edge of candidate.edges) ids.add(edge);
+  }
+  return ids;
 }
