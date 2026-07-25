@@ -103,6 +103,36 @@ describe('shared hidden-line detection', () => {
     expect(result.get('XY')).toBe(false); // clear line of sight
   });
 
+  it('includes an explicit cross-section among the occluder faces', () => {
+    const pyramidPoints: Point3D[] = [
+      { id: 'A', label: 'A', x: -1, y: -1, z: 0 },
+      { id: 'B', label: 'B', x: 1, y: -1, z: 0 },
+      { id: 'C', label: 'C', x: 1, y: 1, z: 0 },
+      { id: 'D', label: 'D', x: -1, y: 1, z: 0 },
+      { id: 'S', label: 'S', x: 0, y: 0, z: 2 },
+    ];
+    const pyramidLines: Line3D[] = [
+      { id: 'AB', from: 'A', to: 'B' }, { id: 'BC', from: 'B', to: 'C' },
+      { id: 'CD', from: 'C', to: 'D' }, { id: 'DA', from: 'D', to: 'A' },
+      { id: 'SA', from: 'S', to: 'A' }, { id: 'SB', from: 'S', to: 'B' },
+      { id: 'SC', from: 'S', to: 'C' }, { id: 'SD', from: 'S', to: 'D' },
+    ];
+    const withSection: GeometryData = {
+      name: 'pyramid + section',
+      points: pyramidPoints,
+      lines: pyramidLines,
+      planes: [{
+        id: 'SAC',
+        pointIds: ['S', 'A', 'C'],
+        points: [pyramidPoints[4], pyramidPoints[0], pyramidPoints[2]].map(({ x, y, z }) => ({ x, y, z })),
+      }],
+    };
+
+    const keys = createOcclusionModel(withSection).faces
+      .map((face) => [...(face.pointIds ?? [])].sort().join(''));
+    expect(keys).toContain('ACS'); // the (SAC) cut occludes edges behind it
+  });
+
   it('never lets a dynamic false override an explicit dashed style', () => {
     const dashed: Line3D = { id: 'EF', from: 'E', to: 'F', style: 'dashed' };
     const dynamic = new Map([['EF', false], ['AB', true]]);

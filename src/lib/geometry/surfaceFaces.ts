@@ -412,6 +412,15 @@ export function deriveSectionPlanes(geometry: SurfaceScene): Plane3D[] {
 }
 
 /**
+ * Cross-section faces as occluders. A thiết diện is a real visible surface, so
+ * it hides edges that pass behind it — while its own boundary edges are kept
+ * solid separately (see `deriveSectionEdgeIds`).
+ */
+export function deriveSectionFaces(geometry: SurfaceScene): Face[] {
+  return deriveSurfaces(geometry).sections.map(toFace);
+}
+
+/**
  * Line ids that form the boundary of a cross-section. These edges stay solid
  * (never dashed by hidden-line detection) so the section reads clearly even
  * where it passes behind the solid.

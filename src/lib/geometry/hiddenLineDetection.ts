@@ -6,6 +6,7 @@ import {
   type Face,
   type Triangle,
 } from './extractFaces';
+import { deriveSectionFaces } from './surfaceFaces';
 
 export const HIDDEN_LINE_SAMPLE_T_VALUES = [0.2, 0.4, 0.6, 0.8] as const;
 const EMPTY_FACE_SET = new Set<number>();
@@ -132,8 +133,14 @@ export function mergeLineDashStyles(
 }
 
 export function createOcclusionModel(geometry: GeometryData): OcclusionModel {
-  const faces = extractFaces(geometry.points, geometry.lines, geometry.planes ?? []);
-  // Flat hull faces + tessellated curved solids all occlude edges behind them.
+  // Outer hull faces + cross-sections both occlude. A thiết diện is a real
+  // visible surface, so edges behind it are dashed; its own boundary edges are
+  // forced solid elsewhere (deriveSectionEdgeIds), so they stay clear.
+  const faces = [
+    ...extractFaces(geometry.points, geometry.lines, geometry.planes ?? []),
+    ...deriveSectionFaces(geometry),
+  ];
+  // Flat faces + tessellated curved solids all occlude edges behind them.
   const triangles = [
     ...triangulateFaces(faces),
     ...buildCurvedOccluders(geometry, faces.length),
