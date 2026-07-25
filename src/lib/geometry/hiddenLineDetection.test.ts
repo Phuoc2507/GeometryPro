@@ -78,6 +78,31 @@ describe('shared hidden-line detection', () => {
     expect([...(faces[0].pointIds ?? [])].sort().join('')).toBe('ABCD');
   });
 
+  it('dashes an edge that passes behind a sphere, keeps a side edge solid', () => {
+    // AB sits directly behind a sphere from the camera; XY is off to the side.
+    const occluderPoints: Point3D[] = [
+      { id: 'A', label: 'A', x: -1, y: -5, z: 0 },
+      { id: 'B', label: 'B', x: 1, y: -5, z: 0 },
+      { id: 'X', label: 'X', x: 5, y: 5, z: 5 },
+      { id: 'Y', label: 'Y', x: 6, y: 5, z: 5 },
+    ];
+    const occluderLines: Line3D[] = [
+      { id: 'AB', from: 'A', to: 'B' },
+      { id: 'XY', from: 'X', to: 'Y' },
+    ];
+    const withSphere: GeometryData = {
+      name: 'sphere occluder',
+      points: occluderPoints,
+      lines: occluderLines,
+      planes: [],
+      spheres: [{ id: 's', center: { x: 0, y: 0, z: 0 }, radius: 2 }],
+    };
+
+    const result = createHiddenLineDetector(withSphere).detect([0, 0, 10]);
+    expect(result.get('AB')).toBe(true); // hidden behind the sphere
+    expect(result.get('XY')).toBe(false); // clear line of sight
+  });
+
   it('never lets a dynamic false override an explicit dashed style', () => {
     const dashed: Line3D = { id: 'EF', from: 'E', to: 'F', style: 'dashed' };
     const dynamic = new Map([['EF', false], ['AB', true]]);

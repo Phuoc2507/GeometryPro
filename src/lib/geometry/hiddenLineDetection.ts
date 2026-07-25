@@ -14,6 +14,80 @@ function toThreeVector(point: Point3D): THREE.Vector3 {
   return new THREE.Vector3(point.x, point.z, point.y);
 }
 
+/** Coordinate swap: model (x, y, z) → three.js (x, z, y). */
+function toThreeCoord(coordinate: { x: number; y: number; z: number }): THREE.Vector3 {
+  return new THREE.Vector3(coordinate.x, coordinate.z, coordinate.y);
+}
+
+/** Pull world-space triangles out of a positioned buffer geometry. */
+function readTriangles(geometry: THREE.BufferGeometry, faceIndex: number): Triangle[] {
+  const position = geometry.getAttribute('position');
+  const index = geometry.getIndex();
+  const triangles: Triangle[] = [];
+  const vertex = (i: number) => new THREE.Vector3().fromBufferAttribute(position, i);
+  const count = index ? index.count : position.count;
+  for (let i = 0; i < count; i += 3) {
+    const [ia, ib, ic] = index
+      ? [index.getX(i), index.getX(i + 1), index.getX(i + 2)]
+      : [i, i + 1, i + 2];
+    triangles.push({ a: vertex(ia), b: vertex(ib), c: vertex(ic), faceIndex });
+  }
+  geometry.dispose();
+  return triangles;
+}
+
+/** Orient a +Y-aligned primitive onto `axis`, centred at `center`. */
+function alignY(geometry: THREE.BufferGeometry, axis: THREE.Vector3, center: THREE.Vector3): void {
+  const quaternion = new THREE.Quaternion().setFromUnitVectors(
+    new THREE.Vector3(0, 1, 0),
+    axis.clone().normalize(),
+  );
+  geometry.applyMatrix4(new THREE.Matrix4().compose(center, quaternion, new THREE.Vector3(1, 1, 1)));
+}
+
+/**
+ * Curved solids (sphere / cylinder / cone) tessellated into occluder triangles
+ * so an edge passing behind them is dashed, exactly like behind a flat face.
+ * Each surface is given a face index past the flat faces, so no edge is ever
+ * treated as belonging to (and therefore exempt from) a curved occluder.
+ */
+function buildCurvedOccluders(geometry: GeometryData, startFaceIndex: number): Triangle[] {
+  const triangles: Triangle[] = [];
+  let faceIndex = startFaceIndex;
+
+  for (const sphere of geometry.spheres ?? []) {
+    if (!(sphere.radius > 0)) continue;
+    const mesh = new THREE.SphereGeometry(sphere.radius, 16, 12);
+    const center = toThreeCoord(sphere.center);
+    mesh.translate(center.x, center.y, center.z);
+    triangles.push(...readTriangles(mesh, faceIndex++));
+  }
+
+  for (const cylinder of geometry.cylinders ?? []) {
+    const bottom = toThreeCoord(cylinder.center1);
+    const top = toThreeCoord(cylinder.center2);
+    const axis = top.clone().sub(bottom);
+    const height = axis.length();
+    if (!(cylinder.radius > 0) || height < 1e-9) continue;
+    const mesh = new THREE.CylinderGeometry(cylinder.radius, cylinder.radius, height, 20);
+    alignY(mesh, axis, bottom.clone().add(top).multiplyScalar(0.5));
+    triangles.push(...readTriangles(mesh, faceIndex++));
+  }
+
+  for (const cone of geometry.cones ?? []) {
+    const apex = toThreeCoord(cone.apex);
+    const base = toThreeCoord(cone.baseCenter);
+    const axis = apex.clone().sub(base);
+    const height = axis.length();
+    if (!(cone.radius > 0) || height < 1e-9) continue;
+    const mesh = new THREE.ConeGeometry(cone.radius, height, 20);
+    alignY(mesh, axis, apex.clone().add(base).multiplyScalar(0.5));
+    triangles.push(...readTriangles(mesh, faceIndex++));
+  }
+
+  return triangles;
+}
+
 export interface OcclusionModel {
   faces: Face[];
   triangles: Triangle[];
@@ -59,7 +133,11 @@ export function mergeLineDashStyles(
 
 export function createOcclusionModel(geometry: GeometryData): OcclusionModel {
   const faces = extractFaces(geometry.points, geometry.lines, geometry.planes ?? []);
-  const triangles = triangulateFaces(faces);
+  // Flat hull faces + tessellated curved solids all occlude edges behind them.
+  const triangles = [
+    ...triangulateFaces(faces),
+    ...buildCurvedOccluders(geometry, faces.length),
+  ];
   const pointMap = new Map(geometry.points.map((point) => [point.id, toThreeVector(point)]));
   const edgeToFaceIndices = new Map<string, Set<number>>();
   const bounds = new THREE.Box3();
