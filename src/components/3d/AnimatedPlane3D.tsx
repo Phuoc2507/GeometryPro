@@ -144,7 +144,14 @@ export function AnimatedPlane3D({
     material.needsUpdate = false;
     const outlineMaterial = (outlineRef.current as { material?: OpacityMaterial } | null)?.material;
     if (outlineMaterial) {
-      outlineMaterial.opacity = isHighlighted ? 1 : nextOpacity * 0.6 * opacityFactor;
+      // AnimatedLine already draws every edge (solid when visible, dashed when
+      // hidden). A transparent surface face must NOT also stroke its boundary,
+      // or a hidden edge shows a faint SOLID outline layered under the dashes
+      // ("vừa liền mờ vừa đứt"). Keep the outline only for animated (filled)
+      // sections and while this plane is highlighted.
+      outlineMaterial.opacity = isHighlighted
+        ? 1
+        : (tracks.length > 0 ? nextOpacity * 0.6 * opacityFactor : 0);
     }
   });
 
@@ -200,7 +207,7 @@ export function AnimatedPlane3D({
         color={displayColor}
         lineWidth={isHighlighted ? 3 : (emphasize ? 2.5 : 1.5)}
         transparent
-        opacity={opacityFactor * 0.6}
+        opacity={tracks.length > 0 ? opacityFactor * 0.6 : 0}
       />
     </group>
   );
