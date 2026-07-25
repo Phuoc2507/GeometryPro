@@ -15,6 +15,8 @@ interface AnimatedPlane3DProps {
   isBuilding: boolean;
   opacityFactor?: number;
   emphasize?: boolean;
+  /** Cross-section (thiết diện): render a light fill instead of see-through. */
+  solid?: boolean;
 }
 
 type OpacityMaterial = THREE.Material & { opacity: number };
@@ -25,6 +27,7 @@ export function AnimatedPlane3D({
   isBuilding,
   opacityFactor = 1,
   emphasize = false,
+  solid = false,
 }: AnimatedPlane3DProps) {
   const groupRef = useRef<THREE.Group>(null);
   const materialRef = useRef<THREE.MeshBasicMaterial>(null);
@@ -135,7 +138,7 @@ export function AnimatedPlane3D({
     // Surface faces render see-through now: the shaded fill is fully
     // transparent, leaving only the outline. Animated cross-sections (fold /
     // fade tracks) keep their fill so the animation stays visible.
-    if (tracks.length > 0) {
+    if (tracks.length > 0 || solid) {
       const baseOpacity = (plane.opacity ?? 0.2) * nextOpacity * opacityFactor;
       material.opacity = isHighlighted ? Math.min(1, baseOpacity * 2) : baseOpacity;
     } else {
@@ -193,7 +196,7 @@ export function AnimatedPlane3D({
           ref={materialRef}
           color={displayColor}
           transparent
-          opacity={tracks.length > 0 ? (plane.opacity ?? 0.2) * opacityFactor : 0}
+          opacity={tracks.length > 0 || solid ? (plane.opacity ?? 0.2) * opacityFactor : 0}
           side={THREE.DoubleSide}
           depthWrite={false}
           polygonOffset

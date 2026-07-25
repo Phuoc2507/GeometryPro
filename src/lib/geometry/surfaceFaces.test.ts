@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import type { Line3D, Plane3D, Point3D } from '@/types/geometry';
-import { deriveSurfaceFaces, deriveSurfacePlanes } from './surfaceFaces';
+import {
+  deriveSectionEdgeIds,
+  deriveSectionPlanes,
+  deriveSurfaceFaces,
+  deriveSurfacePlanes,
+} from './surfaceFaces';
 
 const edge = (from: string, to: string): Line3D => ({ id: `${from}${to}`, from, to });
 
@@ -116,6 +121,49 @@ describe('deriveSurfaceFaces', () => {
     // 6 rectangular sides + 2 hexagonal caps — none dropped even though the
     // inner-corner sides fail the half-space test on a concave body.
     expect(faces).toHaveLength(8);
+  });
+});
+
+describe('deriveSectionPlanes', () => {
+  const points: Point3D[] = [
+    { id: 'A', label: 'A', x: -1, y: -1, z: 0 },
+    { id: 'B', label: 'B', x: 1, y: -1, z: 0 },
+    { id: 'C', label: 'C', x: 1, y: 1, z: 0 },
+    { id: 'D', label: 'D', x: -1, y: 1, z: 0 },
+    { id: 'S', label: 'S', x: 0, y: 0, z: 2 },
+  ];
+  const lines: Line3D[] = [
+    edge('A', 'B'), edge('B', 'C'), edge('C', 'D'), edge('D', 'A'),
+    edge('S', 'A'), edge('S', 'B'), edge('S', 'C'), edge('S', 'D'),
+  ];
+  // (SAC) cuts through the pyramid — an intentional cross-section.
+  const section: Plane3D = {
+    id: 'SAC', color: '#22d3ee', opacity: 0.3,
+    pointIds: ['S', 'A', 'C'], points: coordsOf(points, ['S', 'A', 'C']),
+  };
+
+  it('returns the supplied interior cut as a cross-section, not a hull face', () => {
+    const geometry = { points, lines, planes: [section] };
+    expect(faceKeys(deriveSurfaceFaces(geometry))).not.toContain('ACS');
+
+    const sections = deriveSectionPlanes(geometry);
+    expect(sections).toHaveLength(1);
+    expect(sections[0].id).toBe('SAC');
+    expect(sections[0].color).toBe('#22d3ee'); // styling preserved
+    expect(sections[0].opacity).toBe(0.3);
+  });
+
+  it('marks the section boundary edges that exist as lines (for solid strokes)', () => {
+    const ids = deriveSectionEdgeIds({ points, lines, planes: [section] });
+    // S-A and S-C are drawn; the base diagonal A-C is not a line.
+    expect(ids.has('SA')).toBe(true);
+    expect(ids.has('SC')).toBe(true);
+    expect(ids.has('AC')).toBe(false);
+  });
+
+  it('reports no sections for a plain hull face', () => {
+    const { points: cubePoints, lines: cubeLines } = buildCube();
+    expect(deriveSectionPlanes({ points: cubePoints, lines: cubeLines, planes: [] })).toEqual([]);
   });
 });
 

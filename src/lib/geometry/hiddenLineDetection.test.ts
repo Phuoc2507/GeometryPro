@@ -78,6 +78,61 @@ describe('shared hidden-line detection', () => {
     expect([...(faces[0].pointIds ?? [])].sort().join('')).toBe('ABCD');
   });
 
+  it('dashes an edge that passes behind a sphere, keeps a side edge solid', () => {
+    // AB sits directly behind a sphere from the camera; XY is off to the side.
+    const occluderPoints: Point3D[] = [
+      { id: 'A', label: 'A', x: -1, y: -5, z: 0 },
+      { id: 'B', label: 'B', x: 1, y: -5, z: 0 },
+      { id: 'X', label: 'X', x: 5, y: 5, z: 5 },
+      { id: 'Y', label: 'Y', x: 6, y: 5, z: 5 },
+    ];
+    const occluderLines: Line3D[] = [
+      { id: 'AB', from: 'A', to: 'B' },
+      { id: 'XY', from: 'X', to: 'Y' },
+    ];
+    const withSphere: GeometryData = {
+      name: 'sphere occluder',
+      points: occluderPoints,
+      lines: occluderLines,
+      planes: [],
+      spheres: [{ id: 's', center: { x: 0, y: 0, z: 0 }, radius: 2 }],
+    };
+
+    const result = createHiddenLineDetector(withSphere).detect([0, 0, 10]);
+    expect(result.get('AB')).toBe(true); // hidden behind the sphere
+    expect(result.get('XY')).toBe(false); // clear line of sight
+  });
+
+  it('includes an explicit cross-section among the occluder faces', () => {
+    const pyramidPoints: Point3D[] = [
+      { id: 'A', label: 'A', x: -1, y: -1, z: 0 },
+      { id: 'B', label: 'B', x: 1, y: -1, z: 0 },
+      { id: 'C', label: 'C', x: 1, y: 1, z: 0 },
+      { id: 'D', label: 'D', x: -1, y: 1, z: 0 },
+      { id: 'S', label: 'S', x: 0, y: 0, z: 2 },
+    ];
+    const pyramidLines: Line3D[] = [
+      { id: 'AB', from: 'A', to: 'B' }, { id: 'BC', from: 'B', to: 'C' },
+      { id: 'CD', from: 'C', to: 'D' }, { id: 'DA', from: 'D', to: 'A' },
+      { id: 'SA', from: 'S', to: 'A' }, { id: 'SB', from: 'S', to: 'B' },
+      { id: 'SC', from: 'S', to: 'C' }, { id: 'SD', from: 'S', to: 'D' },
+    ];
+    const withSection: GeometryData = {
+      name: 'pyramid + section',
+      points: pyramidPoints,
+      lines: pyramidLines,
+      planes: [{
+        id: 'SAC',
+        pointIds: ['S', 'A', 'C'],
+        points: [pyramidPoints[4], pyramidPoints[0], pyramidPoints[2]].map(({ x, y, z }) => ({ x, y, z })),
+      }],
+    };
+
+    const keys = createOcclusionModel(withSection).faces
+      .map((face) => [...(face.pointIds ?? [])].sort().join(''));
+    expect(keys).toContain('ACS'); // the (SAC) cut occludes edges behind it
+  });
+
   it('never lets a dynamic false override an explicit dashed style', () => {
     const dashed: Line3D = { id: 'EF', from: 'E', to: 'F', style: 'dashed' };
     const dynamic = new Map([['EF', false], ['AB', true]]);
