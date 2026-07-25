@@ -7,11 +7,7 @@ import { Line } from '@react-three/drei';
 import { useAnimationOptional } from '@/context/AnimationContext';
 import { useGeometryOptional } from '@/context/GeometryContext';
 import { handleAddPoint } from './ClickToPlacePoint';
-import {
-  buildPlanarPolygonGeometry,
-  getOutwardHullNormal,
-} from '@/lib/geometry/planeGeometry';
-import { collectPlanePointIds } from '@/lib/geometry/planeReferences';
+import { buildPlanarPolygonGeometry } from '@/lib/geometry/planeGeometry';
 
 interface AnimatedPlane3DProps {
   plane: Plane3D;
@@ -67,21 +63,6 @@ export function AnimatedPlane3D({
     () => buildPlanarPolygonGeometry(resolvedPlanePoints),
     [resolvedPlanePoints],
   );
-  const solidReferencePoints = useMemo(() => {
-    const geometry = geometryCtx?.state.geometry;
-    if (!geometry) return [];
-    const referencedIds = new Set<string>();
-    for (const candidate of geometry.planes ?? []) {
-      for (const id of collectPlanePointIds(candidate, geometry.points)) {
-        referencedIds.add(id);
-      }
-    }
-    return geometry.points.filter((point) => referencedIds.has(point.id));
-  }, [geometryCtx?.state.geometry]);
-  const outwardNormal = useMemo(
-    () => polygon ? getOutwardHullNormal(polygon, solidReferencePoints) : null,
-    [polygon, solidReferencePoints],
-  );
   useEffect(() => () => polygon?.geometry.dispose(), [polygon]);
 
   const scratch = useMemo(() => ({
@@ -93,7 +74,7 @@ export function AnimatedPlane3D({
     direction: new THREE.Vector3(),
   }), []);
 
-  useFrame(({ camera }, delta) => {
+  useFrame((_state, delta) => {
     const group = groupRef.current;
     const material = materialRef.current;
     if (!group || !material) return;
@@ -142,17 +123,9 @@ export function AnimatedPlane3D({
     }
     animationOpacityRef.current = nextOpacity;
 
-    // For actual hull faces, fade the back side out and keep only the faces
-    // visible from the current camera. Internal/cross-section planes have
-    // points on both sides and deliberately remain double-sided.
-    if (polygon && outwardNormal && tracks.length === 0 && !isHighlighted) {
-      scratch.direction.subVectors(camera.position, polygon.center);
-      if (scratch.direction.lengthSq() > 1e-12) {
-        const facing = outwardNormal.dot(scratch.direction.normalize());
-        nextOpacity *= THREE.MathUtils.smoothstep(facing, -0.08, 0.08);
-      }
-    }
-
+    // Surface faces are now derived from geometry (see deriveSurfaceFaces), so a
+    // rendered plane is always a genuine outer face. Keep it visible from every
+    // angle instead of fading the side that faces away from the camera.
     group.visible = nextVisible && nextOpacity > 0.01;
     if (!group.matrix.equals(scratch.matrix)) {
       group.matrix.copy(scratch.matrix);

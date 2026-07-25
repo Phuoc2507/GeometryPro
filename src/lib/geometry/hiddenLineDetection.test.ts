@@ -46,25 +46,36 @@ describe('shared hidden-line detection', () => {
     expect(result.get('AB')).toBe(false);
   });
 
-  it('uses explicit planes as the authoritative face source', () => {
+  it('derives faces from the edge graph in addition to supplied planes', () => {
+    // Adding A-E and B-E closes a triangle A-B-E in the graph. The surface is
+    // now derived from geometry, so both the base quad and that triangle become
+    // faces of the solid rather than the plane list being taken verbatim.
     const extraTriangleLines: Line3D[] = [
       ...lines,
       { id: 'AE', from: 'A', to: 'E' },
       { id: 'BE', from: 'B', to: 'E' },
     ];
 
-    expect(extractFaces(points, extraTriangleLines, geometry.planes)).toHaveLength(1);
-    expect(createOcclusionModel({ ...geometry, lines: extraTriangleLines }).faces).toHaveLength(1);
+    const faces = extractFaces(points, extraTriangleLines, geometry.planes);
+    const keys = faces.map((face) => [...(face.pointIds ?? [])].sort().join(''));
+    expect(keys).toContain('ABCD');
+    expect(keys).toContain('ABE');
+    expect(faces).toHaveLength(2);
+    expect(createOcclusionModel({ ...geometry, lines: extraTriangleLines }).faces).toHaveLength(2);
   });
 
-  it('does not silently infer graph faces when supplied planes are invalid', () => {
+  it('falls back to graph faces when a supplied plane is malformed', () => {
+    // A plane whose points cannot be resolved is discarded, but the genuine
+    // base quad is still recovered from the edge graph instead of vanishing.
     const invalidPlanes = [{
       id: 'invalid',
       pointIds: ['A', 'missing', 'B'],
       points: [],
     }];
 
-    expect(extractFaces(points, lines, invalidPlanes)).toEqual([]);
+    const faces = extractFaces(points, lines, invalidPlanes);
+    expect(faces).toHaveLength(1);
+    expect([...(faces[0].pointIds ?? [])].sort().join('')).toBe('ABCD');
   });
 
   it('never lets a dynamic false override an explicit dashed style', () => {

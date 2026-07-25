@@ -1,263 +1,26 @@
 import * as THREE from 'three';
 import { Point3D, Line3D, Plane3D } from '@/types/geometry';
-import { normalizePlanarPolygon } from './planeGeometry';
+import { deriveSurfaceFaces } from './surfaceFaces';
 
 export interface Face {
   vertices: THREE.Vector3[];
   normal: THREE.Vector3;
   edges: string[]; // Line IDs that form this face
   centroid: THREE.Vector3;
+  /** Vertex ids around the face boundary, when derived from identified points. */
+  pointIds?: string[];
 }
 
 /**
- * Convert Point3D to THREE.Vector3, swapping Y and Z for Three.js coordinate system
+ * Extract the solid's surface faces from geometry.
+ *
+ * Faces are derived from the edge graph and the supplied planes together, then
+ * filtered down to the genuine outer hull (see `deriveSurfaceFaces`). The
+ * occlusion mesh built here and the rendered planes therefore share one face
+ * set, so hidden-line dashing and the shaded planes can never disagree.
  */
-function toVector3(point: Point3D): THREE.Vector3 {
-  return new THREE.Vector3(point.x, point.z, point.y);
-}
-
-/** Build an adjacency map from the legacy line graph. */
-function buildAdjacencyMap(lines: Line3D[]): Map<string, Set<string>> {
-  const adjacency = new Map<string, Set<string>>();
-  
-  for (const line of lines) {
-    if (!adjacency.has(line.from)) adjacency.set(line.from, new Set());
-    if (!adjacency.has(line.to)) adjacency.set(line.to, new Set());
-    adjacency.get(line.from)!.add(line.to);
-    adjacency.get(line.to)!.add(line.from);
-  }
-  
-  return adjacency;
-}
-
-function edgeKey(from: string, to: string): string {
-  return from < to ? `${from}\u0000${to}` : `${to}\u0000${from}`;
-}
-
-function buildEdgeIndex(lines: Line3D[]): Map<string, string> {
-  return new Map(lines.map((line) => [edgeKey(line.from, line.to), line.id]));
-}
-
-/** Get a line ID without repeatedly scanning the entire line array. */
-function getLineId(from: string, to: string, edgeIndex: ReadonlyMap<string, string>): string | null {
-  return edgeIndex.get(edgeKey(from, to)) ?? null;
-}
-
-/**
- * Find triangular faces (3 connected vertices)
- */
-function findTriangles(
-  adjacency: Map<string, Set<string>>,
-  points: Point3D[],
-  edgeIndex: ReadonlyMap<string, string>,
-): Face[] {
-  const faces: Face[] = [];
-  const foundTriangles = new Set<string>();
-  const pointMap = new Map(points.map(p => [p.id, p]));
-  
-  for (const [a, neighborsA] of adjacency) {
-    for (const b of neighborsA) {
-      const neighborsB = adjacency.get(b);
-      if (!neighborsB) continue;
-      
-      for (const c of neighborsB) {
-        if (c === a) continue;
-        if (!neighborsA.has(c)) continue;
-        
-        // Found triangle a-b-c
-        const sorted = [a, b, c].sort().join('-');
-        if (foundTriangles.has(sorted)) continue;
-        foundTriangles.add(sorted);
-        
-        const pA = pointMap.get(a);
-        const pB = pointMap.get(b);
-        const pC = pointMap.get(c);
-        if (!pA || !pB || !pC) continue;
-        
-        const vA = toVector3(pA);
-        const vB = toVector3(pB);
-        const vC = toVector3(pC);
-        
-        // Calculate normal using cross product (order matters for direction)
-        const edge1 = vB.clone().sub(vA);
-        const edge2 = vC.clone().sub(vA);
-        const normal = edge1.cross(edge2).normalize();
-        
-        // Calculate centroid
-        const centroid = vA.clone().add(vB).add(vC).divideScalar(3);
-        
-        // Get edge IDs
-        const edges: string[] = [];
-        const e1 = getLineId(a, b, edgeIndex);
-        const e2 = getLineId(b, c, edgeIndex);
-        const e3 = getLineId(c, a, edgeIndex);
-        if (e1) edges.push(e1);
-        if (e2) edges.push(e2);
-        if (e3) edges.push(e3);
-        
-        faces.push({
-          vertices: [vA, vB, vC],
-          normal,
-          edges,
-          centroid
-        });
-      }
-    }
-  }
-  
-  return faces;
-}
-
-/**
- * Find quadrilateral faces (4 connected vertices forming a cycle without diagonals)
- */
-function findQuads(
-  adjacency: Map<string, Set<string>>,
-  points: Point3D[],
-  edgeIndex: ReadonlyMap<string, string>,
-): Face[] {
-  const faces: Face[] = [];
-  const foundQuads = new Set<string>();
-  const pointMap = new Map(points.map(p => [p.id, p]));
-  
-  for (const [a, neighborsA] of adjacency) {
-    for (const b of neighborsA) {
-      const neighborsB = adjacency.get(b);
-      if (!neighborsB) continue;
-      
-      for (const c of neighborsB) {
-        if (c === a) continue;
-        // Skip if a-c are directly connected (that would make it a triangle, not quad edge)
-        if (neighborsA.has(c)) continue;
-        
-        const neighborsC = adjacency.get(c);
-        if (!neighborsC) continue;
-        
-        for (const d of neighborsC) {
-          if (d === a || d === b) continue;
-          if (!neighborsA.has(d)) continue;
-          // Skip if b-d are directly connected (diagonal)
-          if (neighborsB.has(d)) continue;
-          
-          // Found quad a-b-c-d (cycle: a-b-c-d-a)
-          const sorted = [a, b, c, d].sort().join('-');
-          if (foundQuads.has(sorted)) continue;
-          foundQuads.add(sorted);
-          
-          const pA = pointMap.get(a);
-          const pB = pointMap.get(b);
-          const pC = pointMap.get(c);
-          const pD = pointMap.get(d);
-          if (!pA || !pB || !pC || !pD) continue;
-          
-          const vA = toVector3(pA);
-          const vB = toVector3(pB);
-          const vC = toVector3(pC);
-          const vD = toVector3(pD);
-          
-          // Calculate normal using diagonal vectors for more stable result
-          const diag1 = vC.clone().sub(vA);
-          const diag2 = vD.clone().sub(vB);
-          const normal = diag1.cross(diag2).normalize();
-          
-          // Calculate centroid
-          const centroid = vA.clone().add(vB).add(vC).add(vD).divideScalar(4);
-          
-          // Get edge IDs (only the boundary edges, not diagonals)
-          const edges: string[] = [];
-          const e1 = getLineId(a, b, edgeIndex);
-          const e2 = getLineId(b, c, edgeIndex);
-          const e3 = getLineId(c, d, edgeIndex);
-          const e4 = getLineId(d, a, edgeIndex);
-          if (e1) edges.push(e1);
-          if (e2) edges.push(e2);
-          if (e3) edges.push(e3);
-          if (e4) edges.push(e4);
-          
-          faces.push({
-            vertices: [vA, vB, vC, vD],
-            normal,
-            edges,
-            centroid
-          });
-        }
-      }
-    }
-  }
-  
-  return faces;
-}
-
-/**
- * Extract faces from geometry
- * Returns triangular and quadrilateral faces found from the line graph
- */
-function extractPlaneFaces(
-  points: Point3D[],
-  edgeIndex: ReadonlyMap<string, string>,
-  planes: Plane3D[],
-): Face[] {
-  const pointMap = new Map(points.map((point) => [point.id, point]));
-  return planes.flatMap((plane) => {
-    let ids = plane.pointIds?.filter((id) => pointMap.has(id)) ?? [];
-    if (ids.length < 3) {
-      ids = plane.points.map((coordinate) => {
-        const match = points.find((point) =>
-          Math.abs(point.x - coordinate.x) <= 1e-6
-          && Math.abs(point.y - coordinate.y) <= 1e-6
-          && Math.abs(point.z - coordinate.z) <= 1e-6);
-        return match?.id ?? '';
-      }).filter(Boolean);
-    }
-    const coordinates = ids.length >= 3
-      ? ids.map((id) => {
-        const point = pointMap.get(id)!;
-        return { x: point.x, y: point.y, z: point.z };
-      })
-      : plane.points;
-    const polygon = normalizePlanarPolygon(coordinates);
-    if (!polygon) return [];
-
-    const orderedIds = ids.length >= 3
-      ? polygon.sourceIndices.map((index) => ids[index])
-      : [];
-    const edges: string[] = [];
-    if (orderedIds.length === polygon.vertices.length) {
-      for (let index = 0; index < orderedIds.length; index++) {
-        const edge = getLineId(
-          orderedIds[index],
-          orderedIds[(index + 1) % orderedIds.length],
-          edgeIndex,
-        );
-        if (edge) edges.push(edge);
-      }
-    }
-    return [{
-      vertices: polygon.vertices,
-      normal: polygon.normal,
-      centroid: polygon.center,
-      edges,
-    }];
-  });
-}
-
 export function extractFaces(points: Point3D[], lines: Line3D[], planes: Plane3D[] = []): Face[] {
-  const edgeIndex = buildEdgeIndex(lines);
-  if (planes.length > 0) {
-    // Once a producer supplies planes, they are authoritative. Falling back to
-    // graph cycles for only the invalid entries can invent surfaces from
-    // diagonals and construction lines.
-    return extractPlaneFaces(points, edgeIndex, planes);
-  }
-  if (points.length < 3 || lines.length < 3) return [];
-  
-  // Compatibility fallback for legacy saved drawings that predate `planes`.
-  const adjacency = buildAdjacencyMap(lines);
-  
-  const triangles = findTriangles(adjacency, points, edgeIndex);
-  const quads = findQuads(adjacency, points, edgeIndex);
-  
-  return [...triangles, ...quads];
+  return deriveSurfaceFaces({ points, lines, planes });
 }
 
 /**
@@ -302,11 +65,11 @@ export interface Triangle {
  */
 export function triangulateFaces(faces: Face[]): Triangle[] {
   const triangles: Triangle[] = [];
-  
+
   for (let faceIndex = 0; faceIndex < faces.length; faceIndex++) {
     const face = faces[faceIndex];
     const verts = face.vertices;
-    
+
     if (verts.length < 3) continue;
     const center = verts.reduce((sum, vertex) => sum.add(vertex), new THREE.Vector3())
       .multiplyScalar(1 / verts.length);
@@ -325,7 +88,7 @@ export function triangulateFaces(faces: Face[]): Triangle[] {
       });
     }
   }
-  
+
   return triangles;
 }
 
@@ -334,23 +97,23 @@ export function triangulateFaces(faces: Face[]): Triangle[] {
  */
 export function buildOcclusionMesh(triangles: Triangle[]): THREE.Mesh | null {
   if (triangles.length === 0) return null;
-  
+
   const positions: number[] = [];
-  
+
   for (const tri of triangles) {
     positions.push(tri.a.x, tri.a.y, tri.a.z);
     positions.push(tri.b.x, tri.b.y, tri.b.z);
     positions.push(tri.c.x, tri.c.y, tri.c.z);
   }
-  
+
   const geometry = new THREE.BufferGeometry();
   geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
   geometry.computeVertexNormals();
-  
+
   const material = new THREE.MeshBasicMaterial({
     side: THREE.DoubleSide,
     visible: false // Don't render, just for raycasting
   });
-  
+
   return new THREE.Mesh(geometry, material);
 }
