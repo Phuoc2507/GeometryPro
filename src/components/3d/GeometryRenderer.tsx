@@ -41,6 +41,7 @@ import { DynamicCrossSection } from './DynamicCrossSection';
 import { DynamicUnfolding } from './DynamicUnfolding';
 import { useToolMode } from '@/context/ToolModeContext';
 import { collectPlanePointIds } from '@/lib/geometry/planeReferences';
+import { deriveSurfacePlanes } from '@/lib/geometry/surfaceFaces';
 
 // Advance mode: cờ dim → mờ (giữ ngữ cảnh câu trước), highlight/không cờ → đầy.
 const DIM_OPACITY = 0.25;
@@ -227,6 +228,24 @@ export function GeometryRenderer({ geometry: geometryProp, isBuilding }: Geometr
     return geometry.points;
   }, [geometry]);
 
+  // Planes to render are DERIVED from the solid's geometry, not the raw plane
+  // list — the same outer-surface set the hidden-line detector uses. This keeps
+  // shaded faces and dashed edges in agreement. Two exceptions are folded back
+  // in: manual editing keeps the user's own planes, and any plane driven by a
+  // timeline track is preserved so fold / fade animations do not break.
+  const renderPlanes = React.useMemo(() => {
+    if (!geometry) return [];
+    const rawPlanes = geometry.planes ?? [];
+    if (isManualMode) return rawPlanes;
+    const derived = deriveSurfacePlanes(geometry);
+    const byId = new Map(derived.map((plane) => [plane.id, plane]));
+    const animatedTargets = new Set((geometry.timeline?.tracks ?? []).map((track) => track.targetId));
+    for (const plane of rawPlanes) {
+      if (animatedTargets.has(plane.id) && !byId.has(plane.id)) byId.set(plane.id, plane);
+    }
+    return [...byId.values()];
+  }, [geometry, isManualMode]);
+
   if (!geometry) return null;
 
   const {
@@ -250,7 +269,7 @@ export function GeometryRenderer({ geometry: geometryProp, isBuilding }: Geometr
     ...circles.map((c, i) => ({ type: 'circle' as const, data: c, i })),
     ...cylinders.map((c, i) => ({ type: 'cylinder' as const, data: c, i })),
     ...cones.map((c, i) => ({ type: 'cone' as const, data: c, i })),
-    ...planes.map((p, i) => ({ type: 'plane' as const, data: p, i })),
+    ...renderPlanes.map((p, i) => ({ type: 'plane' as const, data: p, i })),
   ];
 
   const annotationStartDelay = isPrebuilt ? 0 : shapeStartDelay + allShapes.length * shapeDelay + 200;
