@@ -494,7 +494,7 @@ export function CaptureModal({ isOpen, onClose, geometry, hiddenLines }: Capture
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-4xl p-0 overflow-hidden bg-background border-border shadow-2xl">
+      <DialogContent className="sm:max-w-6xl max-h-[92vh] overflow-y-auto p-0 bg-background border-border shadow-2xl">
         <DialogHeader className="p-6 pb-2">
           <DialogTitle className="flex items-center gap-2 text-xl font-bold">
             <Camera className="w-6 h-6 text-primary" />
@@ -518,7 +518,7 @@ export function CaptureModal({ isOpen, onClose, geometry, hiddenLines }: Capture
         <div className="grid md:grid-cols-[1fr,360px] gap-6 p-6 pt-2">
           <div className="flex flex-col gap-4">
             <div 
-              className="relative aspect-square sm:aspect-auto sm:h-[400px] w-full bg-white rounded-xl border-2 border-dashed border-primary/20 flex items-center justify-center p-4 shadow-inner overflow-hidden bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] [background-size:16px_16px] cursor-grab active:cursor-grabbing touch-none select-none"
+              className="relative aspect-square sm:aspect-auto sm:h-[560px] w-full bg-white rounded-xl border-2 border-dashed border-primary/20 flex items-center justify-center p-4 shadow-inner overflow-hidden bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] [background-size:16px_16px] cursor-grab active:cursor-grabbing touch-none select-none"
               {...interactiveHandlers}
             >
               {scaledGeometry && cameraState && (
