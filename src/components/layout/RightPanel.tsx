@@ -825,11 +825,11 @@ function PanelContent() {
 
             {/* Hành động xuất */}
             <div className="grid grid-cols-2 gap-2">
-              <Button variant="outline" size="sm" className="h-9 gap-1.5 bg-green-600 hover:bg-green-700 text-white hover:text-white border-green-600" onClick={handleCopy}>
+              <Button variant="outline" size="sm" className="h-9 gap-1.5 text-green-600 dark:text-green-400 border-green-500/40 hover:bg-green-500/10 hover:text-green-700 dark:hover:text-green-300" onClick={handleCopy}>
                 {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
                 <span className="text-xs">{copied ? 'Đã chép' : 'Copy TikZ'}</span>
               </Button>
-              <Button variant="outline" size="sm" className="h-9 gap-1.5 bg-blue-600 hover:bg-blue-700 text-white hover:text-white border-blue-600" onClick={() => setIsCaptureOpen(true)}>
+              <Button variant="outline" size="sm" className="h-9 gap-1.5 text-blue-600 dark:text-blue-400 border-blue-500/40 hover:bg-blue-500/10 hover:text-blue-700 dark:hover:text-blue-300" onClick={() => setIsCaptureOpen(true)}>
                 <ImageIcon className="w-3.5 h-3.5" />
                 <span className="text-xs">Xuất ảnh</span>
               </Button>
