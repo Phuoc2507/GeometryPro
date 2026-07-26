@@ -1,0 +1,9 @@
+User-agent: *
+Allow: /
+
+# Trang riêng tư / chỉ dùng sau đăng nhập — không có giá trị SEO
+Disallow: /auth
+Disallow: /settings
+Disallow: /saved
+
+Sitemap: https://geo3d.io.vn/sitemap.xml
