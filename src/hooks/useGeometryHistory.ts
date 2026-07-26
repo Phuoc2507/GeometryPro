@@ -18,6 +18,24 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
 }
 
+// Ghi mảng lịch sử vô danh vào localStorage; nếu TRÀN (QuotaExceededError) thì tự BỎ BỚT
+// mục cũ nhất (cuối mảng) rồi thử lại, luôn cố giữ mục cần bảo vệ. Trả false nếu chịu thua.
+function persistLocalHistory(items: HistoryItem[], protectId?: string): boolean {
+  let toStore = items.slice(0, 50);
+  while (toStore.length >= 1) {
+    try {
+      localStorage.setItem('geo3d_anonymous_history', JSON.stringify(toStore));
+      return true;
+    } catch {
+      if (toStore.length === 1) return false;
+      let idx = toStore.length - 1;                                   // mục cũ nhất
+      if (protectId && toStore[idx]?.id === protectId) idx = toStore.length - 2; // đừng bỏ mục đang giữ
+      toStore = toStore.filter((_, i) => i !== idx);
+    }
+  }
+  return false;
+}
+
 function parseLocalHistory(raw: string | null): HistoryItem[] {
   if (!raw) return [];
   try {
@@ -118,22 +136,9 @@ export function useGeometryHistory() {
         };
         const local = localStorage.getItem('geo3d_anonymous_history');
         const prev = parseLocalHistory(local);
-        // Mục Advance có thể lớn → localStorage (~5MB) có thể TRÀN. Trước đây QuotaExceededError bị
-        // nuốt (handleSupabaseError chỉ xử lỗi auth) ⇒ mục mới im lặng KHÔNG lưu, "chạy xong mất tiêu".
-        // Giờ: nếu tràn thì BỎ BỚT mục CŨ NHẤT (cuối mảng) rồi thử lại, để mục MỚI luôn lưu được.
-        let toStore = [newItem, ...prev].slice(0, 50);
-        let saved = false;
-        while (toStore.length >= 1) {
-          try {
-            localStorage.setItem('geo3d_anonymous_history', JSON.stringify(toStore));
-            saved = true;
-            break;
-          } catch {
-            if (toStore.length === 1) break;   // 1 mục vẫn tràn → chịu
-            toStore = toStore.slice(0, Math.max(1, toStore.length - Math.ceil(toStore.length / 4)));
-          }
-        }
-        if (!saved) return null;
+        // Mục Advance có thể lớn → localStorage (~5MB) có thể TRÀN; persistLocalHistory bỏ bớt
+        // mục cũ nhất để mục MỚI luôn lưu được (giữ newItem.id).
+        if (!persistLocalHistory([newItem, ...prev], newItem.id)) return null;
         triggerSync();
         return newItem.id;
       }
@@ -171,8 +176,17 @@ export function useGeometryHistory() {
         if (local) {
           const prev = parseLocalHistory(local);
           const newHistory = prev.map((item) => item.id === id ? { ...item, geometry_data: geometry } : item);
-          localStorage.setItem('geo3d_anonymous_history', JSON.stringify(newHistory));
-          triggerSync();
+          // Đây là đường GROWTH (lưu KÈM lời giải + điểm dựng) → dễ tràn nhất. Không nuốt lỗi:
+          // nếu không lưu được thì báo rõ để người dùng biết (thay vì mất im lặng khi reload).
+          if (persistLocalHistory(newHistory, id)) {
+            triggerSync();
+          } else {
+            toast({
+              title: 'Bộ nhớ trình duyệt đã đầy',
+              description: 'Không lưu được lời giải/điểm dựng cho bản vẽ này. Hãy đăng nhập để lưu trên đám mây.',
+              variant: 'destructive',
+            });
+          }
         }
         return;
       }
@@ -186,7 +200,7 @@ export function useGeometryHistory() {
     } catch (err) {
       handleSupabaseError(err, 'updating geometry data');
     }
-  }, [user, handleSupabaseError]);
+  }, [user, handleSupabaseError, toast]);
 
   const deleteHistoryItem = useCallback(async (id: string) => {
     try {

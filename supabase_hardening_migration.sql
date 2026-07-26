@@ -77,7 +77,7 @@ begin
   if v_ip.used >= p_ip_max then
     return jsonb_build_object(
       'ok', false, 'err', 'guest_ip_quota_exceeded',
-      'used', v_device.used, 'max', p_max, 'window_start', v_device.window_start
+      'used', v_ip.used, 'max', p_ip_max, 'window_start', v_ip.window_start
     );
   end if;
 

@@ -3,7 +3,7 @@ import { validateAndFixProjections } from './_lib/postProcess.js';
 import { generateLatexCode } from './_lib/generateLatex.js';
 import crypto from 'crypto';
 import { refund } from './_lib/credits.js';
-import { accessError, resolveAiAccess, withQuota } from './_lib/aiAccess.js';
+import { accessError, resolveAiAccess, withQuota, refundAiUsage } from './_lib/aiAccess.js';
 import { withSentry, reportServerError } from './_lib/sentry.js';
 
 const MODIFY_SYSTEM_PROMPT = `Bạn là chuyên gia chỉnh sửa hình học 3D cho học sinh Việt Nam (lớp 11-12). Nhận hình học hiện tại + yêu cầu chỉnh sửa → trả về hình học đã cập nhật.
@@ -188,7 +188,8 @@ CHỈ trả về JSON thuần, KHÔNG markdown.`;
       }
     } catch (parseError) {
       console.error('Parse error:', parseError);
-      // Không sửa được -> hoàn credit đã trừ (chỉ tính phí khi sửa thành công).
+      // Không sửa được -> hoàn credit đã trừ VÀ lượt quota free/khách (chỉ tính phí khi sửa thành công).
+      await refundAiUsage(access);
       if (creditCharge && userId) { try { await refund(userId, creditCharge.cost, creditCharge.reqId); } catch (e) { console.warn('refund lỗi:', e?.message); } }
       if (content.toLowerCase().includes('clarif') || content.includes('?')) {
         return res.json(withQuota({ needsClarification: true, message: content, geometry: currentGeometry }, access));
@@ -212,7 +213,8 @@ CHỈ trả về JSON thuần, KHÔNG markdown.`;
   } catch (error) {
     await reportServerError(error, { route: 'modify-geometry' });
     console.error('Error in modify-geometry:', error);
-    // Lỗi hạ tầng (timeout/mạng) -> hoàn credit đã trừ.
+    // Lỗi hạ tầng (timeout/mạng) -> hoàn credit đã trừ VÀ lượt quota free/khách.
+    await refundAiUsage(access);
     if (creditCharge && userId) { try { await refund(userId, creditCharge.cost, creditCharge.reqId); } catch (e) { console.warn('refund lỗi:', e?.message); } }
     const isAbort = error?.name === 'AbortError' || (error?.message || '').includes('aborted');
     const status = isAbort ? 504 : (error?.status || 500);

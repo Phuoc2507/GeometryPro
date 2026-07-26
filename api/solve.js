@@ -5,7 +5,7 @@ import { engineSolved, assembleSolveResult } from './_lib/solveAssemble.js';
 import { parseSolveResponse } from './_lib/solveCore.js';
 import { tierFromThrow } from './_lib/kernel-bridge/classifyTier.js';
 import { refund } from './_lib/credits.js';
-import { accessError, resolveAiAccess, withQuota } from './_lib/aiAccess.js';
+import { accessError, resolveAiAccess, withQuota, refundAiUsage } from './_lib/aiAccess.js';
 import crypto from 'crypto';
 import { withSentry } from './_lib/sentry.js';
 
@@ -39,6 +39,8 @@ async function handler(req, res) {
     ? { cost: access.gate.cost, reqId: crypto.randomUUID() }
     : null;
   const refundIfCharged = async () => {
+    // Hoàn lượt quota free / khách (no-op với credit); có once-guard nên gọi nhiều lần vẫn 1 lần.
+    await refundAiUsage(access);
     if (creditCharge && access.userId) {
       try { await refund(access.userId, creditCharge.cost, creditCharge.reqId); }
       catch (e) { console.warn('[solve] refund credit lỗi:', e?.message); }

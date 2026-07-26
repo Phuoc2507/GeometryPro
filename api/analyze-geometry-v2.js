@@ -1,6 +1,6 @@
 import crypto from 'crypto';
 import { solveProblem, solvePlan } from './_lib/kernel-bridge/solveWithKernel.js';
-import { accessError, resolveAiAccess, withQuota } from './_lib/aiAccess.js';
+import { accessError, resolveAiAccess, withQuota, refundAiUsage } from './_lib/aiAccess.js';
 import { refund } from './_lib/credits.js';
 import { withSentry, reportServerError } from './_lib/sentry.js';
 
@@ -44,6 +44,7 @@ async function handler(req, res) {
     return res.json(withQuota({ mode: 'kernel', ...out }, access));
   } catch (error) {
     await reportServerError(error, { route: 'analyze-geometry-v2' });
+    await refundAiUsage(access); // hoàn quota free/khách khi lỗi
     if (creditCharge && access.userId) {
       await refund(access.userId, creditCharge.cost, creditCharge.reqId);
     }

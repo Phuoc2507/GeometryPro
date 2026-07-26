@@ -144,7 +144,12 @@ export async function resolveAiAccess(req, res, options) {
       return { ok: false, status, code: gate.reason, message: gate.message, quota };
     }
     setQuotaHeaders(res, quota);
-    return { ok: true, actorType: 'account', userId: user.id, gate, quota };
+    // refund: mô tả thứ đã TIÊU để hoàn lại nếu AI lỗi. Credit do route tự hoàn theo cost;
+    // quota (gói free) hoàn qua refund_quota.
+    const refund = gate.mode === 'quota'
+      ? { kind: 'quota', userId: user.id, feature }
+      : { kind: 'credit', userId: user.id };
+    return { ok: true, actorType: 'account', userId: user.id, gate, quota, refund };
   }
 
   if (!allowGuest) {
@@ -163,9 +168,11 @@ export async function resolveAiAccess(req, res, options) {
   }
 
   const guestId = readOrCreateGuestId(req, res, secret);
+  const deviceHash = subjectHash(secret, 'guest', guestId);
+  const ipHash = subjectHash(secret, 'ip', requestIp(req));
   const { data, error } = await admin.rpc('consume_guest_quota', {
-    p_subject_hash: subjectHash(secret, 'guest', guestId),
-    p_ip_hash: subjectHash(secret, 'ip', requestIp(req)),
+    p_subject_hash: deviceHash,
+    p_ip_hash: ipHash,
     p_feature: guestFeature,
     p_max: guestMax,
     p_ip_max: Number(process.env.GUEST_IP_DAILY_MULTIPLIER || 20) * guestMax || guestIpMax,
@@ -199,9 +206,33 @@ export async function resolveAiAccess(req, res, options) {
     userId: null,
     gate: { ok: true, mode: 'guest_quota', cost: 0 },
     quota,
+    refund: { kind: 'guest_quota', deviceHash, ipHash, feature: guestFeature },
   };
 }
 
 export function withQuota(payload, access) {
   return access?.quota ? { ...payload, quota: access.quota } : payload;
+}
+
+/**
+ * Hoàn lại thứ đã TIÊU khi AI lỗi (gọi trong nhánh lỗi của route).
+ * - quota (gói free) / guest_quota (khách): hoàn 1 lượt qua RPC.
+ * - credit: KHÔNG xử ở đây (route tự hoàn theo cost qua credits.refund).
+ * Có cờ once (`access._refunded`) nên gọi nhiều lần trong 1 request vẫn chỉ hoàn 1 lần.
+ */
+export async function refundAiUsage(access) {
+  const r = access && access.refund;
+  if (!r || access._refunded) return;
+  const admin = getAdmin();
+  if (!admin) return;
+  access._refunded = true;
+  try {
+    if (r.kind === 'quota') {
+      await admin.rpc('refund_quota', { p_user_id: r.userId, p_feature: r.feature });
+    } else if (r.kind === 'guest_quota') {
+      await admin.rpc('refund_guest_quota', { p_subject_hash: r.deviceHash, p_ip_hash: r.ipHash, p_feature: r.feature });
+    }
+  } catch (e) {
+    console.error('refundAiUsage lỗi:', e?.message);
+  }
 }

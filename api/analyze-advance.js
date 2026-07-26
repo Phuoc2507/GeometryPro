@@ -12,7 +12,7 @@
 // lỗi rơi vào try/catch và trả lỗi sạch (đồng thời hoàn credit).
 import crypto from 'crypto';
 import { refund, creditCostFor } from './_lib/credits.js';
-import { accessError, resolveAiAccess, withQuota } from './_lib/aiAccess.js';
+import { accessError, resolveAiAccess, withQuota, refundAiUsage } from './_lib/aiAccess.js';
 import { withSentry, reportServerError } from './_lib/sentry.js';
 
 // ===== LÕI THUẦN (deps-injected) — test 3 nhánh KHÔNG cần mạng =====
@@ -68,6 +68,7 @@ async function handler(req, res) {
 
   let userId = null;        // ví credit: cần ở scope hàm để catch ngoài cùng hoàn được
   let creditCharge = null;  // { cost, reqId } nếu đã TRỪ credit (paid tier) → hoàn khi lỗi
+  let access = null;        // cần ở scope hàm để catch hoàn được quota free/khách
   try {
     // ---- Đề bài ---- (Advance nhận CHỮ hoặc ẢNH: có ảnh thì Pass -1 CHÉP đề ảnh ra chữ trong lõi)
     const { prompt, imageBase64 } = req.body || {};
@@ -81,7 +82,7 @@ async function handler(req, res) {
     // Seed CHỮ: có chữ thì dùng chữ; chỉ-ảnh → '' (Pass -1 transcribeImage trong lõi sẽ điền đề vào).
     const problemSeed = hasText ? prompt.trim() : '';
 
-    const access = await resolveAiAccess(req, res, {
+    access = await resolveAiAccess(req, res, {
       feature: 'draw',
       action: 'draw_advance',
       allowGuest: false,
@@ -121,7 +122,8 @@ async function handler(req, res) {
   } catch (error) {
     await reportServerError(error, { route: 'analyze-advance' });
     console.error('Error in analyze-advance:', error);
-    // Lỗi sau khi đã trừ ⇒ HOÀN credit đã trừ (nếu có). Quota free không hoàn.
+    // Lỗi sau khi đã trừ ⇒ HOÀN credit đã trừ (nếu có) VÀ lượt quota free/khách.
+    await refundAiUsage(access);
     if (creditCharge && userId) {
       try { await refund(userId, creditCharge.cost, creditCharge.reqId); }
       catch (e) { console.warn('refund credit lỗi:', e?.message); }

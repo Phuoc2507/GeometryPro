@@ -20,7 +20,7 @@ import { logEngineDecision } from './_lib/engineDecisionLog.js';
 import { createClient } from '@supabase/supabase-js';
 import crypto from 'crypto';
 import { refund } from './_lib/credits.js';
-import { accessError, resolveAiAccess, withQuota } from './_lib/aiAccess.js';
+import { accessError, resolveAiAccess, withQuota, refundAiUsage } from './_lib/aiAccess.js';
 import { withSentry, reportServerError } from './_lib/sentry.js';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -537,7 +537,8 @@ KẾT QUẢ TRƯỚC BỊ PHẲNG (mọi điểm có z≈0). Hãy dựng lại h
   } catch (error) {
     await reportServerError(error, { route: 'analyze-geometry' });
     console.error('Error in analyze-geometry:', error);
-    // Vẽ lỗi -> HOÀN credit đã trừ (nếu có). Quota free không hoàn.
+    // Vẽ lỗi -> HOÀN credit đã trừ (nếu có) VÀ lượt quota free/khách.
+    await refundAiUsage(access);
     if (creditCharge && userId) {
       try { await refund(userId, creditCharge.cost, creditCharge.reqId); }
       catch (e) { console.warn('refund credit lỗi:', e?.message); }
