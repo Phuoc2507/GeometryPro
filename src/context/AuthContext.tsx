@@ -37,11 +37,12 @@ interface AuthContextType {
   signOut: () => Promise<void>;
   updateProfile: (updates: Partial<Pick<Profile, 'display_name' | 'avatar_url'>>) => Promise<{ error: Error | null }>;
   resetPassword: (email: string) => Promise<{ error: Error | null }>;
-  
+  updatePassword: (newPassword: string) => Promise<{ error: Error | null }>;
+
   // Auth Modal State
   isAuthModalOpen: boolean;
-  authModalReason: 'save' | 'project' | 'quota' | 'general' | null;
-  openAuthModal: (reason?: 'save' | 'project' | 'quota' | 'general') => void;
+  authModalReason: 'save' | 'project' | 'quota' | 'general' | 'advance' | null;
+  openAuthModal: (reason?: 'save' | 'project' | 'quota' | 'general' | 'advance') => void;
   closeAuthModal: () => void;
 
   // Upgrade Modal (mở khi hết credit/quota hoặc bấm "Nâng cấp")
@@ -61,9 +62,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   // Auth Modal State
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
-  const [authModalReason, setAuthModalReason] = useState<'save' | 'project' | 'quota' | 'general' | null>(null);
+  const [authModalReason, setAuthModalReason] = useState<'save' | 'project' | 'quota' | 'general' | 'advance' | null>(null);
 
-  const openAuthModal = (reason: 'save' | 'project' | 'quota' | 'general' = 'general') => {
+  const openAuthModal = (reason: 'save' | 'project' | 'quota' | 'general' | 'advance' = 'general') => {
     setAuthModalReason(reason);
     setIsAuthModalOpen(true);
   };
@@ -110,11 +111,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (user) await fetchProfile(user.id);
   }, [user]);
 
-  // Số dư credit đổi ở server (vẽ, thanh toán ở tab khác...) -> refresh khi tab được focus lại.
+  // Số dư credit đổi ở server (vẽ, thanh toán ở tab khác...) -> refresh khi tab được focus / hiện lại.
+  // visibilitychange bắt được cả trường hợp PWA/mobile quay lại tab nền (focus không luôn bắn).
   useEffect(() => {
-    const onFocus = () => { if (user) fetchProfile(user.id); };
-    window.addEventListener('focus', onFocus);
-    return () => window.removeEventListener('focus', onFocus);
+    const refetch = () => { if (user) fetchProfile(user.id); };
+    const onVisible = () => { if (document.visibilityState === 'visible') refetch(); };
+    window.addEventListener('focus', refetch);
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      window.removeEventListener('focus', refetch);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
   }, [user]);
 
   useEffect(() => {
@@ -210,6 +217,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return { error: error as Error | null };
   };
 
+  // Đặt mật khẩu mới trong phiên khôi phục (sau khi bấm link reset trong email).
+  const updatePassword = async (newPassword: string) => {
+    const { error } = await supabase.auth.updateUser({ password: newPassword });
+    return { error: error as Error | null };
+  };
+
   const isPro = profile?.plan_type === 'pro' && profile?.plan_expires_at
     ? new Date(profile.plan_expires_at) > new Date()
     : false;
@@ -245,6 +258,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       signOut,
       updateProfile,
       resetPassword,
+      updatePassword,
       isAuthModalOpen,
       authModalReason,
       openAuthModal,

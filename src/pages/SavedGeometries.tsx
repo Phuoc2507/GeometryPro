@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Hexagon, Globe, Lock, Trash2, Clock, MoreHorizontal, FolderPlus, Folder } from 'lucide-react';
+import { ArrowLeft, Globe, Lock, Trash2, Clock, MoreHorizontal, FolderPlus, Folder } from 'lucide-react';
+import { Mark } from '@/components/Brand';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import {
@@ -50,7 +51,7 @@ const SavedGeometries = () => {
     return (
       <div className="min-h-screen radial-gradient-bg flex items-center justify-center">
         <div className="animate-spin">
-          <Hexagon className="w-8 h-8 text-primary" />
+          <Mark className="w-8 h-8 text-primary" />
         </div>
       </div>
     );
@@ -94,7 +95,7 @@ const SavedGeometries = () => {
         ) : savedGeometries.length === 0 ? (
           <div className="text-center py-20">
             <div className="p-4 rounded-full bg-secondary/50 w-16 h-16 mx-auto mb-4 flex items-center justify-center">
-              <Hexagon className="w-8 h-8 text-muted-foreground" />
+              <Mark className="w-8 h-8 text-muted-foreground" />
             </div>
             <h2 className="text-lg font-medium mb-2">Chưa có hình nào</h2>
             <p className="text-muted-foreground mb-4">
@@ -116,7 +117,7 @@ const SavedGeometries = () => {
                   <div className="flex items-start justify-between mb-3">
                     <div className="flex items-center gap-2">
                       <div className="p-2 rounded-lg bg-primary/10">
-                        <Hexagon className="w-5 h-5 text-primary" />
+                        <Mark className="w-5 h-5 text-primary" />
                       </div>
                       <div>
                         <h3 className="font-medium">{geometry.name}</h3>

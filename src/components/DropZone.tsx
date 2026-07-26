@@ -186,7 +186,7 @@ export function DropZone() {
           {/* Text Content */}
           <div className="space-y-2">
             <h2 className="text-xl sm:text-2xl font-bold gradient-text">
-              Visualize Any Geometry
+              Dựng hình không gian từ đề bài
             </h2>
             <p className="text-sm sm:text-base text-muted-foreground max-w-sm">
               Chụp hình, tải ảnh hoặc nhập đề bằng chữ để AI xử lý và hiển thị mô hình 3D

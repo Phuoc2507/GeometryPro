@@ -27,8 +27,13 @@ export function AuthModal() {
   // Content configuration based on reason
   const config = {
     quota: {
-      title: 'Đã hết lượt dùng AI miễn phí 🤖',
-      description: 'Bạn đã sử dụng hết 3 lượt giải toán AI miễn phí trong ngày hôm nay. Đăng nhập hoặc tạo tài khoản để tiếp tục sử dụng không giới hạn!',
+      title: 'Đã hết lượt vẽ miễn phí hôm nay 🤖',
+      description: 'Bạn đã dùng hết lượt vẽ miễn phí trong hôm nay. Đăng nhập hoặc tạo tài khoản để tiếp tục vẽ.',
+      icon: <Sparkles className="w-12 h-12 text-primary mx-auto mb-4" />
+    },
+    advance: {
+      title: 'Mở khoá chế độ Advance ✨',
+      description: 'Advance (bài nhiều câu, hình động) cần tài khoản. Đăng nhập miễn phí để dùng ngay.',
       icon: <Sparkles className="w-12 h-12 text-primary mx-auto mb-4" />
     },
     project: {
@@ -42,7 +47,7 @@ export function AuthModal() {
       icon: <Save className="w-12 h-12 text-primary mx-auto mb-4" />
     },
     general: {
-      title: 'Tham gia GeometryPro',
+      title: 'Tham gia geo3d',
       description: 'Đăng nhập để mở khóa đầy đủ tính năng.',
       icon: <LogIn className="w-12 h-12 text-primary mx-auto mb-4" />
     }

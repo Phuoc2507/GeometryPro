@@ -41,16 +41,15 @@ function GeometryLoader() {
 
     const loadFromId = async (id: string) => {
       try {
-        if (id.startsWith('local_')) {
-          const localStr = localStorage.getItem('geo3d_anonymous_history');
-          if (localStr) {
-            const history = JSON.parse(localStr) as LocalHistoryItem[];
-            const item = history.find((entry) => entry.id === id);
-            if (item) {
-              hasLoaded.current = true;
-              context.loadGeometry(item.geometry_data as unknown as GeometryData);
-              return;
-            }
+        // Lịch sử vô danh (id có thể là UUID hoặc "local_..."): thử localStorage trước.
+        const localStr = localStorage.getItem('geo3d_anonymous_history');
+        if (localStr) {
+          const history = JSON.parse(localStr) as LocalHistoryItem[];
+          const item = history.find((entry) => entry.id === id);
+          if (item) {
+            hasLoaded.current = true;
+            context.loadGeometry(item.geometry_data as unknown as GeometryData);
+            return;
           }
         }
 
@@ -83,7 +82,7 @@ function GeometryLoader() {
 // ─── Back to landing ──────────────────────────────────────────────────────────
 
 function BackButton() {
-  const context = useGeometryOptional();
+  const navigate = useNavigate();
   return (
     <Tooltip>
       <TooltipTrigger asChild>
@@ -91,11 +90,7 @@ function BackButton() {
           variant="ghost"
           size="icon"
           className="fixed top-4 left-[272px] z-50 glass border border-border/50 h-9 w-9 hidden lg:flex"
-          onClick={() => {
-            if (context?.state.geometry) {
-              context.clearGeometry();
-            }
-          }}
+          onClick={() => navigate('/')}
         >
           <Home className="w-4 h-4" />
         </Button>

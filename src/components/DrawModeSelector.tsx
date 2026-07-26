@@ -62,7 +62,7 @@ export function DrawModeSelector({ value, onChange }: DrawModeSelectorProps) {
               key={mode.id}
               onClick={() => {
                 if (requiresAccount) {
-                  openAuthModal('quota');
+                  openAuthModal('advance');
                   return;
                 }
                 onChange(mode.id);

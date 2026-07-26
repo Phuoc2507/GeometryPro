@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Hexagon, Eye, EyeOff, Mail, Lock, User } from 'lucide-react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { Eye, EyeOff, Mail, Lock, User } from 'lucide-react';
+import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Mark, Wordmark } from '@/components/Brand';
 import { useAuth } from '@/context/AuthContext';
 import { z } from 'zod';
 
@@ -12,54 +14,60 @@ const passwordSchema = z.string().min(6, 'Mật khẩu phải có ít nhất 6 k
 
 const Auth = () => {
   const navigate = useNavigate();
-  const { user, isLoading, signIn, signUp, signInWithGoogle, resetPassword } = useAuth();
-  
+  const [searchParams] = useSearchParams();
+  const { user, isLoading, signIn, signUp, signInWithGoogle, resetPassword, updatePassword } = useAuth();
+
+  // Phiên khôi phục mật khẩu (mở từ link trong email → /auth?reset=true).
+  const isRecovery = searchParams.get('reset') === 'true';
+
   const [isSignUp, setIsSignUp] = useState(false);
   const [isReset, setIsReset] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [displayName, setDisplayName] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<{ email?: string; password?: string; general?: string }>({});
 
-  // Redirect if already logged in
+  // Redirect if already logged in — nhưng KHÔNG đá đi khi đang ở phiên đặt lại mật khẩu.
   useEffect(() => {
-    if (user && !isLoading) {
+    if (user && !isLoading && !isRecovery) {
       navigate('/');
     }
-  }, [user, isLoading, navigate]);
+  }, [user, isLoading, isRecovery, navigate]);
 
   const validateForm = () => {
     const newErrors: typeof errors = {};
-    
+
     const emailResult = emailSchema.safeParse(email);
     if (!emailResult.success) {
       newErrors.email = emailResult.error.errors[0].message;
     }
-    
+
     if (!isReset) {
       const passwordResult = passwordSchema.safeParse(password);
       if (!passwordResult.success) {
         newErrors.password = passwordResult.error.errors[0].message;
       }
     }
-    
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!validateForm()) return;
-    
+
     setIsSubmitting(true);
     setErrors({});
-    
+
     try {
       let result;
-      
+
       if (isReset) {
         result = await resetPassword(email);
         if (!result.error) {
@@ -72,10 +80,10 @@ const Auth = () => {
       } else {
         result = await signIn(email, password);
       }
-      
+
       if (result.error) {
         let errorMessage = result.error.message;
-        
+
         // Friendly error messages
         if (errorMessage.includes('Invalid login credentials')) {
           errorMessage = 'Email hoặc mật khẩu không đúng';
@@ -84,7 +92,7 @@ const Auth = () => {
         } else if (errorMessage.includes('Email not confirmed')) {
           errorMessage = 'Vui lòng xác nhận email trước khi đăng nhập';
         }
-        
+
         setErrors({ general: errorMessage });
       } else if (isSignUp) {
         setErrors({ general: 'Vui lòng kiểm tra email để xác nhận tài khoản!' });
@@ -96,11 +104,117 @@ const Auth = () => {
     }
   };
 
+  const handleUpdatePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const pw = passwordSchema.safeParse(newPassword);
+    if (!pw.success) {
+      setErrors({ general: pw.error.errors[0].message });
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setErrors({ general: 'Mật khẩu nhập lại không khớp' });
+      return;
+    }
+    setIsSubmitting(true);
+    setErrors({});
+    const { error } = await updatePassword(newPassword);
+    setIsSubmitting(false);
+    if (error) {
+      setErrors({ general: error.message });
+    } else {
+      toast.success('Đổi mật khẩu thành công', { description: 'Bạn có thể tiếp tục dùng geo3d.' });
+      navigate('/');
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen radial-gradient-bg flex items-center justify-center">
         <div className="animate-spin">
-          <Hexagon className="w-8 h-8 text-primary" />
+          <Mark className="w-8 h-8 text-primary" />
+        </div>
+      </div>
+    );
+  }
+
+  // ─── Phiên đặt lại mật khẩu ───
+  if (isRecovery) {
+    return (
+      <div className="min-h-screen radial-gradient-bg flex items-center justify-center p-4">
+        <div className="w-full max-w-md">
+          <div className="text-center mb-8">
+            <Wordmark className="justify-center mb-3" markClassName="w-8 h-8 text-primary" textClassName="text-2xl" />
+            <p className="text-muted-foreground">Đặt mật khẩu mới cho tài khoản</p>
+          </div>
+
+          <div className="glass rounded-2xl p-6 border border-border/50">
+            <form onSubmit={handleUpdatePassword} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="newPassword">Mật khẩu mới</Label>
+                <div className="relative">
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <Input
+                    id="newPassword"
+                    type={showPassword ? 'text' : 'password'}
+                    placeholder="••••••••"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    className="pl-10 pr-10"
+                    required
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  >
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="confirmPassword">Nhập lại mật khẩu</Label>
+                <div className="relative">
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <Input
+                    id="confirmPassword"
+                    type={showPassword ? 'text' : 'password'}
+                    placeholder="••••••••"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    className="pl-10"
+                    required
+                  />
+                </div>
+              </div>
+
+              {errors.general && (
+                <div className="p-3 rounded-lg text-sm bg-destructive/10 text-destructive border border-destructive/20">
+                  {errors.general}
+                </div>
+              )}
+
+              <Button type="submit" className="w-full glow-primary" disabled={isSubmitting}>
+                {isSubmitting ? (
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    Đang lưu...
+                  </div>
+                ) : (
+                  'Đổi mật khẩu'
+                )}
+              </Button>
+            </form>
+          </div>
+
+          <div className="mt-4 text-center">
+            <button
+              onClick={() => navigate('/')}
+              className="text-sm text-muted-foreground hover:text-foreground"
+            >
+              ← Quay lại trang chủ
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -111,12 +225,7 @@ const Auth = () => {
       <div className="w-full max-w-md">
         {/* Logo */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center gap-3 mb-2">
-            <div className="p-2 rounded-xl bg-primary/10 glow-primary">
-              <Hexagon className="w-8 h-8 text-primary" />
-            </div>
-            <h1 className="text-2xl font-bold gradient-text">GeoMagic Pro</h1>
-          </div>
+          <Wordmark className="justify-center mb-2" markClassName="w-8 h-8 text-primary" textClassName="text-2xl" />
           <p className="text-muted-foreground">
             {isReset ? 'Nhập email để đặt lại mật khẩu' : (isSignUp ? 'Tạo tài khoản mới' : 'Đăng nhập để tiếp tục')}
           </p>
@@ -169,8 +278,8 @@ const Auth = () => {
                 <div className="flex justify-between items-center">
                   <Label htmlFor="password">Mật khẩu</Label>
                   {!isSignUp && (
-                    <button 
-                      type="button" 
+                    <button
+                      type="button"
                       onClick={() => { setIsReset(true); setErrors({}); }}
                       className="text-xs text-primary hover:underline"
                     >
@@ -206,8 +315,8 @@ const Auth = () => {
             {/* Error Message */}
             {errors.general && (
               <div className={`p-3 rounded-lg text-sm ${
-                errors.general.includes('xác nhận') 
-                  ? 'bg-primary/10 text-primary border border-primary/20' 
+                errors.general.includes('xác nhận')
+                  ? 'bg-primary/10 text-primary border border-primary/20'
                   : 'bg-destructive/10 text-destructive border border-destructive/20'
               }`}>
                 {errors.general}
@@ -215,8 +324,8 @@ const Auth = () => {
             )}
 
             {/* Submit Button */}
-            <Button 
-              type="submit" 
+            <Button
+              type="submit"
               className="w-full glow-primary"
               disabled={isSubmitting}
             >

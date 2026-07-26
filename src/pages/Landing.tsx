@@ -9,24 +9,14 @@ import { Button } from '@/components/ui/button';
 import {
   Accordion, AccordionContent, AccordionItem, AccordionTrigger,
 } from '@/components/ui/accordion';
+import { Wordmark } from '@/components/Brand';
 
 const HeroFigure = lazy(() => import('@/components/landing/HeroFigure'));
 
 const LAST_MODE_KEY = 'geo3d:last-mode';
 type Mode = 'student' | 'teacher';
 
-/* ─────────── Hoạ tiết dựng hình: logo, dấu ke góc, minh hoạ khung dây ─────────── */
-
-/** Logo: tam giác có trung tuyến nét đứt + đỉnh chấm — chính là quy ước nét khuất. */
-function Mark({ className = '' }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round">
-      <path d="M12 3.5 L3.5 20 L20.5 20 Z" />
-      <path d="M12 3.5 L12 20" strokeDasharray="2 2" opacity="0.55" />
-      <circle cx="12" cy="3.5" r="1.7" fill="currentColor" stroke="none" />
-    </svg>
-  );
-}
+/* ─────────── Hoạ tiết dựng hình: dấu ke góc, minh hoạ khung dây ─────────── */
 
 /** Dấu ke góc kiểu bản vẽ kỹ thuật. */
 function RegMarks({ color = 'border-primary/50' }: { color?: string }) {
@@ -122,7 +112,7 @@ const FAQS = [
 ];
 
 const Landing = () => {
-  const { user } = useAuth();
+  const { user, isLoading } = useAuth();
   const navigate = useNavigate();
   const lastMode = (typeof window !== 'undefined' ? localStorage.getItem(LAST_MODE_KEY) : null) as Mode | null;
   const lastModeLabel = lastMode === 'student' ? 'Học sinh' : lastMode === 'teacher' ? 'Giáo viên' : null;
@@ -136,19 +126,12 @@ const Landing = () => {
     navigate(`/${mode}`);
   };
 
-  const Wordmark = (
-    <div className="flex items-center gap-2">
-      <Mark className="w-6 h-6 text-primary" />
-      <span className="font-bold text-lg tracking-tight">geo<span className="font-cm italic text-primary">3d</span></span>
-    </div>
-  );
-
   return (
     <div className="min-h-screen bg-background text-foreground">
       {/* ─── Nav ─── */}
       <header className="sticky top-0 z-40 backdrop-blur-md bg-background/80 border-b border-border/50">
         <nav className="max-w-6xl mx-auto flex items-center justify-between px-5 h-14">
-          {Wordmark}
+          <Wordmark />
           <div className="hidden sm:flex items-center gap-7 text-sm text-muted-foreground">
             <a href="#giao-vien" className="hover:text-foreground transition-colors">Cho giáo viên</a>
             <a href="#quy-trinh" className="hover:text-foreground transition-colors">Quy trình</a>
@@ -156,7 +139,7 @@ const Landing = () => {
             <a href="#faq" className="hover:text-foreground transition-colors">FAQ</a>
           </div>
           <div className="flex items-center gap-2">
-            {!user && (
+            {!isLoading && !user && (
               <Button variant="ghost" size="sm" onClick={() => navigate('/auth')}>Đăng nhập</Button>
             )}
             <Button size="sm" onClick={() => goTo('teacher')} className="gap-1.5">
@@ -395,12 +378,12 @@ const Landing = () => {
       {/* ─── Footer ─── */}
       <footer className="border-t border-border/50">
         <div className="max-w-6xl mx-auto px-5 py-7 flex flex-col sm:flex-row items-center justify-between gap-3 text-sm text-muted-foreground">
-          {Wordmark}
+          <Wordmark />
           <span className="text-xs">Hình học không gian bằng mắt.</span>
           <div className="flex items-center gap-5">
             <button onClick={() => goTo('teacher')} className="hover:text-foreground transition-colors">Giáo viên</button>
             <button onClick={() => goTo('student')} className="hover:text-foreground transition-colors">Học sinh</button>
-            {!user && <button onClick={() => navigate('/auth')} className="hover:text-foreground transition-colors">Đăng nhập</button>}
+            {!isLoading && !user && <button onClick={() => navigate('/auth')} className="hover:text-foreground transition-colors">Đăng nhập</button>}
           </div>
         </div>
       </footer>

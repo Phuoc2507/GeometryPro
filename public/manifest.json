@@ -1,7 +1,7 @@
 {
-  "name": "GeoMagic Pro",
-  "short_name": "GeoMagic",
-  "description": "AI-Powered 3D Geometry Visualization",
+  "name": "geo3d",
+  "short_name": "geo3d",
+  "description": "Vẽ hình học không gian 3D từ đề bài bằng AI — cho giáo viên và học sinh.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#09090b",
