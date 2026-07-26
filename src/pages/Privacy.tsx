@@ -44,6 +44,7 @@ const Privacy = () => {
         <li><strong>PayOS</strong> — cổng thanh toán.</li>
         <li><strong>Google</strong> — khi bạn chọn đăng nhập bằng Google.</li>
         <li><strong>Nhà cung cấp mô hình AI</strong> — để xử lý đề bài và dựng hình. Đề bài bạn gửi có thể được truyền tới nhà cung cấp AI nhằm tạo kết quả.</li>
+        <li><strong>Sentry</strong> — giám sát lỗi kỹ thuật để cải thiện độ ổn định. Chúng tôi chỉ gắn <strong>mã người dùng</strong> vào báo cáo lỗi, không gửi email; và không bật thu thập thông tin cá nhân mặc định.</li>
       </ul>
       <p>
         Một số nhà cung cấp có thể xử lý dữ liệu trên máy chủ <strong>ngoài lãnh thổ Việt Nam</strong>.

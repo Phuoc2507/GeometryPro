@@ -2,6 +2,7 @@ import React, { createContext, useContext, useEffect, useState, useCallback, use
 import { User, Session } from '@supabase/supabase-js';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
+import { setSentryUser } from '@/lib/sentry';
 import type { Json } from '@/integrations/supabase/types';
 
 interface Profile {
@@ -211,12 +212,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         // Defer profile fetch to avoid deadlock
         if (session?.user) {
+          setSentryUser(session.user.id);
           consumeSignInToast();
           hadSession.current = true;
           setTimeout(() => {
             fetchProfile(session.user.id);
           }, 0);
         } else {
+          setSentryUser(null);
           setProfile(null);
           // Phiên hết hạn (Supabase tự đăng xuất khi refresh token hỏng) mà KHÔNG do người dùng
           // chủ động → trước đây im lặng. Giờ báo rõ để họ biết cần đăng nhập lại.
@@ -239,6 +242,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(session?.user ?? null);
 
       if (session?.user) {
+        setSentryUser(session.user.id);
         consumeSignInToast();
         hadSession.current = true;
         fetchProfile(session.user.id);
