@@ -1,6 +1,6 @@
 
 import { useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { User, LogOut, Save, Settings, Sparkles, Crown, ListChecks } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -14,12 +14,14 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
+import { authUrlWithRedirect } from '@/lib/authRedirect';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const RENEW_THRESHOLD_DAYS = 7;
 
 export function UserMenu() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { user, profile, isPro, tier, credits, signOut, openUpgradeModal } = useAuth();
 
   // Người dùng có gói trả phí còn hiệu lực (tier hạ về 'free' khi hết hạn).
@@ -71,7 +73,7 @@ export function UserMenu() {
       <Button 
         variant="outline" 
         size="sm" 
-        onClick={() => navigate('/auth')}
+        onClick={() => navigate(authUrlWithRedirect(location.pathname + location.search))}
         className="gap-2"
       >
         <User className="w-4 h-4" />

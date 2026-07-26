@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Globe, Lock, Trash2, Clock, MoreHorizontal, FolderPlus, Folder } from 'lucide-react';
 import { Mark } from '@/components/Brand';
+import { authUrlWithRedirect } from '@/lib/authRedirect';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import {
@@ -24,7 +25,7 @@ const SavedGeometries = () => {
 
   useEffect(() => {
     if (!authLoading && !user) {
-      navigate('/auth');
+      navigate(authUrlWithRedirect('/saved'));
     }
   }, [user, authLoading, navigate]);
 

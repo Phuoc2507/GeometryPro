@@ -1,6 +1,8 @@
-import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
+import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
 import { User, Session } from '@supabase/supabase-js';
+import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
+import type { Json } from '@/integrations/supabase/types';
 
 interface Profile {
   id: string;
@@ -32,8 +34,8 @@ interface AuthContextType {
   refreshProfile: () => Promise<void>;
   isLoading: boolean;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
-  signInWithGoogle: () => Promise<{ error: Error | null }>;
-  signUp: (email: string, password: string, displayName?: string) => Promise<{ error: Error | null }>;
+  signInWithGoogle: (redirectPath?: string) => Promise<{ error: Error | null }>;
+  signUp: (email: string, password: string, displayName?: string, redirectPath?: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
   updateProfile: (updates: Partial<Pick<Profile, 'display_name' | 'avatar_url'>>) => Promise<{ error: Error | null }>;
   resetPassword: (email: string) => Promise<{ error: Error | null }>;
@@ -59,6 +61,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [drawQuotaRemaining, setDrawQuotaRemaining] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const migrationInFlight = useRef(false);
 
   // Auth Modal State
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
@@ -110,6 +113,67 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const refreshProfile = useCallback(async () => {
     if (user) await fetchProfile(user.id);
   }, [user]);
+
+  // Di trú lịch sử vẽ vô danh (localStorage) sang tài khoản khi đăng nhập lần đầu.
+  // Trước đây khi đăng nhập, useGeometryHistory chuyển thẳng sang query Supabase và
+  // BỎ RƠI các bản vẽ khách → "Gần đây" trống trơn, ngược lời hứa "đồng bộ mọi thiết bị".
+  // Idempotent: chỉ chạy khi còn dữ liệu local, xoá local sau khi upload thành công,
+  // và có cờ in-flight chống chạy trùng (SIGNED_IN có thể bắn nhiều lần).
+  const migrateAnonymousHistory = useCallback(async (userId: string) => {
+    if (migrationInFlight.current) return;
+    const raw = localStorage.getItem('geo3d_anonymous_history');
+    if (!raw) return;
+
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(raw);
+    } catch {
+      localStorage.removeItem('geo3d_anonymous_history');
+      return;
+    }
+    if (!Array.isArray(parsed) || parsed.length === 0) {
+      localStorage.removeItem('geo3d_anonymous_history');
+      return;
+    }
+
+    migrationInFlight.current = true;
+    try {
+      const rows = parsed
+        .filter((it): it is Record<string, unknown> =>
+          typeof it === 'object' && it !== null && 'geometry_data' in it && typeof (it as Record<string, unknown>).geometry_data === 'object')
+        .map((it) => ({
+          user_id: userId,
+          name: typeof it.name === 'string' && it.name ? it.name : 'Bản vẽ',
+          prompt: typeof it.prompt === 'string' ? it.prompt : null,
+          geometry_data: it.geometry_data as Json,
+          is_history: true,
+          // Giữ đúng thứ tự thời gian; project_id local không tồn tại server → bỏ (để null).
+          created_at: typeof it.created_at === 'string' ? it.created_at : new Date().toISOString(),
+        }));
+
+      if (rows.length === 0) {
+        localStorage.removeItem('geo3d_anonymous_history');
+        return;
+      }
+
+      const { error } = await supabase.from('saved_geometries').insert(rows);
+      if (error) throw error;
+
+      localStorage.removeItem('geo3d_anonymous_history');
+      window.dispatchEvent(new Event('geo3d_history_sync'));
+      toast.success(`Đã đồng bộ ${rows.length} bản vẽ vào tài khoản`);
+    } catch (err) {
+      // Lỗi mạng/RLS → GIỮ NGUYÊN localStorage để thử lại lần đăng nhập sau, không mất dữ liệu.
+      console.error('Failed to migrate anonymous history:', err);
+    } finally {
+      migrationInFlight.current = false;
+    }
+  }, []);
+
+  // Chạy khi user chuyển sang trạng thái đã đăng nhập (login mới hoặc khôi phục phiên).
+  useEffect(() => {
+    if (user) migrateAnonymousHistory(user.id);
+  }, [user, migrateAnonymousHistory]);
 
   // Số dư credit đổi ở server (vẽ, thanh toán ở tab khác...) -> refresh khi tab được focus / hiện lại.
   // visibilitychange bắt được cả trường hợp PWA/mobile quay lại tab nền (focus không luôn bắn).
@@ -164,19 +228,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return { error: error as Error | null };
   };
 
-  const signInWithGoogle = async () => {
+  // Sau vòng OAuth, Supabase quay lại URL này rồi tự bắt session; đưa về /auth mang
+  // theo ?redirect để Auth trả người dùng về đúng đích họ đang muốn tới.
+  const authReturnUrl = (redirectPath?: string) =>
+    redirectPath
+      ? `${window.location.origin}/auth?redirect=${encodeURIComponent(redirectPath)}`
+      : `${window.location.origin}/`;
+
+  const signInWithGoogle = async (redirectPath?: string) => {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: window.location.origin,
+        redirectTo: authReturnUrl(redirectPath),
       },
     });
     return { error: error as Error | null };
   };
 
-  const signUp = async (email: string, password: string, displayName?: string) => {
-    const redirectUrl = `${window.location.origin}/`;
-    
+  const signUp = async (email: string, password: string, displayName?: string, redirectPath?: string) => {
+    const redirectUrl = authReturnUrl(redirectPath);
+
     const { error } = await supabase.auth.signUp({
       email,
       password,

@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAuth } from '@/context/AuthContext';
 import { safetyTierMeta } from '@/lib/safetyTier';
+import { authUrlWithRedirect } from '@/lib/authRedirect';
 import { problemTypeCatalog, type CatalogEntry } from '@/data/problemTypeCatalog';
 import type { GeometryData } from '@/types/geometry';
 
@@ -57,7 +58,7 @@ export default function ProblemTypeCatalog() {
 
   // Cổng đăng nhập (sao pattern Settings.tsx:41-45).
   useEffect(() => {
-    if (!authLoading && !user) navigate('/auth');
+    if (!authLoading && !user) navigate(authUrlWithRedirect('/teacher/dang-bai'));
   }, [user, authLoading, navigate]);
 
   if (authLoading || !user) {

@@ -12,6 +12,7 @@ import { Switch } from '@/components/ui/switch';
 import { usePreferences } from '@/hooks/usePreferences';
 import { AppPreferences } from '@/lib/preferences';
 import { formatCredits } from '@/lib/utils';
+import { authUrlWithRedirect } from '@/lib/authRedirect';
 
 const TIER_LABELS: Record<string, string> = {
   free: 'Miễn phí',
@@ -40,7 +41,7 @@ const Settings = () => {
 
   useEffect(() => {
     if (!authLoading && !user) {
-      navigate('/auth');
+      navigate(authUrlWithRedirect('/settings'));
     }
   }, [user, authLoading, navigate]);
 

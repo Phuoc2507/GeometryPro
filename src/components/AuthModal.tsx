@@ -1,18 +1,23 @@
 import React from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { LogIn, Sparkles, Folder, Save } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
+import { authUrlWithRedirect } from '@/lib/authRedirect';
 import { toast } from 'sonner';
 
 export function AuthModal() {
   const { isAuthModalOpen, closeAuthModal, authModalReason, signInWithGoogle } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+
+  // Sau khi đăng nhập, trả người dùng về đúng nơi họ đang thao tác (chế độ vẽ, dự án…).
+  const returnPath = location.pathname + location.search;
 
   const handleGoogleSignIn = async () => {
     try {
-      const { error } = await signInWithGoogle();
+      const { error } = await signInWithGoogle(returnPath);
       if (error) throw error;
     } catch (error: unknown) {
       toast.error(error instanceof Error ? error.message : 'Có lỗi xảy ra khi đăng nhập');
@@ -21,7 +26,7 @@ export function AuthModal() {
 
   const handleEmailSignIn = () => {
     closeAuthModal();
-    navigate('/auth');
+    navigate(authUrlWithRedirect(returnPath));
   };
 
   // Content configuration based on reason
