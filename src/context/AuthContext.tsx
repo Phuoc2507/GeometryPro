@@ -62,6 +62,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [drawQuotaRemaining, setDrawQuotaRemaining] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const migrationInFlight = useRef(false);
+  // Đã từng có phiên đăng nhập trong vòng đời tab này (phân biệt hết hạn vs chưa từng đăng nhập).
+  const hadSession = useRef(false);
+  // Đăng xuất do NGƯỜI DÙNG chủ động (nút Đăng xuất / xử lý hết phiên ở nơi khác) → không báo "hết hạn".
+  const intentionalSignOut = useRef(false);
+
+  // Cờ "vừa bấm đăng nhập" (đặt trước khi gọi Supabase, kể cả trước vòng OAuth chuyển trang);
+  // tiêu thụ đúng MỘT lần khi phiên xuất hiện → toast thành công. Reload có phiên cũ thì im lặng.
+  const consumeSignInToast = () => {
+    if (sessionStorage.getItem('geo3d:pending-signin')) {
+      sessionStorage.removeItem('geo3d:pending-signin');
+      toast.success('Đăng nhập thành công');
+    }
+  };
 
   // Auth Modal State
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
@@ -194,16 +207,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       (event, session) => {
         setSession(session);
         setUser(session?.user ?? null);
-        
+
         // Defer profile fetch to avoid deadlock
         if (session?.user) {
+          consumeSignInToast();
+          hadSession.current = true;
           setTimeout(() => {
             fetchProfile(session.user.id);
           }, 0);
         } else {
           setProfile(null);
+          // Phiên hết hạn (Supabase tự đăng xuất khi refresh token hỏng) mà KHÔNG do người dùng
+          // chủ động → trước đây im lặng. Giờ báo rõ để họ biết cần đăng nhập lại.
+          if (event === 'SIGNED_OUT' && hadSession.current && !intentionalSignOut.current) {
+            toast.error('Phiên đăng nhập đã hết hạn', {
+              description: 'Vui lòng đăng nhập lại để tiếp tục.',
+            });
+          }
+          intentionalSignOut.current = false;
+          hadSession.current = false;
         }
-        
+
         setIsLoading(false);
       }
     );
@@ -212,11 +236,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
-      
+
       if (session?.user) {
+        consumeSignInToast();
+        hadSession.current = true;
         fetchProfile(session.user.id);
       }
-      
+
       setIsLoading(false);
     });
 
@@ -224,7 +250,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const signIn = async (email: string, password: string) => {
+    sessionStorage.setItem('geo3d:pending-signin', '1');
     const { error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) sessionStorage.removeItem('geo3d:pending-signin');  // đăng nhập hỏng → đừng toast nhầm ở lần sau
     return { error: error as Error | null };
   };
 
@@ -236,12 +264,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       : `${window.location.origin}/`;
 
   const signInWithGoogle = async (redirectPath?: string) => {
+    // Đặt cờ TRƯỚC khi chuyển sang Google; sau khi quay lại, phiên xuất hiện sẽ tiêu thụ cờ → toast.
+    sessionStorage.setItem('geo3d:pending-signin', '1');
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
         redirectTo: authReturnUrl(redirectPath),
       },
     });
+    if (error) sessionStorage.removeItem('geo3d:pending-signin');
     return { error: error as Error | null };
   };
 
@@ -262,6 +293,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const signOut = async () => {
+    intentionalSignOut.current = true;  // đăng xuất chủ động → SIGNED_OUT không báo "hết hạn"
     await supabase.auth.signOut();
     setProfile(null);
   };
