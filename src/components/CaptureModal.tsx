@@ -8,6 +8,7 @@ import { GeometryData } from '@/types/geometry';
 import { sanitizeLatexLabel, sanitizeLatexName } from '@/lib/sanitizeLatex';
 
 import { project3DTo2D, generateProjectedLatex } from '@/lib/geometry/projection';
+import { wrapTikzAsDocument } from '@/lib/geometry/latexDocument';
 import { useGeometryOptional } from '@/context/GeometryContext';
 import { useCameraOptional, useCameraStateOptional, type CameraState } from '@/context/CameraContext';
 import {
@@ -109,7 +110,9 @@ export function CaptureModal({ isOpen, onClose, geometry, hiddenLines }: Capture
 
   const getDynamicLatex = () => {
     if (!scaledGeometry || !cameraState) return '';
-    return generateProjectedLatex(scaledGeometry, fixedCamera.cameraPos, fixedCamera.target, exportHiddenLines, showPoints, exportScale);
+    return wrapTikzAsDocument(
+      generateProjectedLatex(scaledGeometry, fixedCamera.cameraPos, fixedCamera.target, exportHiddenLines, showPoints, exportScale)
+    );
   };
 
   const captureImage = async (mode: 'color' | 'bw') => {

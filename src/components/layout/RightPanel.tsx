@@ -7,6 +7,7 @@ import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { useGeometryOptional } from '@/context/GeometryContext';
 import { useCameraOptional, useCameraStateOptional, type CameraState } from '@/context/CameraContext';
 import { project3DTo2D, generateProjectedLatex } from '@/lib/geometry/projection';
+import { wrapTikzAsDocument } from '@/lib/geometry/latexDocument';
 import { computeProperties, fmt } from '@/lib/geometry/calculations';
 import { DynamicPointControls } from '@/components/DynamicPointControls';
 import { cn } from '@/lib/utils';
@@ -114,7 +115,7 @@ function PanelContent() {
 
   const { state } = context;
 
-  const getDynamicLatex = () => dynamicLatex;
+  const getDynamicLatex = () => wrapTikzAsDocument(dynamicLatex);
 
   const handleCopy = () => {
     const latex = getDynamicLatex();
