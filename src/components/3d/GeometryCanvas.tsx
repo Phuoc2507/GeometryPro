@@ -470,6 +470,22 @@ export function GeometryCanvas({
         }
         return;
       }
+      // Ctrl/⌘+Z = Hoàn tác, Ctrl/⌘+Shift+Z hoặc Ctrl+Y = Làm lại.
+      // Dùng cho cả vẽ thủ công (thêm/xóa điểm, đường, mặt phẳng…). Bỏ qua khi đang gõ
+      // trong ô nhập để không giành undo của trình duyệt với thao tác gõ tọa độ.
+      if ((e.ctrlKey || e.metaKey) && (e.key === 'z' || e.key === 'Z' || e.key === 'y' || e.key === 'Y')) {
+        const t = e.target as HTMLElement | null;
+        const typing = !!t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable);
+        if (typing) return;
+        const isRedo = (e.key === 'y' || e.key === 'Y') || e.shiftKey;
+        e.preventDefault();
+        if (isRedo) {
+          if (geometryContext?.canRedo) geometryContext.redo();
+        } else {
+          if (geometryContext?.canUndo) geometryContext.undo();
+        }
+        return;
+      }
       // "R" = đặt lại góc nhìn (bỏ qua khi đang gõ trong ô nhập, và khi có Ctrl/⌘ như Ctrl+R reload)
       if ((e.key === 'r' || e.key === 'R') && !e.ctrlKey && !e.metaKey && !e.altKey) {
         const t = e.target as HTMLElement | null;
