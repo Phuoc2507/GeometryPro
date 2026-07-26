@@ -172,6 +172,27 @@
     pointer-events: none;
     user-select: none;
   }
+
+  /* Chữ toán học (Computer Modern) — dùng cho nhãn điểm & điểm nhấn tiêu đề landing. */
+  .font-cm {
+    font-family: "Computer Modern Serif", Georgia, "Times New Roman", serif;
+  }
+
+  /* Nền giấy kẻ ô kỹ thuật cho landing. */
+  .graph-paper {
+    background-image:
+      linear-gradient(to right, hsl(var(--primary) / 0.06) 1px, transparent 1px),
+      linear-gradient(to bottom, hsl(var(--primary) / 0.06) 1px, transparent 1px);
+    background-size: 30px 30px;
+  }
+  .graph-paper-fine {
+    background-image:
+      linear-gradient(to right, hsl(var(--primary) / 0.045) 1px, transparent 1px),
+      linear-gradient(to bottom, hsl(var(--primary) / 0.045) 1px, transparent 1px),
+      linear-gradient(to right, hsl(var(--primary) / 0.09) 1px, transparent 1px),
+      linear-gradient(to bottom, hsl(var(--primary) / 0.09) 1px, transparent 1px);
+    background-size: 30px 30px, 30px 30px, 150px 150px, 150px 150px;
+  }
 }
 
 /* Scanning animation */

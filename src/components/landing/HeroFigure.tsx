@@ -299,7 +299,7 @@ export default function HeroFigure() {
   }, [toast]);
 
   return (
-    <div className="relative glass rounded-3xl border border-border/50 shadow-2xl overflow-hidden">
+    <div className="relative glass rounded-xl border border-border/50 shadow-2xl overflow-hidden">
       {/* thanh tiêu đề giả lập cửa sổ */}
       <div className="flex items-center gap-2 px-4 h-9 border-b border-border/40 bg-background/40">
         <span className="w-2.5 h-2.5 rounded-full bg-red-400/70" />
