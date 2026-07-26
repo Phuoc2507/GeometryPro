@@ -63,7 +63,7 @@ const SavedGeometries = () => {
       <div className="max-w-4xl mx-auto">
         {/* Header */}
         <div className="flex items-center gap-4 mb-8">
-          <Button variant="ghost" size="icon" onClick={() => navigate('/')}>
+          <Button variant="ghost" size="icon" aria-label="Quay lại" onClick={() => navigate('/')}>
             <ArrowLeft className="w-5 h-5" />
           </Button>
           <div>
@@ -190,6 +190,7 @@ const SavedGeometries = () => {
                       <Button
                         variant="ghost"
                         size="icon"
+                        aria-label="Xoá"
                         className="text-destructive hover:text-destructive hover:bg-destructive/10 h-8 w-8"
                         onClick={(e) => handleDelete(e, geometry.id)}
                       >

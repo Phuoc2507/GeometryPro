@@ -38,7 +38,10 @@ export default defineConfig(({ mode }) => {
             'vendor-react': ['react', 'react-dom', 'react-router-dom'],
             'vendor-three': ['three', '@react-three/fiber', '@react-three/drei'],
             'vendor-supabase': ['@supabase/supabase-js'],
-            'vendor-ui': ['lucide-react', 'clsx', 'tailwind-merge']
+            'vendor-ui': ['lucide-react', 'clsx', 'tailwind-merge'],
+            // Tách khỏi entry chính để chunk index nhẹ hơn và cache riêng được.
+            'vendor-sentry': ['@sentry/react'],
+            'vendor-query': ['@tanstack/react-query']
           }
         }
       }

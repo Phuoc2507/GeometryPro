@@ -40,6 +40,7 @@ export function ManualDrawToolbar() {
               <Button
                 variant={activeTool === id ? 'default' : 'ghost'}
                 size="icon"
+                aria-label={label}
                 className="h-7 w-7"
                 onClick={() => toggleTool(id)}
               >

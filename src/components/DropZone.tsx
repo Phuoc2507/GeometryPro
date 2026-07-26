@@ -207,6 +207,7 @@ export function DropZone() {
                 />
                 <Button
                   size="icon"
+                  aria-label="Gửi"
                   onClick={handleTextSubmit}
                   disabled={!textPrompt.trim()}
                   className="absolute bottom-2 right-2"

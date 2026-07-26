@@ -256,6 +256,7 @@ export function FloatingPromptBar() {
           {/* Send Button */}
           <Button
             size="icon"
+            aria-label="Gửi"
             onClick={handleSubmit}
             disabled={!prompt.trim() || isLoading}
             className={cn(

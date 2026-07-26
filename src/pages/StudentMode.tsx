@@ -91,6 +91,7 @@ function BackButton() {
         <Button
           variant="ghost"
           size="icon"
+          aria-label="Trang chủ"
           className="fixed top-4 left-[272px] z-50 glass border border-border/50 h-9 w-9 hidden lg:flex"
           onClick={() => navigate('/')}
         >

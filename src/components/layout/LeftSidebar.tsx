@@ -428,7 +428,7 @@ function SidebarContent() {
               onClick={() => setShowRecents(!showRecents)}
             >
               <span className="text-sm font-semibold text-muted-foreground">Gần đây</span>
-              <Button variant="ghost" size="icon" className="h-6 w-6 transition-opacity">
+              <Button variant="ghost" size="icon" aria-label="Mở/đóng mục Gần đây" className="h-6 w-6 transition-opacity">
                 {showRecents ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
               </Button>
             </div>
@@ -533,6 +533,7 @@ export function MobileSidebar() {
         <Button
           variant="ghost"
           size="icon"
+          aria-label="Mở thanh bên"
           className="fixed top-4 left-4 z-50 lg:hidden glass border border-border/50"
         >
           <Menu className="w-5 h-5" />
@@ -576,6 +577,7 @@ export function LeftSidebar() {
       <Button
         variant="ghost"
         size="icon"
+        aria-label="Ẩn/hiện thanh bên"
         onClick={() => setIsCollapsed(!isCollapsed)}
         style={{ left: isCollapsed ? 0 : 'var(--lp-w, 260px)' }}
         className={cn(

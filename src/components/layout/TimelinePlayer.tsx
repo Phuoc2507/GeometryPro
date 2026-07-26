@@ -51,6 +51,7 @@ export function TimelinePlayer() {
         <Button
           variant="ghost"
           size="icon"
+          aria-label={isPlaying ? 'Tạm dừng' : 'Phát'}
           className="h-10 w-10 text-primary hover:text-primary hover:bg-primary/10 rounded-full"
           onClick={isPlaying ? pause : play}
         >
@@ -59,6 +60,7 @@ export function TimelinePlayer() {
         <Button
           variant="ghost"
           size="icon"
+          aria-label="Phát lại"
           className="h-8 w-8 text-muted-foreground hover:text-foreground rounded-full"
           onClick={() => {
             seek(0);

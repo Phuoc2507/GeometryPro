@@ -50,7 +50,7 @@ export function TopToolbar() {
           <Tooltip>
             <TooltipTrigger asChild>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-8 w-8">
+                <Button variant="ghost" size="icon" aria-label="Góc nhìn & Hiển thị" className="h-8 w-8">
                   {state.showPoints ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4 text-blue-500" />}
                 </Button>
               </DropdownMenuTrigger>
@@ -92,6 +92,7 @@ export function TopToolbar() {
             <Button
               variant="ghost"
               size="icon"
+              aria-label="Hoàn tác"
               className="h-8 w-8"
               onClick={undo}
               disabled={!canUndo}
@@ -107,6 +108,7 @@ export function TopToolbar() {
             <Button
               variant="ghost"
               size="icon"
+              aria-label="Làm lại"
               className="h-8 w-8"
               onClick={redo}
               disabled={!canRedo}
@@ -125,6 +127,7 @@ export function TopToolbar() {
             <Button
               variant={isManualMode ? 'default' : 'ghost'}
               size="icon"
+              aria-label="Vẽ thủ công"
               className="h-8 w-8"
               onClick={() => {
                 setManualMode(!isManualMode);
@@ -143,7 +146,8 @@ export function TopToolbar() {
             <Button
               variant={state.videoMode ? "default" : "ghost"}
               size="icon"
-              className={state.videoMode 
+              aria-label="Tạo Video (Animation)"
+              className={state.videoMode
                 ? "h-8 w-8 bg-red-500 hover:bg-red-600 text-white" 
                 : "h-8 w-8 text-red-500 hover:text-red-600 hover:bg-red-500/10"}
               onClick={() => setVideoMode(!state.videoMode)}
@@ -167,6 +171,7 @@ export function TopToolbar() {
                     <Button
                       variant="ghost"
                       size="icon"
+                      aria-label="Lưu hình học"
                       className="h-8 w-8 text-emerald-500 hover:text-emerald-600 hover:bg-emerald-500/10"
                     >
                       <Save className="w-4 h-4" />
@@ -184,6 +189,7 @@ export function TopToolbar() {
                   <Button
                     variant="ghost"
                     size="icon"
+                    aria-label="Xuất ảnh / LaTeX"
                     className="h-8 w-8 text-primary hover:text-primary hover:bg-primary/10"
                     onClick={() => setIsCaptureOpen(true)}
                   >
@@ -199,6 +205,7 @@ export function TopToolbar() {
                 <Button
                   variant="ghost"
                   size="icon"
+                  aria-label="Về trang nhập đề"
                   className="h-8 w-8"
                   onClick={clearGeometry}
                 >

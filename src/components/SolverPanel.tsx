@@ -278,6 +278,7 @@ export function SolveResultView({
       <div className="flex items-center justify-between px-3 py-2 border-b gap-2">
         <Button
           variant="ghost" size="icon"
+          aria-label="Bước trước"
           disabled={currentStep === 0}
           onClick={() => setCurrentStep(s => s - 1)}
           className="h-7 w-7"
@@ -291,6 +292,7 @@ export function SolveResultView({
 
         <Button
           variant="ghost" size="icon"
+          aria-label="Bước sau"
           disabled={currentStep >= nSteps - 1}
           onClick={() => setCurrentStep(s => s + 1)}
           className="h-7 w-7"

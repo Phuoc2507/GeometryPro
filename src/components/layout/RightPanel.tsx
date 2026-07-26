@@ -878,6 +878,7 @@ export function MobileRightPanel() {
         <Button
           variant="ghost"
           size="icon"
+          aria-label="Mở bảng thông tin"
           className="fixed top-4 right-4 z-50 lg:hidden glass border border-border/50"
         >
           <Box className="w-5 h-5" />
@@ -907,6 +908,7 @@ export function RightPanel() {
       <Button
         variant="ghost"
         size="icon"
+        aria-label="Ẩn/hiện bảng bên phải"
         onClick={() => setIsCollapsed(!isCollapsed)}
         style={{ right: isCollapsed ? 0 : 'var(--rp-w, 20rem)' }}
         className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 rounded-full glass border border-border/50 z-50 h-6 w-6 bg-background shadow-sm hover:bg-secondary flex items-center justify-center"
