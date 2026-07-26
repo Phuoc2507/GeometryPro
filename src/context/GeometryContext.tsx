@@ -759,6 +759,7 @@ export function GeometryProvider({ children }: { children: React.ReactNode }) {
           points: [],
           lines: [],
           advanceScene: data.scene,
+          drawMode: 'advance',
         };
         const historyId = await addToHistory(geometryForHistory, label);
         if (historyId) {
@@ -771,7 +772,8 @@ export function GeometryProvider({ children }: { children: React.ReactNode }) {
         dispatch({ type: 'SET_GEOMETRY', geometry: data.geometry });
         // Nhánh tụt-hạng vẫn ra 1 hình → cũng lưu lịch sử như Vẽ kỹ để xem lại.
         const label = (prompt && prompt.trim()) || data.geometry.name || '📷 Đề (từ ảnh)';
-        const historyId = await addToHistory(data.geometry, label);
+        // Nhánh tụt-hạng ⇒ nhãn "Vẽ kỹ" cho đúng mức thực server đã tính.
+        const historyId = await addToHistory({ ...data.geometry, drawMode: 'detailed' }, label);
         if (historyId) {
           const url = new URL(window.location.href);
           url.searchParams.set('id', historyId);
@@ -875,7 +877,7 @@ export function GeometryProvider({ children }: { children: React.ReactNode }) {
           },
         });
 
-          const historyId = await addToHistory(geometry, prompt);
+          const historyId = await addToHistory({ ...geometry, drawMode: mode }, prompt);
           if (historyId) {
             const url = new URL(window.location.href);
             url.searchParams.set('id', historyId);
@@ -989,7 +991,7 @@ export function GeometryProvider({ children }: { children: React.ReactNode }) {
           },
         });
 
-        const historyId = await addToHistory(geometry, promptText);
+        const historyId = await addToHistory({ ...geometry, drawMode: mode }, promptText);
         if (historyId) {
           const url = new URL(window.location.href);
           url.searchParams.set('id', historyId);

@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { 
   Hexagon, Menu, Loader2, CheckCircle2, XCircle, Eye, Trash2, Clock, Zap, Layers, Target, 
   ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Edit3, Folder, MoreVertical, Plus,
-  FolderPlus, Edit2 
+  FolderPlus, Edit2, Sparkles
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -32,15 +32,32 @@ import { vi } from 'date-fns/locale';
 const modeIcons: Record<string, typeof Zap> = {
   quick: Zap,
   detailed: Layers,
+  advance: Sparkles,
   precise: Target,
 };
 
 const modeLabels: Record<string, string> = {
-  quick: 'Nhanh',
-  detailed: 'Kỹ',
+  quick: 'Vẽ nhanh',
+  detailed: 'Vẽ kỹ',
   advance: 'Advance',
   precise: 'Chính xác',
 };
+
+// Màu huy hiệu chế độ trên từng mục lịch sử — để nhận biết "đoạn chat nào dùng mô hình nào".
+const modeBadgeClass: Record<string, string> = {
+  quick: 'text-amber-600 bg-amber-500/10 dark:text-amber-400',
+  detailed: 'text-sky-600 bg-sky-500/10 dark:text-sky-400',
+  advance: 'text-violet-600 bg-violet-500/10 dark:text-violet-400',
+};
+
+// Suy ra chế độ vẽ của 1 mục lịch sử: ưu tiên drawMode đã nhúng; mục Advance cũ (trước khi
+// có drawMode) vẫn nhận ra qua advanceScene. Mục vẽ tay/không rõ ⇒ undefined (không hiện huy hiệu).
+function historyDrawMode(item: HistoryItem): 'quick' | 'detailed' | 'advance' | undefined {
+  const g = item.geometry_data;
+  if (g?.drawMode) return g.drawMode;
+  if (g?.advanceScene) return 'advance';
+  return undefined;
+}
 
 function QueueItemCard({ item, isActive, onView, onRemove }: {
   item: QueueItem;
@@ -208,8 +225,22 @@ function SidebarContent() {
       >
         <div className="flex-1 min-w-0 pr-2">
           <p className="text-[15px] font-medium text-foreground overflow-hidden whitespace-nowrap text-clip">{item.name || "Hình không tên"}</p>
+          {(() => {
+            const dm = historyDrawMode(item);
+            if (!dm) return null;
+            const BadgeIcon = modeIcons[dm] || Zap;
+            return (
+              <span className={cn(
+                'mt-1 inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-medium leading-none',
+                modeBadgeClass[dm]
+              )}>
+                <BadgeIcon className="w-3 h-3 shrink-0" />
+                {modeLabels[dm]}
+              </span>
+            );
+          })()}
         </div>
-        
+
         <div className="flex items-center pl-2 shrink-0" onClick={e => e.stopPropagation()}>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>

@@ -281,6 +281,9 @@ export interface GeometryData {
   /** Advance: nhúng CẢ cảnh (base + steps + lời giải) khi lưu 1 lượt Advance vào lịch sử,
    *  để mở lại KHÔNG mất stepper/lời giải/reveal. loadGeometry phát hiện field này → SET_ADVANCE_SCENE. */
   advanceScene?: AdvanceScene;
+  /** Chế độ vẽ đã tạo ra hình này (quick=Vẽ nhanh, detailed=Vẽ kỹ, advance=Advance).
+   *  Nhúng vào geometry_data để danh sách lịch sử hiển thị "dùng mô hình nào" mà không cần cột DB mới. */
+  drawMode?: 'quick' | 'detailed' | 'advance';
 }
 
 export type DetailLevel = 'static' | 'cinematic' | 'step_by_step';
