@@ -3,6 +3,7 @@ import { useThree, useFrame, type ThreeEvent } from '@react-three/fiber';
 import { Html } from '@react-three/drei';
 import * as THREE from 'three';
 import { Point3D, Line3D } from '@/types/geometry';
+import { cleanPointLabel } from '@/lib/pointLabel';
 import { useGeometryOptional } from '@/context/GeometryContext';
 
 function sanitizeLabel(label: string): string {
@@ -251,7 +252,7 @@ export function DraggablePoint({ point, allPoints, allLines, delay, isBuilding }
               paintOrder: 'stroke fill',
               whiteSpace: 'nowrap'
             }}>
-              {sanitizeLabel(point.label)}
+              {sanitizeLabel(cleanPointLabel(point.label))}
             </span>
           </div>
         </Html>
