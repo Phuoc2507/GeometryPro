@@ -38,11 +38,26 @@ function ringEdges(lines, pts) {
   }
 }
 
+// Letters conventionally used for special points (midpoint, centroid, foot,
+// intersection…); their digit-suffixed forms (M1, H2) are genuine distinct
+// points, never a "prime", so they must not be turned into M' / H'.
+const SPECIAL_POINT_LETTERS = new Set(['M', 'H', 'G', 'N', 'F', 'I', 'O', 'T']);
+
 /**
- * Label a point id nicely: Ap → A', A1p → A1', etc.
+ * Label a point id nicely for display:
+ *   Ap → A'   (the 'p' prime convention)
+ *   A1 → A'   ONLY when it is a solid's top vertex, i.e. its base vertex "A"
+ *             exists and "A" is a structure vertex (not a special point). This
+ *             turns the token workaround "A1" (used because a token cannot hold
+ *             an apostrophe) back into the textbook prime. Genuine numbered
+ *             points (M1, A2, or A1 with no base A) keep their name.
  */
-function makeLabel(id) {
+export function makeLabel(id, allIds = []) {
   if (/^[A-Z][a-z]?p$/.test(id)) return id.slice(0, -1) + "'";
+  const primeTop = /^([A-Z])1$/.exec(id);
+  if (primeTop && !SPECIAL_POINT_LETTERS.has(primeTop[1]) && allIds.includes(primeTop[1])) {
+    return primeTop[1] + "'";
+  }
   return id;
 }
 
@@ -59,7 +74,7 @@ export function buildGeometryFromPoints(pointsDict, meta = {}, promptText = '') 
   // Build points array
   const points = ids.map((id) => ({
     id,
-    label: makeLabel(id),
+    label: makeLabel(id, ids),
     x: pointsDict[id].x,
     y: pointsDict[id].y,
     z: pointsDict[id].z,

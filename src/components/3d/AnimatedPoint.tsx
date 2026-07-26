@@ -3,6 +3,7 @@ import { useFrame } from '@react-three/fiber';
 import { Html } from '@react-three/drei';
 import * as THREE from 'three';
 import { Point3D } from '@/types/geometry';
+import { cleanPointLabel } from '@/lib/pointLabel';
 import { useAnimationOptional } from '@/context/AnimationContext';
 import { useGeometryOptional } from '@/context/GeometryContext';
 
@@ -111,7 +112,7 @@ export function AnimatedPoint({ point, delay, isBuilding, highlighted = false, o
               paintOrder: 'stroke fill',
               whiteSpace: 'nowrap'
             }}>
-              {sanitizeLabel(point.label)}
+              {sanitizeLabel(cleanPointLabel(point.label))}
             </span>
           </div>
         </Html>

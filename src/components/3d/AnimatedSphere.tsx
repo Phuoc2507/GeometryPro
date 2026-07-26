@@ -6,6 +6,7 @@ import { Billboard, Line, Html } from '@react-three/drei';
 import * as THREE from 'three';
 import type { ThreeEvent } from '@react-three/fiber';
 import { Sphere3D } from '@/types/geometry';
+import { cleanPointLabel } from '@/lib/pointLabel';
 import { getCssHslVar } from '@/lib/getCssHslVar';
 import { splitHorizontalCircle } from '@/lib/geometry/contour';
 
@@ -156,7 +157,7 @@ export function AnimatedSphere({ sphere, delay, isBuilding, opacityFactor = 1 }:
       {label && (
         <Html position={[0, radius + 0.15, 0]} center distanceFactor={12} zIndexRange={[30, 0]} style={{ pointerEvents: 'none' }}>
           <span className="math-label" style={{ color: labelColor, fontSize: '16px' }}>
-            {sanitizeLabel(label)}
+            {sanitizeLabel(cleanPointLabel(label))}
           </span>
         </Html>
       )}
