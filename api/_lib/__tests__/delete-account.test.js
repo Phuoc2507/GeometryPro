@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-// Bảng bị xoá và thứ tự an toàn khoá ngoại (con trước, hồ sơ sau).
-const EXPECTED_ORDER = ['saved_geometries', 'credit_ledger', 'usage_counters', 'orders', 'profiles'];
+// Bảng dữ liệu cá nhân bị xoá (orders + credit_ledger CỐ Ý giữ lại, ẩn danh qua FK SET NULL).
+const EXPECTED_ORDER = ['saved_geometries', 'usage_counters', 'profiles'];
 
 const mocks = vi.hoisted(() => ({
   getUser: vi.fn(),
@@ -119,10 +119,20 @@ describe('delete-account endpoint', () => {
     const res = response();
     await handler(OK_REQ, res);
     expect(res.statusCode).toBe(500);
-    // Đã thử tới bảng lỗi rồi dừng — KHÔNG chạm tới orders/profiles và KHÔNG xoá auth user.
-    expect(mocks.deleted.map((d) => d.table)).toEqual(['saved_geometries', 'credit_ledger', 'usage_counters']);
+    // Đã thử tới bảng lỗi rồi dừng — KHÔNG chạm tới profiles và KHÔNG xoá auth user.
+    expect(mocks.deleted.map((d) => d.table)).toEqual(['saved_geometries', 'usage_counters']);
     expect(mocks.deleteUser).not.toHaveBeenCalled();
     expect(res.body.error).toMatch(/usage_counters/);
+  });
+
+  it('does NOT hard-delete financial records (orders / credit_ledger)', async () => {
+    const handler = await loadHandler();
+    const res = response();
+    await handler(OK_REQ, res);
+    expect(res.statusCode).toBe(200);
+    const touched = mocks.deleted.map((d) => d.table);
+    expect(touched).not.toContain('orders');
+    expect(touched).not.toContain('credit_ledger');
   });
 
   it('surfaces a failure if the auth-user delete itself fails', async () => {

@@ -32,11 +32,14 @@ function effectiveTier(profile) {
 // Đọc ví + tier hiệu lực cho FE / kiểm tra.
 export async function getAccount(userId) {
   if (!admin) return null;
-  const { data } = await admin
+  const { data, error } = await admin
     .from('profiles')
     .select('plan_tier, plan_code, plan_expires_at, plan_credits, purchased_credits')
     .eq('user_id', userId)
     .maybeSingle();
+  // LỖI đọc (DB chập chờn) khác với KHÔNG có hàng: fail-closed để user trả phí không bị
+  // tụt về 'free' (rò rỉ: được route sang quota miễn phí, hoặc bị chặn tính năng đã mua).
+  if (error) return null;
   if (!data) return { tier: 'free', credits: 0, plan_credits: 0, purchased_credits: 0, plan_code: 'free' };
   const tier = effectiveTier(data);
   // numeric(12,2) về từ PostgREST là CHUỖI -> ép Number, không thì "203.80" + "0.2" = nối chuỗi.
@@ -59,6 +62,8 @@ export async function checkAndConsume(userId, feature, action) {
   if (!admin) return { ok: false, reason: 'not_configured', message: 'Hệ thống credit chưa cấu hình', cost: 0 };
 
   const acct = await getAccount(userId);
+  // getAccount trả null khi đọc profiles lỗi → fail-closed, không cho chạy AI free trong lúc DB lỗi.
+  if (!acct) return { ok: false, reason: 'error', message: 'Không đọc được tài khoản, vui lòng thử lại.', cost: 0 };
   const rule = ruleFor(acct.tier, feature);
 
   if (rule.mode === 'blocked') {

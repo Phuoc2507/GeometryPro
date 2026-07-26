@@ -36,10 +36,13 @@ async function handler(req, res) {
 
   const userId = user.id;
 
-  // 1) Dọn dữ liệu cá nhân TRƯỚC (thứ tự an toàn khoá ngoại; không phụ thuộc cascade
-  //    có thể chưa cấu hình trên mọi bảng). Nếu bước nào lỗi → DỪNG, chưa xoá auth user,
-  //    để người dùng thử lại mà không mất tài khoản kèm dữ liệu còn sót.
-  const tables = ['saved_geometries', 'credit_ledger', 'usage_counters', 'orders', 'profiles'];
+  // 1) Dọn dữ liệu CÁ NHÂN trước (thứ tự an toàn khoá ngoại; không phụ thuộc cascade).
+  //    CỐ Ý KHÔNG xoá `orders` và `credit_ledger`: đó là HỒ SƠ TÀI CHÍNH cần giữ cho
+  //    hoàn tiền/đối soát/kế toán. Chúng được ẨN DANH (user_id → NULL) qua khoá ngoại
+  //    ON DELETE SET NULL khi xoá profiles/auth user (xem supabase_account_deletion_migration.sql).
+  //    Nếu migration đó CHƯA áp, khoá ngoại vẫn ON DELETE CASCADE → chúng bị xoá như cũ
+  //    (fallback an toàn, không lỗi). Nếu bước nào lỗi → DỪNG, chưa xoá auth user.
+  const tables = ['saved_geometries', 'usage_counters', 'profiles'];
   for (const table of tables) {
     const { error } = await admin.from(table).delete().eq('user_id', userId);
     if (error) {

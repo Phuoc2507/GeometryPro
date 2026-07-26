@@ -157,6 +157,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         .filter((it): it is Record<string, unknown> =>
           typeof it === 'object' && it !== null && 'geometry_data' in it && typeof (it as Record<string, unknown>).geometry_data === 'object')
         .map((it) => ({
+          // Tái dùng id vô danh (UUID từ crypto.randomUUID) làm khoá chính hàng lưu:
+          // nếu INSERT đã commit nhưng client mất response → lần chạy sau upsert cùng id
+          // sẽ trùng khoá và bị bỏ qua → KHÔNG nhân đôi lịch sử.
+          id: typeof it.id === 'string' && it.id ? it.id : crypto.randomUUID(),
           user_id: userId,
           name: typeof it.name === 'string' && it.name ? it.name : 'Bản vẽ',
           prompt: typeof it.prompt === 'string' ? it.prompt : null,
@@ -171,7 +175,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return;
       }
 
-      const { error } = await supabase.from('saved_geometries').insert(rows);
+      const { error } = await supabase
+        .from('saved_geometries')
+        .upsert(rows, { onConflict: 'id', ignoreDuplicates: true });
       if (error) throw error;
 
       localStorage.removeItem('geo3d_anonymous_history');

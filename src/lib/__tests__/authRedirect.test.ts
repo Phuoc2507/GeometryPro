@@ -30,6 +30,12 @@ describe('sanitizeRedirect', () => {
     expect(sanitizeRedirect('javascript:alert(1)')).toBe('/');
   });
 
+  it('blocks backslash-prefixed scheme-relative targets (browser normalizes \\ to /)', () => {
+    expect(sanitizeRedirect('/\\evil.com')).toBe('/');
+    expect(sanitizeRedirect('/\\\\evil.com')).toBe('/');
+    expect(sanitizeRedirect('\\/evil.com')).toBe('/'); // không bắt đầu bằng '/'
+  });
+
   it('blocks looping back to the auth page itself', () => {
     expect(sanitizeRedirect('/auth')).toBe('/');
     expect(sanitizeRedirect('/auth?redirect=%2Fsaved')).toBe('/');

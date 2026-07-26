@@ -67,8 +67,11 @@ const Privacy = () => {
       <h2>7. Thời gian lưu trữ</h2>
       <p>
         Chúng tôi lưu dữ liệu của bạn trong thời gian tài khoản còn hoạt động. Khi bạn xoá tài khoản,
-        dữ liệu cá nhân liên quan sẽ được xoá (xem mục 8). Một số nhật ký kỹ thuật/bản ghi tối thiểu
-        có thể được lưu thêm trong thời gian ngắn cho mục đích bảo mật hoặc theo yêu cầu pháp luật.
+        dữ liệu cá nhân liên quan (hồ sơ, hình đã lưu, lịch sử, bộ đếm lượt dùng) sẽ được xoá (xem mục 8).
+        <strong> Riêng hồ sơ thanh toán (đơn hàng, sổ cái giao dịch) được giữ lại ở dạng ĐÃ ẨN DANH</strong>
+        {' '}(đã gỡ liên kết tới bạn) nhằm phục vụ hoàn tiền, đối soát và nghĩa vụ kế toán/thuế theo
+        quy định của pháp luật Việt Nam. Một số nhật ký kỹ thuật tối thiểu cũng có thể được lưu thêm
+        trong thời gian ngắn cho mục đích bảo mật.
       </p>
 
       <h2>8. Quyền của bạn</h2>
@@ -76,7 +79,7 @@ const Privacy = () => {
       <ul>
         <li>Truy cập và xem dữ liệu của mình (trong ứng dụng);</li>
         <li>Chỉnh sửa thông tin cá nhân (Cài đặt);</li>
-        <li><strong>Xoá dữ liệu và tài khoản</strong>: vào <strong>Cài đặt → Vùng nguy hiểm → Xoá tài khoản</strong>. Thao tác này xoá vĩnh viễn hồ sơ, hình đã lưu, lịch sử, gói và credit của bạn;</li>
+        <li><strong>Xoá dữ liệu và tài khoản</strong>: vào <strong>Cài đặt → Vùng nguy hiểm → Xoá tài khoản</strong>. Thao tác này xoá vĩnh viễn hồ sơ, hình đã lưu, lịch sử, gói và credit của bạn; hồ sơ thanh toán được giữ lại ở dạng ẩn danh như nêu ở mục 7;</li>
         <li>Rút lại sự đồng ý và phản đối việc xử lý, bằng cách ngừng sử dụng hoặc liên hệ với chúng tôi;</li>
         <li>Khiếu nại tới cơ quan có thẩm quyền nếu cho rằng quyền của bạn bị vi phạm.</li>
       </ul>

@@ -17,7 +17,10 @@ export function authUrlWithRedirect(redirectPath: string): string {
  */
 export function sanitizeRedirect(raw: string | null | undefined): string {
   if (!raw) return '/';
-  if (!raw.startsWith('/') || raw.startsWith('//')) return '/';
+  if (!raw.startsWith('/')) return '/';
+  // Ký tự thứ hai là '/' hoặc '\' đều là scheme-relative ('//host', '/\host'):
+  // trình duyệt chuẩn hoá '\' → '/', nên cả hai đều dẫn ra host ngoài. Chặn cả hai.
+  if (raw.length >= 2 && (raw[1] === '/' || raw[1] === '\\')) return '/';
   if (raw === '/auth' || raw.startsWith('/auth?') || raw.startsWith('/auth/')) return '/';
   return raw;
 }

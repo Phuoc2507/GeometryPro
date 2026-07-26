@@ -86,6 +86,9 @@ const Settings = () => {
     navigate('/');
   };
 
+  // Chấp nhận "xóa"/"xoá"/"XÓA"… — bỏ dấu + hạ chữ rồi so với "xoa" (tránh kẹt vì vị trí dấu).
+  const deleteConfirmed = deleteConfirm.trim().toLowerCase().normalize('NFD').replace(/\p{Diacritic}/gu, '') === 'xoa';
+
   const handleDeleteAccount = async () => {
     setIsDeleting(true);
     const { error } = await deleteAccount();
@@ -322,20 +325,20 @@ const Settings = () => {
                         <strong> không thể khôi phục</strong>. Nếu bạn còn credit hoặc gói trả phí,
                         chúng sẽ mất mà không được hoàn tiền.
                         <br /><br />
-                        Nhập <strong>XOÁ</strong> để xác nhận.
+                        Nhập <strong>xóa</strong> để xác nhận.
                       </AlertDialogDescription>
                     </AlertDialogHeader>
                     <Input
                       value={deleteConfirm}
                       onChange={(e) => setDeleteConfirm(e.target.value)}
-                      placeholder="Nhập XOÁ"
+                      placeholder="Nhập xóa"
                       autoComplete="off"
                     />
                     <AlertDialogFooter>
                       <AlertDialogCancel disabled={isDeleting}>Huỷ</AlertDialogCancel>
                       <AlertDialogAction
                         onClick={(e) => { e.preventDefault(); handleDeleteAccount(); }}
-                        disabled={deleteConfirm.trim().toUpperCase() !== 'XOÁ' || isDeleting}
+                        disabled={!deleteConfirmed || isDeleting}
                         className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                       >
                         {isDeleting ? 'Đang xoá…' : 'Xoá vĩnh viễn'}

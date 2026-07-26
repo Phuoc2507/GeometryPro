@@ -12,7 +12,7 @@ vi.mock('@supabase/supabase-js', () => ({
   createClient: () => ({
     rpc: mocks.rpc,
     from: () => ({
-      select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: mocks.profile, error: null }) }) }),
+      select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: mocks.profileError ? null : mocks.profile, error: mocks.profileError }) }) }),
     }),
   }),
 }));
@@ -34,6 +34,18 @@ describe('credits.checkAndConsume — charge decision', () => {
     mocks.rpc.mockReset();
     mocks.ruleFor.mockReset();
     mocks.creditCostFor.mockReset().mockReturnValue(1);
+    mocks.profileError = null;
+  });
+
+  it('fails closed (no charge) when the profiles read errors — does not fall back to free tier', async () => {
+    mocks.profileError = { message: 'db unavailable' };
+    mocks.ruleFor.mockReturnValue({ mode: 'credit' }); // sẽ không được gọi tới
+    const { checkAndConsume } = await loadCredits();
+    const r = await checkAndConsume('u1', 'draw', 'draw_detailed');
+    expect(r.ok).toBe(false);
+    expect(r.reason).toBe('error');
+    expect(mocks.rpc).not.toHaveBeenCalled();      // không trừ gì
+    expect(mocks.ruleFor).not.toHaveBeenCalled();  // không rơi vào rule 'free'
   });
 
   it('blocks a feature the plan cannot use (no charge)', async () => {
