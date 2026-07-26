@@ -1,10 +1,11 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useFrame, type ThreeEvent } from '@react-three/fiber';
 import { useAnimationOptional } from '@/context/AnimationContext';
 import { useGeometryOptional } from '@/context/GeometryContext';
 import * as THREE from 'three';
 import { Cone3D } from '@/types/geometry';
 import { getCssHslVar } from '@/lib/getCssHslVar';
+import { ContourCircle, SilhouetteGenerators } from './CurvedContour';
 
 interface AnimatedConeProps {
   cone: Cone3D;
@@ -18,6 +19,7 @@ export function AnimatedCone({ cone, delay, isBuilding, opacityFactor = 1 }: Ani
   const [visible, setVisible] = useState(false);
   const [scale, setScale] = useState(0);
   const color = useMemo(() => cone.color || getCssHslVar('--primary'), [cone.color]);
+  const groupRef = useRef<THREE.Group>(null);
 
   useEffect(() => {
     if (!isBuilding) {
@@ -39,36 +41,22 @@ export function AnimatedCone({ cone, delay, isBuilding, opacityFactor = 1 }: Ani
       const s = Math.max(0, Math.min(1, (t - delay) / 500));
       if (scale !== s) setScale(s);
       if (visible !== (t >= delay)) setVisible(t >= delay);
-      return;
-    }
-
-    if (!isBuilding) {
+    } else if (!isBuilding) {
       if (scale !== 1) setScale(1);
       if (!visible) setVisible(true);
-      return;
-    }
-
-    if (visible && scale < 1) {
+    } else if (visible && scale < 1) {
       setScale((prev) => Math.min(prev + delta * 2, 1));
     }
   });
 
   const { position, quaternion, height } = useMemo(() => {
     const { apex, baseCenter } = cone;
-    // Swap Y/Z for Three.js
     const a = new THREE.Vector3(apex.x, apex.z, apex.y);
     const b = new THREE.Vector3(baseCenter.x, baseCenter.z, baseCenter.y);
-
-    // ConeGeometry tip is at top (+Y), base at bottom (-Y)
-    // We want apex at 'a' and base at 'b'
     const dir = a.clone().sub(b).normalize();
     const h = a.distanceTo(b);
-    // Position at midpoint
     const mid = b.clone().add(a).multiplyScalar(0.5);
-
-    const yAxis = new THREE.Vector3(0, 1, 0);
-    const quat = new THREE.Quaternion().setFromUnitVectors(yAxis, dir);
-
+    const quat = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir);
     return { position: mid, quaternion: quat, height: h };
   }, [cone]);
 
@@ -77,7 +65,8 @@ export function AnimatedCone({ cone, delay, isBuilding, opacityFactor = 1 }: Ani
   if (!visible) return null;
 
   const currentRadius = cone.radius * scale;
-  const currentHeight = height * scale;
+  const halfHeight = (height * scale) / 2;
+  const lineColor = hovered ? '#f97316' : color;
 
   const handleClick = (e: ThreeEvent<MouseEvent>) => {
     if (e.delta > 2) return;
@@ -87,45 +76,43 @@ export function AnimatedCone({ cone, delay, isBuilding, opacityFactor = 1 }: Ani
       geometryCtx.toggleSelection(cone.id);
     }
   };
-
   const handlePointerOver = (e: ThreeEvent<PointerEvent>) => {
     if (!isManualMode || geometryCtx?.state.manualTool !== 'delete') return;
     e.stopPropagation();
     setHovered(true);
     document.body.style.cursor = 'crosshair';
   };
-
   const handlePointerOut = () => {
     setHovered(false);
     document.body.style.cursor = 'auto';
   };
 
   return (
-    <group 
-      position={position} 
+    <group
+      ref={groupRef}
+      position={position}
       quaternion={quaternion}
       onClick={handleClick}
       onPointerOver={handlePointerOver}
       onPointerOut={handlePointerOut}
     >
-      {/* Removed wireframe cone to reduce visual clutter */}
+      {/* Base circle: far arc hidden (dashed) when the camera sits above the
+          base plane (the apex side), which hides it behind the cone. */}
+      <ContourCircle
+        groupRef={groupRef} radius={currentRadius} y={-halfHeight}
+        color={lineColor} opacity={opacityFactor}
+        hiddenWhen={(cam) => cam.y > -halfHeight}
+      />
+      {/* Two slant generators from the base rim up to the apex. */}
+      <SilhouetteGenerators
+        groupRef={groupRef} radius={currentRadius} yBottom={-halfHeight} yTop={halfHeight}
+        converge color={lineColor} opacity={opacityFactor}
+      />
 
-      {/* Semi-transparent fill (Frosted Glass) */}
+      {/* Invisible body so manual-mode picking still works. */}
       <mesh>
-        <coneGeometry args={[currentRadius, currentHeight, 32, 1, true]} />
-        <meshStandardMaterial color={color} transparent opacity={0.3 * opacityFactor} roughness={0.2} side={THREE.DoubleSide} depthWrite={false} />
-      </mesh>
-
-      {/* Base cap to replace native cap, avoiding Z-fighting */}
-      <mesh position={[0, -currentHeight / 2 + 0.002, 0]} rotation={[Math.PI / 2, 0, 0]}>
-        <circleGeometry args={[currentRadius, 32]} />
-        <meshStandardMaterial color={color} transparent opacity={0.3 * opacityFactor} roughness={0.2} side={THREE.DoubleSide} depthWrite={false} />
-      </mesh>
-
-      {/* Base ring outline - slightly offset to avoid z-fighting with the base cap */}
-      <mesh position={[0, -currentHeight / 2 - 0.005, 0]} rotation={[Math.PI / 2, 0, 0]}>
-        <ringGeometry args={[currentRadius * 0.98, currentRadius, 32]} />
-        <meshBasicMaterial color={color} transparent opacity={0.6 * opacityFactor} />
+        <coneGeometry args={[currentRadius, halfHeight * 2, 24, 1, true]} />
+        <meshBasicMaterial transparent opacity={0} depthWrite={false} side={THREE.DoubleSide} />
       </mesh>
     </group>
   );
