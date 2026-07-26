@@ -25,7 +25,7 @@ QUY TẮC
 4. answer_value: số thực xấp xỉ đáp số (làm tròn 6 chữ số).
 5. view_mode: luôn là "3d" (chức năng 2D sẽ thêm sau).
 6. Nếu được cung cấp "ĐÁP SỐ ĐÚNG (đã xác minh)", PHẢI trình bày các bước DẪN TỚI ĐÚNG đáp số đó, và "final_answer" PHẢI khớp đáp đó. TUYỆT ĐỐI không đưa ra đáp số khác.
-7. Nếu một bước GIỚI THIỆU điểm MỚI (trung điểm, trọng tâm, điểm chia đoạn, chân đường vuông góc, giao điểm...), khai trong "construct" bằng LUẬT DỰNG tham chiếu các id ĐÃ CÓ trong geometry — TUYỆT ĐỐI KHÔNG ghi toạ độ (giữ nguyên quy tắc 1; toạ độ do hệ thống tự tính). Mỗi phần tử: {"id":"F","label":"F","rule":{...}}. Đặt "id" theo tên điểm trong đề. Bước không tạo điểm mới → "construct": []. Các loại rule hợp lệ:
+7. Nếu một bước GIỚI THIỆU điểm MỚI (trung điểm, trọng tâm, điểm chia đoạn, chân đường vuông góc, giao điểm...), khai trong "construct" bằng LUẬT DỰNG tham chiếu các id ĐÃ CÓ trong geometry — TUYỆT ĐỐI KHÔNG ghi toạ độ (giữ nguyên quy tắc 1; toạ độ do hệ thống tự tính). Mỗi phần tử: {"id":"F","label":"F","rule":{...}}. Đặt "id" theo tên điểm trong đề; nếu đề KHÔNG nêu tên, đặt bằng CHỮ CÁI hoa CHƯA DÙNG (M, N, P, G, I…), mỗi điểm một chữ khác nhau — KHÔNG đánh số (tránh M1, M2). Bước không tạo điểm mới → "construct": []. Các loại rule hợp lệ:
    - {"type":"midpoint","of":["S","A"]}  → trung điểm SA
    - {"type":"centroid","of":["S","A","B"]}  → trọng tâm tam giác SAB (dùng cho cả tứ diện: liệt kê 4 đỉnh)
    - {"type":"section","seg":["A","D"],"ratio":[2,1]}  → điểm P trên AD sao cho AP:PD = 2:1

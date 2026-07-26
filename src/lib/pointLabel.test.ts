@@ -20,6 +20,14 @@ describe('cleanPointLabel', () => {
     expect(cleanPointLabel("B''")).toBe("B''");
   });
 
+  it('rewrites a trailing index as primes (no digits in names)', () => {
+    expect(cleanPointLabel('S1')).toBe("S'");
+    expect(cleanPointLabel('S_1')).toBe("S'");
+    expect(cleanPointLabel('S₁')).toBe("S'");
+    expect(cleanPointLabel('A2')).toBe("A''");
+    expect(cleanPointLabel('M1')).toBe("M'"); // old figure: at least digit-free & distinct
+  });
+
   it('is safe on empty / whitespace input', () => {
     expect(cleanPointLabel('')).toBe('');
     expect(cleanPointLabel('   ')).toBe('');
