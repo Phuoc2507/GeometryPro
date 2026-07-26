@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback } from 'react';
-import { ChevronRight, ChevronLeft, Copy, Check, Box, MapPin, Ruler, Cuboid, Code, Download, Maximize2, FileDown, ChevronDown, BookOpen } from 'lucide-react';
+import { ChevronRight, ChevronLeft, Copy, Check, Box, MapPin, Ruler, Cuboid, Code, Download, Image as ImageIcon, ChevronDown, BookOpen } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -18,7 +18,6 @@ import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { SolverContent, ResizeHandle } from '@/components/SolverPanel';
 import { useResizableWidth } from '@/hooks/useResizableWidth';
 import { TierBanner } from './TierBanner';
-import { downloadBlob } from '@/lib/downloadBlob';
 import {
   createHiddenLineDetector,
   isLineDashed,
@@ -124,13 +123,6 @@ function PanelContent() {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     }
-  };
-
-  const handleDownloadLatex = () => {
-    const latex = getDynamicLatex();
-    if (!latex) return;
-    const blob = new Blob([latex], { type: 'text/plain' });
-    downloadBlob(blob, `${state.geometry?.name || 'geometry'}.tex`);
   };
 
   if (!state.geometry) {
@@ -837,20 +829,11 @@ function PanelContent() {
                 {copied ? <Check className="w-3.5 h-3.5 text-green-500" /> : <Copy className="w-3.5 h-3.5" />}
                 <span className="text-xs">{copied ? 'Đã chép' : 'Copy TikZ'}</span>
               </Button>
-              <Button variant="outline" size="sm" className="h-9 gap-1.5" onClick={handleDownloadLatex}>
-                <FileDown className="w-3.5 h-3.5" />
-                <span className="text-xs">Tải .tex</span>
+              <Button variant="outline" size="sm" className="h-9 gap-1.5" onClick={() => setIsCaptureOpen(true)}>
+                <ImageIcon className="w-3.5 h-3.5" />
+                <span className="text-xs">Xuất ảnh</span>
               </Button>
             </div>
-            <Button
-              variant="default"
-              size="sm"
-              className="h-10 gap-2 w-full"
-              onClick={() => setIsCaptureOpen(true)}
-            >
-              <Maximize2 className="w-4 h-4" />
-              <span className="text-xs font-medium">Mở rộng: xuất PNG &amp; chỉnh nhãn</span>
-            </Button>
 
             <div className="flex flex-col">
               <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1.5 ml-1">TikZ Source</span>
@@ -866,7 +849,7 @@ function PanelContent() {
 
       </Tabs>
 
-      {/* Modal xuất đầy đủ (PNG, kéo-thả nhãn) — mở từ nút "Mở rộng" ở tab Xuất */}
+      {/* Modal xuất đầy đủ (PNG, kéo-thả nhãn) — mở từ nút "Xuất ảnh" ở tab Xuất */}
       {camera && (
         <CaptureModal
           isOpen={isCaptureOpen}
