@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { 
   Hexagon, Menu, Loader2, CheckCircle2, XCircle, Eye, Trash2, Clock, Zap, Layers, Target, 
-  ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Edit3, Folder, MoreHorizontal, Plus, 
+  ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Edit3, Folder, MoreVertical, Plus,
   FolderPlus, Edit2 
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -207,14 +207,14 @@ function SidebarContent() {
         className="group relative flex items-center justify-between px-3 py-2 rounded-lg hover:bg-secondary/40 cursor-pointer transition-colors"
       >
         <div className="flex-1 min-w-0 pr-2">
-          <p className="text-[15px] font-medium text-foreground truncate">{item.name || "Hình không tên"}</p>
+          <p className="text-[15px] font-medium text-foreground overflow-hidden whitespace-nowrap text-clip">{item.name || "Hình không tên"}</p>
         </div>
         
         <div className="flex items-center pl-2 shrink-0" onClick={e => e.stopPropagation()}>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button className="flex items-center justify-center h-7 w-7 rounded-md bg-background hover:bg-secondary border border-transparent hover:border-border text-foreground shrink-0 shadow-sm">
-                <MoreHorizontal className="w-4 h-4" />
+                <MoreVertical className="w-4 h-4" />
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-48">
@@ -355,12 +355,12 @@ function SidebarContent() {
                   >
                     <div className="flex items-center gap-2 flex-1 min-w-0">
                       <Folder className="w-4 h-4 text-muted-foreground shrink-0" />
-                      <span className="text-[15px] font-medium truncate">{project.name}</span>
+                      <span className="text-[15px] font-medium overflow-hidden whitespace-nowrap text-clip">{project.name}</span>
                     </div>
                     <div className="flex items-center">
                       <DropdownMenu>
                         <DropdownMenuTrigger className="p-1.5 rounded-md hover:bg-secondary/80 text-muted-foreground hover:text-foreground outline-none transition-colors" onClick={e => e.stopPropagation()}>
-                          <MoreHorizontal className="w-4 h-4" />
+                          <MoreVertical className="w-4 h-4" />
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="w-40">
                           <DropdownMenuItem onClick={(e) => { e.stopPropagation(); deleteProject(project.id); }} className="text-destructive focus:text-destructive">
