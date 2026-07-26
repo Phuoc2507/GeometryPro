@@ -1,15 +1,17 @@
-import { useEffect } from 'react';
+import { Suspense, lazy, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import {
   Hexagon, GraduationCap, Presentation, ArrowRight, Sparkles,
-  ListChecks, PencilRuler, ImageDown, FileText, Clock, Layers,
+  PencilRuler, FileText, Clock, Layers,
   Check, Quote,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Accordion, AccordionContent, AccordionItem, AccordionTrigger,
 } from '@/components/ui/accordion';
+
+const HeroFigure = lazy(() => import('@/components/landing/HeroFigure'));
 
 const LAST_MODE_KEY = 'geo3d:last-mode';
 type Mode = 'student' | 'teacher';
@@ -192,29 +194,18 @@ const Landing = () => {
           )}
         </div>
 
-        {/* Ảnh chủ đạo: khung "app" mô phỏng dựng + xuất hình */}
+        {/* Ảnh chủ đạo: không gian 3D tương tác + nút xuất thật */}
         <div className="relative">
           <div className="absolute -inset-4 blur-3xl bg-primary/10 rounded-full" />
-          <div className="relative glass rounded-3xl border border-border/50 shadow-2xl overflow-hidden">
-            {/* thanh tiêu đề giả lập cửa sổ */}
-            <div className="flex items-center gap-2 px-4 h-9 border-b border-border/40 bg-background/40">
-              <span className="w-2.5 h-2.5 rounded-full bg-red-400/70" />
-              <span className="w-2.5 h-2.5 rounded-full bg-yellow-400/70" />
-              <span className="w-2.5 h-2.5 rounded-full bg-green-400/70" />
-              <span className="ml-2 text-xs text-muted-foreground">geo3d · Chế độ Giáo viên</span>
-            </div>
-            <div className="p-6">
-              <LabeledPyramid className="w-full max-w-[300px] mx-auto text-foreground/90" />
-              <div className="mt-5 flex items-center justify-center gap-3">
-                <span className="inline-flex items-center gap-1.5 text-xs font-medium rounded-lg px-3 py-1.5 border border-green-500/40 text-green-600 dark:text-green-400">
-                  <FileText className="w-3.5 h-3.5" /> Copy TikZ
-                </span>
-                <span className="inline-flex items-center gap-1.5 text-xs font-medium rounded-lg px-3 py-1.5 border border-blue-500/40 text-blue-600 dark:text-blue-400">
-                  <ImageDown className="w-3.5 h-3.5" /> Xuất ảnh
-                </span>
+          <Suspense
+            fallback={
+              <div className="relative glass rounded-3xl border border-border/50 h-[420px] grid place-items-center text-sm text-muted-foreground">
+                Đang tải khung hình 3D…
               </div>
-            </div>
-          </div>
+            }
+          >
+            <HeroFigure />
+          </Suspense>
         </div>
       </section>
 
