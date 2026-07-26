@@ -34,7 +34,7 @@ const EDGES: { a: VId; b: VId; faces: number[] }[] = [
   { a: 'S', b: 'D', faces: [2, 3] },
 ];
 
-/** Nhãn + hướng lệch để chữ không đè lên cạnh. */
+/** Nhãn + hướng lệch để chữ không đè lên cạnh (trong khung 3D). */
 const LABELS: { id: VId; dx: number; dy: number }[] = [
   { id: 'S', dx: 0, dy: -16 },
   { id: 'A', dx: -14, dy: 6 },
@@ -65,6 +65,31 @@ const TIKZ = `\\begin{tikzpicture}[scale=1.25,line join=round,line cap=round]
     \\fill (\\p) circle (1.3pt) node[\\pos] {$\\p$};
 \\end{tikzpicture}`;
 
+/** Pháp tuyến hướng ra ngoài + tâm mỗi mặt (cố định, tính 1 lần). */
+const FACE_INFO = (() => {
+  const centroid = new THREE.Vector3();
+  (Object.keys(P) as VId[]).forEach((k) => centroid.add(P[k]));
+  centroid.multiplyScalar(1 / 5);
+  return FACES.map((ids) => {
+    const center = new THREE.Vector3();
+    ids.forEach((id) => center.add(P[id]));
+    center.multiplyScalar(1 / ids.length);
+    const n = new THREE.Vector3()
+      .subVectors(P[ids[1]], P[ids[0]])
+      .cross(new THREE.Vector3().subVectors(P[ids[2]], P[ids[0]]))
+      .normalize();
+    if (n.dot(new THREE.Vector3().subVectors(center, centroid)) < 0) n.negate();
+    return { center, normal: n };
+  });
+})();
+
+/** Khối lồi: một cạnh bị khuất khi CẢ hai mặt kề đều quay lưng khỏi camera. */
+function computeHidden(camPos: THREE.Vector3): boolean[] {
+  const tmp = new THREE.Vector3();
+  const front = FACE_INFO.map((f) => tmp.subVectors(camPos, f.center).dot(f.normal) > 0);
+  return EDGES.map((e) => !e.faces.some((f) => front[f]));
+}
+
 function Faces() {
   const geom = useMemo(() => {
     const tris: THREE.Vector3[] = [
@@ -86,29 +111,8 @@ function Faces() {
   );
 }
 
-/** Cạnh có nét khuất động: mỗi cạnh vẽ 2 line (liền + đứt), bật/tắt theo góc nhìn.
- *  Hình chóp là khối lồi nên phép khử nét khuất là chính xác: một cạnh bị khuất
- *  khi CẢ hai mặt kề đều quay lưng khỏi camera. */
+/** Cạnh có nét khuất động: mỗi cạnh vẽ 2 line (liền + đứt), bật/tắt theo góc nhìn. */
 function Edges() {
-  // Pháp tuyến hướng ra ngoài + tâm mỗi mặt (cố định trong không gian, tính 1 lần).
-  const faceData = useMemo(() => {
-    const centroid = new THREE.Vector3();
-    (Object.keys(P) as VId[]).forEach((k) => centroid.add(P[k]));
-    centroid.multiplyScalar(1 / 5);
-    return FACES.map((ids) => {
-      const center = new THREE.Vector3();
-      ids.forEach((id) => center.add(P[id]));
-      center.multiplyScalar(1 / ids.length);
-      const n = new THREE.Vector3()
-        .subVectors(P[ids[1]], P[ids[0]])
-        .cross(new THREE.Vector3().subVectors(P[ids[2]], P[ids[0]]))
-        .normalize();
-      if (n.dot(new THREE.Vector3().subVectors(center, centroid)) < 0) n.negate();
-      return { center, normal: n };
-    });
-  }, []);
-
-  // Mỗi cạnh: một object nét liền + một object nét đứt (tạo 1 lần).
   const lines = useMemo(
     () =>
       EDGES.map((e) => {
@@ -127,16 +131,11 @@ function Edges() {
     [],
   );
 
-  const viewDir = useRef(new THREE.Vector3());
-
   useFrame(({ camera }) => {
-    const front = faceData.map(
-      (f) => viewDir.current.subVectors(camera.position, f.center).dot(f.normal) > 0,
-    );
-    EDGES.forEach((e, i) => {
-      const hidden = !e.faces.some((f) => front[f]);
-      lines[i].solid.visible = !hidden;
-      lines[i].dashed.visible = hidden;
+    const hidden = computeHidden(camera.position);
+    hidden.forEach((h, i) => {
+      lines[i].solid.visible = !h;
+      lines[i].dashed.visible = h;
     });
   });
 
@@ -196,7 +195,7 @@ function Scene() {
 
 export default function HeroFigure() {
   const { toast } = useToast();
-  const glRef = useRef<THREE.WebGLRenderer | null>(null);
+  const cameraRef = useRef<THREE.Camera | null>(null);
   const controlsRef = useRef<{ reset: () => void } | null>(null);
   const [hint, setHint] = useState(true);
 
@@ -209,26 +208,91 @@ export default function HeroFigure() {
     }
   }, [toast]);
 
+  // Xuất ảnh nét đen trên nền trắng (dạng vector, giống "xuất ảnh trắng đen" trong app),
+  // chiếu điểm 3D theo đúng góc nhìn hiện tại.
   const exportPng = useCallback(() => {
-    const gl = glRef.current;
-    if (!gl) return;
+    const cam = cameraRef.current;
+    if (!cam) return;
     try {
-      const src = gl.domElement;
-      // Ghép lên nền trắng để in ấn / chèn đề đẹp.
-      const out = document.createElement('canvas');
-      out.width = src.width;
-      out.height = src.height;
-      const ctx = out.getContext('2d');
+      const S = 1400;
+      const M = 0.18 * S; // lề
+      const INK = '#111111';
+
+      // Chiếu các đỉnh sang toạ độ màn hình chuẩn hoá (NDC).
+      const ids = Object.keys(P) as VId[];
+      const ndc = new Map<VId, { x: number; y: number }>();
+      ids.forEach((id) => {
+        const v = P[id].clone().project(cam);
+        ndc.set(id, { x: v.x, y: v.y });
+      });
+      const xs = ids.map((id) => ndc.get(id)!.x);
+      const ys = ids.map((id) => ndc.get(id)!.y);
+      const minX = Math.min(...xs), maxX = Math.max(...xs);
+      const minY = Math.min(...ys), maxY = Math.max(...ys);
+      const spanX = maxX - minX || 1, spanY = maxY - minY || 1;
+      const scale = Math.min((S - 2 * M) / spanX, (S - 2 * M) / spanY);
+      const cx = (minX + maxX) / 2, cy = (minY + maxY) / 2;
+      const toPx = (id: VId) => {
+        const p = ndc.get(id)!;
+        return { x: S / 2 + (p.x - cx) * scale, y: S / 2 - (p.y - cy) * scale };
+      };
+
+      const canvas = document.createElement('canvas');
+      canvas.width = S;
+      canvas.height = S;
+      const ctx = canvas.getContext('2d');
       if (!ctx) throw new Error('no ctx');
       ctx.fillStyle = '#ffffff';
-      ctx.fillRect(0, 0, out.width, out.height);
-      ctx.drawImage(src, 0, 0);
-      const url = out.toDataURL('image/png');
+      ctx.fillRect(0, 0, S, S);
+      ctx.lineJoin = 'round';
+      ctx.lineCap = 'round';
+      ctx.strokeStyle = INK;
+
+      const hidden = computeHidden(cam.position);
+      EDGES.forEach((e, i) => {
+        const a = toPx(e.a), b = toPx(e.b);
+        ctx.beginPath();
+        if (hidden[i]) {
+          ctx.lineWidth = S * 0.004;
+          ctx.setLineDash([S * 0.014, S * 0.012]);
+        } else {
+          ctx.lineWidth = S * 0.0052;
+          ctx.setLineDash([]);
+        }
+        ctx.moveTo(a.x, a.y);
+        ctx.lineTo(b.x, b.y);
+        ctx.stroke();
+      });
+      ctx.setLineDash([]);
+
+      // Tâm hình chiếu để đẩy nhãn ra ngoài (độc lập với góc xoay).
+      const centerPx = ids.reduce(
+        (acc, id) => { const p = toPx(id); acc.x += p.x; acc.y += p.y; return acc; },
+        { x: 0, y: 0 },
+      );
+      centerPx.x /= ids.length;
+      centerPx.y /= ids.length;
+
+      ctx.fillStyle = INK;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.font = `italic 700 ${Math.round(S * 0.045)}px "Computer Modern Serif", Georgia, serif`;
+      ids.forEach((id) => {
+        const p = toPx(id);
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, S * 0.006, 0, Math.PI * 2);
+        ctx.fill();
+        const dx = p.x - centerPx.x, dy = p.y - centerPx.y;
+        const len = Math.hypot(dx, dy) || 1;
+        const off = S * 0.05;
+        ctx.fillText(id, p.x + (dx / len) * off, p.y + (dy / len) * off);
+      });
+
       const a = document.createElement('a');
-      a.href = url;
+      a.href = canvas.toDataURL('image/png');
       a.download = 'hinh-chop-SABCD.png';
       a.click();
-      toast({ title: 'Đã xuất ảnh', description: 'hinh-chop-SABCD.png' });
+      toast({ title: 'Đã xuất ảnh', description: 'Ảnh nét đen trên nền trắng.' });
     } catch {
       toast({ title: 'Không xuất được ảnh', description: 'Thử lại sau nhé.', variant: 'destructive' });
     }
@@ -248,8 +312,8 @@ export default function HeroFigure() {
       <div className="relative h-[300px] sm:h-[340px] bg-gradient-to-b from-background/0 to-primary/5">
         <Canvas
           camera={{ position: [3.4, 1.7, 3.8], fov: 42 }}
-          gl={{ antialias: true, alpha: true, preserveDrawingBuffer: true }}
-          onCreated={({ gl }) => { glRef.current = gl; }}
+          gl={{ antialias: true, alpha: true }}
+          onCreated={({ camera }) => { cameraRef.current = camera; }}
           onPointerDown={() => setHint(false)}
         >
           <ambientLight intensity={0.9} />
