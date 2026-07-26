@@ -40,3 +40,15 @@ export function cleanPointLabel(label: string): string {
 
   return core || trimmed;
 }
+
+const GENERIC_SHAPE_LABEL =
+  /^(s?phere|mặt\s*cầu|cầu|circle|đường\s*tròn|cylinder|hình\s*trụ|trụ|cone|hình\s*nón|nón)$/i;
+
+/**
+ * A placeholder shape name the producer sometimes emits ("Sphere", "Mặt cầu"…).
+ * Such generic type-words should not be drawn as a label on the figure — a
+ * solid speaks for itself; only a real short name (e.g. "S") is worth showing.
+ */
+export function isGenericShapeLabel(label: string): boolean {
+  return GENERIC_SHAPE_LABEL.test((label || '').trim());
+}

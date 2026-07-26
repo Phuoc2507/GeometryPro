@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { cleanPointLabel } from './pointLabel';
+import { cleanPointLabel, isGenericShapeLabel } from './pointLabel';
 
 describe('cleanPointLabel', () => {
   it('strips coordinates appended to a vertex name', () => {
@@ -31,5 +31,20 @@ describe('cleanPointLabel', () => {
   it('is safe on empty / whitespace input', () => {
     expect(cleanPointLabel('')).toBe('');
     expect(cleanPointLabel('   ')).toBe('');
+  });
+});
+
+describe('isGenericShapeLabel', () => {
+  it('flags placeholder shape type-words', () => {
+    expect(isGenericShapeLabel('Sphere')).toBe(true);
+    expect(isGenericShapeLabel('sphere')).toBe(true);
+    expect(isGenericShapeLabel('Mặt cầu')).toBe(true);
+    expect(isGenericShapeLabel('nón')).toBe(true);
+  });
+
+  it('keeps real short names', () => {
+    expect(isGenericShapeLabel('S')).toBe(false);
+    expect(isGenericShapeLabel('(S)')).toBe(false);
+    expect(isGenericShapeLabel('O')).toBe(false);
   });
 });
