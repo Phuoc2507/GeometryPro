@@ -10,6 +10,7 @@ import {
   Accordion, AccordionContent, AccordionItem, AccordionTrigger,
 } from '@/components/ui/accordion';
 import { Wordmark } from '@/components/Brand';
+import { ResumeCard } from '@/components/landing/ResumeCard';
 
 const HeroFigure = lazy(() => import('@/components/landing/HeroFigure'));
 
@@ -114,8 +115,6 @@ const FAQS = [
 const Landing = () => {
   const { user, isLoading } = useAuth();
   const navigate = useNavigate();
-  const lastMode = (typeof window !== 'undefined' ? localStorage.getItem(LAST_MODE_KEY) : null) as Mode | null;
-  const lastModeLabel = lastMode === 'student' ? 'Học sinh' : lastMode === 'teacher' ? 'Giáo viên' : null;
 
   useEffect(() => {
     document.title = 'geo3d — Vẽ hình học không gian cho giáo viên, xuất PNG & TikZ';
@@ -195,11 +194,7 @@ const Landing = () => {
                 </span>
               ))}
             </div>
-            {lastModeLabel && (
-              <button onClick={() => goTo(lastMode!)} className="mt-5 block text-sm text-primary hover:underline">
-                Tiếp tục với chế độ {lastModeLabel} →
-              </button>
-            )}
+            <ResumeCard />
           </div>
 
           {/* Không gian 3D tương tác, đóng khung như một bản vẽ */}
