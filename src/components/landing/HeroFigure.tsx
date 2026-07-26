@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useRef, useState } from 'react';
-import { Canvas } from '@react-three/fiber';
+import { Canvas, useFrame } from '@react-three/fiber';
 import { Line, Html, OrbitControls, Grid } from '@react-three/drei';
 import * as THREE from 'three';
 import { FileText, ImageDown, RotateCcw, Hand } from 'lucide-react';
@@ -16,10 +16,22 @@ const P = {
 
 type VId = keyof typeof P;
 
-/** Cạnh: đáy + 4 cạnh bên. */
-const EDGES: [VId, VId][] = [
-  ['A', 'B'], ['B', 'C'], ['C', 'D'], ['D', 'A'],
-  ['S', 'A'], ['S', 'B'], ['S', 'C'], ['S', 'D'],
+/** Mỗi mặt của hình chóp (dùng để xác định cạnh khuất theo góc nhìn). */
+const FACES: VId[][] = [
+  ['S', 'A', 'B'], ['S', 'B', 'C'], ['S', 'C', 'D'], ['S', 'D', 'A'],
+  ['A', 'B', 'C', 'D'], // đáy
+];
+
+/** Cạnh + chỉ số các mặt kề (để test khuất). */
+const EDGES: { a: VId; b: VId; faces: number[] }[] = [
+  { a: 'A', b: 'B', faces: [0, 4] },
+  { a: 'B', b: 'C', faces: [1, 4] },
+  { a: 'C', b: 'D', faces: [2, 4] },
+  { a: 'D', b: 'A', faces: [3, 4] },
+  { a: 'S', b: 'A', faces: [0, 3] },
+  { a: 'S', b: 'B', faces: [0, 1] },
+  { a: 'S', b: 'C', faces: [1, 2] },
+  { a: 'S', b: 'D', faces: [2, 3] },
 ];
 
 /** Nhãn + hướng lệch để chữ không đè lên cạnh. */
@@ -74,13 +86,78 @@ function Faces() {
   );
 }
 
+/** Cạnh có nét khuất động: mỗi cạnh vẽ 2 line (liền + đứt), bật/tắt theo góc nhìn.
+ *  Hình chóp là khối lồi nên phép khử nét khuất là chính xác: một cạnh bị khuất
+ *  khi CẢ hai mặt kề đều quay lưng khỏi camera. */
+function Edges() {
+  // Pháp tuyến hướng ra ngoài + tâm mỗi mặt (cố định trong không gian, tính 1 lần).
+  const faceData = useMemo(() => {
+    const centroid = new THREE.Vector3();
+    (Object.keys(P) as VId[]).forEach((k) => centroid.add(P[k]));
+    centroid.multiplyScalar(1 / 5);
+    return FACES.map((ids) => {
+      const center = new THREE.Vector3();
+      ids.forEach((id) => center.add(P[id]));
+      center.multiplyScalar(1 / ids.length);
+      const n = new THREE.Vector3()
+        .subVectors(P[ids[1]], P[ids[0]])
+        .cross(new THREE.Vector3().subVectors(P[ids[2]], P[ids[0]]))
+        .normalize();
+      if (n.dot(new THREE.Vector3().subVectors(center, centroid)) < 0) n.negate();
+      return { center, normal: n };
+    });
+  }, []);
+
+  const solidRefs = useRef<(THREE.Object3D | null)[]>([]);
+  const dashedRefs = useRef<(THREE.Object3D | null)[]>([]);
+  const viewDir = useRef(new THREE.Vector3());
+
+  useFrame(({ camera }) => {
+    const front = faceData.map(
+      (f) => viewDir.current.subVectors(camera.position, f.center).dot(f.normal) > 0,
+    );
+    EDGES.forEach((e, i) => {
+      const hidden = !e.faces.some((f) => front[f]);
+      const solid = solidRefs.current[i];
+      const dashed = dashedRefs.current[i];
+      if (solid) solid.visible = !hidden;
+      if (dashed) dashed.visible = hidden;
+    });
+  });
+
+  return (
+    <>
+      {EDGES.map((e, i) => (
+        <group key={`${e.a}${e.b}`}>
+          <Line
+            ref={(el) => { solidRefs.current[i] = el as unknown as THREE.Object3D; }}
+            points={[P[e.a], P[e.b]]}
+            color={EDGE_COLOR}
+            lineWidth={1.8}
+          />
+          <Line
+            ref={(el) => { dashedRefs.current[i] = el as unknown as THREE.Object3D; }}
+            points={[P[e.a], P[e.b]]}
+            color={EDGE_COLOR}
+            lineWidth={1.6}
+            dashed
+            dashSize={0.13}
+            gapSize={0.09}
+            transparent
+            opacity={0.55}
+            visible={false}
+          />
+        </group>
+      ))}
+    </>
+  );
+}
+
 function Scene() {
   return (
     <>
       <Faces />
-      {EDGES.map(([a, b]) => (
-        <Line key={`${a}${b}`} points={[P[a], P[b]]} color={EDGE_COLOR} lineWidth={1.8} />
-      ))}
+      <Edges />
       {LABELS.map(({ id, dx, dy }) => (
         <group key={id} position={P[id]}>
           <mesh>
