@@ -3,6 +3,7 @@
 // Cần SERVICE ROLE vì (a) xoá được bản ghi auth.users và (b) dọn các bảng bất kể RLS.
 // userId LẤY TỪ JWT đã verify — không bao giờ tin userId từ body (chống xoá nhầm/ác ý).
 import { createClient } from '@supabase/supabase-js';
+import { withSentry, reportServerError } from './_lib/sentry.js';
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.VITE_SUPABASE_URL;
 const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -10,7 +11,7 @@ const admin = url && serviceKey
   ? createClient(url, serviceKey, { auth: { persistSession: false, autoRefreshToken: false } })
   : null;
 
-export default async function handler(req, res) {
+async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method Not Allowed' });
   }
@@ -43,6 +44,7 @@ export default async function handler(req, res) {
     const { error } = await admin.from(table).delete().eq('user_id', userId);
     if (error) {
       console.error(`[delete-account] xoá ${table} lỗi:`, error.message);
+      await reportServerError(error, { route: 'delete-account', table });
       return res.status(500).json({ error: `Không xoá được dữ liệu (${table}). Vui lòng thử lại.` });
     }
   }
@@ -51,8 +53,11 @@ export default async function handler(req, res) {
   const { error: delErr } = await admin.auth.admin.deleteUser(userId);
   if (delErr) {
     console.error('[delete-account] deleteUser lỗi:', delErr.message);
+    await reportServerError(delErr, { route: 'delete-account', step: 'deleteUser' });
     return res.status(500).json({ error: 'Không xoá được tài khoản đăng nhập. Vui lòng liên hệ hỗ trợ.' });
   }
 
   return res.status(200).json({ success: true });
 }
+
+export default withSentry(handler, 'delete-account');

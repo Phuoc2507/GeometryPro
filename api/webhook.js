@@ -1,5 +1,6 @@
 import { PayOS } from '@payos/node';
 import { createClient } from '@supabase/supabase-js';
+import { withSentry, reportServerError } from './_lib/sentry.js';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.VITE_SUPABASE_URL;
 const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -7,7 +8,7 @@ const supabase = supabaseUrl && serviceRoleKey
   ? createClient(supabaseUrl, serviceRoleKey, { auth: { persistSession: false, autoRefreshToken: false } })
   : null;
 
-export default async function handler(req, res) {
+async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method Not Allowed' });
   }
@@ -56,7 +57,10 @@ export default async function handler(req, res) {
       orderCode,
     });
   } catch (error) {
+    await reportServerError(error, { route: 'webhook', orderCode });
     console.error('[webhook] unexpected fulfillment error:', orderCode, error);
     return res.status(500).json({ error: 'Order fulfillment failed' });
   }
 }
+
+export default withSentry(handler, 'webhook');

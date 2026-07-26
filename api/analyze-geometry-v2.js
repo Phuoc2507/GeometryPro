@@ -2,8 +2,9 @@ import crypto from 'crypto';
 import { solveProblem, solvePlan } from './_lib/kernel-bridge/solveWithKernel.js';
 import { accessError, resolveAiAccess, withQuota } from './_lib/aiAccess.js';
 import { refund } from './_lib/credits.js';
+import { withSentry, reportServerError } from './_lib/sentry.js';
 
-export default async function handler(req, res) {
+async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method Not Allowed' });
   }
@@ -42,6 +43,7 @@ export default async function handler(req, res) {
     const out = await solveProblem(problem.trim());
     return res.json(withQuota({ mode: 'kernel', ...out }, access));
   } catch (error) {
+    await reportServerError(error, { route: 'analyze-geometry-v2' });
     if (creditCharge && access.userId) {
       await refund(access.userId, creditCharge.cost, creditCharge.reqId);
     }
@@ -50,3 +52,5 @@ export default async function handler(req, res) {
     });
   }
 }
+
+export default withSentry(handler, 'analyze-geometry-v2');

@@ -7,8 +7,9 @@ import { tierFromThrow } from './_lib/kernel-bridge/classifyTier.js';
 import { refund } from './_lib/credits.js';
 import { accessError, resolveAiAccess, withQuota } from './_lib/aiAccess.js';
 import crypto from 'crypto';
+import { withSentry } from './_lib/sentry.js';
 
-export default async function handler(req, res) {
+async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method Not Allowed' });
   }
@@ -92,3 +93,5 @@ export default async function handler(req, res) {
   const tier = (eng && eng.tier) || engTier || (geometry && geometry.classification) || null;
   return res.json(withQuota({ ...out, tier, geometry }, access));
 }
+
+export default withSentry(handler, 'solve');

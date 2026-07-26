@@ -13,6 +13,7 @@
 import crypto from 'crypto';
 import { refund, creditCostFor } from './_lib/credits.js';
 import { accessError, resolveAiAccess, withQuota } from './_lib/aiAccess.js';
+import { withSentry, reportServerError } from './_lib/sentry.js';
 
 // ===== LÕI THUẦN (deps-injected) — test 3 nhánh KHÔNG cần mạng =====
 // deps = { splitProblem, buildAdvanceScene, solveProblem, transcribeImage }. Xem test analyze-advance.test.js.
@@ -60,7 +61,7 @@ export async function assembleAdvance(problem, deps, opts = {}) {
   }
 }
 
-export default async function handler(req, res) {
+async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method Not Allowed' });
   }
@@ -118,6 +119,7 @@ export default async function handler(req, res) {
 
     return res.json(withQuota(result, access));
   } catch (error) {
+    await reportServerError(error, { route: 'analyze-advance' });
     console.error('Error in analyze-advance:', error);
     // Lỗi sau khi đã trừ ⇒ HOÀN credit đã trừ (nếu có). Quota free không hoàn.
     if (creditCharge && userId) {
@@ -134,3 +136,5 @@ export default async function handler(req, res) {
 }
 
 export const config = { maxDuration: 60 };
+
+export default withSentry(handler, 'analyze-advance');

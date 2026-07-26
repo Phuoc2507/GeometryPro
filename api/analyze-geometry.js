@@ -21,6 +21,7 @@ import { createClient } from '@supabase/supabase-js';
 import crypto from 'crypto';
 import { refund } from './_lib/credits.js';
 import { accessError, resolveAiAccess, withQuota } from './_lib/aiAccess.js';
+import { withSentry, reportServerError } from './_lib/sentry.js';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -29,7 +30,7 @@ const supabase = supabaseUrl && supabaseKey ? createClient(supabaseUrl, supabase
 const DETAILED_MODEL = process.env.DETAILED_MODEL || 'ant/claude-sonnet-4-6';
 const DETAILED_API_KEY = process.env.DETAILED_API_KEY || '';
 
-export default async function handler(req, res) {
+async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method Not Allowed' });
   }
@@ -534,6 +535,7 @@ KẾT QUẢ TRƯỚC BỊ PHẲNG (mọi điểm có z≈0). Hãy dựng lại h
     }
 
   } catch (error) {
+    await reportServerError(error, { route: 'analyze-geometry' });
     console.error('Error in analyze-geometry:', error);
     // Vẽ lỗi -> HOÀN credit đã trừ (nếu có). Quota free không hoàn.
     if (creditCharge && userId) {
@@ -556,3 +558,5 @@ KẾT QUẢ TRƯỚC BỊ PHẲNG (mọi điểm có z≈0). Hãy dựng lại h
     return res.status(status).json({ error: message });
   }
 }
+
+export default withSentry(handler, 'analyze-geometry');

@@ -1,5 +1,6 @@
 import { PayOS } from '@payos/node';
 import { createClient } from '@supabase/supabase-js';
+import { withSentry, reportServerError } from './_lib/sentry.js';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.VITE_SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -22,7 +23,7 @@ function sameOriginUrl(candidate, fallback) {
   }
 }
 
-export default async function handler(req, res) {
+async function handler(req, res) {
   const appOrigin = new URL(configuredAppUrl()).origin;
   if (req.headers.origin === appOrigin) {
     res.setHeader('Access-Control-Allow-Origin', appOrigin);
@@ -151,6 +152,7 @@ export default async function handler(req, res) {
 
     return res.status(200).json({ checkoutUrl: payment.checkoutUrl, orderCode });
   } catch (error) {
+    await reportServerError(error, { route: 'checkout' });
     if (orderCode && supabase) {
       await supabase
         .from('orders')
@@ -163,3 +165,5 @@ export default async function handler(req, res) {
     });
   }
 }
+
+export default withSentry(handler, 'checkout');

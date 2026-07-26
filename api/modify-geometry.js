@@ -4,6 +4,7 @@ import { generateLatexCode } from './_lib/generateLatex.js';
 import crypto from 'crypto';
 import { refund } from './_lib/credits.js';
 import { accessError, resolveAiAccess, withQuota } from './_lib/aiAccess.js';
+import { withSentry, reportServerError } from './_lib/sentry.js';
 
 const MODIFY_SYSTEM_PROMPT = `Bạn là chuyên gia chỉnh sửa hình học 3D cho học sinh Việt Nam (lớp 11-12). Nhận hình học hiện tại + yêu cầu chỉnh sửa → trả về hình học đã cập nhật.
 
@@ -99,7 +100,7 @@ ANNOTATION RULES:
 - Góc → add angles: {"id":"ang_X","vertex":"pointId","p1":"pointId","p2":"pointId","label":"60°"}
 - Only include annotation arrays that are relevant`;
 
-export default async function handler(req, res) {
+async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method Not Allowed' });
   }
@@ -209,6 +210,7 @@ CHỈ trả về JSON thuần, KHÔNG markdown.`;
     }, access));
 
   } catch (error) {
+    await reportServerError(error, { route: 'modify-geometry' });
     console.error('Error in modify-geometry:', error);
     // Lỗi hạ tầng (timeout/mạng) -> hoàn credit đã trừ.
     if (creditCharge && userId) { try { await refund(userId, creditCharge.cost, creditCharge.reqId); } catch (e) { console.warn('refund lỗi:', e?.message); } }
@@ -220,3 +222,5 @@ CHỈ trả về JSON thuần, KHÔNG markdown.`;
     return res.status(status).json({ error: message });
   }
 }
+
+export default withSentry(handler, 'modify-geometry');
