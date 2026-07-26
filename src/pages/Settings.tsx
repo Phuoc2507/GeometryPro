@@ -1,11 +1,15 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, User, Mail, Shield, LogOut, Save, Crown, Sparkles, SlidersHorizontal } from 'lucide-react';
+import { ArrowLeft, User, Mail, Shield, LogOut, Save, Crown, Sparkles, SlidersHorizontal, Trash2, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription,
+  AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { Switch } from '@/components/ui/switch';
@@ -31,13 +35,15 @@ const PREF_TOGGLES: { key: keyof AppPreferences; label: string; hint: string }[]
 
 const Settings = () => {
   const navigate = useNavigate();
-  const { user, profile, isPro, tier, credits, openUpgradeModal, updateProfile, signOut, isLoading: authLoading } = useAuth();
+  const { user, profile, isPro, tier, credits, openUpgradeModal, updateProfile, signOut, deleteAccount, isLoading: authLoading } = useAuth();
   const { toast } = useToast();
   const { prefs, setPref } = usePreferences();
 
   const [displayName, setDisplayName] = useState('');
   const [avatarUrl, setAvatarUrl] = useState('');
   const [isSaving, setIsSaving] = useState(false);
+  const [deleteConfirm, setDeleteConfirm] = useState('');
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -77,6 +83,25 @@ const Settings = () => {
 
   const handleSignOut = async () => {
     await signOut();
+    navigate('/');
+  };
+
+  const handleDeleteAccount = async () => {
+    setIsDeleting(true);
+    const { error } = await deleteAccount();
+    setIsDeleting(false);
+    if (error) {
+      toast({
+        title: 'Không xoá được tài khoản',
+        description: error.message,
+        variant: 'destructive',
+      });
+      return;
+    }
+    toast({
+      title: 'Đã xoá tài khoản',
+      description: 'Tài khoản và toàn bộ dữ liệu của bạn đã được xoá vĩnh viễn.',
+    });
     navigate('/');
   };
 
@@ -268,7 +293,66 @@ const Settings = () => {
                 ))}
               </CardContent>
             </Card>
+
+            {/* Vùng nguy hiểm — xoá tài khoản */}
+            <Card className="border-destructive/40 bg-destructive/5">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-lg text-destructive">
+                  <AlertTriangle className="w-5 h-5" />
+                  Vùng nguy hiểm
+                </CardTitle>
+                <CardDescription>
+                  Xoá tài khoản sẽ xoá <strong>vĩnh viễn</strong> hồ sơ, toàn bộ hình đã lưu, lịch sử,
+                  gói và credit của bạn. Hành động này <strong>không thể hoàn tác</strong>.
+                </CardDescription>
+              </CardHeader>
+              <CardFooter className="border-t border-destructive/20 pt-6">
+                <AlertDialog onOpenChange={(open) => { if (!open) setDeleteConfirm(''); }}>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="destructive" className="gap-2">
+                      <Trash2 className="w-4 h-4" />
+                      Xoá tài khoản
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Xoá tài khoản vĩnh viễn?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Toàn bộ dữ liệu của bạn (hình đã lưu, lịch sử, gói, credit) sẽ bị xoá và
+                        <strong> không thể khôi phục</strong>. Nếu bạn còn credit hoặc gói trả phí,
+                        chúng sẽ mất mà không được hoàn tiền.
+                        <br /><br />
+                        Nhập <strong>XOÁ</strong> để xác nhận.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <Input
+                      value={deleteConfirm}
+                      onChange={(e) => setDeleteConfirm(e.target.value)}
+                      placeholder="Nhập XOÁ"
+                      autoComplete="off"
+                    />
+                    <AlertDialogFooter>
+                      <AlertDialogCancel disabled={isDeleting}>Huỷ</AlertDialogCancel>
+                      <AlertDialogAction
+                        onClick={(e) => { e.preventDefault(); handleDeleteAccount(); }}
+                        disabled={deleteConfirm.trim().toUpperCase() !== 'XOÁ' || isDeleting}
+                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                      >
+                        {isDeleting ? 'Đang xoá…' : 'Xoá vĩnh viễn'}
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </CardFooter>
+            </Card>
           </div>
+        </div>
+
+        {/* Liên kết pháp lý */}
+        <div className="text-center text-xs text-muted-foreground pt-2">
+          <button onClick={() => navigate('/dieu-khoan')} className="hover:text-foreground underline underline-offset-2">Điều khoản dịch vụ</button>
+          <span className="mx-2">·</span>
+          <button onClick={() => navigate('/quyen-rieng-tu')} className="hover:text-foreground underline underline-offset-2">Chính sách bảo mật</button>
         </div>
       </div>
     </div>

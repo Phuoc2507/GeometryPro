@@ -37,6 +37,7 @@ interface AuthContextType {
   signInWithGoogle: (redirectPath?: string) => Promise<{ error: Error | null }>;
   signUp: (email: string, password: string, displayName?: string, redirectPath?: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
+  deleteAccount: () => Promise<{ error: Error | null }>;
   updateProfile: (updates: Partial<Pick<Profile, 'display_name' | 'avatar_url'>>) => Promise<{ error: Error | null }>;
   resetPassword: (email: string) => Promise<{ error: Error | null }>;
   updatePassword: (newPassword: string) => Promise<{ error: Error | null }>;
@@ -298,6 +299,33 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setProfile(null);
   };
 
+  // Xoá vĩnh viễn tài khoản + dữ liệu (gọi endpoint service-role), rồi dọn phiên cục bộ.
+  const deleteAccount = async () => {
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData.session?.access_token;
+      if (!token) return { error: new Error('Bạn cần đăng nhập lại để xoá tài khoản') };
+
+      const res = await fetch('/api/delete-account', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ confirm: true }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        return { error: new Error(body.error || 'Không xoá được tài khoản') };
+      }
+
+      // Tài khoản đã bị xoá ở server → dọn phiên cục bộ (đăng xuất chủ động, không báo "hết hạn").
+      intentionalSignOut.current = true;
+      await supabase.auth.signOut();
+      setProfile(null);
+      return { error: null };
+    } catch (e) {
+      return { error: e instanceof Error ? e : new Error('Không xoá được tài khoản') };
+    }
+  };
+
   const updateProfile = async (updates: Partial<Pick<Profile, 'display_name' | 'avatar_url'>>) => {
     if (!user) return { error: new Error('Chưa đăng nhập') };
 
@@ -359,6 +387,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       signInWithGoogle,
       signUp,
       signOut,
+      deleteAccount,
       updateProfile,
       resetPassword,
       updatePassword,

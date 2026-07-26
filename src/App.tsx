@@ -21,6 +21,8 @@ const Auth = React.lazy(() => import('./pages/Auth'));
 const SavedGeometries = React.lazy(() => import('./pages/SavedGeometries'));
 const Settings = React.lazy(() => import('./pages/Settings'));
 const ProblemTypeCatalog = React.lazy(() => import('./pages/ProblemTypeCatalog'));
+const Terms = React.lazy(() => import('./pages/Terms'));
+const Privacy = React.lazy(() => import('./pages/Privacy'));
 const NotFound = React.lazy(() => import('./pages/NotFound'));
 
 function PageLoader() {
@@ -79,6 +81,8 @@ function App() {
                     <Route path="/saved" element={<SavedGeometries />} />
                     <Route path="/settings" element={<Settings />} />
                     <Route path="/teacher/dang-bai" element={<ProblemTypeCatalog />} />
+                    <Route path="/dieu-khoan" element={<Terms />} />
+                    <Route path="/quyen-rieng-tu" element={<Privacy />} />
                     {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                     <Route path="*" element={<NotFound />} />
                   </Routes>

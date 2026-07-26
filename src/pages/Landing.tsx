@@ -375,10 +375,12 @@ const Landing = () => {
         <div className="max-w-6xl mx-auto px-5 py-7 flex flex-col sm:flex-row items-center justify-between gap-3 text-sm text-muted-foreground">
           <Wordmark />
           <span className="text-xs">Hình học không gian bằng mắt.</span>
-          <div className="flex items-center gap-5">
+          <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2">
             <button onClick={() => goTo('teacher')} className="hover:text-foreground transition-colors">Giáo viên</button>
             <button onClick={() => goTo('student')} className="hover:text-foreground transition-colors">Học sinh</button>
             {!isLoading && !user && <button onClick={() => navigate('/auth')} className="hover:text-foreground transition-colors">Đăng nhập</button>}
+            <button onClick={() => navigate('/dieu-khoan')} className="hover:text-foreground transition-colors">Điều khoản</button>
+            <button onClick={() => navigate('/quyen-rieng-tu')} className="hover:text-foreground transition-colors">Bảo mật</button>
           </div>
         </div>
       </footer>
