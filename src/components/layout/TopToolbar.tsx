@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { RotateCcw, Maximize2, Grid3X3, Camera, Download, Save, PenTool, Youtube, Scissors, Box, Eye, EyeOff, Cpu, Home, Navigation, Undo2, Redo2 } from 'lucide-react';
+import { RotateCcw, Maximize2, Grid3X3, Camera, Download, Save, PenTool, Youtube, Box, Eye, EyeOff, Cpu, Home, Navigation, Undo2, Redo2 } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Toggle } from '@/components/ui/toggle';
@@ -39,11 +39,6 @@ export function TopToolbar() {
   
   const { state, clearGeometry, setManualMode, setVideoMode, undo, redo, canUndo, canRedo } = context;
   const isManualMode = state.manualMode;
-
-  const handleModeToggle = (newMode: 'cut' | 'unfold') => {
-    if (mode === newMode) setMode('none');
-    else setMode(newMode);
-  };
 
   return (
     <>
@@ -143,40 +138,6 @@ export function TopToolbar() {
           <TooltipContent>Vẽ thủ công</TooltipContent>
         </Tooltip>
 
-        {state.geometry && (
-          <>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant={mode === 'cut' ? 'default' : 'ghost'}
-                  size="icon"
-                  className="h-8 w-8 text-orange-500 hover:text-orange-600 hover:bg-orange-500/10"
-                  onClick={() => handleModeToggle('cut')}
-                  disabled={isManualMode || mode === 'unfold'}
-                >
-                  <Scissors className="w-4 h-4" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>Mặt Cắt Động (Cross-section)</TooltipContent>
-            </Tooltip>
-
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant={mode === 'unfold' ? 'default' : 'ghost'}
-                  size="icon"
-                  className="h-8 w-8 text-blue-500 hover:text-blue-600 hover:bg-blue-500/10"
-                  onClick={() => handleModeToggle('unfold')}
-                  disabled={isManualMode || mode === 'cut'}
-                >
-                  <Box className="w-4 h-4" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>Trải Phẳng Hình (Unfold)</TooltipContent>
-            </Tooltip>
-          </>
-        )}
-        
         <Tooltip>
           <TooltipTrigger asChild>
             <Button
