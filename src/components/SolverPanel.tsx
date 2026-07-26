@@ -559,13 +559,16 @@ export function SolverContent({ creditNote }: { creditNote?: string } = {}) {
 // ─── Thanh kéo giãn ────────────────────────────────────────────────────────────
 
 /** Nắm kéo ở MÉP TRÁI của panel bên phải: kéo để chỉnh rộng, nhấn đúp để đặt lại. */
-export function ResizeHandle({ onPointerDown, onReset }: { onPointerDown: (e: React.PointerEvent) => void; onReset?: () => void }) {
+export function ResizeHandle({ onPointerDown, onReset, edge = 'left' }: { onPointerDown: (e: React.PointerEvent) => void; onReset?: () => void; edge?: 'left' | 'right' }) {
   return (
     <div
       onPointerDown={onPointerDown}
       onDoubleClick={onReset}
       title="Kéo để chỉnh rộng · nhấn đúp để đặt lại"
-      className="group absolute left-0 top-0 h-full w-2.5 -translate-x-1/2 cursor-col-resize z-50 flex items-center justify-center touch-none"
+      className={cn(
+        "group absolute top-0 h-full w-2.5 cursor-col-resize z-50 flex items-center justify-center touch-none",
+        edge === 'right' ? "right-0 translate-x-1/2" : "left-0 -translate-x-1/2"
+      )}
     >
       <div className="h-12 w-1 rounded-full bg-border/70 group-hover:bg-primary transition-colors" />
     </div>

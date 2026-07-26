@@ -12,8 +12,11 @@ export function useResizableWidth(opts: {
   def: number;
   min: number;
   max: number;
+  /** Which side the panel sits on. 'right' (default): drag left to grow.
+   *  'left': drag right to grow. */
+  side?: 'left' | 'right';
 }) {
-  const { cssVar, storageKey, def, min, max } = opts;
+  const { cssVar, storageKey, def, min, max, side = 'right' } = opts;
   const clamp = useCallback((w: number) => Math.max(min, Math.min(max, w)), [min, max]);
 
   const [width, setWidth] = useState<number>(() => {
@@ -36,7 +39,10 @@ export function useResizableWidth(opts: {
 
     const onMove = (ev: PointerEvent) => {
       if (!drag.current) return;
-      const next = clamp(drag.current.startW + (drag.current.startX - ev.clientX)); // kéo trái -> rộng
+      const delta = side === 'left'
+        ? ev.clientX - drag.current.startX // panel trái: kéo phải -> rộng
+        : drag.current.startX - ev.clientX; // panel phải: kéo trái -> rộng
+      const next = clamp(drag.current.startW + delta);
       drag.current.cur = next;
       document.documentElement.style.setProperty(cssVar, `${next}px`); // cập nhật mượt, không re-render
     };
@@ -54,7 +60,7 @@ export function useResizableWidth(opts: {
     };
     window.addEventListener('pointermove', onMove);
     window.addEventListener('pointerup', onUp);
-  }, [cssVar, storageKey, width, clamp]);
+  }, [cssVar, storageKey, width, clamp, side]);
 
   const reset = useCallback(() => {
     setWidth(def);

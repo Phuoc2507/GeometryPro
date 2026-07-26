@@ -5,6 +5,8 @@ import {
   FolderPlus, Edit2, Sparkles
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { useResizableWidth } from '@/hooks/useResizableWidth';
+import { ResizeHandle } from '@/components/SolverPanel';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { Progress } from '@/components/ui/progress';
@@ -553,16 +555,19 @@ export function MobileSidebar() {
 // Desktop Sidebar
 export function LeftSidebar() {
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const { onPointerDown, reset } = useResizableWidth({ cssVar: '--lp-w', storageKey: 'left_panel_w', def: 260, min: 220, max: 520, side: 'left' });
 
   return (
     <div className="relative h-screen hidden lg:flex z-40 shrink-0">
-      <aside 
+      <aside
+        style={{ width: isCollapsed ? 0 : 'var(--lp-w, 260px)' }}
         className={cn(
-          "h-full flex flex-col glass border-r border-border/50 sticky left-0 top-0 transition-all duration-300 bg-background/95 overflow-hidden",
-          isCollapsed ? "w-0 border-none" : "w-[260px]"
+          "h-full flex flex-col glass border-r border-border/50 sticky left-0 top-0 bg-background/95 overflow-hidden",
+          isCollapsed && "border-none"
         )}
       >
-        <div className="h-full w-[260px] flex flex-col relative">
+        {!isCollapsed && <ResizeHandle onPointerDown={onPointerDown} onReset={reset} edge="right" />}
+        <div style={{ width: 'var(--lp-w, 260px)' }} className="h-full flex flex-col relative">
           <SidebarContent />
         </div>
       </aside>
@@ -572,9 +577,10 @@ export function LeftSidebar() {
         variant="ghost"
         size="icon"
         onClick={() => setIsCollapsed(!isCollapsed)}
+        style={{ left: isCollapsed ? 0 : 'var(--lp-w, 260px)' }}
         className={cn(
-          "absolute top-1/2 -translate-y-1/2 rounded-full glass border border-border/50 z-50 h-6 w-6 bg-background shadow-sm hover:bg-secondary flex items-center justify-center transition-all duration-300",
-          isCollapsed ? "left-0 translate-x-1/2" : "left-[260px] -translate-x-1/2"
+          "absolute top-1/2 -translate-y-1/2 rounded-full glass border border-border/50 z-50 h-6 w-6 bg-background shadow-sm hover:bg-secondary flex items-center justify-center",
+          isCollapsed ? "translate-x-1/2" : "-translate-x-1/2"
         )}
       >
         {isCollapsed ? (
