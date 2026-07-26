@@ -458,7 +458,32 @@ export function GeometryProvider({ children }: { children: React.ReactNode }) {
   );
   const stateRef = useRef(state);
   const scanSessionRef = useRef(0);
-  const { addToHistory } = useGeometryHistory();
+  const { addToHistory, updateGeometryData } = useGeometryHistory();
+
+  // Chỉnh sửa thủ công (thêm/xóa/di chuyển điểm, đường, mặt phẳng…) và undo/redo bật cờ này.
+  // Cờ giúp phân biệt "người dùng SỬA hình" với "nạp hình lúc load / AI sinh" → chỉ lưu ngược khi thật sự sửa.
+  const pendingPersistRef = useRef(false);
+  const persistTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const requestPersist = useCallback(() => { pendingPersistRef.current = true; }, []);
+
+  // Auto-lưu bản đã sửa vào ĐÚNG mục lịch sử theo ?id (localStorage cho khách, Supabase cho user).
+  // Trước đây thao tác vẽ thủ công chỉ đổi state trong bộ nhớ ⇒ reload là mất. Đây là chỗ ghi ngược.
+  useEffect(() => {
+    if (!pendingPersistRef.current) return;
+    pendingPersistRef.current = false;
+    const geometry = state.geometry;
+    if (!geometry) return;
+    // Trong phiên Advance, geometry_data đã nhúng cả cảnh (thanh câu + lời giải). Ghi đè bằng hình
+    // phẳng ở đây sẽ xóa sạch cảnh khi mở lại — nên bỏ qua, giống guard trong SolverPanel.
+    if (state.advanceScene) return;
+    const id = new URLSearchParams(window.location.search).get('id');
+    if (!id) return; // chưa từng lưu vào lịch sử ⇒ không có mục nào để cập nhật
+    if (persistTimerRef.current) clearTimeout(persistTimerRef.current);
+    // Gộp nhiều thao tác liên tiếp thành 1 lần ghi.
+    persistTimerRef.current = setTimeout(() => { void updateGeometryData(id, geometry); }, 500);
+  }, [state.geometry, state.advanceScene, updateGeometryData]);
+
+  useEffect(() => () => { if (persistTimerRef.current) clearTimeout(persistTimerRef.current); }, []);
 
   // Ghi ngược tuỳ chọn hiển thị vào localStorage khi đổi, để lần mount sau seed lại đúng.
   // Merge `...loadPreferences()` để giữ các khoá chỉ-Settings (vd showIllustrationValues).
@@ -475,12 +500,14 @@ export function GeometryProvider({ children }: { children: React.ReactNode }) {
   stateRef.current = state;
 
   const undo = useCallback(() => {
+    requestPersist();
     dispatch({ type: 'UNDO' });
-  }, []);
+  }, [requestPersist]);
 
   const redo = useCallback(() => {
+    requestPersist();
     dispatch({ type: 'REDO' });
-  }, []);
+  }, [requestPersist]);
 
   const canUndo = state.undoStack.length > 0;
   const canRedo = state.redoStack.length > 0;
@@ -1117,17 +1144,20 @@ export function GeometryProvider({ children }: { children: React.ReactNode }) {
 
   const addPoint = useCallback((label: string, x: number, y: number, z: number) => {
     const id = label.toUpperCase();
+    requestPersist();
     dispatch({ type: 'ADD_POINT', point: { id, label, x, y, z } });
-  }, []);
+  }, [requestPersist]);
 
   const addLine = useCallback((fromId: string, toId: string, style: 'solid' | 'dashed') => {
     const id = `line_${fromId}_${toId}`;
+    requestPersist();
     dispatch({ type: 'ADD_LINE', line: { id, from: fromId, to: toId, style } });
-  }, []);
+  }, [requestPersist]);
 
   const addMidpoint = useCallback((p1Id: string, p2Id: string) => {
     const geo = stateRef.current.geometry;
     if (!geo) return;
+    requestPersist();
     const p1 = geo.points.find(p => p.id === p1Id);
     const p2 = geo.points.find(p => p.id === p2Id);
     if (!p1 || !p2) return;
@@ -1158,7 +1188,7 @@ export function GeometryProvider({ children }: { children: React.ReactNode }) {
       const lineId = `line_${p1Id}_${p2Id}`;
       dispatch({ type: 'ADD_LINE', line: { id: lineId, from: p1Id, to: p2Id, style: 'solid' } });
     }
-  }, []);
+  }, [requestPersist]);
 
   const addPlane = useCallback((pointIds: string[]) => {
     const geo = stateRef.current.geometry;
@@ -1171,6 +1201,7 @@ export function GeometryProvider({ children }: { children: React.ReactNode }) {
     const orderedPoints = polygon.sourceIndices.map((index) => pts[index]);
     const id = `plane_${orderedPointIds.join('_')}`;
     const label = `(${orderedPoints.map(p => p.label).join('')})`;
+    requestPersist();
     dispatch({
       type: 'ADD_PLANE',
       plane: {
@@ -1182,7 +1213,7 @@ export function GeometryProvider({ children }: { children: React.ReactNode }) {
       },
     });
     return true;
-  }, []);
+  }, [requestPersist]);
 
   const addPlaneFromEquation = useCallback((a: number, b: number, c: number, d: number) => {
     const size = 5;
@@ -1206,16 +1237,19 @@ export function GeometryProvider({ children }: { children: React.ReactNode }) {
     if (corners.length < 3) return;
     const id = `plane_eq_${Date.now()}`;
     const label = `${a}x+${b}y+${c}z=${d}`;
+    requestPersist();
     dispatch({ type: 'ADD_PLANE', plane: { id, label, points: corners, opacity: 0.15 } });
-  }, []);
+  }, [requestPersist]);
 
   const removeElement = useCallback((type: 'point' | 'line' | 'plane' | 'curve' | 'sphere' | 'cylinder' | 'circle' | 'cone', id: string) => {
+    requestPersist();
     dispatch({ type: 'REMOVE_ELEMENT', elementType: type, elementId: id });
-  }, []);
+  }, [requestPersist]);
 
   const updatePoint = useCallback((id: string, x: number, y: number, z: number) => {
+    requestPersist();
     dispatch({ type: 'UPDATE_POINT', pointId: id, x, y, z });
-  }, []);
+  }, [requestPersist]);
 
   const setManualMode = useCallback((enabled: boolean) => {
     dispatch({ type: 'SET_MANUAL_MODE', enabled });
