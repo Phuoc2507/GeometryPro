@@ -6,12 +6,53 @@ import * as THREE from 'three';
 import { Surface3D } from '@/types/geometry';
 import { handleAddPoint } from './ClickToPlacePoint';
 import { ParametricGeometry } from 'three/examples/jsm/geometries/ParametricGeometry.js';
+import { ContourCircle, ProfileMeridians } from './CurvedContour';
 
 interface Props {
   surface: Surface3D;
   delay: number;
   isBuilding: boolean;
 }
+
+/** Radius and height of the generating profile as a function of t ∈ [0, 1],
+ *  in three-space (vertical axis = y), for each surface-of-revolution type. */
+function profileOf(surface: Surface3D): (t: number) => { radius: number; y: number } {
+  const p = surface.params;
+  switch (surface.type) {
+    case 'paraboloid': {
+      const a = p.a || 2;
+      const h = p.h || 4;
+      return (t) => ({ radius: a * t, y: h * t * t });
+    }
+    case 'hyperboloid': {
+      const a = p.a || 1;
+      const c = p.c || 2;
+      const vMin = p.vMin ?? -2;
+      const vMax = p.vMax ?? 2;
+      return (t) => {
+        const v = vMin + t * (vMax - vMin);
+        return { radius: a * Math.cosh(v), y: c * Math.sinh(v) };
+      };
+    }
+    case 'torus': {
+      const R = p.R || 2;
+      const r = p.r || 0.5;
+      return (t) => {
+        const angle = t * Math.PI * 2;
+        return { radius: R + r * Math.cos(angle), y: r * Math.sin(angle) };
+      };
+    }
+    case 'revolution':
+    default: {
+      const r0 = p.r0 || 1;
+      const h = p.h || 4;
+      const taper = p.taper || 0;
+      return (t) => ({ radius: r0 * (1 - t * taper), y: h * t });
+    }
+  }
+}
+
+const PARALLEL_COUNT = 6;
 
 export function AnimatedSurface({ surface, delay, isBuilding }: Props) {
   const animCtx = useAnimationOptional();
@@ -21,80 +62,35 @@ export function AnimatedSurface({ surface, delay, isBuilding }: Props) {
   const progressRef = useRef(isBuilding ? 0 : 1);
 
   const autoColor = geometryCtx?.state.autoColor ?? false;
-  const color = useMemo(() => {
-    if (autoColor) {
-      return surface.color || '#8b5cf6';
-    }
-    return '#94a3b8';
-  }, [surface.color, autoColor]);
-  
-  const opacity = surface.opacity ?? 0.3;
+  const color = useMemo(
+    () => (autoColor ? (surface.color || '#8b5cf6') : '#94a3b8'),
+    [surface.color, autoColor],
+  );
+  const opacity = surface.opacity ?? 1;
   const { x: cx, y: cy, z: cz } = surface.center;
 
-  const geometry = useMemo(() => {
-    const segments = 32;
+  const profile = useMemo(() => profileOf(surface), [surface]);
 
-    const paramFunc = (u: number, v: number, target: THREE.Vector3) => {
-      const uAngle = u * Math.PI * 2;
-      const p = surface.params;
+  // Pickable (invisible) body so manual-mode delete / add-point still work.
+  const pickGeometry = useMemo(() => {
+    const segments = 24;
+    return new ParametricGeometry((u, v, target) => {
+      const angle = u * Math.PI * 2;
+      const { radius, y } = profile(v);
+      target.set(radius * Math.cos(angle), y, radius * Math.sin(angle));
+    }, segments, segments);
+  }, [profile]);
 
-      switch (surface.type) {
-        case 'paraboloid': {
-          const a = p.a || 2;
-          const h = p.h || 4;
-          // r goes from 0 to a, height = (r/a)² * h
-          const r = v * a;
-          const px = r * Math.cos(uAngle);
-          const py = r * Math.sin(uAngle);
-          const pz = (r * r / (a * a)) * h;
-          target.set(px, pz, py); // swap y/z for Three.js
-          break;
-        }
-        case 'hyperboloid': {
-          const a = p.a || 1;
-          const b = p.b || 1;
-          const c = p.c || 2;
-          const vMin = p.vMin ?? -2;
-          const vMax = p.vMax ?? 2;
-          const vRange = vMin + v * (vMax - vMin);
-          const coshV = Math.cosh(vRange);
-          const sinhV = Math.sinh(vRange);
-          const px = a * coshV * Math.cos(uAngle);
-          const py = b * coshV * Math.sin(uAngle);
-          const pz = c * sinhV;
-          target.set(px, pz, py);
-          break;
-        }
-        case 'torus': {
-          const R = p.R || 2; // major radius
-          const r = p.r || 0.5; // minor radius
-          const vAngle = v * Math.PI * 2;
-          const px = (R + r * Math.cos(vAngle)) * Math.cos(uAngle);
-          const py = (R + r * Math.cos(vAngle)) * Math.sin(uAngle);
-          const pz = r * Math.sin(vAngle);
-          target.set(px, pz, py);
-          break;
-        }
-        case 'revolution': {
-          // Generic surface of revolution: rotate curve f(t) around z-axis
-          const rFunc = p.r0 || 1; // base radius
-          const h = p.h || 4;
-          const t = v; // 0..1
-          // Default: cone-like linear profile
-          const r = rFunc * (1 - t * (p.taper || 0));
-          const px = r * Math.cos(uAngle);
-          const py = r * Math.sin(uAngle);
-          const pz = t * h;
-          target.set(px, pz, py);
-          break;
-        }
-        default:
-          target.set(0, 0, 0);
-      }
-    };
-
-    return new ParametricGeometry(paramFunc, segments, segments);
-  }, [surface.type, surface.params]);
+  // A few parallels (horizontal circles) sampled along the profile.
+  const parallels = useMemo(() => {
+    const rings: { radius: number; y: number }[] = [];
+    for (let i = 0; i < PARALLEL_COUNT; i++) {
+      const t = i / (PARALLEL_COUNT - 1);
+      const ring = profile(t);
+      if (ring.radius > 0.05) rings.push(ring);
+    }
+    return rings;
+  }, [profile]);
 
   const isManualMode = geometryCtx?.state.manualMode ?? false;
 
@@ -102,29 +98,38 @@ export function AnimatedSurface({ surface, delay, isBuilding }: Props) {
     if (animCtx && !isManualMode && isBuilding) {
       const t = animCtx.globalTimeRef.current;
       progressRef.current = Math.max(0, Math.min(1, (t - delay) / 300));
-      if (groupRef.current) groupRef.current.scale.setScalar(progressRef.current);
-      return;
-    }
-
-    if (!isBuilding) { 
+      groupRef.current?.scale.setScalar(progressRef.current);
+    } else if (!isBuilding) {
       if (progressRef.current !== 1) {
-        progressRef.current = 1; 
-        if (groupRef.current) groupRef.current.scale.setScalar(1);
+        progressRef.current = 1;
+        groupRef.current?.scale.setScalar(1);
       }
-      return; 
-    }
-    
-    // Fallback
-    if (progressRef.current < 1) {
+    } else if (progressRef.current < 1) {
       progressRef.current = Math.min(1, progressRef.current + delta * 3);
-      if (groupRef.current) groupRef.current.scale.setScalar(progressRef.current);
+      groupRef.current?.scale.setScalar(progressRef.current);
     }
   });
 
   return (
     <group ref={groupRef} position={[cx, cz, cy]}>
-      <mesh 
-        geometry={geometry}
+      {/* Outline meridians (left/right edges of the apparent contour). */}
+      <ProfileMeridians groupRef={groupRef} profile={profile} color={color} opacity={opacity} />
+
+      {/* Parallels: front arc solid, arc behind the surface dashed. */}
+      {parallels.map((ring, i) => (
+        <ContourCircle
+          key={`parallel-${i}`}
+          groupRef={groupRef}
+          radius={ring.radius}
+          y={ring.y}
+          color={color}
+          opacity={opacity * 0.9}
+          hiddenWhen={() => true}
+        />
+      ))}
+
+      <mesh
+        geometry={pickGeometry}
         onClick={(e) => {
           if (!geometryCtx) return;
           const { manualMode, manualTool } = geometryCtx.state;
@@ -143,22 +148,9 @@ export function AnimatedSurface({ surface, delay, isBuilding }: Props) {
           e.stopPropagation();
           document.body.style.cursor = 'crosshair';
         }}
-        onPointerOut={() => {
-          document.body.style.cursor = 'auto';
-        }}
+        onPointerOut={() => { document.body.style.cursor = 'auto'; }}
       >
-        <meshStandardMaterial
-          color={color}
-          transparent
-          opacity={opacity}
-          roughness={0.2}
-          metalness={0.1}
-          side={THREE.DoubleSide}
-          depthWrite={false}
-          polygonOffset={true}
-          polygonOffsetFactor={1}
-          polygonOffsetUnits={1}
-        />
+        <meshBasicMaterial transparent opacity={0} depthWrite={false} side={THREE.DoubleSide} />
       </mesh>
     </group>
   );

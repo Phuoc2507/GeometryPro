@@ -74,6 +74,62 @@ export function ContourCircle({
   );
 }
 
+/**
+ * The two outline meridians of a surface of revolution: the profile curve drawn
+ * at the ±perpendicular azimuth to the view, i.e. the left and right edges of
+ * the apparent outline. Both lie on the silhouette, so they are solid.
+ */
+export function ProfileMeridians({
+  groupRef, profile, samples = 40, color, opacity, lineWidth = 1.5,
+}: {
+  groupRef: RefObject<THREE.Object3D | null>;
+  profile: (t: number) => { radius: number; y: number };
+  samples?: number;
+  color: string;
+  opacity: number;
+  lineWidth?: number;
+}) {
+  const leftRef = useRef<ComponentRef<typeof Line>>(null);
+  const rightRef = useRef<ComponentRef<typeof Line>>(null);
+  const localCam = useMemo(() => new THREE.Vector3(), []);
+  const ts = useMemo(
+    () => Array.from({ length: samples }, (_, i) => i / (samples - 1)),
+    [samples],
+  );
+  const initial = useMemo(
+    () => ts.map((t) => {
+      const { radius, y } = profile(t);
+      return [radius, y, 0] as [number, number, number];
+    }),
+    [ts, profile],
+  );
+
+  useFrame(({ camera }) => {
+    const group = groupRef.current;
+    if (!group) return;
+    localCam.copy(camera.position);
+    group.worldToLocal(localCam);
+    const azimuth = Math.atan2(localCam.z, localCam.x);
+    const build = (phi: number) => {
+      const out: number[] = [];
+      for (const t of ts) {
+        const { radius, y } = profile(t);
+        out.push(radius * Math.cos(phi), y, radius * Math.sin(phi));
+      }
+      return out;
+    };
+    (leftRef.current as FatLine | null)?.geometry.setPositions(build(azimuth + Math.PI / 2));
+    (rightRef.current as FatLine | null)?.geometry.setPositions(build(azimuth - Math.PI / 2));
+  });
+
+  return (
+    <>
+      <Line ref={leftRef} points={initial} color={color} lineWidth={lineWidth} transparent opacity={opacity} />
+      <Line ref={rightRef} points={initial} color={color} lineWidth={lineWidth} transparent opacity={opacity} />
+    </>
+  );
+}
+
 /** The two lateral silhouette generators between `yBottom` and `yTop`. When
  *  `converge` is set (a cone), both meet at the apex point on the axis. */
 export function SilhouetteGenerators({
