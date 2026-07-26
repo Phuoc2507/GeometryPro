@@ -133,14 +133,23 @@ describe('shared hidden-line detection', () => {
     expect(keys).toContain('ACS'); // the (SAC) cut occludes edges behind it
   });
 
-  it('never lets a dynamic false override an explicit dashed style', () => {
+  it('lets hidden-line detection override the producer dashed style', () => {
     const dashed: Line3D = { id: 'EF', from: 'E', to: 'F', style: 'dashed' };
-    const dynamic = new Map([['EF', false], ['AB', true]]);
+    // Detection ran: EF is actually visible, AB is actually hidden. The
+    // geometry wins over the producer's per-line style guesses.
+    const detected = new Map([['EF', false], ['AB', true]]);
 
-    expect(isLineDashed(dashed, dynamic)).toBe(true);
-    expect(mergeLineDashStyles([dashed, lines[0]], dynamic)).toEqual(
-      new Map([['EF', true], ['AB', true]]),
+    expect(isLineDashed(dashed, detected)).toBe(false);
+    expect(isLineDashed(lines[0], detected)).toBe(true);
+    expect(mergeLineDashStyles([dashed, lines[0]], detected)).toEqual(
+      new Map([['EF', false], ['AB', true]]),
     );
+  });
+
+  it('falls back to the explicit style when no detection ran', () => {
+    const dashed: Line3D = { id: 'EF', from: 'E', to: 'F', style: 'dashed' };
+    expect(isLineDashed(dashed, new Map())).toBe(true);
+    expect(isLineDashed(lines[1], new Map())).toBe(false); // BC has no style → solid
   });
 
   it('uses the same 3/4 threshold for deterministic export classification', () => {

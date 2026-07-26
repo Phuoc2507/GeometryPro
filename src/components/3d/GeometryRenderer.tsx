@@ -332,7 +332,7 @@ export function GeometryRenderer({ geometry: geometryProp, isBuilding }: Geometr
             points={points}
             delay={lineStartDelay + index * lineDelay}
             isBuilding={effectiveIsBuilding}
-            dynamicHidden={sectionEdgeIds.has(line.id) ? false : (hiddenLines.get(line.id) ?? false)}
+            dynamicHidden={effectiveDashMap.get(line.id) ?? (line.style === 'dashed')}
             highlighted={highlightedIds.has(line.id)}
             opacity={line.dim ? DIM_OPACITY : 1}
             emphasize={!!line.highlight}

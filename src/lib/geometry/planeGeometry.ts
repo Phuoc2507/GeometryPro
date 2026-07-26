@@ -151,7 +151,10 @@ export function normalizePlanarPolygon(
   if (bestAreaSquared <= degeneracyTolerance ** 4) return null;
   normal.normalize();
 
-  const coplanarTolerance = Math.max(extent * 1e-5, 1e-7);
+  // 0.1% of the figure's size. Loose enough to accept planes whose corners were
+  // rounded to a few decimals by the producer (e.g. a section vertex at 1.667
+  // instead of 5/3), strict enough to still reject a genuinely warped quad.
+  const coplanarTolerance = Math.max(extent * 1e-3, 1e-7);
   if (vertices.some((vertex) =>
     Math.abs(normal.dot(edgeA.subVectors(vertex, planeOrigin))) > coplanarTolerance)) {
     return null;

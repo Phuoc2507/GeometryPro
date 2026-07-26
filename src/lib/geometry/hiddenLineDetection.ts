@@ -116,12 +116,24 @@ export function getDesiredHiddenState(
   return currentlyHidden;
 }
 
-/** A semantic dashed style must never be cancelled by a dynamic `false`. */
+/**
+ * Whether a line should render dashed.
+ *
+ * When hidden-line detection has run for this line (an entry exists in
+ * `dynamicallyHidden`), the geometric result is authoritative and the
+ * producer's `style` guess is ignored — the same principle as deriving faces
+ * from geometry instead of trusting the producer's plane list. A producer that
+ * marks half its edges dashed by guesswork must not override what the solid
+ * actually hides. Only when no detection ran (free-form drawings with no
+ * occluders → empty map) does the explicit `style` apply.
+ */
 export function isLineDashed(
   line: Pick<Line3D, 'id' | 'style'>,
   dynamicallyHidden?: ReadonlyMap<string, boolean>,
 ): boolean {
-  return line.style === 'dashed' || dynamicallyHidden?.get(line.id) === true;
+  const detected = dynamicallyHidden?.get(line.id);
+  if (detected !== undefined) return detected;
+  return line.style === 'dashed';
 }
 
 /** Build the effective dash map consumed by previews and WebGL capture. */
