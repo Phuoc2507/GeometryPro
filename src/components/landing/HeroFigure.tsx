@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useRef, useState } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
-import { Line, Html, OrbitControls, Grid } from '@react-three/drei';
+import { Html, OrbitControls, Grid } from '@react-three/drei';
 import * as THREE from 'three';
 import { FileText, ImageDown, RotateCcw, Hand } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
@@ -108,8 +108,25 @@ function Edges() {
     });
   }, []);
 
-  const solidRefs = useRef<(THREE.Object3D | null)[]>([]);
-  const dashedRefs = useRef<(THREE.Object3D | null)[]>([]);
+  // Mỗi cạnh: một object nét liền + một object nét đứt (tạo 1 lần).
+  const lines = useMemo(
+    () =>
+      EDGES.map((e) => {
+        const g = new THREE.BufferGeometry().setFromPoints([P[e.a], P[e.b]]);
+        const solid = new THREE.Line(g, new THREE.LineBasicMaterial({ color: EDGE_COLOR }));
+        const dashed = new THREE.Line(
+          g,
+          new THREE.LineDashedMaterial({
+            color: EDGE_COLOR, dashSize: 0.13, gapSize: 0.09, transparent: true, opacity: 0.7,
+          }),
+        );
+        dashed.computeLineDistances(); // cần cho nét đứt (ghi vào geometry dùng chung)
+        dashed.visible = false;
+        return { solid, dashed };
+      }),
+    [],
+  );
+
   const viewDir = useRef(new THREE.Vector3());
 
   useFrame(({ camera }) => {
@@ -118,35 +135,17 @@ function Edges() {
     );
     EDGES.forEach((e, i) => {
       const hidden = !e.faces.some((f) => front[f]);
-      const solid = solidRefs.current[i];
-      const dashed = dashedRefs.current[i];
-      if (solid) solid.visible = !hidden;
-      if (dashed) dashed.visible = hidden;
+      lines[i].solid.visible = !hidden;
+      lines[i].dashed.visible = hidden;
     });
   });
 
   return (
     <>
-      {EDGES.map((e, i) => (
-        <group key={`${e.a}${e.b}`}>
-          <Line
-            ref={(el) => { solidRefs.current[i] = el as unknown as THREE.Object3D; }}
-            points={[P[e.a], P[e.b]]}
-            color={EDGE_COLOR}
-            lineWidth={1.8}
-          />
-          <Line
-            ref={(el) => { dashedRefs.current[i] = el as unknown as THREE.Object3D; }}
-            points={[P[e.a], P[e.b]]}
-            color={EDGE_COLOR}
-            lineWidth={1.6}
-            dashed
-            dashSize={0.13}
-            gapSize={0.09}
-            transparent
-            opacity={0.55}
-            visible={false}
-          />
+      {lines.map((l, i) => (
+        <group key={i}>
+          <primitive object={l.solid} />
+          <primitive object={l.dashed} />
         </group>
       ))}
     </>
