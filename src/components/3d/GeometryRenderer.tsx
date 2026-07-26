@@ -41,7 +41,7 @@ import { DynamicCrossSection } from './DynamicCrossSection';
 import { DynamicUnfolding } from './DynamicUnfolding';
 import { useToolMode } from '@/context/ToolModeContext';
 import { collectPlanePointIds } from '@/lib/geometry/planeReferences';
-import { deriveSurfacePlanes, deriveSectionPlanes, deriveSectionEdgeIds } from '@/lib/geometry/surfaceFaces';
+import { deriveSurfacePlanes } from '@/lib/geometry/surfaceFaces';
 
 // Advance mode: cờ dim → mờ (giữ ngữ cảnh câu trước), highlight/không cờ → đầy.
 const DIM_OPACITY = 0.25;
@@ -160,17 +160,10 @@ export function GeometryRenderer({ geometry: geometryProp, isBuilding }: Geometr
   }, [currentStep, solutionStep, advanceScene, reveal, solution, geometryProp, requestFocus]);
 
   const hiddenLines = useHiddenLineDetection(geometry);
-  // Cross-section (thiết diện) boundary edges — kept solid so the section reads
-  // clearly, even where it passes behind the solid.
-  const sectionEdgeIds = React.useMemo(
-    () => geometry ? deriveSectionEdgeIds(geometry) : new Set<string>(),
-    [geometry],
+  const effectiveDashMap = React.useMemo(
+    () => mergeLineDashStyles(geometry?.lines ?? [], hiddenLines),
+    [geometry, hiddenLines],
   );
-  const effectiveDashMap = React.useMemo(() => {
-    const map = mergeLineDashStyles(geometry?.lines ?? [], hiddenLines);
-    for (const id of sectionEdgeIds) map.set(id, false);
-    return map;
-  }, [geometry, hiddenLines, sectionEdgeIds]);
   const isManualMode = geometryContext?.state.manualMode ?? false;
   const highlightedIds = cameraContext?.highlightedIds ?? new Set<string>();
   
@@ -252,13 +245,6 @@ export function GeometryRenderer({ geometry: geometryProp, isBuilding }: Geometr
     }
     return [...byId.values()];
   }, [geometry, isManualMode]);
-
-  // Cross-sections: supplied planes that cut through the solid. Rendered with a
-  // light fill (not see-through) so the thiết diện stands out as the answer.
-  const sectionPlanes = React.useMemo(
-    () => (geometry && !isManualMode) ? deriveSectionPlanes(geometry) : [],
-    [geometry, isManualMode],
-  );
 
   if (!geometry) return null;
 
@@ -361,21 +347,6 @@ export function GeometryRenderer({ geometry: geometryProp, isBuilding }: Geometr
             return <AnimatedPlane3D key={`plane-${pl.id}`} plane={pl} delay={d} isBuilding={effectiveIsBuilding} opacityFactor={opacityFactor} emphasize={!!pl.highlight} />;
           }
         }
-      })}
-
-      {/* Cross-sections (thiết diện): rendered with a light fill so they stand
-          out from the transparent surface faces. */}
-      {mode === 'none' && sectionPlanes.map((pl, i) => {
-        if ((pl as { hidden?: boolean }).hidden) return null;
-        return (
-          <AnimatedPlane3D
-            key={`section-${pl.id}`}
-            plane={pl}
-            delay={shapeStartDelay + (allShapes.length + i) * shapeDelay}
-            isBuilding={effectiveIsBuilding}
-            solid
-          />
-        );
       })}
 
       {/* Render the Dynamic Cross Section if mode is cut */}
