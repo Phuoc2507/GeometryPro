@@ -95,6 +95,7 @@ CHƯA cố định tới đồng dạng; (3) đáp cần SUY-RA-tập-hợp / bi
 
 ## QUY ƯỚC TOKEN (dùng trong asserts/queries)
 - Tên điểm: MỘT chữ hoa, có thể kèm số/phẩy: A, B, S, A1, A'. KHÔNG đặt tên hai chữ.
+- Điểm PHỤ (trung điểm, trọng tâm, chân vuông góc, giao điểm…): đặt bằng CHỮ CÁI hoa CHƯA DÙNG trong hình (M, N, P, I, G, K…), MỖI điểm một chữ KHÁC nhau. KHÔNG đánh số (tránh M1, M2). Chỉ số (A1) DÀNH RIÊNG cho đỉnh phẩy của khối (A1 = A').
 - "AB"  = đường thẳng qua A và B.
 - "ABC" = mặt phẳng qua A, B, C.
 - Hoặc dùng tên mặt/đường đã khai báo (vd "SCD", "P", "d").
