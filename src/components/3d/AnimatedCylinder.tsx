@@ -1,10 +1,11 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useFrame, type ThreeEvent } from '@react-three/fiber';
 import { useAnimationOptional } from '@/context/AnimationContext';
 import { useGeometryOptional } from '@/context/GeometryContext';
 import * as THREE from 'three';
 import { Cylinder3D } from '@/types/geometry';
 import { getCssHslVar } from '@/lib/getCssHslVar';
+import { ContourCircle, SilhouetteGenerators } from './CurvedContour';
 
 interface AnimatedCylinderProps {
   cylinder: Cylinder3D;
@@ -18,6 +19,7 @@ export function AnimatedCylinder({ cylinder, delay, isBuilding, opacityFactor = 
   const [visible, setVisible] = useState(false);
   const [scale, setScale] = useState(0);
   const color = useMemo(() => cylinder.color || getCssHslVar('--primary'), [cylinder.color]);
+  const groupRef = useRef<THREE.Group>(null);
 
   useEffect(() => {
     if (!isBuilding) {
@@ -39,36 +41,23 @@ export function AnimatedCylinder({ cylinder, delay, isBuilding, opacityFactor = 
       const s = Math.max(0, Math.min(1, (t - delay) / 500));
       if (scale !== s) setScale(s);
       if (visible !== (t >= delay)) setVisible(t >= delay);
-      return;
-    }
-
-    if (!isBuilding) {
+    } else if (!isBuilding) {
       if (scale !== 1) setScale(1);
       if (!visible) setVisible(true);
-      return;
-    }
-
-    if (visible && scale < 1) {
+    } else if (visible && scale < 1) {
       setScale((prev) => Math.min(prev + delta * 2, 1));
     }
   });
 
-  // Calculate position, rotation, and height
   const { position, quaternion, height } = useMemo(() => {
     const { center1, center2 } = cylinder;
-    // Swap Y/Z for Three.js
     const c1 = new THREE.Vector3(center1.x, center1.z, center1.y);
     const c2 = new THREE.Vector3(center2.x, center2.z, center2.y);
-
     const mid = c1.clone().add(c2).multiplyScalar(0.5);
     const dir = c2.clone().sub(c1);
     const h = dir.length();
     dir.normalize();
-
-    // CylinderGeometry is aligned along Y axis by default
-    const yAxis = new THREE.Vector3(0, 1, 0);
-    const quat = new THREE.Quaternion().setFromUnitVectors(yAxis, dir);
-
+    const quat = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir);
     return { position: mid, quaternion: quat, height: h };
   }, [cylinder]);
 
@@ -77,7 +66,8 @@ export function AnimatedCylinder({ cylinder, delay, isBuilding, opacityFactor = 
   if (!visible) return null;
 
   const currentRadius = cylinder.radius * scale;
-  const currentHeight = height * scale;
+  const halfHeight = (height * scale) / 2;
+  const lineColor = hovered ? '#f97316' : color;
 
   const handleClick = (e: ThreeEvent<MouseEvent>) => {
     if (e.delta > 2) return;
@@ -87,53 +77,47 @@ export function AnimatedCylinder({ cylinder, delay, isBuilding, opacityFactor = 
       geometryCtx.toggleSelection(cylinder.id);
     }
   };
-
   const handlePointerOver = (e: ThreeEvent<PointerEvent>) => {
     if (!isManualMode || geometryCtx?.state.manualTool !== 'delete') return;
     e.stopPropagation();
     setHovered(true);
     document.body.style.cursor = 'crosshair';
   };
-
   const handlePointerOut = () => {
     setHovered(false);
     document.body.style.cursor = 'auto';
   };
 
   return (
-    <group 
-      position={position} 
+    <group
+      ref={groupRef}
+      position={position}
       quaternion={quaternion}
       onClick={handleClick}
       onPointerOver={handlePointerOver}
       onPointerOut={handlePointerOut}
     >
-      {/* Removed wireframe cylinder to reduce visual clutter */}
+      {/* Top base: hidden (dashed) far arc only when the camera sits below it. */}
+      <ContourCircle
+        groupRef={groupRef} radius={currentRadius} y={halfHeight}
+        color={lineColor} opacity={opacityFactor}
+        hiddenWhen={(cam) => cam.y < halfHeight}
+      />
+      {/* Bottom base: far arc hidden when the camera sits above it. */}
+      <ContourCircle
+        groupRef={groupRef} radius={currentRadius} y={-halfHeight}
+        color={lineColor} opacity={opacityFactor}
+        hiddenWhen={(cam) => cam.y > -halfHeight}
+      />
+      <SilhouetteGenerators
+        groupRef={groupRef} radius={currentRadius} yBottom={-halfHeight} yTop={halfHeight}
+        color={lineColor} opacity={opacityFactor}
+      />
 
-      {/* Semi-transparent fill (Frosted Glass) */}
+      {/* Invisible body so manual-mode picking still works. */}
       <mesh>
-        <cylinderGeometry args={[currentRadius, currentRadius, currentHeight, 32, 1, true]} />
-        <meshStandardMaterial color={color} transparent opacity={0.3 * opacityFactor} roughness={0.2} side={THREE.DoubleSide} depthWrite={false} />
-      </mesh>
-
-      {/* Top cap */}
-      <mesh position={[0, currentHeight / 2 - 0.001, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-        <circleGeometry args={[currentRadius, 32]} />
-        <meshStandardMaterial color={color} transparent opacity={0.3 * opacityFactor} roughness={0.2} side={THREE.DoubleSide} depthWrite={false} />
-      </mesh>
-      <mesh position={[0, currentHeight / 2 + 0.005, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-        <ringGeometry args={[currentRadius * 0.98, currentRadius, 32]} />
-        <meshBasicMaterial color={color} transparent opacity={0.6 * opacityFactor} />
-      </mesh>
-
-      {/* Bottom cap */}
-      <mesh position={[0, -currentHeight / 2 + 0.001, 0]} rotation={[Math.PI / 2, 0, 0]}>
-        <circleGeometry args={[currentRadius, 32]} />
-        <meshStandardMaterial color={color} transparent opacity={0.3 * opacityFactor} roughness={0.2} side={THREE.DoubleSide} depthWrite={false} />
-      </mesh>
-      <mesh position={[0, -currentHeight / 2 - 0.005, 0]} rotation={[Math.PI / 2, 0, 0]}>
-        <ringGeometry args={[currentRadius * 0.98, currentRadius, 32]} />
-        <meshBasicMaterial color={color} transparent opacity={0.6 * opacityFactor} />
+        <cylinderGeometry args={[currentRadius, currentRadius, halfHeight * 2, 24, 1, true]} />
+        <meshBasicMaterial transparent opacity={0} depthWrite={false} side={THREE.DoubleSide} />
       </mesh>
     </group>
   );
