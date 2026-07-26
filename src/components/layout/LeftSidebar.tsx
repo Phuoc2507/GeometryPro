@@ -287,7 +287,10 @@ function SidebarContent() {
         </Button>
       </div>
 
-      <ScrollArea className="flex-1 mt-4 px-2">
+      {/* Radix ScrollArea bọc nội dung trong div display:table (min-width:100%), khiến
+          các mục có `truncate` (white-space:nowrap) nong bảng rộng theo chữ → tràn khỏi
+          panel và đẩy nút 3 chấm ra ngoài. Ép div này về block để bám đúng bề rộng panel. */}
+      <ScrollArea className="flex-1 mt-4 px-2 [&_[data-radix-scroll-area-viewport]>div]:!block">
         {/* Active Queue */}
         {activeQueueItems.length > 0 && (
           <div className="mb-4">
