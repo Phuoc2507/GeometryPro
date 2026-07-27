@@ -261,9 +261,9 @@ function PanelContent() {
           <SolverContent />
         </TabsContent>
 
-        <TabsContent value="properties" className="flex-1 p-4">
-          <ScrollArea className="h-full">
-            <div className="space-y-5">
+        <TabsContent value="properties" className="flex-1 overflow-hidden p-0 min-h-0 data-[state=active]:flex flex-col">
+          <ScrollArea className="h-full w-full">
+            <div className="space-y-5 p-4">
               {/* ─── Tổng quan: loại hình + số đỉnh/cạnh ─── */}
               <div className="flex flex-wrap gap-1.5">
                 {properties?.shapeType && (
