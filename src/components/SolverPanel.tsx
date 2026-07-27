@@ -111,6 +111,22 @@ function splitSentences(text: string): string[] {
   return out.filter(Boolean);
 }
 
+/**
+ * Đề bài do người dùng dán / đọc từ ảnh thường chứa LaTeX THÔ, không có $...$
+ * (vd "A. \frac{\sqrt{3}a^3}{9}."). Tự bọc các "mảnh LaTeX" (token chứa \ ^ _ { })
+ * vào $...$ để render đẹp như lời giải. Nếu đã có $ (lời giải AI) thì giữ nguyên.
+ */
+function autoMathWrap(text: string): string {
+  if (!text || text.includes('$')) return text;
+  return text.replace(/\S+/g, (tok) => {
+    const m = tok.match(/^(.*?)([.,;]*)$/);        // tách dấu câu đuôi (. , ;) khỏi phần công thức
+    const core = m ? m[1] : tok;
+    const tail = m ? m[2] : '';
+    if (core && /[\\^_{}]/.test(core)) return `$${core}$${tail}`;
+    return tok;
+  });
+}
+
 /** Render một câu: phần $...$ / \(...\) dùng KaTeX, còn lại là chữ. */
 function renderInline(text: string, keyPrefix: string) {
   const parts = (text || '').split(/(\$[^$]+\$|\\\([^)]*?\\\))/g);
@@ -267,7 +283,7 @@ export function SolveResultView({
           </button>
           {showProblem && (
             <div className="px-4 pb-3 max-h-40 overflow-y-auto">
-              <MathText text={problem} className="text-sm text-foreground/85 leading-relaxed" />
+              <MathText text={autoMathWrap(problem)} className="text-sm text-foreground/85 leading-relaxed" />
             </div>
           )}
         </div>
