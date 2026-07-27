@@ -7609,6 +7609,37 @@ function runAny(raw) {
   return run(raw);
 }
 
+// api/_lib/kernel/analysis/revolution.ts
+function evalProfile(f, x) {
+  switch (f.kind) {
+    case "poly":
+      return f.coeffs.reduce((acc, c, i) => acc + c * x ** i, 0);
+    case "sqrt":
+      return f.a * Math.sqrt(x) + f.b;
+    case "const":
+      return f.c;
+  }
+}
+function revolutionVolumeDisk(outer, domain) {
+  const [a, b] = domain;
+  const f = (x) => {
+    const r = evalProfile(outer, x);
+    return Math.PI * r * r;
+  };
+  return integrate(f, a, b);
+}
+function buildRevolutionSolidOx(id, outer, domain, color) {
+  const { value, estimatedError } = revolutionVolumeDisk(outer, domain);
+  const verified = estimatedError <= 1e-6 * Math.max(1, Math.abs(value));
+  const volume = {
+    value,
+    latex: `V=\\pi\\int_{${domain[0]}}^{${domain[1]}}\\left[r(x)\\right]^2\\,dx`,
+    verified,
+    estimatedError
+  };
+  return { id, outer, axis: "Ox", domain, method: "disk", color, volume };
+}
+
 // api/_lib/kernel/index.ts
 function runPlan(rawPlan) {
   const trace = new Trace();
@@ -7641,12 +7672,16 @@ export {
   Trace,
   TriangleDimsSchema,
   attemptDeterministicRepair,
+  buildAnalysisFigure,
+  buildRevolutionSolidOx,
   checkDegeneracy,
   createEmptySymbolTable,
   entityTableToGeometryData,
+  evalProfile,
   executeOp,
   executePlan,
   resolveEntity,
+  revolutionVolumeDisk,
   run,
   runAnalysis,
   runAny,
