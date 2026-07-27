@@ -221,8 +221,8 @@ const Landing = () => {
                 <HeroFigure />
               </Suspense>
             </div>
-            <p className="mt-3 text-center text-xs text-muted-foreground font-cm italic">
-              Hình 1 — Hình chóp S.ABCD · nét khuất đổi theo góc nhìn
+            <p className="mt-3 text-center text-xs text-muted-foreground italic">
+              Hình 1 — Hình chóp <span className="font-cm">S.ABCD</span> · nét khuất đổi theo góc nhìn
             </p>
           </div>
         </div>
