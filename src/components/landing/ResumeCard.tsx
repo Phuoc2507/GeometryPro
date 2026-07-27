@@ -106,23 +106,25 @@ export function ResumeCard() {
   const name = profile?.display_name?.trim() || user.email?.split('@')[0] || null;
 
   return (
-    <div className="mt-6 glass rounded-xl border border-primary/30 p-4 flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
-      <div className="flex-1 min-w-0">
-        <p className="text-sm font-semibold">
-          Chào mừng trở lại{name ? `, ${name}` : ''} 👋
-        </p>
-        <p className="text-xs text-muted-foreground mt-0.5">
-          {recent
-            ? <>Mở lại bản vẽ gần nhất hoặc tiếp tục chế độ {modeLabel}.</>
-            : <>Tiếp tục ngay với chế độ {modeLabel}.</>}
-        </p>
-      </div>
-      <div className="flex flex-wrap gap-2 shrink-0">
-        <Button size="sm" onClick={resume} className="gap-1.5">
+    <div className="mt-6 glass rounded-xl border border-primary/30 p-4">
+      {/* Lời chào — full-width, không bị nút ép thành cột hẹp */}
+      <p className="text-sm font-semibold">
+        Chào mừng trở lại{name ? `, ` : ''}
+        {name && <span className="text-primary">{name}</span>} <span aria-hidden>👋</span>
+      </p>
+      <p className="text-xs text-muted-foreground mt-1">
+        {recent
+          ? <>Mở lại bản vẽ gần nhất hoặc tiếp tục chế độ {modeLabel}.</>
+          : <>Tiếp tục ngay với chế độ {modeLabel}.</>}
+      </p>
+
+      {/* Nút xếp hàng bên dưới, tự xuống dòng khi hẹp */}
+      <div className="flex flex-wrap gap-2 mt-3">
+        <Button size="sm" onClick={resume} className="gap-1.5 transition-transform hover:-translate-y-0.5">
           <Play className="w-4 h-4" /> Tiếp tục {modeLabel}
         </Button>
         {recent && (
-          <Button size="sm" variant="outline" onClick={openRecent} className="gap-1.5 max-w-[16rem]">
+          <Button size="sm" variant="outline" onClick={openRecent} className="gap-1.5 min-w-0 max-w-full transition-transform hover:-translate-y-0.5">
             <History className="w-4 h-4 shrink-0" />
             <span className="truncate">Mở “{recent.name}”</span>
           </Button>
