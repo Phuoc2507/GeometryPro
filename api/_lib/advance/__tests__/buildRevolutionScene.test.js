@@ -78,6 +78,27 @@ describe('buildRevolutionScene', () => {
     expect(sc.steps[1].answer.approx).toBeCloseTo(Math.PI / 2, 4);
   });
 
+  it('biên dạng poly ⇒ khung nhìn HIỆN đường cong biên dạng, KHÔNG rải điểm mẫu (tránh "vẽ hình khác")', () => {
+    // Regression: trước đây visibleIds gồm ~34 điểm mẫu không nhãn ⇒ hiện thành đám chấm, ẩn mất
+    // đường sinh r(x). Nay poly ⇒ hiện curve_r + khối; điểm mẫu vẫn ở base (qua gate) nhưng bị ẩn.
+    const sc = buildRevolutionScene({ outer: { kind: 'poly', coeffs: [0, 0, 1] }, domain: [0, 2] });
+    const curveIds = sc.base.curves.map((c) => c.id);
+    expect(curveIds.length).toBeGreaterThan(0);
+    for (const cid of curveIds) {
+      expect(sc.steps[0].visibleIds).toContain(cid);
+      expect(sc.steps[1].visibleIds).toContain(cid);
+    }
+    const pointIds = new Set(sc.base.points.map((p) => p.id));
+    expect(sc.steps[0].visibleIds.filter((id) => pointIds.has(id))).toHaveLength(0);
+  });
+
+  it('biên dạng KHÔNG-poly (sqrt) ⇒ không có curve nên GIỮ điểm mẫu làm khung nhìn duy nhất', () => {
+    const sc = buildRevolutionScene({ outer: { kind: 'sqrt', a: 1, b: 0 }, domain: [0, 4] });
+    expect(sc.base.curves.length).toBe(0);
+    const pointIds = new Set(sc.base.points.map((p) => p.id));
+    expect(sc.steps[0].visibleIds.filter((id) => pointIds.has(id)).length).toBeGreaterThan(0);
+  });
+
   it('rev-ox 1 câu: y=x^2 trên [0,2] → 32π/5, nhãn bước gọn (Khối tròn xoay / Thể tích)', () => {
     // Bài điển hình chỉ 1 câu ⇒ templateParams.parts có 1 phần tử (hoặc vắng).
     const oneQ = buildRevolutionScene({

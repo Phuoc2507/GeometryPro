@@ -34,7 +34,13 @@ export function buildRevolutionScene(params) {
   });
   base.revolutionSolids = [solid];
 
-  const samplePointIds = base.points.map((p) => p.id);
+  // Khung nhìn NỀN cho bài tròn xoay: nếu có đường cong biên dạng r(x) (trường hợp biên dạng LÀ
+  // poly ⇒ buildAnalysisFigure sinh curve) thì HIỂN THỊ đúng đường sinh đó — thay vì rải ~30 điểm
+  // mẫu không nhãn (trước đây gây rối, người dùng thấy "một đám chấm" tưởng vẽ hình khác). Khi biên
+  // dạng KHÔNG phải poly (sqrt/const/expr) thì không có curve ⇒ giữ điểm mẫu làm khung nhìn duy nhất.
+  // (Điểm mẫu vẫn nằm trong base để qua gate points>0; chỉ KHÔNG đưa vào visibleIds nên bị ẩn.)
+  const curveIds = (base.curves || []).map((c) => c.id);
+  const outlineIds = curveIds.length ? curveIds : base.points.map((p) => p.id);
   // Bài tròn xoay 1 câu ("tính thể tích") ⇒ chỉ có 1 part. Khi đó gán nhãn 2 bước cố định, dễ hiểu
   // (Khối tròn xoay → Thể tích) thay vì trộn nhãn "Câu 1" của đề với "Câu b" mặc định.
   const hasTwoParts = Array.isArray(parts) && parts.length >= 2;
@@ -46,14 +52,14 @@ export function buildRevolutionScene(params) {
     {
       id: 's0',
       label: partA.label,
-      visibleIds: [...samplePointIds, revId],
+      visibleIds: [...outlineIds, revId],
       highlightIds: [revId],
       anim: { param: 'sweep', label: 'Quét tròn xoay', tMax: domain[1], autoplay: true },
     },
     {
       id: 's1',
       label: partB.label,
-      visibleIds: [...samplePointIds, revId],
+      visibleIds: [...outlineIds, revId],
       answer: {
         text: v.latex,
         approx: v.value,
