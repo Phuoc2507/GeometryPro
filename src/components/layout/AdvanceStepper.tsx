@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { safetyTierMeta, verifiedToLevel } from '@/lib/safetyTier';
 import { useGeometryOptional } from '@/context/GeometryContext';
+import AdvanceAnimControl from './AdvanceAnimControl';
 
 /**
  * AdvanceStepper — bộ chuyển câu cho bài "advance" đa-câu.
@@ -32,6 +33,16 @@ export function AdvanceStepper() {
 
   return (
     <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-40 flex flex-col items-stretch gap-2 glass rounded-xl px-4 py-3 border border-border/50 w-[90%] max-w-2xl shadow-lg">
+      {/* Thanh kéo + play cho câu có animation (rev-ox…) — nằm trên hàng chọn câu. */}
+      {(() => {
+        const step = steps[clampedStep];
+        return step?.anim ? (
+          <div className="mb-1 flex justify-center">
+            <AdvanceAnimControl label={step.anim.label} autoplay={step.anim.autoplay} />
+          </div>
+        ) : null;
+      })()}
+
       {/* Hàng điều khiển: ◀  [tab các câu]  ▶ */}
       <div className="flex items-center gap-2">
         <Button
