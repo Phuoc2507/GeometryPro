@@ -230,6 +230,9 @@ export function rawGeometryReducer(state: GeometryState, action: GeometryAction)
         undoStack: [],
         redoStack: [],
         isScanning: false,
+        // Mở/hiện MỘT hình cụ thể ⇒ thôi "đang xem job đang chạy" nên bỏ lớp phủ streaming.
+        // Job vẫn chạy nền trong queue; luồng "vẽ xong" tự set lại activeQueueId ngay sau dispatch này.
+        activeQueueId: null,
         advanceScene: null,
       };
     case 'SET_ADVANCE_SCENE':
