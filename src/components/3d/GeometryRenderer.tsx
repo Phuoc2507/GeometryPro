@@ -24,6 +24,7 @@ import { AnimatedParallelMark } from './AnimatedParallelMark';
 import { AnimatedDynamicPoint } from './AnimatedDynamicPoint';
 import { AnimatedSurface } from './AnimatedSurface';
 import { AnimatedCurve } from './AnimatedCurve';
+import AnimatedRevolutionSolid from './AnimatedRevolutionSolid';
 import { useHiddenLineDetection } from '@/hooks/useHiddenLineDetection';
 import { mapsEqual } from '@/hooks/useHiddenLineDetection';
 import { mergeLineDashStyles } from '@/lib/geometry/hiddenLineDetection';
@@ -388,6 +389,11 @@ export function GeometryRenderer({ geometry: geometryProp, isBuilding }: Geometr
       {/* ═══ Surfaces of Revolution ═══ */}
       {surfaces.map((s, i) => (
         <AnimatedSurface key={`surf-${s.id}`} surface={s} delay={shapeStartDelay + (allShapes.length + i) * shapeDelay} isBuilding={effectiveIsBuilding} />
+      ))}
+
+      {/* ═══ Revolution Solids ═══ */}
+      {(geometry.revolutionSolids || []).map((solid) => (
+        <AnimatedRevolutionSolid key={solid.id} solid={solid} />
       ))}
 
       {/* ═══ Curves ═══ */}
