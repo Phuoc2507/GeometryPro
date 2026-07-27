@@ -1,7 +1,7 @@
 
 import { useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { User, LogOut, Save, Settings, Sparkles, Crown, ListChecks } from 'lucide-react';
+import { User, LogOut, Save, Settings, Sparkles, Crown, ListChecks, GraduationCap, Presentation } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -26,6 +26,14 @@ export function UserMenu() {
 
   // Người dùng có gói trả phí còn hiệu lực (tier hạ về 'free' khi hết hạn).
   const hasPlan = tier !== 'free';
+
+  // Chuyển qua lại Học sinh ↔ Giáo viên (chung một tài khoản & ví credit).
+  const isTeacher = location.pathname.startsWith('/teacher');
+  const switchMode = () => {
+    const target = isTeacher ? 'student' : 'teacher';
+    try { localStorage.setItem('geo3d:last-mode', target); } catch { /* bỏ qua */ }
+    navigate(`/${target}`);
+  };
 
   const daysLeft = useMemo(() => {
     if (!hasPlan || !profile?.plan_expires_at) return null;
@@ -144,6 +152,11 @@ export function UserMenu() {
             )}
           </DropdownMenuItem>
         )}
+        <DropdownMenuItem onClick={switchMode}>
+          {isTeacher
+            ? <><GraduationCap className="w-4 h-4 mr-2" /> Chuyển sang Học sinh</>
+            : <><Presentation className="w-4 h-4 mr-2" /> Chuyển sang Giáo viên</>}
+        </DropdownMenuItem>
         <DropdownMenuItem onClick={() => navigate('/saved')}>
           <Save className="w-4 h-4 mr-2" />
           Hình đã lưu
