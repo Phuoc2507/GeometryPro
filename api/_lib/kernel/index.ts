@@ -38,3 +38,6 @@ export { Trace } from './trace';
 export { run, RunPlanSchema, type EngineResult } from './run';
 export { entityTableToGeometryData } from './entityToGeometry';
 export { runAnalysis, runAny, AnalysisPlanSchema } from './analysis/runAnalysis';
+// Khối tròn xoay (Advance – rev-ox): builder cần chúng qua kernel-dist (không import .ts nguồn).
+export { buildAnalysisFigure } from './analysis/analysisFigure';
+export { evalProfile, revolutionVolumeDisk, buildRevolutionSolidOx } from './analysis/revolution';

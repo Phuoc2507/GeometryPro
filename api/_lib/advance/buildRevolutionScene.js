@@ -2,8 +2,9 @@
 // Dựng AdvanceScene cho mẫu 'rev-ox' từ params đã trích (LLM chỉ trích, engine dựng & kiểm).
 // base: buildAnalysisFigure (curve r(x) + điểm mẫu ⇒ qua gate points>0) + gắn khối tròn xoay đã verified.
 // steps: Câu a hiện khối (+ anim sweep), Câu b hiện đáp án thể tích.
-import { buildAnalysisFigure } from '../kernel/analysis/analysisFigure';
-import { buildRevolutionSolidOx } from '../kernel/analysis/revolution';
+// Nạp từ kernel-dist (bundle .mjs do `npm run build:kernel` sinh) — KHÔNG import .ts nguồn,
+// vì route .js chạy trên Node/Vercel không phân giải được specifier .ts không đuôi.
+import { buildAnalysisFigure, buildRevolutionSolidOx } from '../kernel-dist/index.mjs';
 
 // ProfileFn → hệ số poly để buildAnalysisFigure vẽ curve minh hoạ.
 // sqrt không phải đa thức: xấp xỉ hình dạng bằng poly bậc 2 khớp 3 điểm để CÓ curve gợi ý
