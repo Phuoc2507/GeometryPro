@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
-import { ChevronRight, ChevronLeft, Copy, Check, Box, MapPin, Ruler, Cuboid, Code, Download, Image as ImageIcon, ChevronDown, Sparkles, Info, Pencil } from 'lucide-react';
+import { ChevronRight, ChevronLeft, Copy, Check, Box, MapPin, Ruler, Cuboid, Code, Download, Image as ImageIcon, ChevronDown, Sparkles, Info, Pencil, Undo2, Redo2 } from 'lucide-react';
 import type { Point3D } from '@/types/geometry';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -37,12 +37,17 @@ const EQ_COLORS = [
 
 // Ô nhập MỘT toạ độ (x/y/z). Giữ state chuỗi cục bộ để gõ được dấu "-", ".", số dở dang;
 // chỉ commit khi rời ô / Enter và giá trị hợp lệ. Khi điểm đổi từ ngoài (và ô không focus) thì đồng bộ lại.
-function CoordInput({ value, onCommit, label }: { value: number; onCommit: (n: number) => void; label: string }) {
+// Ctrl/⌘+Z / Ctrl/⌘+Y (hoặc +Shift+Z) hoàn tác/làm lại NGAY trong ô — vì handler toàn cục bỏ qua khi đang gõ.
+function CoordInput({ value, onCommit, onUndo, onRedo, label }: {
+  value: number; onCommit: (n: number) => void; onUndo: () => void; onRedo: () => void; label: string;
+}) {
   const [txt, setTxt] = useState(() => fmt(value));
   const focused = useRef(false);
+  const skipCommit = useRef(false); // true → onBlur không commit (khi undo/redo/Escape)
   useEffect(() => { if (!focused.current) setTxt(fmt(value)); }, [value]);
 
   const commit = () => {
+    if (skipCommit.current) { skipCommit.current = false; setTxt(fmt(value)); return; }
     const n = parseFloat(txt.replace(',', '.'));
     if (Number.isFinite(n)) { if (n !== value) onCommit(n); }
     else setTxt(fmt(value)); // nhập rác → khôi phục
@@ -58,8 +63,21 @@ function CoordInput({ value, onCommit, label }: { value: number; onCommit: (n: n
       onChange={(e) => setTxt(e.target.value)}
       onBlur={() => { focused.current = false; commit(); }}
       onKeyDown={(e) => {
-        if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
-        else if (e.key === 'Escape') { setTxt(fmt(value)); focused.current = false; (e.target as HTMLInputElement).blur(); }
+        if ((e.ctrlKey || e.metaKey) && (e.key === 'z' || e.key === 'Z' || e.key === 'y' || e.key === 'Y')) {
+          e.preventDefault();
+          e.stopPropagation(); // đừng để handler toàn cục undo lần nữa
+          const isRedo = e.key === 'y' || e.key === 'Y' || e.shiftKey;
+          skipCommit.current = true;
+          focused.current = false;                 // cho phép effect đồng bộ txt về giá trị mới sau undo
+          (e.target as HTMLInputElement).blur();
+          if (isRedo) onRedo(); else onUndo();
+        } else if (e.key === 'Enter') {
+          (e.target as HTMLInputElement).blur();
+        } else if (e.key === 'Escape') {
+          skipCommit.current = true;
+          focused.current = false;
+          (e.target as HTMLInputElement).blur();
+        }
       }}
       className="w-full min-w-0 text-center font-mono text-xs rounded-md bg-secondary/40 border border-border/40 px-1 py-1 text-foreground tabular-nums focus:outline-none focus:ring-1 focus:ring-primary/60 focus:border-primary/60 hover:border-border transition-colors"
     />
@@ -67,14 +85,18 @@ function CoordInput({ value, onCommit, label }: { value: number; onCommit: (n: n
 }
 
 // Một dòng đỉnh: nhãn + 3 ô nhập x/y/z. Sửa xong → updatePoint ⇒ các cạnh/điểm nối theo id tự đi theo.
-function VertexRow({ point, onUpdate }: { point: Point3D; onUpdate: (id: string, x: number, y: number, z: number) => void }) {
+function VertexRow({ point, onUpdate, onUndo, onRedo }: {
+  point: Point3D;
+  onUpdate: (id: string, x: number, y: number, z: number) => void;
+  onUndo: () => void; onRedo: () => void;
+}) {
   return (
     <div className="flex items-center gap-2 p-1.5 rounded-md bg-secondary/30">
       <span className="font-serif italic text-sm text-primary w-6 shrink-0 text-center">{point.label}</span>
       <div className="grid grid-cols-3 gap-1 flex-1 min-w-0">
-        <CoordInput value={point.x} label={`Tọa độ x của ${point.label}`} onCommit={(n) => onUpdate(point.id, n, point.y, point.z)} />
-        <CoordInput value={point.y} label={`Tọa độ y của ${point.label}`} onCommit={(n) => onUpdate(point.id, point.x, n, point.z)} />
-        <CoordInput value={point.z} label={`Tọa độ z của ${point.label}`} onCommit={(n) => onUpdate(point.id, point.x, point.y, n)} />
+        <CoordInput value={point.x} label={`Tọa độ x của ${point.label}`} onUndo={onUndo} onRedo={onRedo} onCommit={(n) => onUpdate(point.id, n, point.y, point.z)} />
+        <CoordInput value={point.y} label={`Tọa độ y của ${point.label}`} onUndo={onUndo} onRedo={onRedo} onCommit={(n) => onUpdate(point.id, point.x, n, point.z)} />
+        <CoordInput value={point.z} label={`Tọa độ z của ${point.label}`} onUndo={onUndo} onRedo={onRedo} onCommit={(n) => onUpdate(point.id, point.x, point.y, n)} />
       </div>
     </div>
   );
@@ -338,18 +360,30 @@ function PanelContent() {
 
               {/* ─── Tọa độ đỉnh — SỬA ĐƯỢC TRỰC TIẾP ─── */}
               <div>
-                <h3 className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground mb-1 flex items-center gap-1.5">
-                  <MapPin className="w-3 h-3" /> Tọa độ đỉnh
-                </h3>
+                <div className="flex items-center justify-between mb-1">
+                  <h3 className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                    <MapPin className="w-3 h-3" /> Tọa độ đỉnh
+                  </h3>
+                  <div className="flex items-center gap-0.5">
+                    <Button variant="ghost" size="icon" className="h-6 w-6" aria-label="Hoàn tác" title="Hoàn tác (Ctrl+Z)"
+                      disabled={!context.canUndo} onClick={() => context.undo()}>
+                      <Undo2 className="w-3.5 h-3.5" />
+                    </Button>
+                    <Button variant="ghost" size="icon" className="h-6 w-6" aria-label="Làm lại" title="Làm lại (Ctrl+Y)"
+                      disabled={!context.canRedo} onClick={() => context.redo()}>
+                      <Redo2 className="w-3.5 h-3.5" />
+                    </Button>
+                  </div>
+                </div>
                 <p className="text-[11px] text-muted-foreground/70 mb-2 flex items-center gap-1">
-                  <Pencil className="w-2.5 h-2.5" /> Sửa số (x, y, z) rồi Enter — các cạnh nối theo đỉnh sẽ tự đi theo.
+                  <Pencil className="w-2.5 h-2.5" /> Sửa số (x, y, z) rồi Enter — cạnh nối theo đỉnh tự đi theo, thay đổi được tự động lưu.
                 </p>
                 <div className="grid grid-cols-3 gap-1 px-1.5 mb-1 text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider ml-8">
                   <span className="text-center">x</span><span className="text-center">y</span><span className="text-center">z</span>
                 </div>
                 <div className="space-y-1">
                   {state.geometry.points.map((point) => (
-                    <VertexRow key={point.id} point={point} onUpdate={context.updatePoint} />
+                    <VertexRow key={point.id} point={point} onUpdate={context.updatePoint} onUndo={context.undo} onRedo={context.redo} />
                   ))}
                 </div>
               </div>
