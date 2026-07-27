@@ -249,7 +249,7 @@ export function SolveResultView({
 }) {
   const step   = result.steps[currentStep] ?? null;
   const nSteps  = result.steps.length;
-  const [showProblem, setShowProblem] = useState(true);
+  const [showProblem, setShowProblem] = useState(false);
 
   return (
     <div className="h-full flex flex-col">
