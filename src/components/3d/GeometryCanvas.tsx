@@ -101,6 +101,30 @@ function CameraFitter({ geometry, is2D }: { geometry: GeometryData | null; is2D?
   return null;
 }
 
+// Nhắm camera LỆCH LÊN khi đáy màn bị panel che (mobile). Dịch khung ở mức
+// projection (setViewOffset) nên GIỮ nguyên tâm xoay — fit/fly/xoay đều lệch theo,
+// điểm của bước không còn nấp sau panel dưới.
+function CameraViewOffset() {
+  const { camera, size } = useThree();
+  const cameraCtx = useCameraOptional();
+  const inset = cameraCtx?.bottomInset ?? 0;
+  useEffect(() => {
+    const cam = camera as THREE.PerspectiveCamera;
+    if (typeof cam.setViewOffset !== 'function') return;
+    if (inset > 0.001 && size.height > 0) {
+      // Đưa tâm vùng đang thấy (nửa trên) về giữa khung → dịch ảnh lên (inset/2)·chiều cao.
+      cam.setViewOffset(size.width, size.height, 0, (inset / 2) * size.height, size.width, size.height);
+    } else {
+      cam.clearViewOffset();
+    }
+    cam.updateProjectionMatrix();
+    return () => {
+      if (typeof cam.clearViewOffset === 'function') { cam.clearViewOffset(); cam.updateProjectionMatrix(); }
+    };
+  }, [camera, size.width, size.height, inset]);
+  return null;
+}
+
 function CameraTracker() {
   const { camera } = useThree();
   const cameraStateContext = useCameraStateOptional();
@@ -368,6 +392,7 @@ function Scene({ geometry, isBuilding, autoRotate = false, is2D = false, focus =
       <CameraTracker />
       <CanvasCaptureBridge />
       <CameraFitter geometry={geometry} is2D={is2D} />
+      <CameraViewOffset />
       <CameraFlyer controlsRef={controlsRef} focus={focus} />
 
       {/* Lighting with shadows */}
