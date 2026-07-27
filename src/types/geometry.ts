@@ -343,7 +343,7 @@ export type GeometryAction =
   | { type: 'TOGGLE_AUTO_COLOR' }
   | { type: 'TOGGLE_COORDINATE_GRID' }
   | { type: 'UPDATE_SCAN_PROGRESS'; progress: number; status: string }
-  | { type: 'SET_GEOMETRY'; geometry: GeometryData }
+  | { type: 'SET_GEOMETRY'; geometry: GeometryData; undoStack?: GeometryData[]; redoStack?: GeometryData[] }
   | { type: 'START_BUILDING' }
   | { type: 'FINISH_BUILDING' }
   | { type: 'CLEAR_GEOMETRY' }

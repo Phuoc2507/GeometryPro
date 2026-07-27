@@ -145,6 +145,7 @@ import { generateLatexCode } from '@/lib/geometry/generateLatex';
 import { tryLocalCommand } from '@/lib/geometry/localCommands';
 import { DrawMode } from '@/components/DrawModeSelector';
 import { useGeometryHistory } from '@/hooks/useGeometryHistory';
+import { loadUndoHistory, saveUndoHistory } from '@/lib/undoHistoryStore';
 
 export const initialGeometryState: GeometryState = {
   geometry: null,
@@ -227,8 +228,9 @@ export function rawGeometryReducer(state: GeometryState, action: GeometryAction)
       return {
         ...state,
         geometry: action.geometry,
-        undoStack: [],
-        redoStack: [],
+        // Mở lại một hình đã lưu ⇒ khôi phục ngăn hoàn tác/làm lại của hình đó (nếu có); mặc định rỗng.
+        undoStack: action.undoStack ?? [],
+        redoStack: action.redoStack ?? [],
         isScanning: false,
         // Mở/hiện MỘT hình cụ thể ⇒ thôi "đang xem job đang chạy" nên bỏ lớp phủ streaming.
         // Job vẫn chạy nền trong queue; luồng "vẽ xong" tự set lại activeQueueId ngay sau dispatch này.
@@ -407,7 +409,7 @@ export interface GeometryContextType {
   queueAnalyzeText: (prompt: string, mode?: DrawMode, tags?: string[], detailLevel?: import('@/types/geometry').DetailLevel, offset?: [number, number, number]) => void;
   queueAnalyzeImage: (imageBase64: string, mode?: DrawMode, tags?: string[], detailLevel?: import('@/types/geometry').DetailLevel) => void;
   modifyGeometry: (prompt: string, opts?: { aiMode?: boolean }) => Promise<void>;
-  loadGeometry: (geometry: GeometryData, opts?: { silent?: boolean }) => void;
+  loadGeometry: (geometry: GeometryData, opts?: { silent?: boolean; historyId?: string }) => void;
   clearGeometry: () => void;
   stopScanning: () => void;
   viewQueueItem: (id: string) => void;
@@ -487,6 +489,20 @@ export function GeometryProvider({ children }: { children: React.ReactNode }) {
   }, [state.geometry, state.advanceScene, updateGeometryData]);
 
   useEffect(() => () => { if (persistTimerRef.current) clearTimeout(persistTimerRef.current); }, []);
+
+  // Lưu ngăn HOÀN TÁC/LÀM LẠI theo ?id để mở lại hình (đổi bài / tải lại / hôm sau) vẫn undo/redo được.
+  // Bỏ qua phiên Advance (undo/redo không áp dụng cho stepper nhiều câu).
+  const undoHistoryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    if (state.advanceScene) return;
+    const id = new URLSearchParams(window.location.search).get('id');
+    if (!id) return;
+    const undoStack = state.undoStack;
+    const redoStack = state.redoStack;
+    if (undoHistoryTimerRef.current) clearTimeout(undoHistoryTimerRef.current);
+    undoHistoryTimerRef.current = setTimeout(() => { saveUndoHistory(id, undoStack, redoStack, Date.now()); }, 400);
+  }, [state.undoStack, state.redoStack, state.advanceScene]);
+  useEffect(() => () => { if (undoHistoryTimerRef.current) clearTimeout(undoHistoryTimerRef.current); }, []);
 
   // Ghi ngược tuỳ chọn hiển thị vào localStorage khi đổi, để lần mount sau seed lại đúng.
   // Merge `...loadPreferences()` để giữ các khoá chỉ-Settings (vd showIllustrationValues).
@@ -1113,7 +1129,7 @@ export function GeometryProvider({ children }: { children: React.ReactNode }) {
     window.dispatchEvent(new Event('geometryCleared'));
   }, []);
 
-  const loadGeometry = useCallback((geometry: GeometryData, opts?: { silent?: boolean }) => {
+  const loadGeometry = useCallback((geometry: GeometryData, opts?: { silent?: boolean; historyId?: string }) => {
     // Lượt Advance đã lưu vào lịch sử nhúng cả cảnh (advanceScene) → mở lại KHÔI PHỤC nguyên
     // stepper + lời giải + reveal, KHÔNG chỉ hiện hình base. Mọi đường mở lại (sidebar/URL ?id=)
     // đều đi qua loadGeometry nên bắt tại đây là đủ.
@@ -1125,7 +1141,9 @@ export function GeometryProvider({ children }: { children: React.ReactNode }) {
       setTimeout(() => dispatch({ type: 'FINISH_BUILDING' }), 1000);
       return;
     }
-    dispatch({ type: 'SET_GEOMETRY', geometry });
+    // Mở lại một hình đã lưu (có historyId) → nạp kèm ngăn hoàn tác/làm lại đã lưu của hình đó.
+    const restored = opts?.historyId ? loadUndoHistory(opts.historyId) : { undo: [], redo: [] };
+    dispatch({ type: 'SET_GEOMETRY', geometry, undoStack: restored.undo, redoStack: restored.redo });
     // silent: dùng khi ghép thêm điểm dựng của lời giải vào hình — không toast, không animation.
     if (opts?.silent) return;
     dispatch({ type: 'START_BUILDING' });

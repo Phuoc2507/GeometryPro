@@ -46,7 +46,7 @@ function GeometryLoader() {
           const item = history.find((entry) => entry.id === id);
           if (item) {
             hasLoaded.current = true;
-            context.loadGeometry(item.geometry_data as unknown as GeometryData);
+            context.loadGeometry(item.geometry_data as unknown as GeometryData, { historyId: id });
             return;
           }
         }
@@ -58,7 +58,7 @@ function GeometryLoader() {
           .single();
         if (!error && data) {
           hasLoaded.current = true;
-          context.loadGeometry(data.geometry_data as unknown as GeometryData);
+          context.loadGeometry(data.geometry_data as unknown as GeometryData, { historyId: id });
         }
       } catch (err) {
         console.error("Failed to load geometry from URL:", err);

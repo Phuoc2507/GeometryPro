@@ -171,10 +171,11 @@ function SidebarContent() {
   
   const handleLoadHistory = (item: HistoryItem) => {
     if (context) {
-      context.loadGeometry(item.geometry_data);
+      // Đặt ?id TRƯỚC khi nạp để hiệu ứng lưu undo/redo bắt đúng khoá; truyền historyId để khôi phục ngăn hoàn tác.
       const url = new URL(window.location.href);
       url.searchParams.set('id', item.id);
       window.history.replaceState({}, '', url.toString());
+      context.loadGeometry(item.geometry_data, { historyId: item.id });
     }
   };
 
