@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { evalProfile, revolutionVolumeDisk } from '../revolution';
+import { evalProfile, revolutionVolumeDisk, buildRevolutionSolidOx } from '../revolution';
 
 describe('evalProfile', () => {
   it('poly: c0 + c1·x + c2·x²', () => {
@@ -21,5 +21,20 @@ describe('revolutionVolumeDisk', () => {
     );
     expect(value).toBeCloseTo(8 * Math.PI, 6);
     expect(estimatedError).toBeLessThan(1e-6);
+  });
+});
+
+describe('buildRevolutionSolidOx', () => {
+  it('gói khối với volume đã verified + latex', () => {
+    const s = buildRevolutionSolidOx('rev1', { kind: 'sqrt', a: 1, b: 0 }, [0, 4], '#6366f1');
+    expect(s.id).toBe('rev1');
+    expect(s.axis).toBe('Ox');
+    expect(s.method).toBe('disk');
+    expect(s.domain).toEqual([0, 4]);
+    expect(s.color).toBe('#6366f1');
+    expect(s.volume?.value).toBeCloseTo(8 * Math.PI, 6);
+    expect(s.volume?.verified).toBe(true);
+    expect(s.volume?.latex).toContain('\\pi');
+    expect(s.volume?.latex).toContain('\\int');
   });
 });

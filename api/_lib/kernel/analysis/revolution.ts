@@ -23,3 +23,20 @@ export function revolutionVolumeDisk(
   };
   return integrate(f, a, b);
 }
+
+export function buildRevolutionSolidOx(
+  id: string,
+  outer: ProfileFn,
+  domain: [number, number],
+  color?: string,
+): RevolutionSolid {
+  const { value, estimatedError } = revolutionVolumeDisk(outer, domain);
+  const verified = estimatedError <= 1e-6 * Math.max(1, Math.abs(value));
+  const volume: Verified<number> = {
+    value,
+    latex: `V=\\pi\\int_{${domain[0]}}^{${domain[1]}}\\left[r(x)\\right]^2\\,dx`,
+    verified,
+    estimatedError,
+  };
+  return { id, outer, axis: 'Ox', domain, method: 'disk', color, volume };
+}
