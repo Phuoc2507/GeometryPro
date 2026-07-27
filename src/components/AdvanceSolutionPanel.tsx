@@ -49,6 +49,7 @@ export function AdvanceSolutionPanel() {
           result={result}
           currentStep={currentStep}
           setCurrentStep={setCurrentStep}
+          problem={advanceScene.steps?.[questionIndex]?.label ?? undefined}
         />
       </div>
     </aside>

@@ -14,7 +14,7 @@ import { useState, useEffect, useMemo, useRef } from 'react';
 import type { Dispatch, SetStateAction } from 'react';
 import {
   ChevronLeft, ChevronRight, Sparkles, Loader2,
-  AlertTriangle, RotateCcw, BookOpen,
+  AlertTriangle, RotateCcw, BookOpen, ChevronDown,
 } from 'lucide-react';
 import { Button }      from '@/components/ui/button';
 import { Textarea }    from '@/components/ui/textarea';
@@ -239,18 +239,40 @@ function StepCard({ step, index, total }: StepCardProps) {
 // đã nạp sẵn, KHÔNG gọi API). `onReset` có → hiện nút "Giải lại" (luồng solve on-demand);
 // không có → ẩn nút (advance chỉ xem lời giải đã lưu).
 export function SolveResultView({
-  result, currentStep, setCurrentStep, onReset,
+  result, currentStep, setCurrentStep, onReset, problem,
 }: {
   result: import('@/hooks/useSolver').SolveResult;
   currentStep: number;
   setCurrentStep: Dispatch<SetStateAction<number>>;
   onReset?: () => void;
+  problem?: string;
 }) {
   const step   = result.steps[currentStep] ?? null;
   const nSteps  = result.steps.length;
+  const [showProblem, setShowProblem] = useState(true);
 
   return (
     <div className="h-full flex flex-col">
+      {/* Đề bài — render đẹp như lời giải (MathText: chữ + công thức), có thể thu gọn. */}
+      {problem && problem.trim() && (
+        <div className="border-b shrink-0">
+          <button
+            onClick={() => setShowProblem((v) => !v)}
+            aria-expanded={showProblem}
+            className="w-full flex items-center gap-1.5 px-4 py-2 text-left hover:bg-secondary/30 transition-colors"
+          >
+            <BookOpen className="w-3.5 h-3.5 text-primary shrink-0" />
+            <span className="text-[11px] font-semibold uppercase tracking-wide text-primary flex-1">Đề bài</span>
+            <ChevronDown className={cn('w-4 h-4 text-muted-foreground transition-transform', !showProblem && '-rotate-90')} />
+          </button>
+          {showProblem && (
+            <div className="px-4 pb-3 max-h-40 overflow-y-auto">
+              <MathText text={problem} className="text-sm text-foreground/85 leading-relaxed" />
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Đáp số — gọn, không hù dọa. Mức từ tier server (fallback verified nếu lời giải cũ). */}
       {(() => {
         const level = result.tier?.level ?? verifiedToLevel(result.verified);
@@ -510,6 +532,7 @@ export function SolverContent({ creditNote }: { creditNote?: string } = {}) {
         currentStep={currentStep}
         setCurrentStep={setCurrentStep}
         onReset={handleReset}
+        problem={job?.problem ?? geometry?.solve?.problem ?? undefined}
       />
     );
   }
