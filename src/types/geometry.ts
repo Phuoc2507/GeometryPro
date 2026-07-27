@@ -254,7 +254,8 @@ export interface Curve3D extends AdvanceFlags {
 export type ProfileFn =
   | { kind: 'poly'; coeffs: number[] }   // c0 + c1·x + c2·x² + …
   | { kind: 'sqrt'; a: number; b: number } // a·√x + b
-  | { kind: 'const'; c: number };
+  | { kind: 'const'; c: number }
+  | { kind: 'expr'; expr: string };      // biểu thức 1 biến x tổng quát: e^x, sin(x), ln(x), 1/x, sqrt(4-x^2)…
 
 // Kết quả đã (hoặc chưa) tự-kiểm bằng lõi tất định.
 export interface Verified<T> {
@@ -273,6 +274,9 @@ export interface RevolutionSolid extends AdvanceFlags {
   method: 'disk' | 'washer' | 'shell';
   volume?: Verified<number>;
   color?: string;
+  // Mẫu biên dạng do engine tính sẵn ⇒ frontend dựng LatheGeometry mà KHÔNG cần parser biểu thức.
+  samples?: { x: number; r: number }[];
+  innerSamples?: { x: number; r: number }[];
 }
 
 export interface GeometryData {

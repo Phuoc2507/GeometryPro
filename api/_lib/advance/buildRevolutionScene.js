@@ -4,39 +4,32 @@
 // steps: Câu a hiện khối (+ anim sweep), Câu b hiện đáp án thể tích.
 // Nạp từ kernel-dist (bundle .mjs do `npm run build:kernel` sinh) — KHÔNG import .ts nguồn,
 // vì route .js chạy trên Node/Vercel không phân giải được specifier .ts không đuôi.
-import { buildAnalysisFigure, buildRevolutionSolidOx } from '../kernel-dist/index.mjs';
-
-// ProfileFn → hệ số poly để buildAnalysisFigure vẽ curve minh hoạ.
-// sqrt không phải đa thức: xấp xỉ hình dạng bằng poly bậc 2 khớp 3 điểm để CÓ curve gợi ý
-// (đường sinh chính xác do khối tròn xoay lo; curve chỉ để mắt thấy biên dạng).
-function profileToCoeffs(outer, domain) {
-  if (outer.kind === 'poly') return outer.coeffs.slice();
-  if (outer.kind === 'const') return [outer.c];
-  // sqrt: khớp parabola qua x = a, mid, b.
-  const [a, b] = domain;
-  const mid = (a + b) / 2;
-  const r = (x) => outer.a * Math.sqrt(x) + outer.b;
-  const xs = [a, mid, b];
-  const ys = xs.map(r);
-  const c2 =
-    (ys[0] / ((xs[0] - xs[1]) * (xs[0] - xs[2]))) +
-    (ys[1] / ((xs[1] - xs[0]) * (xs[1] - xs[2]))) +
-    (ys[2] / ((xs[2] - xs[0]) * (xs[2] - xs[1])));
-  const c1 = (ys[2] - ys[0]) / (xs[2] - xs[0]) - c2 * (xs[0] + xs[2]);
-  const c0 = ys[0] - c1 * xs[0] - c2 * xs[0] * xs[0];
-  return [c0, c1, c2];
-}
+import { buildAnalysisFigure, buildRevolutionSolidOx, buildRevolutionSolidOy } from '../kernel-dist/index.mjs';
 
 export function buildRevolutionScene(params) {
-  const { outer, domain, parts } = params;
+  const { outer, domain, parts, inner, axis } = params;
   const revId = 'rev1';
-  const solid = buildRevolutionSolidOx(revId, outer, domain, '#6366f1');
+  // Engine dựng khối + tự-kiểm thể tích và trả mẫu biên dạng.
+  //  - Ox: phương pháp đĩa (hoặc vành khăn nếu có `inner`).
+  //  - Oy: phương pháp vỏ trụ (shell).
+  const solid = axis === 'Oy'
+    ? buildRevolutionSolidOy(revId, outer, domain, '#6366f1')
+    : buildRevolutionSolidOx(revId, outer, domain, '#6366f1', inner || undefined);
+  const aroundOy = solid.axis === 'Oy';
 
-  const fnName = 'r';
-  const base = buildAnalysisFigure('Tròn xoay quanh Ox', {
-    polys: { [fnName]: profileToCoeffs(outer, domain) },
-    polyDomains: { [fnName]: domain },
-    points: [],
+  // Điểm mẫu cho base (qua gate points>0) lấy từ mẫu biên dạng engine đã tính — đúng cho MỌI kiểu
+  // biên dạng (poly/sqrt/const/expr), không cần xấp xỉ poly. Lấy thưa ~9 điểm cho gọn hình.
+  const src = solid.samples && solid.samples.length ? solid.samples : [{ x: domain[0], r: 0 }];
+  const stepEvery = Math.max(1, Math.floor(src.length / 8));
+  const samplePts = src
+    .filter((_, i) => i % stepEvery === 0)
+    .map((s, i) => ({ id: `r${i}`, label: '', x: s.x, y: s.r, z: 0 }));
+
+  const base = buildAnalysisFigure(aroundOy ? 'Tròn xoay quanh Oy' : 'Tròn xoay quanh Ox', {
+    // Vẽ curve mượt bằng poly khi biên dạng LÀ poly; kiểu khác dựa vào điểm mẫu + khối tròn xoay.
+    polys: outer.kind === 'poly' ? { r: outer.coeffs.slice() } : {},
+    polyDomains: outer.kind === 'poly' ? { r: domain } : {},
+    points: samplePts,
     solids: {},
   });
   base.revolutionSolids = [solid];
@@ -45,7 +38,7 @@ export function buildRevolutionScene(params) {
   // Bài tròn xoay 1 câu ("tính thể tích") ⇒ chỉ có 1 part. Khi đó gán nhãn 2 bước cố định, dễ hiểu
   // (Khối tròn xoay → Thể tích) thay vì trộn nhãn "Câu 1" của đề với "Câu b" mặc định.
   const hasTwoParts = Array.isArray(parts) && parts.length >= 2;
-  const partA = hasTwoParts ? parts[0] : { label: 'Khối tròn xoay', hoi: 'Khối tròn xoay quanh Ox' };
+  const partA = hasTwoParts ? parts[0] : { label: 'Khối tròn xoay', hoi: aroundOy ? 'Khối tròn xoay quanh Oy' : 'Khối tròn xoay quanh Ox' };
   const partB = hasTwoParts ? parts[1] : { label: 'Thể tích', hoi: 'Thể tích khối' };
 
   const v = solid.volume;

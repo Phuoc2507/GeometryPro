@@ -65,15 +65,29 @@ QUY TẮC MẪU GIẢI TÍCH (optional — chỉ thêm khi CHẮC CHẮN khớp)
 - Nếu đề yêu cầu QUAY một miền phẳng quanh trục Ox để tạo khối tròn xoay, thêm 2 trường ở cấp gốc:
   "template": "rev-ox",
   "templateParams": {
-    "outer": <biên dạng r(x)>,
+    "outer": <biên dạng r(x) — đường XA trục hơn>,
+    "inner": <biên dạng đường GẦN trục hơn — CHỈ khi miền kẹp giữa 2 đường (vành khăn) quanh Ox; BỎ nếu miền tựa trục>,
+    "axis": "Ox" | "Oy",   // trục quay; MẶC ĐỊNH "Ox" nếu không ghi
     "domain": [a, b],
     "fnLabel": "<LaTeX hàm, ví dụ y=\\sqrt{x}>",
     "parts": [ { "label":"Câu a", "hoi":".." }, { "label":"Câu b", "hoi":".." } ]
   }
-  Trong đó "outer" là MỘT trong: { "kind":"sqrt","a":..,"b":.. } | { "kind":"poly","coeffs":[c0,c1,..] } | { "kind":"const","c":.. }
-- CHỈ đặt "template" khi trục là Ox và biên dạng khớp một trong 3 "kind" trên. Không chắc → BỎ QUA, để engine xử như thường.
+  "outer" (và "inner" nếu có) là MỘT trong các "kind":
+    { "kind":"poly","coeffs":[c0,c1,..] }   → c0 + c1·x + c2·x² + …
+    { "kind":"sqrt","a":..,"b":.. }         → a·√x + b
+    { "kind":"const","c":.. }               → hằng số
+    { "kind":"expr","expr":"<biểu thức theo x>" }  → hàm TỔNG QUÁT khác: e^x, sin x, ln x, 1/x, √(4-x²)…
+  Cú pháp "expr" (1 biến x): + - * / ^ , ngoặc ( ), hàm sin cos tan sqrt abs exp ln log, hằng pi e.
+    Ví dụ: "exp(x)"  "sin(x)"  "ln(x)"  "1/x"  "sqrt(4 - x^2)".  (e^x viết "exp(x)"; ln = log = log tự nhiên.)
+  Cách chọn "domain" [a,b]:
+    - Nếu đề cho cận x=.. rõ ràng → dùng đúng cận đó.
+    - Nếu miền tựa trục Ox và chỉ cho 1 đường cong cắt Ox (vd y=√(4-x²)) → [a,b] là 2 nghiệm r(x)=0 (ở đây [-2,2]).
+    - Nếu miền kẹp giữa 2 đường (vành khăn) → [a,b] là 2 hoành độ GIAO của 2 đường; "outer" là đường có |giá trị| LỚN hơn trên khoảng đó, "inner" là đường nhỏ hơn.
+- Hỗ trợ quay quanh **Ox** (đĩa/vành khăn) và **Oy** (vỏ trụ, đặt "axis":"Oy"). Với Oy: miền {a≤x≤b, 0≤y≤r(x)}, cận a≥0, KHÔNG dùng "inner".
+- Trục quay khác Ox/Oy (vd đường x=k, y=k) → BỎ QUA "template".
+- Không chắc biên dạng/miền/trục → BỎ QUA "template".
 
-[Ví dụ 4 — rev-ox]
+[Ví dụ 4 — rev-ox, đĩa đặc]
 Đề: "Cho miền phẳng giới hạn bởi y = √x, trục Ox và x = 4. a) Vẽ khối tròn xoay khi quay miền quanh Ox. b) Tính thể tích khối đó."
 JSON:
 {
@@ -92,6 +106,56 @@ JSON:
       { "label": "Câu a", "hoi": "Vẽ khối tròn xoay khi quay miền quanh Ox" },
       { "label": "Câu b", "hoi": "Tính thể tích khối tròn xoay" }
     ]
+  }
+}
+
+[Ví dụ 5 — rev-ox, hàm tổng quát dùng "expr"]
+Đề: "Tính thể tích khối tròn xoay khi quay hình phẳng giới hạn bởi y = e^x, trục Ox, x = 0, x = 1 quanh Ox."
+JSON:
+{
+  "type": "single",
+  "setup": "Miền (H): y=e^x, trục Ox, x=0, x=1",
+  "parts": [ { "label": "Câu 1", "hoi": "Tính thể tích khối tròn xoay quanh Ox", "phan_tu_moi": [] } ],
+  "template": "rev-ox",
+  "templateParams": {
+    "outer": { "kind": "expr", "expr": "exp(x)" },
+    "domain": [0, 1],
+    "fnLabel": "y=e^{x}",
+    "parts": [ { "label": "Câu 1", "hoi": "Tính thể tích khối tròn xoay quanh Ox" } ]
+  }
+}
+
+[Ví dụ 6 — rev-ox, vành khăn (2 đường) dùng "inner"]
+Đề: "Cho hình phẳng (H) giới hạn bởi hai đường y = x và y = x². Tính thể tích khối tròn xoay khi quay (H) quanh Ox."
+JSON:
+{
+  "type": "single",
+  "setup": "Miền (H) kẹp giữa y=x và y=x²",
+  "parts": [ { "label": "Câu 1", "hoi": "Tính thể tích khối tròn xoay quanh Ox", "phan_tu_moi": [] } ],
+  "template": "rev-ox",
+  "templateParams": {
+    "outer": { "kind": "poly", "coeffs": [0, 1] },
+    "inner": { "kind": "poly", "coeffs": [0, 0, 1] },
+    "domain": [0, 1],
+    "fnLabel": "y=x,\\ y=x^2",
+    "parts": [ { "label": "Câu 1", "hoi": "Tính thể tích khối tròn xoay quanh Ox" } ]
+  }
+}
+
+[Ví dụ 7 — rev-oy, quay quanh Oy dùng "axis":"Oy"]
+Đề: "Cho hình phẳng (H) giới hạn bởi y = x², y = 0 và x = 1. Tính thể tích khối tròn xoay khi quay (H) quanh trục Oy."
+JSON:
+{
+  "type": "single",
+  "setup": "Miền (H): y=x², y=0, x=1",
+  "parts": [ { "label": "Câu 1", "hoi": "Tính thể tích khối tròn xoay quanh Oy", "phan_tu_moi": [] } ],
+  "template": "rev-ox",
+  "templateParams": {
+    "outer": { "kind": "poly", "coeffs": [0, 0, 1] },
+    "axis": "Oy",
+    "domain": [0, 1],
+    "fnLabel": "y=x^2",
+    "parts": [ { "label": "Câu 1", "hoi": "Tính thể tích khối tròn xoay quanh Oy" } ]
   }
 }
 

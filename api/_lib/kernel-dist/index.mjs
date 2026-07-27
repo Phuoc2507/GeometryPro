@@ -6519,7 +6519,11 @@ var FUNCS = {
   cos: Math.cos,
   tan: Math.tan,
   sqrt: Math.sqrt,
-  abs: Math.abs
+  abs: Math.abs,
+  exp: Math.exp,
+  ln: Math.log,
+  log: Math.log
+  // ln = log = log tự nhiên (chuẩn giải tích VN)
 };
 var CONSTS = { pi: Math.PI, e: Math.E };
 var own = (o, k) => Object.prototype.hasOwnProperty.call(o, k);
@@ -7610,34 +7614,84 @@ function runAny(raw) {
 }
 
 // api/_lib/kernel/analysis/revolution.ts
-function evalProfile(f, x) {
+function compileProfile(f) {
   switch (f.kind) {
     case "poly":
-      return f.coeffs.reduce((acc, c, i) => acc + c * x ** i, 0);
+      return (x) => f.coeffs.reduce((acc, c, i) => acc + c * x ** i, 0);
     case "sqrt":
-      return f.a * Math.sqrt(x) + f.b;
+      return (x) => f.a * Math.sqrt(x) + f.b;
     case "const":
-      return f.c;
+      return () => f.c;
+    case "expr": {
+      const g = parseExpr(f.expr);
+      return (x) => g({ x });
+    }
   }
 }
-function revolutionVolumeDisk(outer, domain) {
+function evalProfile(f, x) {
+  return compileProfile(f)(x);
+}
+function sampleProfile(outer, domain, n = 64) {
   const [a, b] = domain;
+  const g = compileProfile(outer);
+  const out = [];
+  for (let i = 0; i <= n; i++) {
+    const x = a + (b - a) * i / n;
+    const r = g(x);
+    out.push({ x, r: Number.isFinite(r) ? Math.max(0, r) : 0 });
+  }
+  return out;
+}
+function revolutionVolumeDisk(outer, domain, inner) {
+  const [a, b] = domain;
+  const go = compileProfile(outer);
+  const gi = inner ? compileProfile(inner) : null;
   const f = (x) => {
-    const r = evalProfile(outer, x);
-    return Math.PI * r * r;
+    const ro = go(x);
+    const ri = gi ? gi(x) : 0;
+    return Math.PI * (ro * ro - ri * ri);
   };
   return integrate(f, a, b);
 }
-function buildRevolutionSolidOx(id, outer, domain, color) {
-  const { value, estimatedError } = revolutionVolumeDisk(outer, domain);
+function buildRevolutionSolidOx(id, outer, domain, color, inner) {
+  const { value, estimatedError } = revolutionVolumeDisk(outer, domain, inner);
   const verified = estimatedError <= 1e-6 * Math.max(1, Math.abs(value));
-  const volume = {
-    value,
-    latex: `V=\\pi\\int_{${domain[0]}}^{${domain[1]}}\\left[r(x)\\right]^2\\,dx`,
-    verified,
-    estimatedError
+  const latex = inner ? `V=\\pi\\int_{${domain[0]}}^{${domain[1]}}\\left(\\left[r_{ng}(x)\\right]^2-\\left[r_{tr}(x)\\right]^2\\right)\\,dx` : `V=\\pi\\int_{${domain[0]}}^{${domain[1]}}\\left[r(x)\\right]^2\\,dx`;
+  const volume = { value, latex, verified, estimatedError };
+  return {
+    id,
+    outer,
+    axis: "Ox",
+    domain,
+    method: inner ? "washer" : "disk",
+    color,
+    volume,
+    ...inner ? { inner } : {},
+    samples: sampleProfile(outer, domain),
+    ...inner ? { innerSamples: sampleProfile(inner, domain) } : {}
   };
-  return { id, outer, axis: "Ox", domain, method: "disk", color, volume };
+}
+function revolutionVolumeShellOy(outer, domain) {
+  const [a, b] = domain;
+  const g = compileProfile(outer);
+  const f = (x) => 2 * Math.PI * x * g(x);
+  return integrate(f, a, b);
+}
+function buildRevolutionSolidOy(id, outer, domain, color) {
+  const { value, estimatedError } = revolutionVolumeShellOy(outer, domain);
+  const verified = estimatedError <= 1e-6 * Math.max(1, Math.abs(value));
+  const latex = `V=2\\pi\\int_{${domain[0]}}^{${domain[1]}} x\\,r(x)\\,dx`;
+  const volume = { value, latex, verified, estimatedError };
+  return {
+    id,
+    outer,
+    axis: "Oy",
+    domain,
+    method: "shell",
+    color,
+    volume,
+    samples: sampleProfile(outer, domain)
+  };
 }
 
 // api/_lib/kernel/index.ts
@@ -7674,6 +7728,7 @@ export {
   attemptDeterministicRepair,
   buildAnalysisFigure,
   buildRevolutionSolidOx,
+  buildRevolutionSolidOy,
   checkDegeneracy,
   createEmptySymbolTable,
   entityTableToGeometryData,
@@ -7682,6 +7737,7 @@ export {
   executePlan,
   resolveEntity,
   revolutionVolumeDisk,
+  revolutionVolumeShellOy,
   run,
   runAnalysis,
   runAny,

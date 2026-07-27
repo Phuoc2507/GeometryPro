@@ -31,6 +31,7 @@ function tokenize(s: string): Tok[] {
 
 const FUNCS: Record<string, (x: number) => number> = {
   sin: Math.sin, cos: Math.cos, tan: Math.tan, sqrt: Math.sqrt, abs: Math.abs,
+  exp: Math.exp, ln: Math.log, log: Math.log, // ln = log = log tự nhiên (chuẩn giải tích VN)
 };
 const CONSTS: Record<string, number> = { pi: Math.PI, e: Math.E };
 

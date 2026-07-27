@@ -39,6 +39,45 @@ describe('buildRevolutionScene', () => {
     }
   });
 
+  it('expr y=e^x trên [0,1] → π(e²−1)/2, base có mẫu điểm & khối', () => {
+    const sc = buildRevolutionScene({
+      outer: { kind: 'expr', expr: 'exp(x)' },
+      domain: [0, 1],
+      fnLabel: 'y=e^x',
+      parts: [{ label: 'Câu 1', hoi: 'Tính thể tích quanh Ox' }],
+    });
+    expect(sc.base.points.length).toBeGreaterThan(0);
+    expect(sc.base.revolutionSolids[0].samples.length).toBeGreaterThan(0);
+    expect(sc.steps[1].answer.verified).toBe(true);
+    expect(sc.steps[1].answer.approx).toBeCloseTo((Math.PI * (Math.E * Math.E - 1)) / 2, 4);
+  });
+
+  it('vành khăn y=x & y=x² trên [0,1] → 2π/15, khối method=washer', () => {
+    const sc = buildRevolutionScene({
+      outer: { kind: 'poly', coeffs: [0, 1] },
+      inner: { kind: 'poly', coeffs: [0, 0, 1] },
+      domain: [0, 1],
+      fnLabel: 'y=x, y=x^2',
+      parts: [{ label: 'Câu 1', hoi: 'Tính thể tích quanh Ox' }],
+    });
+    expect(sc.base.revolutionSolids[0].method).toBe('washer');
+    expect(sc.steps[1].answer.approx).toBeCloseTo((2 * Math.PI) / 15, 4);
+  });
+
+  it('rev quanh Oy (axis=Oy) y=x² trên [0,1] → π/2, khối axis=Oy method=shell', () => {
+    const sc = buildRevolutionScene({
+      outer: { kind: 'poly', coeffs: [0, 0, 1] },
+      axis: 'Oy',
+      domain: [0, 1],
+      fnLabel: 'y=x^2',
+      parts: [{ label: 'Câu 1', hoi: 'Tính thể tích quanh Oy' }],
+    });
+    expect(sc.base.revolutionSolids[0].axis).toBe('Oy');
+    expect(sc.base.revolutionSolids[0].method).toBe('shell');
+    expect(sc.steps[1].answer.verified).toBe(true);
+    expect(sc.steps[1].answer.approx).toBeCloseTo(Math.PI / 2, 4);
+  });
+
   it('rev-ox 1 câu: y=x^2 trên [0,2] → 32π/5, nhãn bước gọn (Khối tròn xoay / Thể tích)', () => {
     // Bài điển hình chỉ 1 câu ⇒ templateParams.parts có 1 phần tử (hoặc vắng).
     const oneQ = buildRevolutionScene({
