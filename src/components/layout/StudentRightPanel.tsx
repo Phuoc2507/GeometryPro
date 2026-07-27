@@ -1,0 +1,162 @@
+/**
+ * StudentRightPanel — panel phải RIÊNG cho chế độ Học sinh (/student).
+ *
+ * Tách khỏi RightPanel (Giáo viên) để hai bên sửa độc lập. Học sinh chỉ cần 2 tab:
+ *   • Giải bài  (SolverContent)      — mặc định mở
+ *   • Thuộc tính (GeometryPropertiesTab, dùng chung với Giáo viên)
+ * KHÔNG có tab "Xuất" (xuất ảnh/LaTeX là việc của giáo viên).
+ *
+ * Đây là nơi sẽ tinh chỉnh trải nghiệm học sinh về sau (ẩn/hiện đáp số, xem tất cả bước,
+ * gợi ý/ vì sao, ...). Vỏ panel (thu gọn + kéo rộng + sheet mobile) sao y RightPanel.
+ */
+import { useState, useMemo } from 'react';
+import { ChevronRight, ChevronLeft, Box, Sparkles } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
+import { useGeometryOptional } from '@/context/GeometryContext';
+import { computeProperties } from '@/lib/geometry/calculations';
+import { cn } from '@/lib/utils';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
+import { SolverContent, ResizeHandle } from '@/components/SolverPanel';
+import { GeometryPropertiesTab } from './GeometryPropertiesTab';
+import { useResizableWidth } from '@/hooks/useResizableWidth';
+import { TierBanner } from './TierBanner';
+
+function StudentPanelContent() {
+  const [activeTab, setActiveTab] = useState('problem');
+  const context = useGeometryOptional();
+
+  const properties = useMemo(() => {
+    if (!context?.state.geometry) return null;
+    return computeProperties(context.state.geometry);
+  }, [context?.state.geometry]);
+
+  if (!context) return null;
+  const { state } = context;
+
+  if (!state.geometry) {
+    return (
+      <div className="h-full flex flex-col items-center justify-center text-center px-6 gap-3">
+        <div className="p-4 rounded-2xl bg-secondary/30 border border-border/40">
+          <Sparkles className="w-8 h-8 text-muted-foreground/60" strokeWidth={1.5} />
+        </div>
+        <div className="space-y-1">
+          <p className="text-sm font-medium text-foreground/80">Chưa có hình nào</p>
+          <p className="text-xs text-muted-foreground max-w-[200px] leading-relaxed">
+            Nhập đề ở khung chính để vẽ hình, rồi nhấn <strong>Giải bài</strong>.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="h-full flex flex-col">
+      {/* Header */}
+      <div className="p-4 border-b border-border/50">
+        <h2 className="font-semibold text-foreground">{state.geometry.name}</h2>
+        <p className="text-xs text-muted-foreground mt-1">
+          {properties?.shapeType || 'Geometry'} • {state.geometry.points.length} đỉnh • {state.geometry.lines.length} cạnh
+        </p>
+      </div>
+
+      {/* Tabs — chỉ Giải bài + Thuộc tính */}
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col min-h-0">
+        <TabsList className="mx-4 mt-4 grid w-auto grid-cols-2">
+          <TabsTrigger value="problem" className="gap-1.5 text-xs px-1">
+            <Sparkles className="w-3 h-3" />
+            Giải bài
+          </TabsTrigger>
+          <TabsTrigger value="properties" className="gap-1.5 text-xs px-1">
+            <Box className="w-3 h-3" />
+            Thuộc tính
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="problem" className="flex-1 p-0 m-0 min-h-0 data-[state=active]:flex flex-col">
+          <SolverContent />
+        </TabsContent>
+
+        <TabsContent value="properties" className="flex-1 overflow-hidden p-0 min-h-0 data-[state=active]:flex flex-col">
+          <GeometryPropertiesTab />
+        </TabsContent>
+      </Tabs>
+    </div>
+  );
+}
+
+// Bản mobile (Sheet) — nút mở góc trên phải.
+export function MobileStudentRightPanel() {
+  const context = useGeometryOptional();
+  const [open, setOpen] = useState(false);
+
+  if (!context) return null;
+  const { state } = context;
+  if (!state.geometry) return null;
+
+  return (
+    <Sheet open={open} onOpenChange={setOpen}>
+      <SheetTrigger asChild>
+        <Button
+          variant="ghost"
+          size="icon"
+          aria-label="Mở bảng giải bài"
+          className="fixed top-4 right-4 z-50 lg:hidden glass border border-border/50"
+        >
+          <Sparkles className="w-5 h-5" />
+        </Button>
+      </SheetTrigger>
+      <SheetContent side="right" className="w-80 p-0 glass border-l border-border/50">
+        <ErrorBoundary>
+          <StudentPanelContent />
+        </ErrorBoundary>
+      </SheetContent>
+    </Sheet>
+  );
+}
+
+export function StudentRightPanel() {
+  const [isCollapsed, setIsCollapsed] = useState(false);
+  const context = useGeometryOptional();
+  const { onPointerDown, reset } = useResizableWidth({ cssVar: '--rp-w', storageKey: 'right_panel_w', def: 320, min: 280, max: 720 });
+
+  if (!context) return null;
+  const { state } = context;
+
+  return (
+    <div className="relative h-screen hidden lg:flex z-40 shrink-0">
+      {/* Nút thu gọn/mở */}
+      <Button
+        variant="ghost"
+        size="icon"
+        aria-label="Ẩn/hiện bảng bên phải"
+        onClick={() => setIsCollapsed(!isCollapsed)}
+        style={{ right: isCollapsed ? 0 : 'var(--rp-w, 20rem)' }}
+        className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 rounded-full glass border border-border/50 z-50 h-6 w-6 bg-background shadow-sm hover:bg-secondary flex items-center justify-center"
+      >
+        {isCollapsed ? (
+          <ChevronLeft className="w-3.5 h-3.5 text-muted-foreground" />
+        ) : (
+          <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" />
+        )}
+      </Button>
+
+      <aside
+        style={{ width: isCollapsed ? 0 : 'var(--rp-w, 20rem)' }}
+        className={cn(
+          "h-full flex flex-col glass border-l border-border/50 sticky right-0 top-0 bg-background/95 overflow-hidden",
+          isCollapsed && "border-none"
+        )}
+      >
+        {!isCollapsed && <ResizeHandle onPointerDown={onPointerDown} onReset={reset} />}
+        <div style={{ width: 'var(--rp-w, 20rem)' }} className="h-full flex flex-col relative">
+          <TierBanner classification={state.geometry?.classification} />
+          <ErrorBoundary>
+            <StudentPanelContent />
+          </ErrorBoundary>
+        </div>
+      </aside>
+    </div>
+  );
+}

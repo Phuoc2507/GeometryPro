@@ -253,18 +253,18 @@ export function FloatingPromptBar() {
             )}
           />
 
-          {/* Send Button */}
+          {/* Send Button — tap target ≥40px cho ngón tay */}
           <Button
             size="icon"
             aria-label="Gửi"
             onClick={handleSubmit}
             disabled={!prompt.trim() || isLoading}
             className={cn(
-              'rounded-xl h-8 w-8 sm:h-10 sm:w-10 shrink-0 transition-all self-end mb-0.5',
-              prompt.trim() && !isLoading ? 'bg-primary hover:bg-primary/90 scale-100' : 'bg-muted scale-95 opacity-50'
+              'rounded-xl h-10 w-10 shrink-0 transition-all self-end mb-0.5',
+              prompt.trim() && !isLoading ? 'bg-primary hover:bg-primary/90 scale-100 shadow-md shadow-primary/20' : 'bg-muted scale-95 opacity-50'
             )}
           >
-            <Send className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+            <Send className="w-4 h-4" />
           </Button>
         </div>
 
@@ -279,13 +279,16 @@ export function FloatingPromptBar() {
 
         {/* ── Hàng nút gạt "Sửa bằng AI" ── */}
         {!isLoading && (
-          <div className="flex items-center justify-between mt-1.5 px-1.5 gap-2">
-            <div className="flex items-center gap-1.5 min-w-0">
-              <Switch checked={aiMode} onCheckedChange={toggleAiMode} className="scale-90" />
-              <span className={cn('text-xs font-medium', aiMode ? 'text-primary' : 'text-muted-foreground')}>Sửa bằng AI</span>
+          <div className="flex items-center justify-between mt-1 px-1 gap-2">
+            <div className="flex items-center gap-1 min-w-0">
+              {/* Chạm cả chữ để bật/tắt (vùng bấm rộng hơn) */}
+              <label className="flex items-center gap-2 cursor-pointer select-none py-1 pl-1 pr-0.5 rounded-lg">
+                <Switch checked={aiMode} onCheckedChange={toggleAiMode} />
+                <span className={cn('text-xs font-medium', aiMode ? 'text-primary' : 'text-muted-foreground')}>Sửa bằng AI</span>
+              </label>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <button type="button" className="text-muted-foreground/70 hover:text-foreground" aria-label="Giải thích Sửa bằng AI">
+                  <button type="button" className="p-1 -m-1 text-muted-foreground/70 hover:text-foreground" aria-label="Giải thích Sửa bằng AI">
                     <HelpCircle className="w-3.5 h-3.5" />
                   </button>
                 </TooltipTrigger>
@@ -294,7 +297,12 @@ export function FloatingPromptBar() {
                 </TooltipContent>
               </Tooltip>
             </div>
-            <span className="text-[11px] text-muted-foreground shrink-0 whitespace-nowrap">
+            <span className={cn(
+              'text-[11px] shrink-0 whitespace-nowrap px-1.5 py-0.5 rounded-md',
+              aiMode
+                ? (tier === 'free' ? 'text-amber-600 dark:text-amber-400 bg-amber-500/10' : 'text-primary bg-primary/8')
+                : 'text-emerald-600 dark:text-emerald-400 bg-emerald-500/8',
+            )}>
               {aiMode
                 ? (tier === 'free' ? 'Cần gói trả phí' : `0,2 credit/lần · còn ${formatCredits(credits)}`)
                 : 'Miễn phí · lệnh cú pháp'}

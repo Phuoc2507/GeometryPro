@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { RotateCcw, Maximize2, Grid3X3, Camera, Download, Save, PenTool, Youtube, Box, Eye, EyeOff, Cpu, Navigation, Undo2, Redo2 } from 'lucide-react';
+import { RotateCcw, Maximize2, Grid3X3, Camera, Download, Save, PenTool, Youtube, Box, Eye, EyeOff, Cpu, Navigation, Undo2, Redo2, MoreHorizontal } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Toggle } from '@/components/ui/toggle';
@@ -50,7 +50,7 @@ export function TopToolbar() {
           <Tooltip>
             <TooltipTrigger asChild>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" aria-label="Góc nhìn & Hiển thị" className="h-8 w-8">
+                <Button variant="ghost" size="icon" aria-label="Góc nhìn & Hiển thị" className="h-9 w-9">
                   {state.showPoints ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4 text-blue-500" />}
                 </Button>
               </DropdownMenuTrigger>
@@ -63,7 +63,7 @@ export function TopToolbar() {
               <Grid3X3 className={`w-4 h-4 mr-2 ${state.showCoordinateGrid ? 'text-blue-500' : 'text-muted-foreground'}`} />
               {state.showCoordinateGrid ? 'Ẩn lưới tọa độ' : 'Hiện lưới tọa độ'}
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => {}}>
+            <DropdownMenuItem onClick={() => cameraContext?.resetCamera()}>
               <Maximize2 className="w-4 h-4 mr-2 text-muted-foreground" />
               Vừa màn hình
             </DropdownMenuItem>
@@ -93,7 +93,7 @@ export function TopToolbar() {
               variant="ghost"
               size="icon"
               aria-label="Hoàn tác"
-              className="h-8 w-8"
+              className="h-9 w-9"
               onClick={undo}
               disabled={!canUndo}
             >
@@ -109,7 +109,7 @@ export function TopToolbar() {
               variant="ghost"
               size="icon"
               aria-label="Làm lại"
-              className="h-8 w-8"
+              className="h-9 w-9"
               onClick={redo}
               disabled={!canRedo}
             >
@@ -128,7 +128,7 @@ export function TopToolbar() {
               variant={isManualMode ? 'default' : 'ghost'}
               size="icon"
               aria-label="Vẽ thủ công"
-              className="h-8 w-8"
+              className="h-9 w-9"
               onClick={() => {
                 setManualMode(!isManualMode);
                 if (!isManualMode) setMode('none'); 
@@ -141,22 +141,25 @@ export function TopToolbar() {
           <TooltipContent>Vẽ thủ công</TooltipContent>
         </Tooltip>
 
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              variant={state.videoMode ? "default" : "ghost"}
-              size="icon"
-              aria-label="Tạo Video (Animation)"
-              className={state.videoMode
-                ? "h-8 w-8 bg-red-500 hover:bg-red-600 text-white" 
-                : "h-8 w-8 text-red-500 hover:text-red-600 hover:bg-red-500/10"}
-              onClick={() => setVideoMode(!state.videoMode)}
-            >
-              <Youtube className="w-5 h-5" />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>Tạo Video (Animation)</TooltipContent>
-        </Tooltip>
+        {/* Video: ẩn trên điện thoại (đưa vào menu "…") để thanh đỡ chật */}
+        <span className="hidden sm:contents">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant={state.videoMode ? "default" : "ghost"}
+                size="icon"
+                aria-label="Tạo Video (Animation)"
+                className={state.videoMode
+                  ? "h-9 w-9 bg-red-500 hover:bg-red-600 text-white"
+                  : "h-9 w-9 text-muted-foreground hover:text-red-500 hover:bg-red-500/10"}
+                onClick={() => setVideoMode(!state.videoMode)}
+              >
+                <Youtube className="w-5 h-5" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Tạo Video (Animation)</TooltipContent>
+          </Tooltip>
+        </span>
 
         {/* FILE ACTIONS — surfaced from the old hamburger menu */}
         {state.geometry && (
@@ -172,7 +175,7 @@ export function TopToolbar() {
                       variant="ghost"
                       size="icon"
                       aria-label="Lưu hình học"
-                      className="h-8 w-8 text-emerald-500 hover:text-emerald-600 hover:bg-emerald-500/10"
+                      className="h-9 w-9 text-muted-foreground hover:text-emerald-500 hover:bg-emerald-500/10"
                     >
                       <Save className="w-4 h-4" />
                     </Button>
@@ -182,25 +185,50 @@ export function TopToolbar() {
               <TooltipContent>Lưu hình học</TooltipContent>
             </Tooltip>
 
-            {/* Teacher: export sống trong RightPanel nên ẩn nút này; Student: giữ */}
+            {/* Teacher: export sống trong RightPanel nên ẩn nút này; Student: giữ.
+                Trên điện thoại ẩn (đưa vào menu "…"). */}
             {!isTeacher && (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    aria-label="Xuất ảnh / LaTeX"
-                    className="h-8 w-8 text-primary hover:text-primary hover:bg-primary/10"
-                    onClick={() => setIsCaptureOpen(true)}
-                  >
-                    <Download className="w-4 h-4" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>Xuất ảnh / LaTeX</TooltipContent>
-              </Tooltip>
+              <span className="hidden sm:contents">
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      aria-label="Xuất ảnh / LaTeX"
+                      className="h-9 w-9 text-muted-foreground hover:text-primary hover:bg-primary/10"
+                      onClick={() => setIsCaptureOpen(true)}
+                    >
+                      <Download className="w-4 h-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Xuất ảnh / LaTeX</TooltipContent>
+                </Tooltip>
+              </span>
             )}
           </>
         )}
+
+        {/* Menu "…" chỉ hiện trên ĐIỆN THOẠI: chứa Video + Xuất (những tool đã ẩn bên trên). */}
+        <div className="w-px h-6 bg-border/50 mx-1 sm:hidden" />
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="icon" aria-label="Thêm công cụ" className="h-9 w-9 sm:hidden">
+              <MoreHorizontal className="w-4 h-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={() => setVideoMode(!state.videoMode)}>
+              <Youtube className={cn('w-4 h-4 mr-2', state.videoMode ? 'text-red-500' : 'text-muted-foreground')} />
+              {state.videoMode ? 'Tắt tạo Video' : 'Tạo Video (Animation)'}
+            </DropdownMenuItem>
+            {!isTeacher && state.geometry && (
+              <DropdownMenuItem onClick={() => setIsCaptureOpen(true)}>
+                <Download className="w-4 h-4 mr-2 text-muted-foreground" />
+                Xuất ảnh / LaTeX
+              </DropdownMenuItem>
+            )}
+          </DropdownMenuContent>
+        </DropdownMenu>
 
         <div className="w-px h-6 bg-border/50 mx-1" />
         <UserMenu />
