@@ -22,5 +22,6 @@ export function projectScene(base: GeometryData, steps: AdvanceStep[], cur: numb
     cylinders: (base.cylinders || []).map(flag),
     cones: (base.cones || []).map(flag),
     curves: (base.curves || []).map(flag),
+    revolutionSolids: (base.revolutionSolids || []).map(flag),
   };
 }
