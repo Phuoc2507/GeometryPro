@@ -9,6 +9,7 @@ import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { GeometryProvider, useGeometryOptional } from '@/context/GeometryContext';
 import { CameraProvider } from '@/context/CameraContext';
+import { SolveJobsProvider } from '@/context/SolveJobsContext';
 import { LeftSidebar, MobileSidebar } from '@/components/layout/LeftSidebar';
 import { TopToolbar } from '@/components/layout/TopToolbar';
 import { DropZone } from '@/components/DropZone';
@@ -92,7 +93,9 @@ const StudentMode = () => {
   return (
     <GeometryProvider>
       <CameraProvider>
-        <StudentModeContent />
+        <SolveJobsProvider>
+          <StudentModeContent />
+        </SolveJobsProvider>
       </CameraProvider>
     </GeometryProvider>
   );

@@ -3,6 +3,7 @@ import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { GeometryProvider, useGeometryOptional } from '@/context/GeometryContext';
 import { CameraProvider } from '@/context/CameraContext';
+import { SolveJobsProvider } from '@/context/SolveJobsContext';
 import { LeftSidebar, MobileSidebar } from '@/components/layout/LeftSidebar';
 import { RightPanel, MobileRightPanel } from '@/components/layout/RightPanel';
 import { TopToolbar } from '@/components/layout/TopToolbar';
@@ -90,8 +91,10 @@ const TeacherMode = () => {
   return (
     <GeometryProvider>
       <CameraProvider>
-        <GeometryLoader />
-        <TeacherModeContent />
+        <SolveJobsProvider>
+          <GeometryLoader />
+          <TeacherModeContent />
+        </SolveJobsProvider>
       </CameraProvider>
     </GeometryProvider>
   );

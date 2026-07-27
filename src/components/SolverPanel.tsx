@@ -23,7 +23,7 @@ import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { Badge }       from '@/components/ui/badge';
 import { useGeometryOptional } from '@/context/GeometryContext';
 import { useCameraOptional }   from '@/context/CameraContext';
-import { useSolver }   from '@/hooks/useSolver';
+import { useSolveJobs } from '@/context/SolveJobsContext';
 import { useGeometryHistory } from '@/hooks/useGeometryHistory';
 import { useResizableWidth } from '@/hooks/useResizableWidth';
 import { buildSolveReveal, type SolveReveal } from '@/lib/solveReveal';
@@ -348,7 +348,7 @@ export function SolverContent({ creditNote }: { creditNote?: string } = {}) {
   const ctx         = useGeometryOptional();
   const camera      = useCameraOptional();
   const lastProblem = useLastProblem();
-  const { solve, reset, hydrate, result, loading, error, currentStep, setCurrentStep } = useSolver();
+  const { getJob, startJob, clearJob, claimSave, releaseSave } = useSolveJobs();
   const { updateGeometryData } = useGeometryHistory();
   const geometry = ctx?.state.geometry ?? null;
   const geometryKey = useMemo(() => {
@@ -360,9 +360,19 @@ export function SolverContent({ creditNote }: { creditNote?: string } = {}) {
 
   const [problem, setProblem]     = useState('');
   const [reveal, setReveal]       = useState<SolveReveal | null>(null);
+  const [currentStep, setCurrentStep] = useState(0);
+  const [dismissed, setDismissed] = useState(false); // đã bấm "Giải lại" → ẩn kết quả cũ để nhập/giải mới
   const textareaRef               = useRef<HTMLTextAreaElement>(null);
-  const solvedProblemRef          = useRef('');   // đề của lần giải hiện tại (để lưu kèm)
-  const shouldSaveRef             = useRef(false); // true = kết quả GIẢI MỚI cần lưu (không phải khôi phục)
+
+  // Trạng thái giải LẤY THEO BÀI (khoá = geometryKey) từ SolveJobsProvider — không còn nằm trong panel,
+  // nên đổi bài rồi quay lại vẫn thấy đúng "đang giải" / "đã giải" của bài đó.
+  const jobKey = geometryKey;
+  const job = getJob(jobKey);
+  const savedSolve = geometry?.solve?.result ?? null;
+  const loading = job?.status === 'solving';
+  const error = job?.status === 'error' ? (job.error ?? 'Lỗi không xác định') : null;
+  const result = dismissed ? null : (job?.status === 'done' ? job.result : savedSolve);
+  const isFresh = !dismissed && job?.status === 'done'; // kết quả GIẢI MỚI phiên này → cần lưu kèm hình
 
   // Pre-fill with last detected problem when geometry changes
   useEffect(() => {
@@ -373,21 +383,17 @@ export function SolverContent({ creditNote }: { creditNote?: string } = {}) {
 
   const geometryKeyRef = useRef('');
 
-  // Bind solver state to the actual geometry, excluding the `solve` metadata so
-  // saving a result back onto the same figure does not reset itself.
+  // Đổi bài → reset trạng thái XEM cục bộ (bước, dismiss, reveal) và điền lại đề đã lưu.
+  // Không đụng tới job trong SolveJobsProvider: job của bài kia vẫn chạy/giữ nguyên.
   useEffect(() => {
     if (geometryKeyRef.current === geometryKey) return;
     geometryKeyRef.current = geometryKey;
-    shouldSaveRef.current = false;
     setReveal(null);
-    const saved = geometry?.solve;
-    if (saved?.result) {
-      setProblem(saved.problem || '');
-      hydrate(saved.result);
-    } else {
-      reset();
-    }
-  }, [geometry, geometryKey, hydrate, reset]);
+    setCurrentStep(0);
+    setDismissed(false);
+    const savedProblem = geometry?.solve?.problem;
+    if (savedProblem) setProblem(savedProblem);
+  }, [geometry, geometryKey]);
 
   // Khi có KẾT QUẢ: (1) dựng điểm lời giải giới thiệu & ghép vào hình, (2) LƯU lời giải kèm hình
   // để tải lại không mất. Deps CHỈ [result] để không lặp khi commit làm đổi state.geometry.
@@ -409,20 +415,19 @@ export function SolverContent({ creditNote }: { creditNote?: string } = {}) {
     // hay ghi đè bản đã lưu. state.geometry lúc này là scene.base (KHÔNG kèm advanceScene) nên
     // loadGeometry/updateGeometryData bằng nó sẽ thay cảnh Advance bằng 1 hình phẳng ⇒ mất sạch
     // thanh câu + lời giải khi mở lại (và rớt stepper ngay giữa phiên). Vẫn cho hiện reveal tạm ở trên.
-    if (ctx?.state.advanceScene) { shouldSaveRef.current = false; return; }
+    if (ctx?.state.advanceScene) return;
 
-    if (shouldSaveRef.current) {
-      // Kết quả GIẢI MỚI -> ghép điểm + đính lời giải vào hình rồi LƯU (update bản đã lưu theo ?id).
-      shouldSaveRef.current = false;
-      const withSolve = { ...merged, solve: { problem: solvedProblemRef.current, result } };
+    if (isFresh && job && claimSave(jobKey)) {
+      // Kết quả GIẢI MỚI của ĐÚNG bài này -> ghép điểm + đính lời giải + LƯU theo id của job.
+      // claimSave đảm bảo chỉ lưu 1 lần (dù có 2 panel desktop+mobile cùng chạy effect).
+      const withSolve = { ...merged, solve: { problem: job.problem, result } };
       ctx!.loadGeometry(withSolve, { silent: true });
-      const id = new URLSearchParams(window.location.search).get('id');
-      if (id) void updateGeometryData(id, withSolve);
-    } else if (merged !== base) {
-      // Khôi phục mà hình thiếu điểm dựng (hiếm) -> ghép tạm, KHÔNG lưu lại.
+      if (job.id) void updateGeometryData(job.id, withSolve);
+    } else if (!isFresh && merged !== base) {
+      // Khôi phục bản đã lưu mà hình thiếu điểm dựng (hiếm) -> ghép tạm, KHÔNG lưu lại.
       ctx!.loadGeometry(merged, { silent: true });
     }
-  }, [ctx, result, updateGeometryData]);
+  }, [ctx, result, isFresh, job, jobKey, claimSave, updateGeometryData]);
 
   // Bóc-lớp + nhấn mạnh theo bước hiện tại.
   useEffect(() => {
@@ -446,13 +451,15 @@ export function SolverContent({ creditNote }: { creditNote?: string } = {}) {
 
   const handleSolve = () => {
     if (!canSolve || !geometry) return;
-    solvedProblemRef.current = problem.trim();
-    shouldSaveRef.current = true;   // đánh dấu: kết quả sắp tới là GIẢI MỚI -> cần lưu kèm hình
-    solve(problem.trim(), geometry, geometry.tags || []);
+    releaseSave(jobKey);            // cho phép LƯU lại kết quả mới của bài này
+    setDismissed(false);
+    const id = new URLSearchParams(window.location.search).get('id');
+    startJob(jobKey, { id, problem: problem.trim(), geometry, tags: geometry.tags || [] });
   };
 
   const handleReset = () => {
-    reset();
+    clearJob(jobKey);              // xoá job của bài này → ẩn kết quả, cho nhập/giải lại
+    setDismissed(true);
     setProblem(lastProblem);
     setReveal(null);
     // Giữ điểm đã dựng trong hình (người dùng chọn "giữ lại"); chỉ tắt lớp bóc theo bước.
