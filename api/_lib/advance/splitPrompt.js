@@ -61,4 +61,38 @@ JSON:
   "animation": { "kind": "nuoc_dang" }
 }
 
+QUY TẮC MẪU GIẢI TÍCH (optional — chỉ thêm khi CHẮC CHẮN khớp):
+- Nếu đề yêu cầu QUAY một miền phẳng quanh trục Ox để tạo khối tròn xoay, thêm 2 trường ở cấp gốc:
+  "template": "rev-ox",
+  "templateParams": {
+    "outer": <biên dạng r(x)>,
+    "domain": [a, b],
+    "fnLabel": "<LaTeX hàm, ví dụ y=\\sqrt{x}>",
+    "parts": [ { "label":"Câu a", "hoi":".." }, { "label":"Câu b", "hoi":".." } ]
+  }
+  Trong đó "outer" là MỘT trong: { "kind":"sqrt","a":..,"b":.. } | { "kind":"poly","coeffs":[c0,c1,..] } | { "kind":"const","c":.. }
+- CHỈ đặt "template" khi trục là Ox và biên dạng khớp một trong 3 "kind" trên. Không chắc → BỎ QUA, để engine xử như thường.
+
+[Ví dụ 4 — rev-ox]
+Đề: "Cho miền phẳng giới hạn bởi y = √x, trục Ox và x = 4. a) Vẽ khối tròn xoay khi quay miền quanh Ox. b) Tính thể tích khối đó."
+JSON:
+{
+  "type": "multi_question",
+  "setup": "Miền phẳng giới hạn bởi y=√x, trục Ox, x=4",
+  "parts": [
+    { "label": "Câu a", "hoi": "Vẽ khối tròn xoay khi quay miền quanh Ox", "phan_tu_moi": [] },
+    { "label": "Câu b", "hoi": "Tính thể tích khối tròn xoay", "phan_tu_moi": [] }
+  ],
+  "template": "rev-ox",
+  "templateParams": {
+    "outer": { "kind": "sqrt", "a": 1, "b": 0 },
+    "domain": [0, 4],
+    "fnLabel": "y=\\sqrt{x}",
+    "parts": [
+      { "label": "Câu a", "hoi": "Vẽ khối tròn xoay khi quay miền quanh Ox" },
+      { "label": "Câu b", "hoi": "Tính thể tích khối tròn xoay" }
+    ]
+  }
+}
+
 Bây giờ hãy tách đề người dùng gửi. CHỈ trả JSON.`;

@@ -51,5 +51,8 @@ export async function splitProblem(problem, opts = {}) {
   const cov = coverageCheck(problem, parsed.parts, parsed.setup || '');
   if (!cov.ok) return { type: 'single', _coverageMissing: cov.missing };
 
-  return { type: 'multi_question', setup: parsed.setup || '', parts: parsed.parts };
+  const out = { type: 'multi_question', setup: parsed.setup || '', parts: parsed.parts };
+  // Mẫu calculus (rev-ox): giữ template + params để route dựng khối tròn xoay tất định.
+  if (parsed.template) { out.template = parsed.template; out.templateParams = parsed.templateParams; }
+  return out;
 }

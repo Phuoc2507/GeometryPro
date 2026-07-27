@@ -30,6 +30,14 @@ export async function assembleAdvance(problem, deps, opts = {}) {
 
   const split = await deps.splitProblem(problem, opts);
 
+  // Nhánh mẫu calculus (Đợt 1: rev-ox). Engine dựng khối tất định, tự kiểm thể tích.
+  if (split.template === 'rev-ox' && split.templateParams && deps.buildRevolutionScene) {
+    try {
+      const scene = deps.buildRevolutionScene(split.templateParams);
+      if (scene) return { mode: 'advance', scene };
+    } catch { /* dựng mẫu hỏng → rơi xuống fallback bài đơn */ }
+  }
+
   if (split.type === 'multi_question') {
     const scene = await deps.buildAdvanceScene(problem, split, opts);
     if (scene) return { mode: 'advance', scene };
@@ -94,17 +102,18 @@ async function handler(req, res) {
     }
 
     // ---- Nạp ĐỘNG các mảnh pipeline (lỗi import ⇒ rơi vào catch, hoàn credit) ----
-    const [{ splitProblem }, { buildAdvanceScene }, { solveProblem }, { transcribeImage }] = await Promise.all([
+    const [{ splitProblem }, { buildAdvanceScene }, { solveProblem }, { transcribeImage }, { buildRevolutionScene }] = await Promise.all([
       import('./_lib/advance/splitProblem.js'),
       import('./_lib/advance/buildAdvanceScene.js'),
       import('./_lib/kernel-bridge/solveWithKernel.js'),
       import('./_lib/advance/transcribeImage.js'),
+      import('./_lib/advance/buildRevolutionScene.js'),
     ]);
 
     // Có ảnh → assembleAdvance chạy Pass -1 (transcribeImage) CHÉP đề ra chữ RỒI mới splitProblem.
     // splitProblem/buildAdvanceScene/solveProblem chỉ nhận CHỮ (opts.imageBase64 chảy qua nhưng bị bỏ qua)
     // ⇒ coverageCheck (Pass 0) soi trên đề-chữ đã chép, chống ảo giác y như luồng nhập-chữ.
-    const result = await assembleAdvance(problemSeed, { splitProblem, buildAdvanceScene, solveProblem, transcribeImage }, { imageBase64 });
+    const result = await assembleAdvance(problemSeed, { splitProblem, buildAdvanceScene, solveProblem, transcribeImage, buildRevolutionScene }, { imageBase64 });
 
     // ---- Fallback tụt-hạng: đã trừ mức Advance nhưng chỉ xử bài đơn ⇒ HOÀN chênh lệch xuống Vẽ kỹ ----
     // Công bằng: user chỉ bị tính bằng mức "Vẽ kỹ" (draw_detailed) khi không được phục vụ đa-cảnh.
