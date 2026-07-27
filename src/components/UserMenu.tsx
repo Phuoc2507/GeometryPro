@@ -115,7 +115,9 @@ export function UserMenu() {
             <span className="text-xs font-semibold text-foreground">{credits}</span>
             <span className="text-[10px] text-muted-foreground">credit</span>
             {tier !== 'free' && (
-              <span className="ml-auto text-[9px] uppercase font-bold tracking-wide text-primary">{tier}</span>
+              <span className="ml-auto text-[9px] uppercase font-bold tracking-wide text-primary">
+                {tier === 'teacher' ? 'Cơ bản' : tier === 'pro' ? 'Chuyên nghiệp' : tier === 'school' ? 'Trường học' : tier}
+              </span>
             )}
           </div>
         </div>
@@ -150,7 +152,8 @@ export function UserMenu() {
           <Settings className="w-4 h-4 mr-2" />
           Cài đặt
         </DropdownMenuItem>
-        {tier === 'teacher' && (
+        {/* Mở theo "có gói trả phí" (dùng chung cho cả 2 mode) chứ không khoá theo vai trò tier. */}
+        {hasPlan && (
           <DropdownMenuItem onClick={() => navigate('/teacher/dang-bai')}>
             <ListChecks className="w-4 h-4 mr-2" />
             Bảng dạng bài

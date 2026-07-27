@@ -22,9 +22,11 @@ interface Plan {
 }
 
 // Dùng khi bảng `plans` chưa được tạo (chưa áp migration) — để modal vẫn hiển thị.
+// Tên gói đặt theo DUNG LƯỢNG (số credit), KHÔNG theo vai trò — một ví credit dùng chung cho
+// cả Học sinh & Giáo viên, đổi mode không mất phí. (Đổi tên trong DB bằng SQL kèm theo.)
 const FALLBACK_PLANS: Plan[] = [
-  { code: "teacher_1m", tier: "teacher", name: "Giáo viên · 1 tháng",   price_vnd: 79000,  credits_per_cycle: 200,  cycle_days: 30,  duration_days: 30 },
-  { code: "teacher_3m", tier: "teacher", name: "Giáo viên · 3 tháng",   price_vnd: 199000, credits_per_cycle: 200,  cycle_days: 30,  duration_days: 90 },
+  { code: "teacher_1m", tier: "teacher", name: "Cơ bản · 1 tháng",       price_vnd: 79000,  credits_per_cycle: 200,  cycle_days: 30,  duration_days: 30 },
+  { code: "teacher_3m", tier: "teacher", name: "Cơ bản · 3 tháng",       price_vnd: 199000, credits_per_cycle: 200,  cycle_days: 30,  duration_days: 90 },
   { code: "pro_1m",     tier: "pro",     name: "Chuyên nghiệp · 1 tháng", price_vnd: 149000, credits_per_cycle: 600,  cycle_days: 30,  duration_days: 30 },
   { code: "school_1y",  tier: "school",  name: "Trường học · 1 năm",     price_vnd: 999000, credits_per_cycle: 5000, cycle_days: 365, duration_days: 365 },
 ];
@@ -98,6 +100,9 @@ export function UpgradeModal({ open, onOpenChange }: UpgradeModalProps) {
           </DialogTitle>
           <DialogDescription>
             Mua gói để nhận credit dùng cho vẽ hình &amp; giải bài bằng AI. Mua càng lớn, giá mỗi credit càng rẻ.
+            <span className="mt-1.5 block text-xs text-primary/90">
+              ✦ Credit dùng chung cho cả chế độ Học sinh &amp; Giáo viên — đổi qua lại không mất thêm phí.
+            </span>
           </DialogDescription>
         </DialogHeader>
 
