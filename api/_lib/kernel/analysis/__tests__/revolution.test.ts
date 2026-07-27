@@ -43,6 +43,15 @@ describe('revolutionVolumeDisk', () => {
     );
     expect(value).toBeCloseTo((2 * Math.PI) / 15, 6);
   });
+  it('vành khăn BỀN với hoán đổi ngoài/trong: dù gán nhầm vẫn ra thể tích DƯƠNG đúng', () => {
+    // Bug thật: nếu LLM gán nhầm đường trong thành "ngoài", π(ro²−ri²) âm ⇒ thể tích ÂM mà vẫn "verified".
+    // Sửa: lấy |ro²−ri²| theo từng điểm ⇒ kết quả bằng nhau bất kể thứ tự, luôn ≥ 0.
+    const correct = revolutionVolumeDisk({ kind: 'poly', coeffs: [0, 1] }, [0, 1], { kind: 'poly', coeffs: [0, 0, 1] });
+    const swapped = revolutionVolumeDisk({ kind: 'poly', coeffs: [0, 0, 1] }, [0, 1], { kind: 'poly', coeffs: [0, 1] });
+    expect(swapped.value).toBeGreaterThan(0);
+    expect(swapped.value).toBeCloseTo(correct.value, 6);
+    expect(swapped.value).toBeCloseTo((2 * Math.PI) / 15, 6);
+  });
 });
 
 describe('revolutionVolumeShellOy (quanh Oy, vỏ trụ)', () => {

@@ -7649,7 +7649,7 @@ function revolutionVolumeDisk(outer, domain, inner) {
   const f = (x) => {
     const ro = go(x);
     const ri = gi ? gi(x) : 0;
-    return Math.PI * (ro * ro - ri * ri);
+    return Math.PI * Math.abs(ro * ro - ri * ri);
   };
   return integrate(f, a, b);
 }

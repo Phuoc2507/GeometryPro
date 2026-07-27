@@ -49,7 +49,10 @@ export function revolutionVolumeDisk(
     const ro = go(x);
     const ri = gi ? gi(x) : 0;
     // Vành khăn (washer): V=π∫([r_ngoài]²−[r_trong]²)dx. Đĩa đặc: r_trong=0.
-    return Math.PI * (ro * ro - ri * ri);
+    // Lấy |ro²−ri²| theo TỪNG điểm để thể tích luôn ≥ 0 và BẰNG nhau dù đường trong/ngoài bị
+    // gán nhầm thứ tự (lỗi phân loại hay gặp) — tiết diện tại mỗi x là hình vành khăn giữa 2 bán
+    // kính, không phụ thuộc nhãn nào là "ngoài". (Đĩa đặc ri=0 ⇒ abs không đổi gì.)
+    return Math.PI * Math.abs(ro * ro - ri * ri);
   };
   return integrate(f, a, b);
 }
