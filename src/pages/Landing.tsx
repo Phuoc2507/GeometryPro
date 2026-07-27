@@ -1,4 +1,4 @@
-import { Suspense, lazy, useEffect, type ReactNode } from 'react';
+import { Suspense, lazy, useEffect, type ReactNode, type CSSProperties } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import {
@@ -11,6 +11,10 @@ import {
 } from '@/components/ui/accordion';
 import { Wordmark } from '@/components/Brand';
 import { ResumeCard } from '@/components/landing/ResumeCard';
+import { Reveal } from '@/components/landing/Reveal';
+
+// Độ trễ so le cho hiệu ứng xuất hiện (dùng biến CSS --d).
+const stagger = (s: number): CSSProperties => ({ ['--d']: `${s}s` } as CSSProperties);
 
 const HeroFigure = lazy(() => import('@/components/landing/HeroFigure'));
 
@@ -158,14 +162,17 @@ const Landing = () => {
             WebkitMaskImage: 'radial-gradient(ellipse 90% 70% at 60% 30%, black, transparent 75%)',
           }}
         />
+        {/* Quầng sáng trôi nhẹ tạo chiều sâu */}
+        <div aria-hidden className="lp-orb lp-orb-a w-72 h-72 -top-16 -left-10 bg-primary/25" />
+        <div aria-hidden className="lp-orb lp-orb-b w-80 h-80 bottom-0 right-0 bg-blue-400/15" />
         <div className="relative max-w-6xl mx-auto px-5 pt-16 pb-16 grid lg:grid-cols-2 gap-12 items-center">
           <div>
-            <div className="flex items-center gap-3 mb-6">
+            <div className="flex items-center gap-3 mb-6 lp-enter" style={stagger(0.05)}>
               <span className="text-[11px] font-semibold tracking-[0.22em] uppercase text-primary">Công cụ dựng hình</span>
               <span className="h-px w-8 bg-primary/40" />
               <span className="text-[11px] font-semibold tracking-[0.22em] uppercase text-muted-foreground">Cho giáo viên Toán</span>
             </div>
-            <h1 className="text-4xl sm:text-[3.25rem] font-bold leading-[1.08] [text-wrap:balance] mb-5">
+            <h1 className="text-4xl sm:text-[3.25rem] font-bold leading-[1.08] [text-wrap:balance] mb-5 lp-enter" style={stagger(0.12)}>
               Hình học không gian{' '}
               <span className="relative whitespace-nowrap text-primary">
                 đẹp như in
@@ -173,34 +180,36 @@ const Landing = () => {
               </span>
               , chỉ từ đề bài
             </h1>
-            <p className="text-muted-foreground text-lg leading-relaxed mb-8 max-w-xl">
+            <p className="text-muted-foreground text-lg leading-relaxed mb-8 max-w-xl lp-enter" style={stagger(0.2)}>
               Dán đề, AI dựng ngay mô hình 3D chuẩn sách giáo khoa. Xoay tới góc ưng ý rồi xuất{' '}
               <b className="text-foreground font-semibold">PNG</b> hoặc{' '}
               <b className="text-foreground font-semibold font-cm italic">TikZ</b>{' '}
               để đưa thẳng vào đề thi, giáo án.
             </p>
-            <div className="flex flex-col sm:flex-row gap-3">
-              <Button size="lg" onClick={() => goTo('teacher')} className="gap-2 h-12">
+            <div className="flex flex-col sm:flex-row gap-3 lp-enter" style={stagger(0.28)}>
+              <Button size="lg" onClick={() => goTo('teacher')} className="gap-2 h-12 transition-transform hover:-translate-y-0.5">
                 <Presentation className="w-5 h-5" /> Vào chế độ Giáo viên
               </Button>
-              <Button size="lg" variant="outline" onClick={() => goTo('student')} className="gap-2 h-12">
+              <Button size="lg" variant="outline" onClick={() => goTo('student')} className="gap-2 h-12 transition-transform hover:-translate-y-0.5">
                 <GraduationCap className="w-5 h-5" /> Chế độ Học sinh
               </Button>
             </div>
-            <div className="mt-6 flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-muted-foreground">
+            <div className="mt-6 flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-muted-foreground lp-enter" style={stagger(0.36)}>
               {['Không cần cài đặt', 'Dùng thử miễn phí', 'Chuẩn nét khuất SGK'].map((t) => (
                 <span key={t} className="inline-flex items-center gap-1.5">
                   <Check className="w-4 h-4 text-primary" /> {t}
                 </span>
               ))}
             </div>
-            <ResumeCard />
+            <div className="lp-enter" style={stagger(0.44)}>
+              <ResumeCard />
+            </div>
           </div>
 
           {/* Không gian 3D tương tác, đóng khung như một bản vẽ */}
-          <div className="relative">
-            <div aria-hidden className="absolute -inset-6 blur-3xl bg-primary/10 rounded-full" />
-            <div className="relative">
+          <div className="relative lp-enter" style={stagger(0.18)}>
+            <div aria-hidden className="absolute -inset-8 blur-3xl bg-primary/15 rounded-full lp-orb-a" />
+            <div className="relative lp-float">
               <RegMarks />
               <Suspense
                 fallback={
@@ -227,9 +236,10 @@ const Landing = () => {
           title="Từ đề bài tới hình lên đề, trong vài phút"
           sub="geo3d lo phần hình để bạn tập trung vào chuyên môn ra đề."
         />
+        <Reveal>
         <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-px bg-border/60 border border-border/60 rounded-xl overflow-hidden">
           {VALUE.map((f) => (
-            <div key={f.title} className="group bg-background p-6 hover:bg-primary/[0.03] transition-colors">
+            <div key={f.title} className="group bg-background p-6 hover:bg-primary/[0.03] hover:-translate-y-0.5 transition-all">
               <div className="inline-flex items-center justify-center w-11 h-11 border border-primary/40 text-primary rounded-md mb-4 group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
                 <f.icon className="w-5 h-5" />
               </div>
@@ -239,12 +249,14 @@ const Landing = () => {
             </div>
           ))}
         </div>
+        </Reveal>
       </section>
 
       {/* ─── Quy trình ─── */}
       <section id="quy-trinh" className="border-y border-border/50 bg-card/20">
         <div className="max-w-5xl mx-auto px-5 py-16">
           <SectionHead marker="b" eyebrow="Quy trình" title="Ba bước, không cần cài gì" />
+          <Reveal>
           <div className="relative grid sm:grid-cols-3 gap-8">
             <span aria-hidden className="hidden sm:block absolute top-5 left-[16.7%] right-[16.7%] border-t border-dashed border-border" />
             {STEPS.map((s) => (
@@ -257,6 +269,7 @@ const Landing = () => {
               </div>
             ))}
           </div>
+          </Reveal>
         </div>
       </section>
 
@@ -269,11 +282,12 @@ const Landing = () => {
           sub="Cạnh khuất nét đứt, mặt cong đúng quy ước — hình lên đề là dùng được ngay."
         />
         <div className="grid sm:grid-cols-3 gap-5">
-          {GALLERY.map(({ Art, tag, name, note }) => (
-            <figure key={tag} className="relative border border-border/60 rounded-xl overflow-hidden bg-card/30">
+          {GALLERY.map(({ Art, tag, name, note }, i) => (
+            <Reveal key={tag} delay={i * 0.1}>
+            <figure className="group relative border border-border/60 rounded-xl overflow-hidden bg-card/30 transition-all hover:-translate-y-1 hover:border-primary/40 hover:shadow-xl hover:shadow-primary/5">
               <RegMarks color="border-border" />
               <div className="graph-paper aspect-[4/3] grid place-items-center p-8">
-                <Art className="w-36 h-36 text-foreground/85" />
+                <Art className="w-36 h-36 text-foreground/85 transition-transform duration-500 group-hover:scale-105" />
               </div>
               <figcaption className="flex items-baseline gap-2 px-4 py-3 border-t border-border/60">
                 <span className="font-cm italic text-primary text-sm shrink-0">{tag}</span>
@@ -281,6 +295,7 @@ const Landing = () => {
                 <span className="text-sm text-muted-foreground truncate">— {note}</span>
               </figcaption>
             </figure>
+            </Reveal>
           ))}
         </div>
       </section>
@@ -299,10 +314,11 @@ const Landing = () => {
       {/* ─── Hai chế độ ─── */}
       <section className="max-w-5xl mx-auto px-5 py-20">
         <SectionHead marker="d" eyebrow="Bắt đầu" title="Chọn chế độ phù hợp" />
+        <Reveal>
         <div className="grid sm:grid-cols-5 gap-5">
           <button
             onClick={() => goTo('teacher')}
-            className="relative sm:col-span-3 text-left rounded-xl border border-primary/50 bg-primary/[0.04] p-7 hover:bg-primary/[0.08] transition-colors group"
+            className="relative sm:col-span-3 text-left rounded-xl border border-primary/50 bg-primary/[0.04] p-7 hover:bg-primary/[0.08] hover:-translate-y-1 transition-all group"
           >
             <RegMarks />
             <div className="mb-4 inline-flex items-center justify-center w-12 h-12 rounded-md border border-primary/50 text-primary">
@@ -335,6 +351,7 @@ const Landing = () => {
             </span>
           </button>
         </div>
+        </Reveal>
       </section>
 
       {/* ─── FAQ ─── */}
@@ -361,12 +378,14 @@ const Landing = () => {
       <section className="relative overflow-hidden border-t border-border/50">
         <div aria-hidden className="absolute inset-0 graph-paper opacity-60" style={{ maskImage: 'radial-gradient(ellipse 60% 100% at 50% 0%, black, transparent)', WebkitMaskImage: 'radial-gradient(ellipse 60% 100% at 50% 0%, black, transparent)' }} />
         <div className="relative max-w-3xl mx-auto px-5 py-20 text-center">
-          <Sparkles className="w-8 h-8 text-primary mx-auto mb-5" />
+          <Reveal>
+          <Sparkles className="w-8 h-8 text-primary mx-auto mb-5 lp-float" />
           <h2 className="text-3xl sm:text-4xl font-bold mb-4 [text-wrap:balance]">Dựng hình cho đề tiếp theo của bạn</h2>
           <p className="text-muted-foreground mb-8">Miễn phí, không cần cài đặt.</p>
-          <Button size="lg" onClick={() => goTo('teacher')} className="gap-2 h-12">
+          <Button size="lg" onClick={() => goTo('teacher')} className="gap-2 h-12 transition-transform hover:-translate-y-0.5">
             Bắt đầu ngay <ArrowRight className="w-5 h-5" />
           </Button>
+          </Reveal>
         </div>
       </section>
 

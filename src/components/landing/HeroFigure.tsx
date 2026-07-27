@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useRef, useState } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
-import { Html, OrbitControls, Grid } from '@react-three/drei';
+import { Html, OrbitControls, Grid, Sparkles } from '@react-three/drei';
 import * as THREE from 'three';
 import { FileText, ImageDown, RotateCcw, Hand } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
@@ -189,6 +189,8 @@ function Scene() {
         fadeStrength={1.5}
         infiniteGrid
       />
+      {/* Bụi sáng trôi nhẹ tạo chiều sâu — không ảnh hưởng tính nét khuất (chỉ là điểm trang trí). */}
+      <Sparkles count={36} scale={7} size={2} speed={0.35} opacity={0.5} color="#60a5fa" />
     </>
   );
 }

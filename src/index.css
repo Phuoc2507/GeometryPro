@@ -239,6 +239,33 @@
   animation: build-in 0.3s ease-out forwards;
 }
 
+/* ─── Landing: chuyển động & sức sống (không cần thư viện) ─── */
+@keyframes lp-rise { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes lp-float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+@keyframes lp-drift { 0% { transform: translate(0, 0) scale(1); } 50% { transform: translate(34px, -26px) scale(1.08); } 100% { transform: translate(0, 0) scale(1); } }
+@keyframes lp-drift2 { 0% { transform: translate(0, 0) scale(1); } 50% { transform: translate(-28px, 22px) scale(1.1); } 100% { transform: translate(0, 0) scale(1); } }
+@keyframes lp-dash { to { stroke-dashoffset: 0; } }
+
+/* Xuất hiện khi tải trang; stagger bằng biến --d */
+.lp-enter { opacity: 0; animation: lp-rise 0.7s cubic-bezier(0.22, 0.61, 0.36, 1) forwards; animation-delay: var(--d, 0s); }
+
+/* Xuất hiện khi cuộn tới (IntersectionObserver bật class .in) */
+.lp-reveal { opacity: 0; transform: translateY(24px); transition: opacity 0.7s cubic-bezier(0.22, 0.61, 0.36, 1), transform 0.7s cubic-bezier(0.22, 0.61, 0.36, 1); transition-delay: var(--d, 0s); }
+.lp-reveal.in { opacity: 1; transform: translateY(0); }
+
+.lp-float { animation: lp-float 6s ease-in-out infinite; }
+
+/* Quầng sáng trôi nhẹ trong nền hero */
+.lp-orb { position: absolute; border-radius: 9999px; filter: blur(64px); pointer-events: none; will-change: transform; }
+.lp-orb-a { animation: lp-drift 15s ease-in-out infinite; }
+.lp-orb-b { animation: lp-drift2 19s ease-in-out infinite; }
+
+/* Tôn trọng người dùng tắt hiệu ứng chuyển động */
+@media (prefers-reduced-motion: reduce) {
+  .lp-enter, .lp-reveal { opacity: 1 !important; transform: none !important; animation: none !important; transition: none !important; }
+  .lp-float, .lp-orb-a, .lp-orb-b { animation: none !important; }
+}
+
 /* Công thức KaTeX dạng khối (BlockMath): cho cuộn ngang khi quá dài thay vì bị CẮT.
    Mặc định ".katex-display > .katex" là display:block (rộng bằng khung cha) nên overflow-x của
    cha không bao giờ kích hoạt và phần thừa bị cắt. Ép inline-block để nó co theo NỘI DUNG -> cha
