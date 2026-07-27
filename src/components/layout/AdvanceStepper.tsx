@@ -32,7 +32,7 @@ export function AdvanceStepper() {
   const hasAnswer = !!answer?.text;
 
   return (
-    <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-40 flex flex-col items-stretch gap-2 glass rounded-xl px-4 py-3 border border-border/50 w-[90%] max-w-2xl shadow-lg">
+    <div className="absolute bottom-28 left-1/2 -translate-x-1/2 z-40 flex flex-col items-stretch gap-2 glass rounded-xl px-4 py-3 border border-border/50 w-[90%] max-w-2xl shadow-lg">
       {/* Thanh kéo + play cho câu có animation (rev-ox…) — nằm trên hàng chọn câu. */}
       {(() => {
         const step = steps[clampedStep];
