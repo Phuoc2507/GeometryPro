@@ -1,5 +1,6 @@
-import { useState, useMemo, useCallback } from 'react';
-import { ChevronRight, ChevronLeft, Copy, Check, Box, MapPin, Ruler, Cuboid, Code, Download, Image as ImageIcon, ChevronDown, Sparkles } from 'lucide-react';
+import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
+import { ChevronRight, ChevronLeft, Copy, Check, Box, MapPin, Ruler, Cuboid, Code, Download, Image as ImageIcon, ChevronDown, Sparkles, Info, Pencil } from 'lucide-react';
+import type { Point3D } from '@/types/geometry';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -24,6 +25,61 @@ import {
   mergeLineDashStyles,
 } from '@/lib/geometry/hiddenLineDetection';
 
+// Bảng màu cho các NHÓM cạnh bằng nhau (chỉ tô khi nhóm ≥ 2 cạnh) — giúp nhìn ra cấu trúc hình.
+const EQ_COLORS = [
+  { dot: 'bg-blue-400',    ring: 'border-blue-400/40' },
+  { dot: 'bg-green-400',   ring: 'border-green-400/40' },
+  { dot: 'bg-amber-400',   ring: 'border-amber-400/40' },
+  { dot: 'bg-fuchsia-400', ring: 'border-fuchsia-400/40' },
+  { dot: 'bg-cyan-400',    ring: 'border-cyan-400/40' },
+  { dot: 'bg-rose-400',    ring: 'border-rose-400/40' },
+];
+
+// Ô nhập MỘT toạ độ (x/y/z). Giữ state chuỗi cục bộ để gõ được dấu "-", ".", số dở dang;
+// chỉ commit khi rời ô / Enter và giá trị hợp lệ. Khi điểm đổi từ ngoài (và ô không focus) thì đồng bộ lại.
+function CoordInput({ value, onCommit, label }: { value: number; onCommit: (n: number) => void; label: string }) {
+  const [txt, setTxt] = useState(() => fmt(value));
+  const focused = useRef(false);
+  useEffect(() => { if (!focused.current) setTxt(fmt(value)); }, [value]);
+
+  const commit = () => {
+    const n = parseFloat(txt.replace(',', '.'));
+    if (Number.isFinite(n)) { if (n !== value) onCommit(n); }
+    else setTxt(fmt(value)); // nhập rác → khôi phục
+  };
+
+  return (
+    <input
+      type="text"
+      inputMode="decimal"
+      value={txt}
+      aria-label={label}
+      onFocus={() => { focused.current = true; }}
+      onChange={(e) => setTxt(e.target.value)}
+      onBlur={() => { focused.current = false; commit(); }}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
+        else if (e.key === 'Escape') { setTxt(fmt(value)); focused.current = false; (e.target as HTMLInputElement).blur(); }
+      }}
+      className="w-full min-w-0 text-center font-mono text-xs rounded-md bg-secondary/40 border border-border/40 px-1 py-1 text-foreground tabular-nums focus:outline-none focus:ring-1 focus:ring-primary/60 focus:border-primary/60 hover:border-border transition-colors"
+    />
+  );
+}
+
+// Một dòng đỉnh: nhãn + 3 ô nhập x/y/z. Sửa xong → updatePoint ⇒ các cạnh/điểm nối theo id tự đi theo.
+function VertexRow({ point, onUpdate }: { point: Point3D; onUpdate: (id: string, x: number, y: number, z: number) => void }) {
+  return (
+    <div className="flex items-center gap-2 p-1.5 rounded-md bg-secondary/30">
+      <span className="font-serif italic text-sm text-primary w-6 shrink-0 text-center">{point.label}</span>
+      <div className="grid grid-cols-3 gap-1 flex-1 min-w-0">
+        <CoordInput value={point.x} label={`Tọa độ x của ${point.label}`} onCommit={(n) => onUpdate(point.id, n, point.y, point.z)} />
+        <CoordInput value={point.y} label={`Tọa độ y của ${point.label}`} onCommit={(n) => onUpdate(point.id, point.x, n, point.z)} />
+        <CoordInput value={point.z} label={`Tọa độ z của ${point.label}`} onCommit={(n) => onUpdate(point.id, point.x, point.y, n)} />
+      </div>
+    </div>
+  );
+}
+
 function PanelContent() {
   const [copied, setCopied] = useState(false);
   const [tikzScale, setTikzScale] = useState(1.2);
@@ -42,6 +98,38 @@ function PanelContent() {
     if (!context?.state.geometry) return null;
     return computeProperties(context.state.geometry);
   }, [context?.state.geometry]);
+
+  // Gán màu cho các NHÓM cạnh bằng nhau: cạnh sắp theo độ dài, mỗi độ dài lặp lại ≥2 lần được 1 màu.
+  const edgeView = useMemo(() => {
+    if (!properties || properties.edgeLengths.length === 0) return null;
+    const count = new Map<string, number>();
+    for (const e of properties.edgeLengths) {
+      const k = e.length.toFixed(3);
+      count.set(k, (count.get(k) ?? 0) + 1);
+    }
+    const multiKeys = [...count.entries()]
+      .filter(([, c]) => c >= 2)
+      .map(([k]) => k)
+      .sort((a, b) => parseFloat(a) - parseFloat(b));
+    const colorIdx = new Map<string, number>();
+    multiKeys.forEach((k, i) => colorIdx.set(k, i % EQ_COLORS.length));
+    const sorted = [...properties.edgeLengths]
+      .map((e, i) => ({ ...e, key: e.length.toFixed(3), i }))
+      .sort((a, b) => a.length - b.length || a.label.localeCompare(b.label));
+    return sorted.map((e) => ({ ...e, color: colorIdx.has(e.key) ? EQ_COLORS[colorIdx.get(e.key)!] : null }));
+  }, [properties]);
+
+  // Số đo tính trên hình minh hoạ (tương đối) — chỉ hiện các mục có giá trị.
+  const measures = useMemo(() => {
+    if (!properties) return [];
+    const out: { k: string; v: number }[] = [];
+    if (properties.radius != null)           out.push({ k: 'Bán kính',       v: properties.radius });
+    if (properties.volume != null)           out.push({ k: 'Thể tích',       v: properties.volume });
+    if (properties.totalSurfaceArea != null) out.push({ k: 'S toàn phần',    v: properties.totalSurfaceArea });
+    if (properties.baseArea != null)         out.push({ k: 'Diện tích đáy',  v: properties.baseArea });
+    if (properties.height != null)           out.push({ k: 'Chiều cao',      v: properties.height });
+    return out;
+  }, [properties]);
 
   const visualCameraState = camera?.isLivePreviewEnabled
     ? cameraStateContext?.previewCameraState
@@ -175,8 +263,23 @@ function PanelContent() {
 
         <TabsContent value="properties" className="flex-1 p-4">
           <ScrollArea className="h-full">
-            <div className="space-y-4">
-              {/* Dynamic Point Sliders */}
+            <div className="space-y-5">
+              {/* ─── Tổng quan: loại hình + số đỉnh/cạnh ─── */}
+              <div className="flex flex-wrap gap-1.5">
+                {properties?.shapeType && (
+                  <span className="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full bg-primary/12 text-primary border border-primary/25">
+                    <Box className="w-3 h-3" /> {properties.shapeType}
+                  </span>
+                )}
+                <span className="inline-flex items-center text-xs font-semibold px-2.5 py-1 rounded-full bg-secondary/60 text-muted-foreground border border-border/50">
+                  {state.geometry.points.length} đỉnh
+                </span>
+                <span className="inline-flex items-center text-xs font-semibold px-2.5 py-1 rounded-full bg-secondary/60 text-muted-foreground border border-border/50">
+                  {state.geometry.lines.length} cạnh
+                </span>
+              </div>
+
+              {/* ─── Dynamic Point Sliders ─── */}
               {state.geometry.dynamicPoints && state.geometry.dynamicPoints.length > 0 && context.updateDynamicPoint && (
                 <DynamicPointControls
                   geometry={state.geometry}
@@ -184,83 +287,69 @@ function PanelContent() {
                 />
               )}
 
-              {/* Computed Properties */}
-              {properties && (
-                <div>
-                  <h3 className="text-sm font-medium text-muted-foreground mb-2 flex items-center gap-2">
-                    <Cuboid className="w-3 h-3" />
-                    Tính chất
-                  </h3>
-                  <div className="space-y-1.5 text-sm">
-                    {properties.radius != null && (
-                      <div className="flex justify-between p-1.5 rounded bg-secondary/30">
-                        <span className="text-muted-foreground">Bán kính</span>
-                        <span className="font-mono text-primary">{fmt(properties.radius)}</span>
-                      </div>
-                    )}
-                    {properties.baseArea != null && (
-                      <div className="flex justify-between p-1.5 rounded bg-secondary/30">
-                        <span className="text-muted-foreground">S đáy</span>
-                        <span className="font-mono text-primary">{fmt(properties.baseArea)} units²</span>
-                      </div>
-                    )}
-                    {properties.height != null && (
-                      <div className="flex justify-between p-1.5 rounded bg-secondary/30">
-                        <span className="text-muted-foreground">Chiều cao</span>
-                        <span className="font-mono text-primary">{fmt(properties.height)}</span>
-                      </div>
-                    )}
-                    {properties.volume != null && (
-                      <div className="flex justify-between p-1.5 rounded bg-secondary/30">
-                        <span className="text-muted-foreground">Thể tích</span>
-                        <span className="font-mono text-primary">{fmt(properties.volume)} units³</span>
-                      </div>
-                    )}
-                    {properties.totalSurfaceArea != null && (
-                      <div className="flex justify-between p-1.5 rounded bg-secondary/30">
-                        <span className="text-muted-foreground">S toàn phần</span>
-                        <span className="font-mono text-primary">{fmt(properties.totalSurfaceArea)} units²</span>
-                      </div>
-                    )}
-                  </div>
+              {/* ─── Ghi chú mục đích: số đo tương đối, đáp số ở Giải bài ─── */}
+              {measures.length > 0 && (
+                <div className="flex gap-2 p-2.5 rounded-lg bg-amber-500/8 border border-amber-500/20">
+                  <Info className="w-3.5 h-3.5 text-amber-500 shrink-0 mt-0.5" />
+                  <p className="text-[11.5px] leading-relaxed text-amber-600/90 dark:text-amber-300/90">
+                    Số đo dưới đây tính trên <strong>hình minh hoạ</strong> (tỉ lệ tương đối để vẽ).
+                    Đáp số chính xác theo đề xem ở tab <strong>Giải bài</strong>.
+                  </p>
                 </div>
               )}
 
-              {/* Edge Lengths */}
-              {properties && properties.edgeLengths.length > 0 && (
+              {/* ─── Số đo mô hình ─── */}
+              {measures.length > 0 && (
                 <div>
-                  <h3 className="text-sm font-medium text-muted-foreground mb-2 flex items-center gap-2">
-                    <Ruler className="w-3 h-3" />
-                    Độ dài cạnh
+                  <h3 className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground mb-2 flex items-center gap-1.5">
+                    <Cuboid className="w-3 h-3" /> Số đo mô hình
                   </h3>
-                  <div className="grid grid-cols-2 gap-1">
-                    {properties.edgeLengths.map((e, i) => (
-                      <div key={i} className="flex items-center justify-between p-1.5 rounded bg-secondary/30 text-xs">
-                        <span className="font-mono text-foreground">{e.label}</span>
-                        <span className="font-mono text-muted-foreground">{fmt(e.length)}</span>
+                  <div className="grid grid-cols-2 gap-2">
+                    {measures.map((m) => (
+                      <div key={m.k} className="px-3 py-2 rounded-xl bg-card border border-border/60">
+                        <div className="text-[10.5px] text-muted-foreground">{m.k}</div>
+                        <div className="text-base font-serif text-foreground mt-0.5 tabular-nums">{fmt(m.v)}</div>
                       </div>
                     ))}
                   </div>
                 </div>
               )}
 
-              {/* Vertices */}
+              {/* ─── Độ dài cạnh (gom nhóm cạnh bằng nhau bằng màu) ─── */}
+              {edgeView && edgeView.length > 0 && (
+                <div>
+                  <h3 className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground mb-2 flex items-center gap-1.5">
+                    <Ruler className="w-3 h-3" /> Độ dài cạnh
+                    <span className="font-medium normal-case tracking-normal text-muted-foreground/70">· cùng màu = bằng nhau</span>
+                  </h3>
+                  <div className="grid grid-cols-2 gap-1.5">
+                    {edgeView.map((e) => (
+                      <div key={e.i} className={cn('flex items-center justify-between px-2.5 py-1.5 rounded-lg bg-card border text-xs', e.color ? e.color.ring : 'border-border/50')}>
+                        <span className="flex items-center gap-1.5 font-serif italic text-foreground">
+                          {e.color && <span className={cn('w-1.5 h-1.5 rounded-full', e.color.dot)} />}
+                          {e.label}
+                        </span>
+                        <span className="font-serif text-muted-foreground tabular-nums">{fmt(e.length)}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* ─── Tọa độ đỉnh — SỬA ĐƯỢC TRỰC TIẾP ─── */}
               <div>
-                <h3 className="text-sm font-medium text-muted-foreground mb-2 flex items-center gap-2">
-                  <MapPin className="w-3 h-3" />
-                  Tọa độ đỉnh
+                <h3 className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground mb-1 flex items-center gap-1.5">
+                  <MapPin className="w-3 h-3" /> Tọa độ đỉnh
                 </h3>
+                <p className="text-[11px] text-muted-foreground/70 mb-2 flex items-center gap-1">
+                  <Pencil className="w-2.5 h-2.5" /> Sửa số (x, y, z) rồi Enter — các cạnh nối theo đỉnh sẽ tự đi theo.
+                </p>
+                <div className="grid grid-cols-3 gap-1 px-1.5 mb-1 text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider ml-8">
+                  <span className="text-center">x</span><span className="text-center">y</span><span className="text-center">z</span>
+                </div>
                 <div className="space-y-1">
                   {state.geometry.points.map((point) => (
-                    <div
-                      key={point.id}
-                      className="flex items-center justify-between p-2 rounded-md bg-secondary/30"
-                    >
-                      <span className="font-mono text-sm text-primary">{point.label}</span>
-                      <span className="text-xs text-muted-foreground font-mono">
-                        ({fmt(point.x)}, {fmt(point.y)}, {fmt(point.z)})
-                      </span>
-                    </div>
+                    <VertexRow key={point.id} point={point} onUpdate={context.updatePoint} />
                   ))}
                 </div>
               </div>
