@@ -52,7 +52,6 @@ export function buildRevolutionScene(params) {
       visibleIds: [...samplePointIds, revId],
       highlightIds: [revId],
       anim: { param: 'sweep', label: 'Quét tròn xoay', tMax: domain[1], autoplay: true },
-      solution: partA.hoi,
     },
     {
       id: 's1',
@@ -63,7 +62,6 @@ export function buildRevolutionScene(params) {
         approx: v.value,
         verified: v.verified,
       },
-      solution: partB.hoi,
     },
   ];
 

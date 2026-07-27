@@ -32,4 +32,10 @@ describe('buildRevolutionScene', () => {
     expect(scene.steps[1].answer.verified).toBe(true);
     expect(scene.steps[1].answer.approx).toBeCloseTo(8 * Math.PI, 4);
   });
+  it('bước KHÔNG mang solution dạng chuỗi (solution phải là SolveResult hoặc vắng)', () => {
+    // Regression: solution:string làm AdvanceSolutionPanel hydrate rồi SolveResultView crash.
+    for (const s of scene.steps) {
+      expect(typeof s.solution).not.toBe('string');
+    }
+  });
 });
