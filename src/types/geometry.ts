@@ -217,6 +217,12 @@ export interface AdvanceStep {
   timeline?: AnimationTimeline;
   /** Lời giải từng bước cho câu này (B2 backend nạp). import type: bị erase, không tạo vòng lặp runtime. */
   solution?: import('@/hooks/useSolver').SolveResult;
+  anim?: {
+    param: 'sweep' | 'angle' | 'slab' | 'reveal';
+    label: string;   // nhãn hiển thị cạnh thanh kéo, ví dụ "Quét tròn xoay"
+    tMax: number;    // giá trị vật lý ứng với t=1 (Đợt 1: bằng b của domain)
+    autoplay?: boolean;
+  };
 }
 
 export interface AdvanceScene {
@@ -243,6 +249,32 @@ export interface Curve3D extends AdvanceFlags {
   fillOpacity?: number;
 }
 
+// ── Calculus: khối tròn xoay (Đợt 1) ───────────────────────────────
+// Biên dạng r(x): khoảng cách từ trục tới mặt, theo tọa độ dọc trục x.
+export type ProfileFn =
+  | { kind: 'poly'; coeffs: number[] }   // c0 + c1·x + c2·x² + …
+  | { kind: 'sqrt'; a: number; b: number } // a·√x + b
+  | { kind: 'const'; c: number };
+
+// Kết quả đã (hoặc chưa) tự-kiểm bằng lõi tất định.
+export interface Verified<T> {
+  value: T;
+  latex: string;
+  verified: boolean;        // false ⇒ hiển thị "chưa kiểm chứng", không bịa
+  estimatedError?: number;
+}
+
+export interface RevolutionSolid extends AdvanceFlags {
+  id: string;
+  outer: ProfileFn;         // biên ngoài r(x)
+  inner?: ProfileFn;        // biên trong (washer) — Đợt 2, giữ optional
+  axis: 'Ox' | 'Oy';        // Đợt 1 chỉ dùng 'Ox'
+  domain: [number, number]; // [a, b]
+  method: 'disk' | 'washer' | 'shell';
+  volume?: Verified<number>;
+  color?: string;
+}
+
 export interface GeometryData {
   id?: string;
   position?: [number, number, number];
@@ -263,6 +295,7 @@ export interface GeometryData {
   dynamicPoints?: DynamicPoint[];
   surfaces?: Surface3D[];
   curves?: Curve3D[];
+  revolutionSolids?: RevolutionSolid[];
   latexCode?: string;
   llmPrompt?: string;
   /** Ràng buộc từ step1, có thể kèm kết quả verify */
