@@ -20,7 +20,6 @@ import { Button }      from '@/components/ui/button';
 import { Textarea }    from '@/components/ui/textarea';
 import { ScrollArea }  from '@/components/ui/scroll-area';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
-import { Badge }       from '@/components/ui/badge';
 import { useGeometryOptional } from '@/context/GeometryContext';
 import { useCameraOptional }   from '@/context/CameraContext';
 import { useSolveJobs } from '@/context/SolveJobsContext';
@@ -219,30 +218,33 @@ interface StepCardProps {
   total: number;
 }
 
-function StepCard({ step, index, total }: StepCardProps) {
+function StepCard({ step, index }: StepCardProps) {
   return (
-    <div className="flex flex-col gap-2 py-3 px-1 animate-fade-in">
-      {/* Step counter */}
-      <div className="flex items-center gap-2">
-        <span className="text-xs font-semibold text-primary bg-primary/10 rounded-full px-2 py-0.5">
-          Bước {index + 1}/{total}
+    <div className="rounded-xl border border-border/60 bg-card/40 p-3.5 my-1 animate-fade-in">
+      {/* Số thứ tự + tiêu đề bước */}
+      <div className="flex items-start gap-2.5">
+        <span className="flex-none w-6 h-6 rounded-lg bg-primary/15 text-primary font-semibold text-xs flex items-center justify-center">
+          {index + 1}
         </span>
-        <span className="text-sm font-medium text-foreground line-clamp-2">{step.title}</span>
+        <span className="text-[13.5px] font-semibold text-foreground leading-snug mt-0.5">{step.title}</span>
       </div>
 
-      {/* Explanation */}
-      <MathText text={step.explanation} className="text-sm text-muted-foreground leading-relaxed" />
+      {/* Giải thích (chữ + công thức inline) */}
+      <MathText text={step.explanation} className="text-sm text-muted-foreground leading-relaxed mt-2.5" />
 
-      {/* Formula (if any) */}
+      {/* Công thức khối */}
       {step.formula && <FormulaBlock formula={step.formula} />}
 
-      {/* Highlighted elements hint */}
+      {/* Điểm liên quan bước này */}
       {step.highlight && step.highlight.length > 0 && (
-        <div className="flex flex-wrap gap-1 mt-0.5">
+        <div className="flex flex-wrap gap-1.5 mt-3">
           {step.highlight.map(id => (
-            <Badge key={id} variant="outline" className="text-xs py-0 px-1.5 font-mono">
+            <span
+              key={id}
+              className="inline-flex items-center justify-center min-w-6 h-6 px-1.5 rounded-full border border-border/70 bg-background/60 text-foreground/90 text-xs font-cm italic"
+            >
               {id}
-            </Badge>
+            </span>
           ))}
         </div>
       )}
@@ -267,100 +269,70 @@ export function SolveResultView({
   const nSteps  = result.steps.length;
   const [showProblem, setShowProblem] = useState(false);
 
+  const level = result.tier?.level ?? verifiedToLevel(result.verified);
+  const meta = safetyTierMeta(level);
+  const TierIcon = meta.icon;
+  const reasonMsg = result.tier?.reason?.message ?? result.verify_error;
+  const chipTone =
+    meta.tone === 'ok' ? 'bg-green-500/12 text-green-600 dark:text-green-400 border-green-500/30'
+    : meta.tone === 'muted' ? 'bg-blue-500/12 text-blue-500 border-blue-500/30'
+    : 'bg-amber-500/12 text-amber-600 dark:text-amber-400 border-amber-500/30';
+  const progressPct = nSteps > 0 ? ((currentStep + 1) / nSteps) * 100 : 0;
+
   return (
     <div className="h-full flex flex-col">
-      {/* Đề bài — render đẹp như lời giải (MathText: chữ + công thức), có thể thu gọn. */}
+      {/* ─── Đáp số nổi bật ─── */}
+      <div className="px-4 pt-4 pb-2 shrink-0">
+        <div className="rounded-2xl border border-primary/25 bg-gradient-to-br from-primary/10 to-primary/[0.03] px-4 py-3.5">
+          <div className="text-[10.5px] font-bold uppercase tracking-[0.14em] text-primary">Đáp số</div>
+          <MathText text={result.final_answer} className="mt-1.5 text-lg font-semibold text-foreground break-words" />
+          <span className={cn('inline-flex items-center gap-1.5 mt-2.5 text-[11px] font-semibold px-2.5 py-1 rounded-full border', chipTone)}>
+            <TierIcon className="w-3 h-3" />
+            {meta.description}
+            {level === 1 && result.tier?.exactness ? ` · ${exactnessLabel(result.tier.exactness)}` : ''}
+          </span>
+          {level === 3 && reasonMsg && (
+            <p className="text-[11px] mt-2 text-muted-foreground/90 leading-snug break-words">{reasonMsg}</p>
+          )}
+        </div>
+      </div>
+
+      {/* ─── Đề bài (thu gọn, render đẹp như lời giải) ─── */}
       {problem && problem.trim() && (
-        <div className="border-b shrink-0 bg-secondary/15">
+        <div className="mx-4 mb-2 shrink-0 rounded-xl border border-border/60 bg-secondary/15 overflow-hidden">
           <button
             onClick={() => setShowProblem((v) => !v)}
             aria-expanded={showProblem}
-            className="w-full flex items-center gap-1.5 px-4 py-2 text-left hover:bg-secondary/40 transition-colors"
+            className="w-full flex items-center gap-1.5 px-3.5 py-2.5 text-left hover:bg-secondary/40 transition-colors"
           >
             <BookOpen className="w-3.5 h-3.5 text-primary shrink-0" />
-            <span className="text-[11px] font-semibold uppercase tracking-wide text-primary flex-1">Đề bài</span>
+            <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground flex-1">Đề bài</span>
             <ChevronDown className={cn('w-4 h-4 text-muted-foreground transition-transform', !showProblem && '-rotate-90')} />
           </button>
           {showProblem && (
-            <div className="px-4 pb-3 max-h-40 overflow-y-auto">
+            <div className="px-3.5 pb-3 max-h-40 overflow-y-auto">
               <MathText text={autoMathWrap(problem)} className="text-sm text-foreground/85 leading-relaxed" />
             </div>
           )}
         </div>
       )}
 
-      {/* Đáp số — gọn, không hù dọa. Mức từ tier server (fallback verified nếu lời giải cũ). */}
-      {(() => {
-        const level = result.tier?.level ?? verifiedToLevel(result.verified);
-        const meta = safetyTierMeta(level);
-        const Icon = meta.icon;
-        const reasonMsg = result.tier?.reason?.message ?? result.verify_error;
-        return (
-          <div className="px-4 py-3 border-b flex items-start gap-2">
-            <Icon className={cn('w-4 h-4 shrink-0 mt-0.5', meta.tone === 'ok' ? 'text-green-500' : meta.tone === 'muted' ? 'text-blue-500' : 'text-muted-foreground')} />
-            <div className="flex-1 min-w-0">
-              <MathText text={result.final_answer} className="text-sm font-semibold text-foreground break-words" />
-              <p className={cn('text-[11px] mt-0.5', meta.tone === 'ok' ? 'text-green-600 dark:text-green-500' : 'text-muted-foreground')}>
-                {meta.description}
-                {level === 1 && result.tier?.exactness ? ` · ${exactnessLabel(result.tier.exactness)}` : ''}
-              </p>
-              {level === 3 && reasonMsg && (
-                <p className="text-[11px] mt-1 text-muted-foreground/90 leading-snug break-words">{reasonMsg}</p>
-              )}
-            </div>
-          </div>
-        );
-      })()}
-
-      {/* Step navigation */}
-      <div className="flex items-center justify-between px-3 py-2 border-b gap-2">
-        <Button
-          variant="ghost" size="icon"
-          aria-label="Bước trước"
-          disabled={currentStep === 0}
-          onClick={() => setCurrentStep(s => s - 1)}
-          className="h-7 w-7"
-        >
-          <ChevronLeft className="w-4 h-4" />
-        </Button>
-
-        <span className="text-xs text-muted-foreground font-medium flex-1 text-center">
-          {nSteps > 0 ? `${currentStep + 1} / ${nSteps} bước` : 'Không có bước nào'}
-        </span>
-
-        <Button
-          variant="ghost" size="icon"
-          aria-label="Bước sau"
-          disabled={currentStep >= nSteps - 1}
-          onClick={() => setCurrentStep(s => s + 1)}
-          className="h-7 w-7"
-        >
-          <ChevronRight className="w-4 h-4" />
-        </Button>
+      {/* ─── Lời giải: tiêu đề + thanh tiến độ ─── */}
+      <div className="px-4 pt-1 shrink-0">
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-[12.5px] font-semibold text-foreground">Lời giải từng bước</span>
+          <span className="text-[11px] text-muted-foreground tabular-nums">
+            {nSteps > 0 ? `Bước ${currentStep + 1} / ${nSteps}` : 'Không có bước'}
+          </span>
+        </div>
+        <div className="h-1 rounded-full bg-secondary overflow-hidden">
+          <div className="h-full bg-primary rounded-full transition-all duration-300" style={{ width: `${progressPct}%` }} />
+        </div>
       </div>
 
-      {/* Step dots */}
-      {nSteps > 1 && (
-        <div className="flex justify-center gap-1 py-1.5">
-          {result.steps.map((_, i) => (
-            <button
-              key={i}
-              onClick={() => setCurrentStep(i)}
-              className={cn(
-                "rounded-full transition-all",
-                i === currentStep
-                  ? "bg-primary w-4 h-1.5"
-                  : "bg-muted-foreground/30 w-1.5 h-1.5 hover:bg-muted-foreground/60"
-              )}
-            />
-          ))}
-        </div>
-      )}
-
-      {/* Step content */}
-      {/* Ép child của viewport về block (Radix để display:table -> phình ngang theo công thức dài,
-          khiến overflow-x của khung công thức không kích hoạt). Chỉ áp cho ScrollArea này. */}
-      <ScrollArea className="flex-1 px-4 [&_[data-radix-scroll-area-viewport]>div]:!block [&_[data-radix-scroll-area-viewport]>div]:!min-w-0">
+      {/* ─── Thẻ bước hiện tại (cuộn nếu dài) ─── */}
+      {/* Ép child của viewport về block (Radix để display:table -> phình ngang theo công thức dài). */}
+      <ScrollArea className="flex-1 px-4 pt-2 [&_[data-radix-scroll-area-viewport]>div]:!block [&_[data-radix-scroll-area-viewport]>div]:!min-w-0">
         {step ? (
           <StepCard step={step} index={currentStep} total={nSteps} />
         ) : (
@@ -368,12 +340,32 @@ export function SolveResultView({
         )}
       </ScrollArea>
 
-      {/* Reset button (chỉ luồng solve on-demand) */}
+      {/* ─── Điều hướng bước ─── */}
+      <div className="flex gap-2 px-4 py-3 shrink-0">
+        <Button
+          variant="outline" size="sm"
+          disabled={currentStep === 0}
+          onClick={() => setCurrentStep(s => s - 1)}
+          className="flex-1 gap-1 h-9"
+        >
+          <ChevronLeft className="w-4 h-4" /> Bước trước
+        </Button>
+        <Button
+          size="sm"
+          disabled={currentStep >= nSteps - 1}
+          onClick={() => setCurrentStep(s => s + 1)}
+          className="flex-1 gap-1 h-9"
+        >
+          Bước sau <ChevronRight className="w-4 h-4" />
+        </Button>
+      </div>
+
+      {/* ─── Giải lại (chỉ luồng solve on-demand) ─── */}
       {onReset && (
-        <div className="px-4 py-3 border-t">
-          <Button variant="outline" size="sm" onClick={onReset} className="w-full gap-1.5 h-8">
+        <div className="px-4 pb-3 shrink-0">
+          <button onClick={onReset} className="w-full h-8 rounded-lg border border-border/60 text-muted-foreground hover:text-foreground hover:bg-secondary/40 transition-colors text-xs font-medium inline-flex items-center justify-center gap-1.5">
             <RotateCcw className="w-3 h-3" /> Giải lại
-          </Button>
+          </button>
         </div>
       )}
     </div>
