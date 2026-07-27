@@ -171,6 +171,7 @@ export const initialGeometryState: GeometryState = {
   selectedIds: [],
   advanceScene: null,
   currentStep: 0,
+  advanceT: 0,
 };
 
 function ensureGeometry(state: GeometryState): GeometryData {
@@ -238,10 +239,12 @@ export function rawGeometryReducer(state: GeometryState, action: GeometryAction)
         advanceScene: null,
       };
     case 'SET_ADVANCE_SCENE':
-      return { ...state, advanceScene: action.scene, currentStep: 0,
+      return { ...state, advanceScene: action.scene, currentStep: 0, advanceT: 0,
                geometry: action.scene.base, undoStack: [], redoStack: [] };
     case 'SET_STEP':
-      return { ...state, currentStep: Math.max(0, Math.min(action.index, (state.advanceScene?.steps.length ?? 1) - 1)) };
+      return { ...state, currentStep: Math.max(0, Math.min(action.index, (state.advanceScene?.steps.length ?? 1) - 1)), advanceT: 0 };
+    case 'ADVANCE_SET_T':
+      return { ...state, advanceT: Math.max(0, Math.min(1, action.payload)) };
     case 'START_BUILDING':
       return { ...state, isBuilding: true };
     case 'FINISH_BUILDING':
@@ -406,6 +409,7 @@ export interface GeometryContextType {
   analyzeText: (prompt: string, mode?: DrawMode) => Promise<void>;
   analyzeAdvance: (prompt: string, imageBase64?: string) => Promise<void>;
   setStep: (i: number) => void;
+  setAdvanceT: (t: number) => void;
   queueAnalyzeText: (prompt: string, mode?: DrawMode, tags?: string[], detailLevel?: import('@/types/geometry').DetailLevel, offset?: [number, number, number]) => void;
   queueAnalyzeImage: (imageBase64: string, mode?: DrawMode, tags?: string[], detailLevel?: import('@/types/geometry').DetailLevel) => void;
   modifyGeometry: (prompt: string, opts?: { aiMode?: boolean }) => Promise<void>;
@@ -1317,10 +1321,11 @@ export function GeometryProvider({ children }: { children: React.ReactNode }) {
   const toggleSelection = useCallback((id: string) => dispatch({ type: 'TOGGLE_SELECTION', id }), []);
   const clearSelection = useCallback(() => dispatch({ type: 'CLEAR_SELECTION' }), []);
   const setStep = useCallback((i: number) => dispatch({ type: 'SET_STEP', index: i }), []);
+  const setAdvanceT = useCallback((t: number) => dispatch({ type: 'ADVANCE_SET_T', payload: t }), []);
 
   return (
     <GeometryContext.Provider value={{
-      state, startDemo, analyzeImage, analyzeText, analyzeAdvance, setStep, queueAnalyzeText, queueAnalyzeImage,
+      state, startDemo, analyzeImage, analyzeText, analyzeAdvance, setStep, setAdvanceT, queueAnalyzeText, queueAnalyzeImage,
       modifyGeometry, loadGeometry, clearGeometry, stopScanning, viewQueueItem, removeQueueItem, clearActiveQueue,
       updateDynamicPoint, addPoint, addLine, addMidpoint, addPlane, addPlaneFromEquation, removeElement,
       updatePoint, setManualMode, setManualTool, setVideoMode, toggleVideoMode, setSelectedIds, setAutoRotate, togglePoints, toggleAutoColor, toggleCoordinateGrid,

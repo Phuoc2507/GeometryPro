@@ -365,6 +365,7 @@ export interface GeometryState {
   selectedIds: string[];
   advanceScene?: AdvanceScene | null;
   currentStep: number;
+  advanceT: number;
 }
 
 export type GeometryAction =
@@ -403,4 +404,5 @@ export type GeometryAction =
   | { type: 'TOGGLE_SELECTION'; id: string }
   | { type: 'CLEAR_SELECTION' }
   | { type: 'SET_ADVANCE_SCENE'; scene: AdvanceScene }
-  | { type: 'SET_STEP'; index: number };
+  | { type: 'SET_STEP'; index: number }
+  | { type: 'ADVANCE_SET_T'; payload: number };
