@@ -6,7 +6,6 @@
  */
 import { useEffect, useRef } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
-import { Home } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { GeometryProvider, useGeometryOptional } from '@/context/GeometryContext';
 import { CameraProvider } from '@/context/CameraContext';
@@ -22,8 +21,6 @@ import { AdvanceSolutionPanel } from '@/components/AdvanceSolutionPanel';
 import { VideoExportPanel } from '@/components/layout/VideoExportPanel';
 import { SolverPanel, MobileSolverPanel } from '@/components/SolverPanel';
 import { GeometryData } from '@/types/geometry';
-import { Button } from '@/components/ui/button';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface LocalHistoryItem {
   id: string;
@@ -83,26 +80,6 @@ function GeometryLoader() {
   return null;
 }
 
-function BackButton() {
-  const navigate = useNavigate();
-  return (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <Button
-          variant="ghost"
-          size="icon"
-          aria-label="Trang chủ"
-          className="fixed top-4 left-[272px] z-50 glass border border-border/50 h-9 w-9 hidden lg:flex"
-          onClick={() => navigate('/')}
-        >
-          <Home className="w-4 h-4" />
-        </Button>
-      </TooltipTrigger>
-      <TooltipContent side="right">Trang chủ</TooltipContent>
-    </Tooltip>
-  );
-}
-
 function TimelineContainer() {
   const context = useGeometryOptional();
   if (context?.state.geometry && !context.state.manualMode && context.state.videoMode) {
@@ -133,7 +110,6 @@ const StudentModeContent = () => {
         <MobileSidebar />
 
         <main className="flex-1 lg:[margin-right:var(--solver-w,20rem)] relative radial-gradient-bg min-h-screen">
-          <BackButton />
           <TopToolbar />
           <GeometryCanvas />
           

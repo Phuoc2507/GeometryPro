@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { RotateCcw, Maximize2, Grid3X3, Camera, Download, Save, PenTool, Youtube, Box, Eye, EyeOff, Cpu, Edit3, Navigation, Undo2, Redo2 } from 'lucide-react';
+import { RotateCcw, Maximize2, Grid3X3, Camera, Download, Save, PenTool, Youtube, Box, Eye, EyeOff, Cpu, Navigation, Undo2, Redo2 } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Toggle } from '@/components/ui/toggle';
@@ -37,7 +37,7 @@ export function TopToolbar() {
 
   if (!context) return null;
   
-  const { state, clearGeometry, setManualMode, setVideoMode, undo, redo, canUndo, canRedo } = context;
+  const { state, setManualMode, setVideoMode, undo, redo, canUndo, canRedo } = context;
   const isManualMode = state.manualMode;
 
   return (
@@ -199,21 +199,6 @@ export function TopToolbar() {
                 <TooltipContent>Xuất ảnh / LaTeX</TooltipContent>
               </Tooltip>
             )}
-
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  aria-label="Bài mới (nhập đề khác)"
-                  className="h-8 w-8"
-                  onClick={clearGeometry}
-                >
-                  <Edit3 className="w-4 h-4" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>Bài mới — nhập đề khác</TooltipContent>
-            </Tooltip>
           </>
         )}
 
