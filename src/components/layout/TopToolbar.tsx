@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { RotateCcw, Maximize2, Grid3X3, Camera, Download, Save, PenTool, Youtube, Box, Eye, EyeOff, Cpu, Home, Navigation, Undo2, Redo2 } from 'lucide-react';
+import { RotateCcw, Maximize2, Grid3X3, Camera, Download, Save, PenTool, Youtube, Box, Eye, EyeOff, Cpu, Edit3, Navigation, Undo2, Redo2 } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Toggle } from '@/components/ui/toggle';
@@ -205,14 +205,14 @@ export function TopToolbar() {
                 <Button
                   variant="ghost"
                   size="icon"
-                  aria-label="Về trang nhập đề"
+                  aria-label="Bài mới (nhập đề khác)"
                   className="h-8 w-8"
                   onClick={clearGeometry}
                 >
-                  <Home className="w-4 h-4" />
+                  <Edit3 className="w-4 h-4" />
                 </Button>
               </TooltipTrigger>
-              <TooltipContent>Về trang nhập đề</TooltipContent>
+              <TooltipContent>Bài mới — nhập đề khác</TooltipContent>
             </Tooltip>
           </>
         )}
