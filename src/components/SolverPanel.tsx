@@ -15,7 +15,9 @@ import type { Dispatch, SetStateAction } from 'react';
 import {
   ChevronLeft, ChevronRight, Sparkles, Loader2,
   AlertTriangle, RotateCcw, BookOpen, ChevronDown, Eye,
+  Lightbulb, CheckCircle2, XCircle,
 } from 'lucide-react';
+import { gradeAnswer, type GradeVerdict } from '@/lib/gradeAnswer';
 import { useLocation } from 'react-router-dom';
 import { Button }      from '@/components/ui/button';
 import { Textarea }    from '@/components/ui/textarea';
@@ -218,11 +220,14 @@ interface StepCardProps {
   index: number;
   total: number;
   constructedIds?: string[]; // điểm bước này DỰNG THÊM (đánh dấu khác điểm gốc)
+  gated?: boolean;           // học sinh: ẩn giải thích sau nút "Vì sao?" để tự nghĩ trước
 }
 
-function StepCard({ step, index, constructedIds }: StepCardProps) {
+function StepCard({ step, index, constructedIds, gated }: StepCardProps) {
   const constructed = new Set(constructedIds ?? []);
   const hasConstructed = step.highlight?.some((id) => constructed.has(id)) ?? false;
+  const hasWhy = !!(step.explanation?.trim() || step.formula);
+  const [revealed, setRevealed] = useState(!gated);
   return (
     <div className="rounded-xl border border-border/60 bg-card/40 p-3.5 my-1 animate-fade-in">
       {/* Số thứ tự + tiêu đề bước */}
@@ -233,11 +238,23 @@ function StepCard({ step, index, constructedIds }: StepCardProps) {
         <span className="text-[13.5px] font-semibold text-foreground leading-snug mt-0.5">{step.title}</span>
       </div>
 
-      {/* Giải thích (chữ + công thức inline) */}
-      <MathText text={step.explanation} className="text-sm text-muted-foreground leading-relaxed mt-2.5" />
+      {/* Học sinh: giải thích + công thức ẩn sau "Vì sao?" cho em tự nghĩ trước. */}
+      {gated && hasWhy && !revealed ? (
+        <button
+          onClick={() => setRevealed(true)}
+          className="mt-2.5 inline-flex items-center gap-1.5 rounded-lg border border-dashed border-primary/45 px-2.5 py-1 text-[12px] font-semibold text-primary hover:bg-primary/10 transition-colors"
+        >
+          <Lightbulb className="w-3.5 h-3.5" /> Vì sao? · Gợi ý
+        </button>
+      ) : (
+        <>
+          {/* Giải thích (chữ + công thức inline) */}
+          <MathText text={step.explanation} className="text-sm text-muted-foreground leading-relaxed mt-2.5" />
 
-      {/* Công thức khối */}
-      {step.formula && <FormulaBlock formula={step.formula} />}
+          {/* Công thức khối */}
+          {step.formula && <FormulaBlock formula={step.formula} />}
+        </>
+      )}
 
       {/* Điểm liên quan bước này — điểm DỰNG THÊM viền nét đứt màu chính. */}
       {step.highlight && step.highlight.length > 0 && (
@@ -273,6 +290,26 @@ function StepCard({ step, index, constructedIds }: StepCardProps) {
   );
 }
 
+// ─── Phản hồi chấm đáp án tự nhập ───────────────────────────────────────────────
+function AnswerFeedback({ verdict }: { verdict: GradeVerdict }) {
+  const map = {
+    correct:     { icon: CheckCircle2, text: 'Chính xác! 🎉 Giỏi lắm.',                      cls: 'text-green-600 dark:text-green-400 bg-green-500/12 border-green-500/30' },
+    close:       { icon: AlertTriangle, text: 'Gần đúng rồi — có thể do làm tròn. Kiểm lại nhé.', cls: 'text-amber-600 dark:text-amber-400 bg-amber-500/12 border-amber-500/30' },
+    wrong:       { icon: XCircle,       text: 'Chưa đúng, thử lại nhé. Xem gợi ý “Vì sao?” ở mỗi bước.', cls: 'text-red-600 dark:text-red-400 bg-red-500/12 border-red-500/30' },
+    unparseable: { icon: AlertTriangle, text: 'Chưa đọc được số — thử gõ kiểu 2√3, 4/3, pi/6.', cls: 'text-muted-foreground bg-secondary/40 border-border/60' },
+    'no-reference': { icon: AlertTriangle, text: '', cls: '' },
+  } as const;
+  const m = map[verdict];
+  if (!m.text) return null;
+  const Icon = m.icon;
+  return (
+    <div className={cn('flex items-start gap-2 rounded-xl border px-3 py-2 text-[12.5px] font-medium leading-snug animate-fade-in', m.cls)}>
+      <Icon className="w-4 h-4 shrink-0 mt-px" />
+      <span>{m.text}</span>
+    </div>
+  );
+}
+
 // ─── Reusable results view ─────────────────────────────────────────────────────
 // Tách từ nhánh `if (result)` của SolverContent để tái dùng cho Advance (lời giải
 // đã nạp sẵn, KHÔNG gọi API). `onReset` có → hiện nút "Giải lại" (luồng solve on-demand);
@@ -294,6 +331,26 @@ function SolveResultViewImpl({
   const [showProblem, setShowProblem] = useState(false);
   const [showAll, setShowAll] = useState(false);          // xem TẤT CẢ bước cùng lúc
   const [answerShown, setAnswerShown] = useState(!isStudent);
+
+  // Tự nhập đáp án để chấm (chấm tại máy dựa trên answer_value đã kiểm chứng).
+  const [guess, setGuess] = useState('');
+  const [verdict, setVerdict] = useState<GradeVerdict | null>(null);
+  const canGrade = result.answer_value != null && Number.isFinite(result.answer_value);
+  // Bài mới -> ẩn lại đáp số & xoá ô nhập.
+  useEffect(() => {
+    setGuess('');
+    setVerdict(null);
+    setAnswerShown(!isStudent);
+  }, [result, isStudent]);
+  const checkGuess = useCallback(() => {
+    if (!guess.trim()) return;
+    const g = gradeAnswer(guess, result.answer_value);
+    setVerdict(g.verdict);
+    if (g.verdict === 'correct') {
+      // Đúng -> hé đáp án chính thức để em đối chiếu (giữ lời khen 1 nhịp).
+      window.setTimeout(() => setAnswerShown(true), 850);
+    }
+  }, [guess, result.answer_value]);
 
   const level = result.tier?.level ?? verifiedToLevel(result.verified);
   const meta = safetyTierMeta(level);
@@ -324,16 +381,39 @@ function SolveResultViewImpl({
               )}
             </>
           ) : (
-            <button
-              onClick={() => setAnswerShown(true)}
-              className="mt-2 w-full inline-flex items-center justify-center gap-2 h-10 rounded-xl border border-dashed border-primary/50 text-primary text-sm font-semibold hover:bg-primary/10 transition-colors"
-            >
-              <Eye className="w-4 h-4" /> Bấm để xem đáp số
-            </button>
+            <div className="mt-2 space-y-2">
+              {/* Tự nhập đáp án để tự chấm (nếu bài có số chuẩn). */}
+              {canGrade && (
+                <>
+                  <div className="flex gap-2">
+                    <input
+                      value={guess}
+                      onChange={(e) => { setGuess(e.target.value); setVerdict(null); }}
+                      onKeyDown={(e) => { if (e.key === 'Enter') checkGuess(); }}
+                      placeholder="Nhập đáp số của em… vd 2√3, 4/3, pi/6"
+                      aria-label="Nhập đáp số của em"
+                      className="flex-1 min-w-0 h-10 rounded-xl border border-primary/40 bg-background/60 px-3 text-sm text-foreground outline-none focus:border-primary transition-colors"
+                    />
+                    <Button onClick={checkGuess} disabled={!guess.trim()} size="sm" className="h-10 px-4 rounded-xl shrink-0">
+                      Kiểm tra
+                    </Button>
+                  </div>
+                  {verdict && <AnswerFeedback verdict={verdict} />}
+                </>
+              )}
+              <button
+                onClick={() => setAnswerShown(true)}
+                className="w-full inline-flex items-center justify-center gap-2 h-9 rounded-xl border border-dashed border-primary/50 text-primary text-[13px] font-semibold hover:bg-primary/10 transition-colors"
+              >
+                <Eye className="w-4 h-4" /> Xem đáp án
+              </button>
+            </div>
           )}
         </div>
-        {!answerShown && (
-          <p className="text-[11px] text-muted-foreground/70 text-center mt-1.5">Thử tự làm theo các bước trước nhé — bấm khi muốn đối chiếu.</p>
+        {!answerShown && !verdict && (
+          <p className="text-[11px] text-muted-foreground/70 text-center mt-1.5">
+            {canGrade ? 'Tự làm rồi nhập đáp số để đối chiếu — hoặc bấm “Xem đáp án”.' : 'Thử tự làm theo các bước trước nhé — bấm khi muốn đối chiếu.'}
+          </p>
         )}
       </div>
 
@@ -390,13 +470,15 @@ function SolveResultViewImpl({
         {nSteps === 0 ? (
           <p className="text-sm text-muted-foreground py-4 text-center">Không có bước nào.</p>
         ) : showAll ? (
+          // "Xem tất cả" = xem đầy đủ để ôn/đối chiếu ⇒ không ẩn giải thích.
           <div className="space-y-1 pb-2">
             {result.steps.map((s, i) => (
               <StepCard key={i} step={s} index={i} total={nSteps} constructedIds={constructedByStep?.[i]} />
             ))}
           </div>
         ) : step ? (
-          <StepCard step={step} index={currentStep} total={nSteps} constructedIds={constructedByStep?.[currentStep]} />
+          // key theo bước ⇒ trạng thái "Vì sao?" reset khi chuyển bước.
+          <StepCard key={step.id ?? currentStep} step={step} index={currentStep} total={nSteps} constructedIds={constructedByStep?.[currentStep]} gated={isStudent} />
         ) : null}
       </ScrollArea>
 
