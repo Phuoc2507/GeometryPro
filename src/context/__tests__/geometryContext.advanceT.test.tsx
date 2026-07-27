@@ -16,17 +16,31 @@ describe('advanceT trong reducer', () => {
     expect(s3.advanceT).toBe(0);
   });
 
-  it('đổi bước reset advanceT=0', () => {
+  it('đổi sang bước có anim ⇒ advanceT=0 (lộ dần rồi kết đông)', () => {
     const scene = {
       base: { name: 'x', points: [], lines: [] },
       steps: [
-        { id: 'a', label: '', visibleIds: [] },
+        { id: 'a', label: '', visibleIds: [], anim: { param: 'sweep', label: '', tMax: 4, autoplay: true } },
+        { id: 'b', label: '', visibleIds: [] },
+      ],
+    } as unknown as AdvanceScene;
+    const primed = { ...initialGeometryState, advanceT: 0.7, advanceScene: scene };
+    const out = rawGeometryReducer(primed, { type: 'SET_STEP', index: 0 });
+    expect(out.advanceT).toBe(0);
+  });
+
+  it('đổi sang bước KHÔNG anim ⇒ advanceT=1 (khối đã kết đông, không bị cắt mất)', () => {
+    // Regression: SET_STEP từng luôn reset 0; bước đáp án không có thanh quét ⇒ mặt cắt gạt sạch khối.
+    const scene = {
+      base: { name: 'x', points: [], lines: [] },
+      steps: [
+        { id: 'a', label: '', visibleIds: [], anim: { param: 'sweep', label: '', tMax: 4, autoplay: true } },
         { id: 'b', label: '', visibleIds: [] },
       ],
     } as unknown as AdvanceScene;
     const primed = { ...initialGeometryState, advanceT: 0.7, advanceScene: scene };
     const out = rawGeometryReducer(primed, { type: 'SET_STEP', index: 1 });
-    expect(out.advanceT).toBe(0);
+    expect(out.advanceT).toBe(1);
   });
 
   it('nạp scene mới reset advanceT=0', () => {

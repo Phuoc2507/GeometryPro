@@ -241,8 +241,14 @@ export function rawGeometryReducer(state: GeometryState, action: GeometryAction)
     case 'SET_ADVANCE_SCENE':
       return { ...state, advanceScene: action.scene, currentStep: 0, advanceT: 0,
                geometry: action.scene.base, undoStack: [], redoStack: [] };
-    case 'SET_STEP':
-      return { ...state, currentStep: Math.max(0, Math.min(action.index, (state.advanceScene?.steps.length ?? 1) - 1)), advanceT: 0 };
+    case 'SET_STEP': {
+      const idx = Math.max(0, Math.min(action.index, (state.advanceScene?.steps.length ?? 1) - 1));
+      // Bước có animation (thanh quét/autoplay) ⇒ bắt đầu từ 0 để lộ dần rồi kết đông.
+      // Bước KHÔNG có animation (vd. Câu b đọc đáp án) ⇒ khối đã kết đông đầy đủ ⇒ advanceT = 1,
+      // nếu để 0 thì mặt cắt gạt sạch khối bóng và người xem thấy khối biến mất.
+      const nextT = state.advanceScene?.steps[idx]?.anim ? 0 : 1;
+      return { ...state, currentStep: idx, advanceT: nextT };
+    }
     case 'ADVANCE_SET_T':
       return { ...state, advanceT: Math.max(0, Math.min(1, action.payload)) };
     case 'START_BUILDING':
