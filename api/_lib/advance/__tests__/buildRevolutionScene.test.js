@@ -38,4 +38,19 @@ describe('buildRevolutionScene', () => {
       expect(typeof s.solution).not.toBe('string');
     }
   });
+
+  it('rev-ox 1 câu: y=x^2 trên [0,2] → 32π/5, nhãn bước gọn (Khối tròn xoay / Thể tích)', () => {
+    // Bài điển hình chỉ 1 câu ⇒ templateParams.parts có 1 phần tử (hoặc vắng).
+    const oneQ = buildRevolutionScene({
+      outer: { kind: 'poly', coeffs: [0, 0, 1] }, // x^2
+      domain: [0, 2],
+      fnLabel: 'y=x^2',
+      parts: [{ label: 'Câu 1', hoi: 'Tính thể tích khi quay quanh Ox' }],
+    });
+    expect(oneQ.steps).toHaveLength(2);
+    expect(oneQ.steps[0].label).toBe('Khối tròn xoay');
+    expect(oneQ.steps[1].label).toBe('Thể tích');
+    expect(oneQ.steps[1].answer.verified).toBe(true);
+    expect(oneQ.steps[1].answer.approx).toBeCloseTo((32 * Math.PI) / 5, 4);
+  });
 });

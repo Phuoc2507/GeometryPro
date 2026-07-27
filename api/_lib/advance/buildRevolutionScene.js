@@ -42,8 +42,11 @@ export function buildRevolutionScene(params) {
   base.revolutionSolids = [solid];
 
   const samplePointIds = base.points.map((p) => p.id);
-  const partA = parts?.[0] ?? { label: 'Câu a', hoi: 'Khối tròn xoay quanh Ox' };
-  const partB = parts?.[1] ?? { label: 'Câu b', hoi: 'Thể tích khối' };
+  // Bài tròn xoay 1 câu ("tính thể tích") ⇒ chỉ có 1 part. Khi đó gán nhãn 2 bước cố định, dễ hiểu
+  // (Khối tròn xoay → Thể tích) thay vì trộn nhãn "Câu 1" của đề với "Câu b" mặc định.
+  const hasTwoParts = Array.isArray(parts) && parts.length >= 2;
+  const partA = hasTwoParts ? parts[0] : { label: 'Khối tròn xoay', hoi: 'Khối tròn xoay quanh Ox' };
+  const partB = hasTwoParts ? parts[1] : { label: 'Thể tích', hoi: 'Thể tích khối' };
 
   const v = solid.volume;
   const steps = [

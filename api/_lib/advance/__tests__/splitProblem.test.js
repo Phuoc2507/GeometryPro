@@ -32,4 +32,19 @@ describe('splitProblem (Pass 0)', () => {
     const r = await splitProblem('...', {});
     expect(r.type).toBe('single');
   });
+  it('rev-ox 1 câu (type=single) → VẪN GIỮ template + params (engine tự dựng & kiểm)', async () => {
+    // Regression: bài "tính thể tích khối tròn xoay" chỉ 1 câu ⇒ type=single; template từng bị vứt
+    // ở guard multi_question nên nhánh rev-ox không bao giờ chạy → "chưa vẽ được".
+    callVilao.mockResolvedValue(JSON.stringify({
+      type: 'single',
+      setup: 'Miền (H): y=x^2, Ox, x=0, x=2',
+      parts: [{ label: 'Câu 1', hoi: 'Tính thể tích khi quay quanh Ox', phan_tu_moi: [] }],
+      template: 'rev-ox',
+      templateParams: { outer: { kind: 'poly', coeffs: [0, 0, 1] }, domain: [0, 2], fnLabel: 'y=x^2' },
+    }));
+    const r = await splitProblem('Cho (H) giới hạn y=x^2, x=0, x=2. Tính V khối tròn xoay quanh Ox.', {});
+    expect(r.template).toBe('rev-ox');
+    expect(r.templateParams.domain).toEqual([0, 2]);
+    expect(r.templateParams.outer).toEqual({ kind: 'poly', coeffs: [0, 0, 1] });
+  });
 });

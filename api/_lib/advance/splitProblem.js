@@ -38,21 +38,28 @@ export async function splitProblem(problem, opts = {}) {
     return { type: 'single' };
   }
 
-  // Vật/nước/tròn xoay chuyển động liên tục → giữ nguyên (route riêng xử lý).
-  if (parsed?.type === 'continuous_animation') return parsed;
+  // Mẫu calculus (rev-ox) là TẤT ĐỊNH ở engine: builder tự dựng khối + tự kiểm thể tích, KHÔNG phụ
+  // thuộc số câu. Bài tròn xoay điển hình CHỈ 1 câu ("tính thể tích") nên type thường là 'single' —
+  // phải GIỮ template kể cả khi single, nếu không nhánh rev-ox (analyze-advance) không bao giờ chạy.
+  const revTemplate = (parsed?.template === 'rev-ox' && parsed?.templateParams)
+    ? { template: 'rev-ox', templateParams: parsed.templateParams }
+    : null;
 
-  // Không phải đa-câu hợp lệ → an toàn về single.
+  // Vật/nước/tròn xoay chuyển động liên tục → giữ nguyên (route riêng xử lý); kèm template nếu có.
+  if (parsed?.type === 'continuous_animation') return { ...parsed, ...(revTemplate || {}) };
+
+  // Không phải đa-câu hợp lệ → an toàn về single; nhưng vẫn kèm template rev-ox (engine tự kiểm).
   if (parsed?.type !== 'multi_question' || !Array.isArray(parsed.parts) || parsed.parts.length < 2) {
-    return { type: 'single' };
+    return { type: 'single', ...(revTemplate || {}) };
   }
 
   // Lưới tất định: LLM có nuốt mất số/điểm nào của đề gốc không? (soi cả setup lẫn parts —
   // kích thước/toạ độ thường ở setup, không trong câu hỏi.)
   const cov = coverageCheck(problem, parsed.parts, parsed.setup || '');
-  if (!cov.ok) return { type: 'single', _coverageMissing: cov.missing };
+  if (!cov.ok) return { type: 'single', ...(revTemplate || {}), _coverageMissing: cov.missing };
 
   const out = { type: 'multi_question', setup: parsed.setup || '', parts: parsed.parts };
   // Mẫu calculus (rev-ox): giữ template + params để route dựng khối tròn xoay tất định.
-  if (parsed.template) { out.template = parsed.template; out.templateParams = parsed.templateParams; }
+  if (revTemplate) { out.template = revTemplate.template; out.templateParams = revTemplate.templateParams; }
   return out;
 }
