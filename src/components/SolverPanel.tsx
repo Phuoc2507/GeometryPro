@@ -10,7 +10,7 @@
  * Desktop: fixed panel on right (lg:w-80)
  * Mobile:  Sheet trigger at bottom-right
  */
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useMemo, useRef, useCallback, memo } from 'react';
 import type { Dispatch, SetStateAction } from 'react';
 import {
   ChevronLeft, ChevronRight, Sparkles, Loader2,
@@ -256,7 +256,7 @@ function StepCard({ step, index }: StepCardProps) {
 // Tách từ nhánh `if (result)` của SolverContent để tái dùng cho Advance (lời giải
 // đã nạp sẵn, KHÔNG gọi API). `onReset` có → hiện nút "Giải lại" (luồng solve on-demand);
 // không có → ẩn nút (advance chỉ xem lời giải đã lưu).
-export function SolveResultView({
+function SolveResultViewImpl({
   result, currentStep, setCurrentStep, onReset, problem,
 }: {
   result: import('@/hooks/useSolver').SolveResult;
@@ -372,6 +372,10 @@ export function SolveResultView({
   );
 }
 
+// memo: khi xoay hình, SolverContent render lại mỗi khung nhưng props ở đây (result/currentStep/
+// setCurrentStep/onReset/problem) không đổi ⇒ khối KaTeX nặng này KHÔNG render lại ⇒ hết lag.
+export const SolveResultView = memo(SolveResultViewImpl);
+
 // ─── Panel content ────────────────────────────────────────────────────────────
 
 export function SolverContent({ creditNote }: { creditNote?: string } = {}) {
@@ -393,6 +397,11 @@ export function SolverContent({ creditNote }: { creditNote?: string } = {}) {
   const [currentStep, setCurrentStep] = useState(0);
   const [dismissed, setDismissed] = useState(false); // đã bấm "Giải lại" → ẩn kết quả cũ để nhập/giải mới
   const textareaRef               = useRef<HTMLTextAreaElement>(null);
+
+  // camera đổi tham chiếu MỖI KHUNG khi xoay hình (hiddenLines cập nhật liên tục). Giữ trong ref để
+  // các effect/handler bên dưới KHÔNG phụ thuộc trực tiếp vào `camera` ⇒ không chạy lại mỗi khung ⇒ hết lag.
+  const cameraRef                 = useRef(camera);
+  cameraRef.current               = camera;
 
   // Trạng thái giải LẤY THEO BÀI (khoá = geometryKey) từ SolveJobsProvider — không còn nằm trong panel,
   // nên đổi bài rồi quay lại vẫn thấy đúng "đang giải" / "đã giải" của bài đó.
@@ -459,23 +468,25 @@ export function SolverContent({ creditNote }: { creditNote?: string } = {}) {
     }
   }, [ctx, result, isFresh, job, jobKey, claimSave, updateGeometryData]);
 
-  // Bóc-lớp + nhấn mạnh theo bước hiện tại.
+  // Bóc-lớp + nhấn mạnh theo bước hiện tại. Đọc camera qua ref (KHÔNG để trong deps) nên effect chỉ
+  // chạy khi thật sự đổi result/bước/reveal — không chạy lại mỗi khung khi xoay hình.
   useEffect(() => {
-    if (!camera) return;
+    const cam = cameraRef.current;
+    if (!cam) return;
     if (reveal && result) {
       const visible = reveal.stepVisibleIds[currentStep] ?? reveal.stepVisibleIds[reveal.stepVisibleIds.length - 1] ?? [];
-      camera.setRevealVisibleIds(new Set(visible));
+      cam.setRevealVisibleIds(new Set(visible));
       const constructedNow = reveal.stepConstructIds[currentStep] ?? [];
-      camera.setHighlightedIds(new Set([...(result.steps[currentStep]?.highlight ?? []), ...constructedNow]));
+      cam.setHighlightedIds(new Set([...(result.steps[currentStep]?.highlight ?? []), ...constructedNow]));
     } else if (result && result.steps[currentStep]) {
-      camera.setHighlightedIds(new Set(result.steps[currentStep].highlight ?? []));
-      camera.setRevealVisibleIds(null);
+      cam.setHighlightedIds(new Set(result.steps[currentStep].highlight ?? []));
+      cam.setRevealVisibleIds(null);
     } else {
-      camera.setHighlightedIds(new Set());
-      camera.setRevealVisibleIds(null);
+      cam.setHighlightedIds(new Set());
+      cam.setRevealVisibleIds(null);
     }
-    return () => { camera.setHighlightedIds(new Set()); camera.setRevealVisibleIds(null); };
-  }, [result, currentStep, camera, reveal]);
+    return () => { const c = cameraRef.current; c?.setHighlightedIds(new Set()); c?.setRevealVisibleIds(null); };
+  }, [result, currentStep, reveal]);
 
   const canSolve = !!geometry && problem.trim().length >= 10 && !loading;
 
@@ -487,15 +498,16 @@ export function SolverContent({ creditNote }: { creditNote?: string } = {}) {
     startJob(jobKey, { id, problem: problem.trim(), geometry, tags: geometry.tags || [] });
   };
 
-  const handleReset = () => {
+  // useCallback + đọc camera qua ref ⇒ onReset ỔN ĐỊNH tham chiếu khi xoay hình, giúp SolveResultView (memo) khỏi render lại.
+  const handleReset = useCallback(() => {
     clearJob(jobKey);              // xoá job của bài này → ẩn kết quả, cho nhập/giải lại
     setDismissed(true);
     setProblem(lastProblem);
     setReveal(null);
     // Giữ điểm đã dựng trong hình (người dùng chọn "giữ lại"); chỉ tắt lớp bóc theo bước.
-    camera?.setHighlightedIds(new Set());
-    camera?.setRevealVisibleIds(null);
-  };
+    cameraRef.current?.setHighlightedIds(new Set());
+    cameraRef.current?.setRevealVisibleIds(null);
+  }, [clearJob, jobKey, lastProblem]);
 
   // ── No geometry yet ──────────────────────────────────────────────────────
   if (!geometry) {
