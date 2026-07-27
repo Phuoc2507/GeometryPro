@@ -271,11 +271,11 @@ export function SolveResultView({
     <div className="h-full flex flex-col">
       {/* Đề bài — render đẹp như lời giải (MathText: chữ + công thức), có thể thu gọn. */}
       {problem && problem.trim() && (
-        <div className="border-b shrink-0">
+        <div className="border-b shrink-0 bg-secondary/15">
           <button
             onClick={() => setShowProblem((v) => !v)}
             aria-expanded={showProblem}
-            className="w-full flex items-center gap-1.5 px-4 py-2 text-left hover:bg-secondary/30 transition-colors"
+            className="w-full flex items-center gap-1.5 px-4 py-2 text-left hover:bg-secondary/40 transition-colors"
           >
             <BookOpen className="w-3.5 h-3.5 text-primary shrink-0" />
             <span className="text-[11px] font-semibold uppercase tracking-wide text-primary flex-1">Đề bài</span>

@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback } from 'react';
-import { ChevronRight, ChevronLeft, Copy, Check, Box, MapPin, Ruler, Cuboid, Code, Download, Image as ImageIcon, ChevronDown, BookOpen } from 'lucide-react';
+import { ChevronRight, ChevronLeft, Copy, Check, Box, MapPin, Ruler, Cuboid, Code, Download, Image as ImageIcon, ChevronDown, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -159,8 +159,8 @@ function PanelContent() {
             Xuất
           </TabsTrigger>
           <TabsTrigger value="problem" className="gap-1.5 text-xs px-1">
-            <BookOpen className="w-3 h-3" />
-            Đề bài
+            <Sparkles className="w-3 h-3" />
+            Giải bài
           </TabsTrigger>
           <TabsTrigger value="properties" className="gap-1.5 text-xs px-1">
             <Box className="w-3 h-3" />
