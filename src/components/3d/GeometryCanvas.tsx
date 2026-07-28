@@ -525,13 +525,23 @@ export function GeometryCanvas({
     setHintDismissed(true);
     try { localStorage.setItem('geo3d:seen-3d-hint', '1'); } catch { /* bỏ qua */ }
   }, []);
+  // Tự ẩn sau 5s để không đè hình lâu (đã đủ thời gian đọc dòng ngắn).
+  useEffect(() => {
+    if (hintDismissed) return;
+    const t = setTimeout(dismissHint, 5000);
+    return () => clearTimeout(t);
+  }, [hintDismissed, dismissHint]);
 
   if (!state?.geometry && !state?.isScanning) {
     return null;
   }
 
   return (
-    <div ref={canvasContainerRef} className="absolute inset-0">
+    <div
+      ref={canvasContainerRef}
+      className="absolute inset-0"
+      onPointerDown={hintDismissed ? undefined : dismissHint} // chạm/kéo hình là ẩn gợi ý ngay
+    >
       {/* Empty State */}
       {!geometry && !isBuilding && (
         <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none z-10 animate-fade-in opacity-50">
