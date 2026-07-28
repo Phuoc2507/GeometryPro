@@ -5,18 +5,27 @@ const VILAO_MODEL = 'ram/gemini-3.5-flash-low';
 
 function httpsRequest(url, options, bodyData, timeoutMs) {
   return new Promise((resolve, reject) => {
+    let hardTimer = null;
+    const clearHardTimer = () => { if (hardTimer) { clearTimeout(hardTimer); hardTimer = null; } };
+
     const req = https.request(url, options, (res) => {
+      // Dọn đồng hồ khi phản hồi đã ĐỌC XONG (hoặc đứt) — không để đồng hồ hủy nhầm request đã hoàn tất.
+      res.on('end', clearHardTimer);
+      res.on('close', clearHardTimer);
       resolve(res);
     });
-    
+
     req.on('error', (err) => {
+      clearHardTimer();
       reject(err);
     });
 
     if (timeoutMs) {
-      req.setTimeout(timeoutMs, () => {
-        req.destroy(new Error('Request timed out'));
-      });
+      // Đồng hồ CỨNG tính từ lúc gửi: hủy nếu vượt timeoutMs KỂ CẢ khi provider "nhỏ giọt" dữ liệu.
+      // req.setTimeout chỉ bắt socket RẢNH nên khi server trả token chậm dần có thể treo 100s+ (đo thực:
+      // 1 lượt tách đề chạy 124s dù timeoutMs=25s) → vượt maxDuration 60s của Vercel → hàm bị ngắt thô.
+      hardTimer = setTimeout(() => { req.destroy(new Error('Request timed out')); }, timeoutMs);
+      req.setTimeout(timeoutMs, () => { req.destroy(new Error('Request timed out')); });
     }
 
     if (bodyData) {
