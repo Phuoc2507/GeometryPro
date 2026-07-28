@@ -9,11 +9,12 @@
  * Đây là nơi sẽ tinh chỉnh trải nghiệm học sinh về sau (ẩn/hiện đáp số, xem tất cả bước,
  * gợi ý/ vì sao, ...). Vỏ panel (thu gọn + kéo rộng + sheet mobile) sao y RightPanel.
  */
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { ChevronRight, ChevronLeft, Box, Sparkles, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useGeometryOptional } from '@/context/GeometryContext';
+import { useCameraOptional } from '@/context/CameraContext';
 import { computeProperties } from '@/lib/geometry/calculations';
 import { cn } from '@/lib/utils';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
@@ -91,7 +92,15 @@ function StudentPanelContent({ compact }: { compact?: boolean } = {}) {
 // sáng và xoay/chụm được khi panel đang mở → xem hình + lời giải song song.
 export function MobileStudentRightPanel() {
   const context = useGeometryOptional();
+  const camera = useCameraOptional();
   const [open, setOpen] = useState(false);
+
+  // Báo cho camera biết đáy màn bị panel che ~48% → camera nhắm lệch lên.
+  const setBottomInset = camera?.setBottomInset;
+  useEffect(() => {
+    setBottomInset?.(open ? 0.48 : 0);
+    return () => setBottomInset?.(0);
+  }, [open, setBottomInset]);
 
   if (!context) return null;
   const { state } = context;

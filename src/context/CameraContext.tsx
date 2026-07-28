@@ -56,6 +56,9 @@ interface CameraContextType {
   /** Bước LỜI GIẢI (inner) đang xem của câu hiện tại — để orchestrator biết bay tới điểm dựng nào. */
   solutionStep: number;
   setSolutionStep: (n: number) => void;
+  /** Tỉ lệ đáy màn bị panel che (0..~0.5). >0 → camera nhắm LỆCH LÊN để hình nằm ở phần đang thấy. */
+  bottomInset: number;
+  setBottomInset: (v: number) => void;
   /** The expanded PNG/TikZ editor owns its own camera while it is open. */
   isExportPreviewOpen: boolean;
   setExportPreviewOpen: (open: boolean) => void;
@@ -89,6 +92,7 @@ export function CameraProvider({ children }: { children: React.ReactNode }) {
   const resetCamera = useCallback(() => setResetNonce((n) => n + 1), []);
   const [cameraFocus, setCameraFocus] = useState<CameraFocus | null>(null);
   const [solutionStep, setSolutionStep] = useState(0);
+  const [bottomInset, setBottomInset] = useState(0);
   const [isExportPreviewOpen, setExportPreviewOpen] = useState(false);
   const [isLivePreviewEnabled, setLivePreviewEnabled] = useState(false);
   const captureHandlerRef = useRef<CaptureHandler | null>(null);
@@ -110,7 +114,7 @@ export function CameraProvider({ children }: { children: React.ReactNode }) {
     () => ({ cameraState, previewCameraState, setCameraState, setLiveCameraState }),
     [cameraState, previewCameraState, setCameraState],
   );
-  const mainValue = useMemo(() => ({ canvasRef, hiddenLines, setHiddenLines, highlightedIds, setHighlightedIds, revealVisibleIds, setRevealVisibleIds, resetNonce, resetCamera, cameraFocus, requestFocus, solutionStep, setSolutionStep, isExportPreviewOpen, setExportPreviewOpen, isLivePreviewEnabled, setLivePreviewEnabled, registerCaptureHandler, captureAtCamera }), [hiddenLines, highlightedIds, revealVisibleIds, resetNonce, resetCamera, cameraFocus, requestFocus, solutionStep, isExportPreviewOpen, isLivePreviewEnabled, registerCaptureHandler, captureAtCamera]);
+  const mainValue = useMemo(() => ({ canvasRef, hiddenLines, setHiddenLines, highlightedIds, setHighlightedIds, revealVisibleIds, setRevealVisibleIds, resetNonce, resetCamera, cameraFocus, requestFocus, solutionStep, setSolutionStep, bottomInset, setBottomInset, isExportPreviewOpen, setExportPreviewOpen, isLivePreviewEnabled, setLivePreviewEnabled, registerCaptureHandler, captureAtCamera }), [hiddenLines, highlightedIds, revealVisibleIds, resetNonce, resetCamera, cameraFocus, requestFocus, solutionStep, bottomInset, isExportPreviewOpen, isLivePreviewEnabled, registerCaptureHandler, captureAtCamera]);
 
   return (
     <CameraStateContext.Provider value={stateValue}>
