@@ -15,7 +15,7 @@ import type { Dispatch, SetStateAction } from 'react';
 import {
   ChevronLeft, ChevronRight, Sparkles, Loader2,
   AlertTriangle, RotateCcw, BookOpen, ChevronDown, Eye,
-  Lightbulb, CheckCircle2, XCircle,
+  Lightbulb, CheckCircle2, XCircle, Play,
 } from 'lucide-react';
 import { gradeAnswer, type GradeVerdict } from '@/lib/gradeAnswer';
 import { useLocation } from 'react-router-dom';
@@ -365,6 +365,28 @@ function SolveResultViewImpl({
     : 'bg-amber-500/12 text-amber-600 dark:text-amber-400 border-amber-500/30';
   const progressPct = nSteps > 0 ? ((currentStep + 1) / nSteps) * 100 : 0;
 
+  // Điều hướng bước + VUỐT trái/phải (mobile).
+  const goPrev = useCallback(() => setCurrentStep((s) => Math.max(0, s - 1)), [setCurrentStep]);
+  const goNext = useCallback(() => setCurrentStep((s) => Math.min(nSteps - 1, s + 1)), [setCurrentStep, nSteps]);
+  const touchRef = useRef<{ x: number; y: number } | null>(null);
+  const onTouchStart = (e: React.TouchEvent) => {
+    const t = e.touches[0];
+    touchRef.current = { x: t.clientX, y: t.clientY };
+  };
+  const onTouchEnd = (e: React.TouchEvent) => {
+    const start = touchRef.current;
+    touchRef.current = null;
+    if (!start || showAll) return;
+    const t = e.changedTouches[0];
+    const dx = t.clientX - start.x;
+    const dy = t.clientY - start.y;
+    // Vuốt NGANG rõ ràng (không phải cuộn dọc): sang trái → bước sau, sang phải → bước trước.
+    if (Math.abs(dx) > 45 && Math.abs(dx) > Math.abs(dy) * 1.4) {
+      if (dx < 0) goNext();
+      else goPrev();
+    }
+  };
+
   return (
     <div className="h-full flex flex-col">
       {/* ─── Đáp số (desktop). Bản GỌN (mobile) BỎ HẲN đáp số/tự chấm/xem đáp án —
@@ -446,7 +468,20 @@ function SolveResultViewImpl({
       {/* ─── Lời giải: tiêu đề + nút xem tất cả + thanh tiến độ ─── */}
       <div className="px-4 pt-1 shrink-0">
         <div className="flex items-center justify-between mb-2 gap-2">
-          <span className="text-[12.5px] font-semibold text-foreground">Lời giải từng bước</span>
+          <div className="flex items-center gap-1.5 min-w-0">
+            <span className="text-[12.5px] font-semibold text-foreground">Lời giải từng bước</span>
+            {/* Giải lại: nút tam giác nhỏ (mobile) thay cho nút lớn ở đáy */}
+            {compact && onReset && (
+              <button
+                onClick={onReset}
+                aria-label="Giải lại"
+                title="Giải lại"
+                className="shrink-0 h-6 w-6 rounded-md flex items-center justify-center text-muted-foreground hover:text-primary hover:bg-secondary/50 transition-colors"
+              >
+                <Play className="w-3 h-3 fill-current" />
+              </button>
+            )}
+          </div>
           <div className="flex items-center gap-2">
             {!showAll && (
               <span className="text-[11px] text-muted-foreground tabular-nums">
@@ -472,24 +507,53 @@ function SolveResultViewImpl({
 
       {/* ─── Thân: từng bước (điều hướng) hoặc tất cả các bước ─── */}
       {/* Ép child của viewport về block (Radix để display:table -> phình ngang theo công thức dài). */}
-      <ScrollArea className="flex-1 px-4 pt-2 [&_[data-radix-scroll-area-viewport]>div]:!block [&_[data-radix-scroll-area-viewport]>div]:!min-w-0">
-        {nSteps === 0 ? (
-          <p className="text-sm text-muted-foreground py-4 text-center">Không có bước nào.</p>
-        ) : showAll ? (
-          // "Xem tất cả" = xem đầy đủ để ôn/đối chiếu ⇒ không ẩn giải thích.
-          <div className="space-y-1 pb-2">
-            {result.steps.map((s, i) => (
-              <StepCard key={i} step={s} index={i} total={nSteps} constructedIds={constructedByStep?.[i]} />
-            ))}
-          </div>
-        ) : step ? (
-          // key theo bước ⇒ trạng thái "Vì sao?" reset khi chuyển bước.
-          <StepCard key={step.id ?? currentStep} step={step} index={currentStep} total={nSteps} constructedIds={constructedByStep?.[currentStep]} gated={isStudent} />
-        ) : null}
-      </ScrollArea>
+      {/* Mobile: VUỐT trái/phải để đổi bước + 2 mũi tên nhỏ hai bên. */}
+      <div
+        className="relative flex-1 min-h-0 flex flex-col"
+        onTouchStart={compact ? onTouchStart : undefined}
+        onTouchEnd={compact ? onTouchEnd : undefined}
+      >
+        <ScrollArea className="flex-1 px-4 pt-2 [&_[data-radix-scroll-area-viewport]>div]:!block [&_[data-radix-scroll-area-viewport]>div]:!min-w-0">
+          {nSteps === 0 ? (
+            <p className="text-sm text-muted-foreground py-4 text-center">Không có bước nào.</p>
+          ) : showAll ? (
+            // "Xem tất cả" = xem đầy đủ để ôn/đối chiếu ⇒ không ẩn giải thích.
+            <div className="space-y-1 pb-2">
+              {result.steps.map((s, i) => (
+                <StepCard key={i} step={s} index={i} total={nSteps} constructedIds={constructedByStep?.[i]} />
+              ))}
+            </div>
+          ) : step ? (
+            // key theo bước ⇒ trạng thái "Vì sao?" reset khi chuyển bước.
+            <StepCard key={step.id ?? currentStep} step={step} index={currentStep} total={nSteps} constructedIds={constructedByStep?.[currentStep]} gated={isStudent} />
+          ) : null}
+        </ScrollArea>
 
-      {/* ─── Điều hướng bước (ẩn khi xem tất cả) ─── */}
-      {!showAll && (
+        {/* Mũi tên nhỏ hai bên (mobile, chế độ từng bước) */}
+        {compact && !showAll && nSteps > 1 && (
+          <>
+            <button
+              onClick={goPrev}
+              disabled={currentStep === 0}
+              aria-label="Bước trước"
+              className="absolute left-1 top-1/2 -translate-y-1/2 h-8 w-8 rounded-full glass border border-border/50 bg-background/80 flex items-center justify-center text-foreground/70 hover:text-primary disabled:opacity-25 disabled:pointer-events-none transition-colors"
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </button>
+            <button
+              onClick={goNext}
+              disabled={currentStep >= nSteps - 1}
+              aria-label="Bước sau"
+              className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8 rounded-full glass border border-border/50 bg-background/80 flex items-center justify-center text-foreground/70 hover:text-primary disabled:opacity-25 disabled:pointer-events-none transition-colors"
+            >
+              <ChevronRight className="w-4 h-4" />
+            </button>
+          </>
+        )}
+      </div>
+
+      {/* ─── Điều hướng bước (desktop: nút lớn; mobile: vuốt + mũi tên ở trên) ─── */}
+      {!compact && !showAll && (
         <div className="flex gap-2 px-4 py-3 shrink-0">
           <Button
             variant="outline" size="sm"
@@ -510,8 +574,8 @@ function SolveResultViewImpl({
         </div>
       )}
 
-      {/* ─── Giải lại (chỉ luồng solve on-demand) ─── */}
-      {onReset && (
+      {/* ─── Giải lại (desktop; mobile đã có nút tam giác nhỏ cạnh tiêu đề) ─── */}
+      {!compact && onReset && (
         <div className="px-4 pb-3 shrink-0">
           <button onClick={onReset} className="w-full h-8 rounded-lg border border-border/60 text-muted-foreground hover:text-foreground hover:bg-secondary/40 transition-colors text-xs font-medium inline-flex items-center justify-center gap-1.5">
             <RotateCcw className="w-3 h-3" /> Giải lại
