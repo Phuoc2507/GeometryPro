@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 import * as THREE from 'three';
 import { useGeometry } from '@/context/GeometryContext';
 import type { SliceStack } from '@/types/geometry';
@@ -55,17 +55,40 @@ export default function AnimatedSliceStack({ solid }: { solid: SliceStack }) {
   const oy = solid.axis === 'Oy';
   const ratio = solid.ratio ?? 1;
   const samples = solid.samples || [];
+  const depth = (Math.abs(b - a) / SLICE_COUNT) * SLICE_DEPTH;
 
+  // Dựng SẴN 48 lát một lần (geometry + vị trí + xoay). advanceT chỉ lọc lát nào hiện,
+  // KHÔNG dựng lại geometry mỗi frame (tránh rò rỉ BufferGeometry khi chạy hoạt ảnh).
   const slices = useMemo(() => {
-    const arr: { pos: number; side: number }[] = [];
+    const arr: {
+      pos: number;
+      geo: THREE.ExtrudeGeometry;
+      position: [number, number, number];
+      rotation: [number, number, number];
+    }[] = [];
     for (let i = 0; i < SLICE_COUNT; i++) {
       const t = a + ((b - a) * (i + 0.5)) / SLICE_COUNT;
-      arr.push({ pos: t, side: Math.max(1e-4, sideAt(samples, t)) });
+      const side = Math.max(1e-4, sideAt(samples, t));
+      const geo = new THREE.ExtrudeGeometry(sectionShape(solid.section, side, ratio), {
+        depth, bevelEnabled: false, steps: 1,
+      });
+      geo.translate(0, 0, -depth / 2);
+      // Ox: lát nằm trong mặt Oyz, xếp dọc theo x ⇒ xoay 90° quanh Y để "depth" chạy theo x.
+      // Oy: lát trong mặt Oxz, xếp dọc theo y ⇒ xoay 90° quanh X.
+      arr.push({
+        pos: t,
+        geo,
+        position: oy ? [0, t, 0] : [t, 0, 0],
+        rotation: oy ? [Math.PI / 2, 0, 0] : [0, Math.PI / 2, 0],
+      });
     }
     return arr;
-  }, [samples, a, b]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [samples, a, b, solid.section, ratio, depth, oy]);
 
-  const depth = (Math.abs(b - a) / SLICE_COUNT) * SLICE_DEPTH;
+  // Giải phóng geometry khi bộ lát đổi hoặc component unmount.
+  useEffect(() => () => { slices.forEach((sl) => sl.geo.dispose()); }, [slices]);
+
   if (solid.hidden) return null;
   const cut = a + (b - a) * advanceT;
   const color = solid.color ?? '#0ea5e9';
@@ -73,26 +96,16 @@ export default function AnimatedSliceStack({ solid }: { solid: SliceStack }) {
 
   return (
     <group>
-      {slices.filter((sl) => sl.pos <= cut + 1e-9).map((sl, i) => {
-        const geo = new THREE.ExtrudeGeometry(sectionShape(solid.section, sl.side, ratio), {
-          depth, bevelEnabled: false, steps: 1,
-        });
-        geo.translate(0, 0, -depth / 2);
-        // Ox: lát nằm trong mặt Oyz, xếp dọc theo x ⇒ xoay 90° quanh Y để "depth" chạy theo x.
-        // Oy: lát trong mặt Oxz, xếp dọc theo y ⇒ xoay 90° quanh X.
-        const rotation: [number, number, number] = oy ? [Math.PI / 2, 0, 0] : [0, Math.PI / 2, 0];
-        const position: [number, number, number] = oy ? [0, sl.pos, 0] : [sl.pos, 0, 0];
-        return (
-          <mesh key={i} geometry={geo} position={position} rotation={rotation} castShadow receiveShadow>
-            <meshPhysicalMaterial
-              color={color} roughness={0.25} metalness={0.0} clearcoat={1} clearcoatRoughness={0.2}
-              side={THREE.DoubleSide} transparent={solid.dim} opacity={opacity}
-              emissive={solid.highlight ? new THREE.Color(color) : new THREE.Color('#000000')}
-              emissiveIntensity={solid.highlight ? 0.2 : 0}
-            />
-          </mesh>
-        );
-      })}
+      {slices.filter((sl) => sl.pos <= cut + 1e-9).map((sl, i) => (
+        <mesh key={i} geometry={sl.geo} position={sl.position} rotation={sl.rotation} castShadow receiveShadow>
+          <meshPhysicalMaterial
+            color={color} roughness={0.25} metalness={0.0} clearcoat={1} clearcoatRoughness={0.2}
+            side={THREE.DoubleSide} transparent={solid.dim} opacity={opacity}
+            emissive={solid.highlight ? new THREE.Color(color) : new THREE.Color('#000000')}
+            emissiveIntensity={solid.highlight ? 0.2 : 0}
+          />
+        </mesh>
+      ))}
     </group>
   );
 }
