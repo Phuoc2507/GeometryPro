@@ -22,7 +22,7 @@ import { GeometryPropertiesTab } from './GeometryPropertiesTab';
 import { useResizableWidth } from '@/hooks/useResizableWidth';
 import { TierBanner } from './TierBanner';
 
-function StudentPanelContent() {
+function StudentPanelContent({ compact }: { compact?: boolean } = {}) {
   const [activeTab, setActiveTab] = useState('problem');
   const context = useGeometryOptional();
 
@@ -52,17 +52,19 @@ function StudentPanelContent() {
 
   return (
     <div className="h-full flex flex-col">
-      {/* Header */}
-      <div className="p-4 border-b border-border/50">
-        <h2 className="font-semibold text-foreground">{state.geometry.name}</h2>
-        <p className="text-xs text-muted-foreground mt-1">
-          {properties?.shapeType || 'Geometry'} • {state.geometry.points.length} đỉnh • {state.geometry.lines.length} cạnh
-        </p>
-      </div>
+      {/* Header — ẩn ở bản gọn (mobile) vì trùng tiêu đề, để chừa chỗ cho hình */}
+      {!compact && (
+        <div className="p-4 border-b border-border/50">
+          <h2 className="font-semibold text-foreground">{state.geometry.name}</h2>
+          <p className="text-xs text-muted-foreground mt-1">
+            {properties?.shapeType || 'Geometry'} • {state.geometry.points.length} đỉnh • {state.geometry.lines.length} cạnh
+          </p>
+        </div>
+      )}
 
       {/* Tabs — chỉ Giải bài + Thuộc tính */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col min-h-0">
-        <TabsList className="mx-4 mt-4 grid w-auto grid-cols-2">
+        <TabsList className={cn('mx-4 grid w-auto grid-cols-2', compact ? 'mt-2' : 'mt-4')}>
           <TabsTrigger value="problem" className="gap-1.5 text-xs px-1">
             <Sparkles className="w-3 h-3" />
             Giải bài
@@ -74,7 +76,7 @@ function StudentPanelContent() {
         </TabsList>
 
         <TabsContent value="problem" className="flex-1 p-0 m-0 min-h-0 data-[state=active]:flex flex-col">
-          <SolverContent />
+          <SolverContent compact={compact} />
         </TabsContent>
 
         <TabsContent value="properties" className="flex-1 overflow-hidden p-0 min-h-0 data-[state=active]:flex flex-col">
@@ -111,7 +113,7 @@ export function MobileStudentRightPanel() {
       )}
 
       {open && (
-        <div className="fixed inset-x-0 bottom-0 z-50 lg:hidden h-[58vh] flex flex-col glass bg-background/95 border-t border-border/50 rounded-t-2xl shadow-2xl animate-fade-in">
+        <div className="fixed inset-x-0 bottom-0 z-50 lg:hidden h-[48vh] flex flex-col glass bg-background/95 border-t border-border/50 rounded-t-2xl shadow-2xl animate-fade-in">
           {/* Tay nắm + nút đóng */}
           <div className="relative shrink-0">
             <div className="mx-auto mt-2 mb-1 h-1.5 w-10 rounded-full bg-border/70" />
@@ -125,7 +127,7 @@ export function MobileStudentRightPanel() {
           </div>
           <div className="flex-1 min-h-0">
             <ErrorBoundary>
-              <StudentPanelContent />
+              <StudentPanelContent compact />
             </ErrorBoundary>
           </div>
         </div>
