@@ -108,10 +108,13 @@ QUY TẮC MẪU GIẢI TÍCH (optional — chỉ thêm khi CHẮC CHẮN khớp)
   trọng (engine lấy |f−g|).
 - 'section-poly' (THIẾT DIỆN khối đa diện, KHÁC cross-known): đề cho một KHỐI (lập phương/hộp/chóp/lăng trụ)
   và một MẶT PHẲNG QUA 3 ĐIỂM (đỉnh hoặc trung điểm cạnh), hỏi DỰNG / DIỆN TÍCH THIẾT DIỆN.
-  templateParams = { kind:'cube'|'box'|'pyramid-quad'|'prism-tri', dims:{a?,b?,c?,h?},
+  templateParams = { kind:'cube'|'box'|'pyramid-quad'|'prism-tri', dims:{a?,b?,c?,h?,apexOver?},
     points:[p1,p2,p3] } với mỗi p = {"vertex":"A"} HOẶC {"onEdge":["A","B"],"t":0.5} (0.5=trung điểm).
   Ký hiệu chuẩn: hộp/lập phương ABCD.A'B'C'D' (đáy ABCD z=0, nắp A'B'C'D'); chóp S.ABCD (đỉnh S);
   lăng trụ ABC.A'B'C'. Kích thước ghi bằng "a" ⇒ dùng a=1 (nếu có b,c,h riêng thì điền).
+  CHÓP — vị trí đỉnh S RẤT QUAN TRỌNG (sai vị trí ⇒ thiết diện sai): nếu đề nói "SA⊥đáy" (hay SB/SC/SD⊥đáy)
+  thì S nằm NGAY TRÊN đỉnh đó ⇒ đặt dims.apexOver = "A" (hoặc "B"/"C"/"D"), và h = độ dài cạnh bên đó (SA=…).
+  Nếu là "chóp đều" / "SO⊥đáy tại tâm O" thì BỎ apexOver (mặc định đỉnh trên tâm đáy).
 
 [Ví dụ 4 — rev-ox, đĩa đặc]
 Đề: "Cho miền phẳng giới hạn bởi y = √x, trục Ox và x = 4. a) Vẽ khối tròn xoay khi quay miền quanh Ox. b) Tính thể tích khối đó."
@@ -268,7 +271,7 @@ JSON:
   "template": "section-poly",
   "templateParams": {
     "kind": "pyramid-quad",
-    "dims": { "a": 1, "b": 1, "h": 1 },
+    "dims": { "a": 1, "b": 1, "h": 1, "apexOver": "A" },
     "points": [
       { "vertex": "A" },
       { "onEdge": ["S", "B"], "t": 0.5 },
@@ -276,5 +279,6 @@ JSON:
     ]
   }
 }
+(Ghi chú: "SA⊥đáy" ⇒ đỉnh S nằm ngay trên A ⇒ apexOver="A", h=SA. Nếu là "chóp đều" thì BỎ apexOver.)
 
 Bây giờ hãy tách đề người dùng gửi. CHỈ trả JSON.`;

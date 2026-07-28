@@ -25,7 +25,7 @@ function ring(names: string[]): [string, string][] {
   return names.map((n, i) => [n, names[(i + 1) % names.length]] as [string, string]);
 }
 
-export function buildPolyhedron(kind: PolyhedronKind, dims: { a?: number; b?: number; c?: number; h?: number }): Poly {
+export function buildPolyhedron(kind: PolyhedronKind, dims: { a?: number; b?: number; c?: number; h?: number; apexOver?: string }): Poly {
   const a = dims.a ?? 1;
   if (kind === 'cube' || kind === 'box') {
     const bx = kind === 'cube' ? a : (dims.b ?? a);
@@ -48,8 +48,13 @@ export function buildPolyhedron(kind: PolyhedronKind, dims: { a?: number; b?: nu
   }
   if (kind === 'pyramid-quad') {
     const bx = dims.b ?? a; const h = dims.h ?? a;
+    const baseV: Record<string, Vec3> = {
+      A: [0, 0, 0], B: [a, 0, 0], C: [a, bx, 0], D: [0, bx, 0],
+    };
+    // apexOver: đỉnh S ngay TRÊN 1 đỉnh đáy (SA⊥đáy…) hoặc trên TÂM đáy (chóp đều — mặc định).
+    const foot: Vec3 = dims.apexOver && baseV[dims.apexOver] ? baseV[dims.apexOver] : [a / 2, bx / 2, 0];
     const vertices: Record<string, Vec3> = {
-      A: [0, 0, 0], B: [a, 0, 0], C: [a, bx, 0], D: [0, bx, 0], S: [a / 2, bx / 2, h],
+      ...baseV, S: [foot[0], foot[1], h],
     };
     const base = ['A', 'B', 'C', 'D'];
     const edges: [string, string][] = [
@@ -148,7 +153,7 @@ function fanArea(pts: Vec3[]): number {
 }
 
 export function buildSectionCut(
-  id: string, kind: PolyhedronKind, dims: { a?: number; b?: number; c?: number; h?: number },
+  id: string, kind: PolyhedronKind, dims: { a?: number; b?: number; c?: number; h?: number; apexOver?: string },
   specs: SectionPointSpec[], color = '#f59e0b',
 ): { sectionCut: SectionCut; poly: Poly } | null {
   if (!specs || specs.length < 3) return null;

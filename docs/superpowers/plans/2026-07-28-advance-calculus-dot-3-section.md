@@ -44,13 +44,16 @@ function sceneWithSection(): AdvanceScene {
   };
 }
 
+// LƯU Ý: projectScene có chữ ký 3 tham số (base, steps, cur) — KHÔNG phải (scene, cur).
 describe('advanceProject — SectionCut (Đợt 3)', () => {
   it('ẩn khi ∉ visibleIds', () => {
-    const g = projectScene(sceneWithSection(), 0);
+    const s = sceneWithSection();
+    const g = projectScene(s.base, s.steps, 0);
     expect(g.sectionCuts![0].hidden).toBe(true);
   });
   it('nổi khi mới xuất hiện ở câu hiện tại', () => {
-    const g = projectScene(sceneWithSection(), 1);
+    const s = sceneWithSection();
+    const g = projectScene(s.base, s.steps, 1);
     expect(g.sectionCuts![0].hidden).toBe(false);
     expect(g.sectionCuts![0].highlight).toBe(true);
   });

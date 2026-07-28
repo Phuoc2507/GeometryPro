@@ -83,4 +83,19 @@ describe('splitProblem (Pass 0)', () => {
     expect(r.templateParams.domain).toEqual([0, 2]);
     expect(r.templateParams.outer).toEqual({ kind: 'poly', coeffs: [0, 0, 1] });
   });
+  it('mẫu calculus khác (cross-known/area-plane/section-poly) 1 câu → CŨNG giữ template', async () => {
+    // Regression Đợt 2/3: chỉ rev-ox từng được giữ; cross-known/area-plane/section-poly bị vứt ⇒
+    // nhánh route (analyze-advance) không bao giờ chạy → tính năng chết dù unit test builder xanh.
+    for (const template of ['cross-known', 'area-plane', 'section-poly']) {
+      callVilao.mockResolvedValue(JSON.stringify({
+        type: 'single', setup: 's',
+        parts: [{ label: 'Câu 1', hoi: 'diện tích thiết diện', phan_tu_moi: [] }],
+        template,
+        templateParams: { kind: 'cube', dims: { a: 1 }, points: [] },
+      }));
+      const r = await splitProblem('Cho hình lập phương ABCD. Tính diện tích thiết diện.', {});
+      expect(r.template).toBe(template);
+      expect(r.templateParams.kind).toBe('cube');
+    }
+  });
 });

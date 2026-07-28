@@ -13,6 +13,10 @@ import { coverageCheck } from './coverage.js';
 // riêng). MẶC ĐỊNH = model & VILAO_API_KEY base. CẢNH BÁO CHÍ MẠNG cũ: override set-nhưng-hỏng (vd
 // ADVANCE_API_KEY còn trỏ khoá 403 cũ) sẽ ĐÈ base ⇒ MỌI lượt tách hỏng ⇒ "chưa vẽ được đề tròn xoay".
 // Nay có fallback tự-chữa: override hỏng → thử lại bằng khoá/model base (xem splitProblem).
+// Mọi mẫu calculus tất định mà analyze-advance có nhánh route (`split.template === ...`). PHẢI đồng bộ
+// với danh sách nhánh bên đó — thêm mẫu mới ở cả 2 nơi, nếu không template bị vứt ⇒ tính năng chết.
+const CALC_TEMPLATES = ['rev-ox', 'cross-known', 'area-plane', 'section-poly'];
+
 const DEFAULT_SPLIT_MODEL = 'ram/gemini-3.5-flash-low';
 const ADVANCE_MODEL = process.env.ADVANCE_MODEL || DEFAULT_SPLIT_MODEL;
 const ADVANCE_API_KEY = process.env.ADVANCE_API_KEY || undefined;
@@ -74,11 +78,13 @@ export async function splitProblem(problem, opts = {}) {
   // đề tròn xoay & đặt nhãn lịch sử khi đề vào bằng ẢNH (lúc đó `problem` rỗng).
   const setup = typeof parsed?.setup === 'string' ? parsed.setup : '';
 
-  // Mẫu calculus (rev-ox) là TẤT ĐỊNH ở engine: builder tự dựng khối + tự kiểm thể tích, KHÔNG phụ
-  // thuộc số câu. Bài tròn xoay điển hình CHỈ 1 câu ("tính thể tích") nên type thường là 'single' —
-  // phải GIỮ template kể cả khi single, nếu không nhánh rev-ox (analyze-advance) không bao giờ chạy.
-  const revTemplate = (parsed?.template === 'rev-ox' && parsed?.templateParams)
-    ? { template: 'rev-ox', templateParams: parsed.templateParams }
+  // Mẫu calculus là TẤT ĐỊNH ở engine: builder tự dựng khối + tự kiểm (thể tích/diện tích), KHÔNG phụ
+  // thuộc số câu. Bài điển hình CHỈ 1 câu nên type thường là 'single' — phải GIỮ template kể cả khi
+  // single, nếu không các nhánh route (analyze-advance) không bao giờ chạy. Danh sách này PHẢI khớp mọi
+  // `split.template === ...` bên analyze-advance (rev-ox, cross-known, area-plane, section-poly), nếu
+  // không cả Đợt 2/3 sẽ chết end-to-end (unit test builder vẫn xanh vì inject template thẳng vào deps).
+  const revTemplate = (CALC_TEMPLATES.includes(parsed?.template) && parsed?.templateParams)
+    ? { template: parsed.template, templateParams: parsed.templateParams }
     : null;
 
   // Vật/nước/tròn xoay chuyển động liên tục → giữ nguyên (route riêng xử lý); kèm template nếu có.

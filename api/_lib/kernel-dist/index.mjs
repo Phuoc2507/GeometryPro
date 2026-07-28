@@ -7851,12 +7851,16 @@ function buildPolyhedron(kind, dims) {
   if (kind === "pyramid-quad") {
     const bx = dims.b ?? a;
     const h2 = dims.h ?? a;
-    const vertices2 = {
+    const baseV = {
       A: [0, 0, 0],
       B: [a, 0, 0],
       C: [a, bx, 0],
-      D: [0, bx, 0],
-      S: [a / 2, bx / 2, h2]
+      D: [0, bx, 0]
+    };
+    const foot = dims.apexOver && baseV[dims.apexOver] ? baseV[dims.apexOver] : [a / 2, bx / 2, 0];
+    const vertices2 = {
+      ...baseV,
+      S: [foot[0], foot[1], h2]
     };
     const base = ["A", "B", "C", "D"];
     const edges2 = [

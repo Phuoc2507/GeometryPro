@@ -16,6 +16,10 @@ describe('sectionCut — khối chuẩn & giải điểm', () => {
     expect(Object.keys(p.vertices).length).toBe(5);
     expect(p.edges.length).toBe(8);
   });
+  it('pyramid-quad apexOver=A: đỉnh S nằm NGAY TRÊN A (SA⊥đáy), không phải trên tâm', () => {
+    const p = buildPolyhedron('pyramid-quad', { a: 2, b: 2, h: 3, apexOver: 'A' });
+    expect(p.vertices['S']).toEqual([0, 0, 3]);
+  });
   it('prism-tri: 6 đỉnh, 9 cạnh', () => {
     const p = buildPolyhedron('prism-tri', { a: 2, h: 4 });
     expect(Object.keys(p.vertices).length).toBe(6);
