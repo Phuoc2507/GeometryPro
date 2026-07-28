@@ -28,6 +28,10 @@ interface LocalApiData {
   needsClarification?: boolean;
   message?: string;
   addedElements?: { points?: unknown[]; lines?: unknown[] };
+  /** Đề tròn xoay KHÔNG dựng được → báo thẳng, giữ canvas cũ (server đã hoàn credit). */
+  revUnsupported?: boolean;
+  /** Đọc ảnh đề hỏng (không chắc là đề tròn xoay) → đổi tiêu đề báo cho đúng. */
+  imageReadFailed?: boolean;
 }
 
 interface LocalApiResult {
