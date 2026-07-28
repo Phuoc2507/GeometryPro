@@ -20,7 +20,7 @@ import { TimelinePlayer } from '@/components/layout/TimelinePlayer';
 import { AdvanceStepper } from '@/components/layout/AdvanceStepper';
 import { AdvanceSolutionPanel } from '@/components/AdvanceSolutionPanel';
 import { VideoExportPanel } from '@/components/layout/VideoExportPanel';
-import { RightPanel, MobileRightPanel } from '@/components/layout/RightPanel';
+import { StudentRightPanel, MobileStudentRightPanel } from '@/components/layout/StudentRightPanel';
 import { GeometryData } from '@/types/geometry';
 
 interface LocalHistoryItem {
@@ -130,14 +130,13 @@ const StudentModeContent = () => {
           {!isVideoMode && <FloatingPromptBar />}
         </main>
 
-        {/* Panel phải: bê nguyên bộ Giáo viên (Xuất / Giải bài / Thuộc tính) sang Học sinh
-            làm nền — sẽ tinh chỉnh/lược bớt cho học sinh sau. */}
+        {/* Panel phải RIÊNG của Học sinh (Giải bài + Thuộc tính, không có Xuất) */}
         {isVideoMode ? (
           <VideoExportPanel />
         ) : (
           <>
-            <RightPanel />
-            <MobileRightPanel />
+            <StudentRightPanel />
+            <MobileStudentRightPanel />
           </>
         )}
       </div>
