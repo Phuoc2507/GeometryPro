@@ -35,10 +35,16 @@ function httpsRequest(url, options, bodyData, timeoutMs) {
   });
 }
 
-function isNetworkError(error) {
+export function isNetworkError(error) {
   if (!error) return false;
   const msg = (error.message || '').toLowerCase();
+  const code = (error.code || '').toString().toUpperCase();
+  // Soi cả .code: khi đồng hồ cứng hủy GIỮA stream, for-await ném Error('aborted') code ECONNRESET —
+  // message KHÔNG chứa 'timed out'. Chỉ soi message thì bỏ sót lỗi timeout-giữa-stream (case hay gặp nhất).
+  if (['ECONNRESET', 'ECONNREFUSED', 'ETIMEDOUT', 'ECONNABORTED', 'EPIPE'].includes(code)) return true;
   return msg.includes('timeout')
+    || msg.includes('timed out')   // đồng hồ CỨNG ném Error('Request timed out') — 'timed out'≠'timeout'!
+    || msg.includes('aborted')
     || msg.includes('econnreset')
     || msg.includes('connection reset')
     || msg.includes('network')
@@ -66,6 +72,8 @@ export async function callVilao(systemPrompt, userPrompt, options = {}) {
     onStream = null,
     model = null,
     apiKey = null,
+    maxAttempts = 2,   // số lần thử tối đa (kể cả retry nội bộ khi lỗi mạng/timeout). Đặt 1 khi caller
+                       // đã tự hedge (chạy song song) để khỏi chồng retry gây phí token.
   } = options;
 
   let modelToUse = VILAO_MODEL;
@@ -117,7 +125,6 @@ export async function callVilao(systemPrompt, userPrompt, options = {}) {
     bodyObj.response_format = { type: 'json_object' };
   }
 
-  const maxAttempts = 2;
   let attempt = 0;
 
   while (attempt < maxAttempts) {
@@ -189,4 +196,31 @@ export async function callVilao(systemPrompt, userPrompt, options = {}) {
   }
 
   throw new Error('Vilao failed after maximum retries');
+}
+
+// HEDGE TRỄ: chạy fn() một lần; nếu sau delayMs vẫn chưa xong thì bắn THÊM 1 lượt song song,
+// lấy KẾT QUẢ hợp lệ VỀ TRƯỚC (Promise.any). Trị "spike" độ trễ ngẫu nhiên của model: đa số
+// lượt ~5s xong trước delayMs → KHÔNG tốn thêm; chỉ khi spike mới gọi lượt 2 (spike độc lập
+// từng lượt nên lượt 2 gần như luôn nhanh) ⇒ đuôi độ trễ bị cắt mà không phải chờ hết timeout.
+// Chỉ ném khi CẢ HAI lượt đều hỏng.
+export async function hedge(fn, { delayMs = 6000 } = {}) {
+  const swallow = (p) => { p.catch(() => {}); return p; };   // chặn unhandledRejection của lượt thua
+  const first = swallow(fn());
+  const HEDGE = Symbol('hedge');
+  const timer = new Promise((res) => setTimeout(() => res(HEDGE), delayMs));
+
+  // Đợi: first xong (ok/lỗi) HOẶC chạm mốc delayMs.
+  const winner = await Promise.race([
+    first.then((v) => ({ ok: true, v }), (e) => ({ ok: false, e })),
+    timer,
+  ]);
+
+  if (winner !== HEDGE) {
+    if (winner.ok) return winner.v;         // first xong sớm, thành công
+    return await swallow(fn());             // first lỗi sớm → thử lại ngay (1 lượt)
+  }
+
+  // first còn chậm (spike) → bắn lượt 2 song song, lấy cái nào THÀNH CÔNG trước.
+  const second = swallow(fn());
+  return await Promise.any([first, second]);   // reject (AggregateError) chỉ khi cả hai đều hỏng
 }

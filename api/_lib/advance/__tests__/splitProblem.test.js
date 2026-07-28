@@ -1,5 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
-vi.mock('../../vilao.js', () => ({ callVilao: vi.fn() }));
+// hedge: bản thật chỉ chạy fn() rồi trả kết quả nhanh nhất — ở test mock thành "gọi fn() 1 lần"
+// (không cần đo spike). Nhờ vậy splitProblem chạy y như prod nhưng callVilao vẫn là mock ở trên.
+vi.mock('../../vilao.js', () => ({ callVilao: vi.fn(), hedge: (fn) => fn() }));
 import { callVilao } from '../../vilao.js';
 import { splitProblem } from '../splitProblem.js';
 

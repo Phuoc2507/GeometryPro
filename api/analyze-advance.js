@@ -33,19 +33,15 @@ export function looksLikeRevolution(text) {
 }
 
 // ===== LÕI THUẦN (deps-injected) — test 3 nhánh KHÔNG cần mạng =====
-// deps = { splitProblem, buildAdvanceScene, solveProblem, transcribeImage }. Xem test analyze-advance.test.js.
+// deps = { splitProblem, buildAdvanceScene, solveProblem, buildRevolutionScene }. Xem test analyze-advance.test.js.
 export async function assembleAdvance(problem, deps, opts = {}) {
-  // Pass -1: nếu có ẢNH → chép đề ra chữ (model vision rẻ) rồi chạy pipeline chữ như thường.
-  // Chép RA CHỮ (KHÔNG đẩy ảnh xuống splitProblem) để coverageCheck chống-ảo-giác soi được đề thật.
-  // Chép hỏng/rỗng → coi như không có đề ⇒ rơi xuống fallback bài đơn (degrade + hoàn credit).
-  if (opts.imageBase64 && deps.transcribeImage) {
-    try {
-      const text = (await deps.transcribeImage(opts.imageBase64, opts)) || '';
-      problem = text.trim() || problem;   // giữ seed chữ (nếu user vừa gõ vừa dán ảnh) khi chép rỗng
-    } catch { problem = problem || ''; }   // chép ném → để problem như cũ; '' sẽ dẫn tới single/degrade
-  }
-
+  // GỘP đọc-ảnh + tách-đề: có ẢNH thì đẩy THẲNG ảnh xuống splitProblem (1 lượt vision vừa CHÉP đề vào
+  // `setup` vừa phân loại) — thay cho 2 lượt transcribe→split (nhanh gấp đôi, ít điểm-spike hơn).
   const split = await deps.splitProblem(problem, opts);
+
+  // Đề vào bằng ẢNH ⇒ `problem` rỗng; bản chép nằm ở `split.setup`. `effectiveText` là văn bản đề THẬT
+  // (chữ user gõ, hoặc bản chép từ ảnh) — dùng cho nhận-diện tròn-xoay, fallback bài đơn & nhãn lịch sử.
+  const effectiveText = (problem && problem.trim()) ? problem : (split.setup || '');
 
   // Nhánh mẫu calculus (Đợt 1: rev-ox). Engine dựng khối tất định, tự kiểm thể tích.
   if (split.template === 'rev-ox' && split.templateParams && deps.buildRevolutionScene) {
@@ -56,12 +52,12 @@ export async function assembleAdvance(problem, deps, opts = {}) {
   }
 
   if (split.type === 'multi_question') {
-    const scene = await deps.buildAdvanceScene(problem, split, opts);
+    const scene = await deps.buildAdvanceScene(effectiveText, split, opts);
     if (scene) return { mode: 'advance', scene };
     // scene=null (base dựng hỏng) → rơi xuống fallback bài đơn.
   } else if (split.type === 'continuous_animation') {
     try {
-      const out = await deps.solveProblem(problem, opts);
+      const out = await deps.solveProblem(effectiveText, opts);
       if (out?.ok && out.geometry) {
         const g = out.geometry;
         return {
@@ -79,14 +75,14 @@ export async function assembleAdvance(problem, deps, opts = {}) {
   // Đề RÕ là tròn xoay nhưng rơi tới đây (không dựng được mẫu rev-ox) ⇒ KHÔNG vẽ bừa hình 3D lạ
   // (chống ảo giác). Trả tín hiệu trung thực để frontend nhắn người dùng gõ lại / chụp rõ hơn.
   // (Bài đã dựng được rev-ox thì đã return ở nhánh trên, không chạm tới đây.)
-  if (looksLikeRevolution(problem)) {
+  if (looksLikeRevolution(effectiveText)) {
     return { mode: 'kernel', degraded: true, ok: false, revUnsupported: true, error: REV_UNSUPPORTED_MSG };
   }
 
   // single / build-fail / animation-fail → FALLBACK: xử bài đơn, đánh dấu degraded để handler hoàn credit.
   // solveProblem NÉM khi translator abstain → trả degraded sạch (KHÔNG để 500 xuyên lên handler).
   try {
-    const out = await deps.solveProblem(problem, opts);
+    const out = await deps.solveProblem(effectiveText, opts);
     return { mode: 'kernel', degraded: true, ...out };
   } catch (e) {
     return { mode: 'kernel', degraded: true, ok: false, abstained: true, error: String(e?.message || e).slice(0, 120) };
@@ -111,7 +107,7 @@ async function handler(req, res) {
     if (hasText && prompt.trim().length > 5000) {
       return res.status(400).json({ error: 'Mô tả quá dài (tối đa 5000 ký tự)' });
     }
-    // Seed CHỮ: có chữ thì dùng chữ; chỉ-ảnh → '' (Pass -1 transcribeImage trong lõi sẽ điền đề vào).
+    // Seed CHỮ: có chữ thì dùng chữ; chỉ-ảnh → '' (splitProblem sẽ đọc ảnh & điền đề vào split.setup).
     const problemSeed = hasText ? prompt.trim() : '';
 
     access = await resolveAiAccess(req, res, {
@@ -126,18 +122,16 @@ async function handler(req, res) {
     }
 
     // ---- Nạp ĐỘNG các mảnh pipeline (lỗi import ⇒ rơi vào catch, hoàn credit) ----
-    const [{ splitProblem }, { buildAdvanceScene }, { solveProblem }, { transcribeImage }, { buildRevolutionScene }] = await Promise.all([
+    const [{ splitProblem }, { buildAdvanceScene }, { solveProblem }, { buildRevolutionScene }] = await Promise.all([
       import('./_lib/advance/splitProblem.js'),
       import('./_lib/advance/buildAdvanceScene.js'),
       import('./_lib/kernel-bridge/solveWithKernel.js'),
-      import('./_lib/advance/transcribeImage.js'),
       import('./_lib/advance/buildRevolutionScene.js'),
     ]);
 
-    // Có ảnh → assembleAdvance chạy Pass -1 (transcribeImage) CHÉP đề ra chữ RỒI mới splitProblem.
-    // splitProblem/buildAdvanceScene/solveProblem chỉ nhận CHỮ (opts.imageBase64 chảy qua nhưng bị bỏ qua)
-    // ⇒ coverageCheck (Pass 0) soi trên đề-chữ đã chép, chống ảo giác y như luồng nhập-chữ.
-    const result = await assembleAdvance(problemSeed, { splitProblem, buildAdvanceScene, solveProblem, transcribeImage, buildRevolutionScene }, { imageBase64 });
+    // Có ảnh → splitProblem GỘP đọc-ảnh + tách-đề trong 1 lượt vision (chép đề vào split.setup rồi phân
+    // loại). assembleAdvance lấy split.setup làm `effectiveText` cho nhận-diện tròn-xoay + fallback bài đơn.
+    const result = await assembleAdvance(problemSeed, { splitProblem, buildAdvanceScene, solveProblem, buildRevolutionScene }, { imageBase64 });
 
     // ---- Fallback tụt-hạng: đã trừ mức Advance nhưng chỉ xử bài đơn ⇒ HOÀN chênh lệch xuống Vẽ kỹ ----
     // Công bằng: user chỉ bị tính bằng mức "Vẽ kỹ" (draw_detailed) khi không được phục vụ đa-cảnh.

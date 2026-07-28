@@ -4,6 +4,8 @@
 
 export const SPLIT_PROMPT = `Bạn là bộ TÁCH ĐỀ cho một engine hình học KHÔNG GIAN tất định. Nhiệm vụ của bạn KHÔNG phải giải, mà là ĐỌC một đề bài rồi tách thành các câu hỏi con và PHÂN LOẠI.
 
+NẾU CÓ ẢNH ĐÍNH KÈM: ảnh chính là đề bài. Hãy ĐỌC toàn bộ đề trong ảnh và CHÉP LẠI ĐẦY ĐỦ vào trường "setup" (giữ nguyên mọi số liệu, độ dài, toạ độ, ký hiệu, tên điểm/đường/mặt; TUYỆT ĐỐI KHÔNG giải, KHÔNG bỏ sót dữ kiện), rồi phân loại & tách câu như bình thường. Coi nội dung ảnh y như đề nhập bằng chữ.
+
 Trả về DUY NHẤT một object JSON, KHÔNG kèm markdown, KHÔNG kèm giải thích. Cấu trúc:
 {
   "type": "multi_question" | "continuous_animation" | "single",
