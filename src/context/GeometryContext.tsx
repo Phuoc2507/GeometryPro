@@ -797,6 +797,14 @@ export function GeometryProvider({ children }: { children: React.ReactNode }) {
           window.history.replaceState({}, '', url.toString());
         }
         refreshProfile?.();   // Advance tốn credit (server đã trừ) → cập nhật số dư hiển thị
+      } else if (data?.revUnsupported) {
+        // Đề tròn xoay KHÔNG dựng được ⇒ KHÔNG vẽ hình lạ; báo thẳng, giữ nguyên canvas cũ.
+        // Server đã hoàn TOÀN BỘ credit (không tính tiền khi không phục vụ được).
+        toast({
+          title: 'Chưa vẽ được đề tròn xoay này',
+          description: data.error || 'Bạn thử gõ lại đề bằng chữ, hoặc chụp rõ hơn nhé.',
+        });
+        refreshProfile?.();
       } else if (data?.geometry) {
         dispatch({ type: 'SET_GEOMETRY', geometry: data.geometry });
         // Nhánh tụt-hạng vẫn ra 1 hình → cũng lưu lịch sử như Vẽ kỹ để xem lại.

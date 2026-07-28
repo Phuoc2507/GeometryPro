@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { assembleAdvance } from '../../../analyze-advance.js';
+import { assembleAdvance, looksLikeRevolution } from '../../../analyze-advance.js';
 
 // Lõi thuần deps-injected: test 3 nhánh KHÔNG cần mạng (mirror splitProblem/buildAdvanceScene tests).
 // Trọng tâm Pass -1: có ẢNH → transcribeImage chép đề ra CHỮ → chữ đó chảy vào splitProblem
@@ -53,5 +53,50 @@ describe('assembleAdvance — Pass -1 transcribeImage (ảnh → chữ)', () => 
     expect(transcribeImage).not.toHaveBeenCalled();
     expect(splitProblem.mock.calls[0][0]).toBe('Cho chóp S.ABCD SA=2a');
     expect(result.degraded).toBe(true);   // single → fallback bài đơn
+  });
+});
+
+describe('looksLikeRevolution (nhận diện đề tròn xoay tất định)', () => {
+  it('bắt đúng các cách ra đề tròn xoay', () => {
+    expect(looksLikeRevolution('Tính thể tích khối tròn xoay khi quay quanh Ox')).toBe(true);
+    expect(looksLikeRevolution('Cho (H) giới hạn bởi y=x². Quay (H) quanh trục Ox')).toBe(true);
+    expect(looksLikeRevolution('quay hình phẳng quanh trục hoành')).toBe(true);
+    expect(looksLikeRevolution('xoay quanh trục Oy')).toBe(true);
+  });
+  it('KHÔNG bắt nhầm đề hình học không gian thường', () => {
+    expect(looksLikeRevolution('Cho hình chóp S.ABCD có SA vuông góc đáy')).toBe(false);
+    expect(looksLikeRevolution('Tính khoảng cách từ A đến mặt phẳng (SBC)')).toBe(false);
+    expect(looksLikeRevolution('')).toBe(false);
+  });
+});
+
+describe('assembleAdvance — đề tròn xoay không dựng được ⇒ báo trung thực (KHÔNG vẽ bừa)', () => {
+  it('rev-intent + không có template ⇒ revUnsupported, KHÔNG gọi solveProblem vẽ hình lạ', async () => {
+    const splitProblem = vi.fn().mockResolvedValue({ type: 'single' }); // classifier trượt / OCR mờ
+    const buildRevolutionScene = vi.fn();
+    const solveProblem = vi.fn().mockResolvedValue({ ok: true, geometry: { name: 'chóp lạ', points: [{ id: 'A' }] } });
+
+    const result = await assembleAdvance(
+      'Tính thể tích khối tròn xoay khi quay hình phẳng quanh trục Ox',
+      { splitProblem, buildRevolutionScene, solveProblem },
+      {},
+    );
+
+    expect(result.revUnsupported).toBe(true);
+    expect(result.degraded).toBe(true);
+    expect(result.mode).toBe('kernel');
+    expect(result.geometry).toBeUndefined();     // KHÔNG kèm hình 3D không liên quan
+    expect(solveProblem).not.toHaveBeenCalled();  // không phí công vẽ bừa
+  });
+
+  it('đề KHÔNG phải tròn xoay vẫn fallback bài đơn như cũ (không đụng)', async () => {
+    const splitProblem = vi.fn().mockResolvedValue({ type: 'single' });
+    const solveProblem = vi.fn().mockResolvedValue({ ok: true, geometry: { points: [] } });
+
+    const result = await assembleAdvance('Cho hình chóp S.ABCD, tính thể tích', { splitProblem, solveProblem }, {});
+
+    expect(result.revUnsupported).toBeUndefined();
+    expect(result.degraded).toBe(true);
+    expect(solveProblem).toHaveBeenCalledTimes(1);
   });
 });

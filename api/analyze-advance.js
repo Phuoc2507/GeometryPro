@@ -15,6 +15,23 @@ import { refund, creditCostFor } from './_lib/credits.js';
 import { accessError, resolveAiAccess, withQuota, refundAiUsage } from './_lib/aiAccess.js';
 import { withSentry, reportServerError } from './_lib/sentry.js';
 
+// Nhắn TRUNG THỰC khi đề rõ là tròn xoay nhưng KHÔNG dựng được mẫu rev-ox (ảnh mờ, kiểu quay chưa
+// hỗ trợ…): thà báo thẳng còn hơn vẽ bừa một hình 3D không liên quan.
+export const REV_UNSUPPORTED_MSG =
+  'Đề tròn xoay này mình chưa dựng được khối (có thể ảnh đọc chưa rõ, hoặc kiểu quay chưa hỗ trợ). ' +
+  'Bạn thử gõ lại đề bằng chữ, hoặc chụp rõ hơn giúp mình nhé.';
+
+// Nhận diện đề TRÒN XOAY một cách TẤT ĐỊNH (không LLM) — dùng ở nhánh fallback để chống vẽ-bừa.
+// Bắt "tròn xoay", hoặc (quay/xoay + quanh + trục Ox/Oy/hoành/tung).
+export function looksLikeRevolution(text) {
+  const s = String(text || '').toLowerCase();
+  if (!s) return false;
+  if (s.includes('tròn xoay')) return true;
+  const hasSpin = /\b(quay|xoay)\b/.test(s);
+  const hasAxis = /quanh/.test(s) && /(trục|\box\b|\boy\b|hoành|tung)/.test(s);
+  return hasSpin && hasAxis;
+}
+
 // ===== LÕI THUẦN (deps-injected) — test 3 nhánh KHÔNG cần mạng =====
 // deps = { splitProblem, buildAdvanceScene, solveProblem, transcribeImage }. Xem test analyze-advance.test.js.
 export async function assembleAdvance(problem, deps, opts = {}) {
@@ -57,6 +74,13 @@ export async function assembleAdvance(problem, deps, opts = {}) {
       }
     } catch { /* solveProblem ném → rơi xuống fallback bài đơn */ }
     // engine chịu animation → rơi xuống fallback bài đơn.
+  }
+
+  // Đề RÕ là tròn xoay nhưng rơi tới đây (không dựng được mẫu rev-ox) ⇒ KHÔNG vẽ bừa hình 3D lạ
+  // (chống ảo giác). Trả tín hiệu trung thực để frontend nhắn người dùng gõ lại / chụp rõ hơn.
+  // (Bài đã dựng được rev-ox thì đã return ở nhánh trên, không chạm tới đây.)
+  if (looksLikeRevolution(problem)) {
+    return { mode: 'kernel', degraded: true, ok: false, revUnsupported: true, error: REV_UNSUPPORTED_MSG };
   }
 
   // single / build-fail / animation-fail → FALLBACK: xử bài đơn, đánh dấu degraded để handler hoàn credit.
@@ -118,12 +142,19 @@ async function handler(req, res) {
     // ---- Fallback tụt-hạng: đã trừ mức Advance nhưng chỉ xử bài đơn ⇒ HOÀN chênh lệch xuống Vẽ kỹ ----
     // Công bằng: user chỉ bị tính bằng mức "Vẽ kỹ" (draw_detailed) khi không được phục vụ đa-cảnh.
     if (result?.degraded && creditCharge && userId) {
-      const target = creditCostFor('draw_detailed');
-      const diff = creditCharge.cost - target;
-      if (diff > 0) {
-        try { await refund(userId, diff, creditCharge.reqId + ':downgrade'); }
-        catch (e) { console.warn('Hoàn credit tụt-hạng lỗi:', e?.message); }
-        creditCharge.cost = target; // còn lại = mức Vẽ kỹ (phòng lỗi phát sinh sau vẫn hoàn đúng)
+      if (result.revUnsupported) {
+        // KHÔNG vẽ được gì (đề tròn xoay không dựng nổi) ⇒ HOÀN TOÀN BỘ, không tính tiền.
+        try { await refund(userId, creditCharge.cost, creditCharge.reqId + ':rev-unsupported'); }
+        catch (e) { console.warn('Hoàn credit rev-unsupported lỗi:', e?.message); }
+        creditCharge.cost = 0;
+      } else {
+        const target = creditCostFor('draw_detailed');
+        const diff = creditCharge.cost - target;
+        if (diff > 0) {
+          try { await refund(userId, diff, creditCharge.reqId + ':downgrade'); }
+          catch (e) { console.warn('Hoàn credit tụt-hạng lỗi:', e?.message); }
+          creditCharge.cost = target; // còn lại = mức Vẽ kỹ (phòng lỗi phát sinh sau vẫn hoàn đúng)
+        }
       }
     }
 
