@@ -27,6 +27,7 @@ import { AnimatedCurve } from './AnimatedCurve';
 import AnimatedRevolutionSolid from './AnimatedRevolutionSolid';
 import AnimatedSliceStack from './AnimatedSliceStack';
 import AnimatedAreaRegion from './AnimatedAreaRegion';
+import AnimatedSectionCut from './AnimatedSectionCut';
 import { useHiddenLineDetection } from '@/hooks/useHiddenLineDetection';
 import { mapsEqual } from '@/hooks/useHiddenLineDetection';
 import { mergeLineDashStyles } from '@/lib/geometry/hiddenLineDetection';
@@ -406,6 +407,11 @@ export function GeometryRenderer({ geometry: geometryProp, isBuilding }: Geometr
       {/* ═══ Area Regions (diện tích hình phẳng) ═══ */}
       {(geometry.areaRegions || []).map((r) => (
         <AnimatedAreaRegion key={r.id} region={r} />
+      ))}
+
+      {/* ═══ Section Cuts (thiết diện đa giác) ═══ */}
+      {(geometry.sectionCuts || []).map((cut) => (
+        <AnimatedSectionCut key={cut.id} cut={cut} />
       ))}
 
       {/* ═══ Curves ═══ */}
