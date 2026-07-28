@@ -15,6 +15,8 @@ export interface AppPreferences {
   autoRotate: boolean;
   /** Hiện giá trị đo ở hình minh hoạ đại diện (dành cho tiểu-dự án C). */
   showIllustrationValues: boolean;
+  /** Luôn hiện lời giải: bỏ ẩn đáp số & không cần bấm "Vì sao?" ở mỗi bước. */
+  alwaysShowSolution: boolean;
 }
 
 export const DEFAULT_PREFERENCES: AppPreferences = {
@@ -23,6 +25,7 @@ export const DEFAULT_PREFERENCES: AppPreferences = {
   autoColorPlanes: false,
   autoRotate: false,
   showIllustrationValues: true,
+  alwaysShowSolution: false,
 };
 
 const STORAGE_KEY = 'geo3d:prefs';

@@ -102,6 +102,14 @@ export default {
           "0%": { transform: "translateX(0)" },
           "100%": { transform: "translateX(100%)" },
         },
+        "step-in-right": {
+          "0%": { opacity: "0", transform: "translateX(28px)" },
+          "100%": { opacity: "1", transform: "translateX(0)" },
+        },
+        "step-in-left": {
+          "0%": { opacity: "0", transform: "translateX(-28px)" },
+          "100%": { opacity: "1", transform: "translateX(0)" },
+        },
         scan: {
           "0%, 100%": { transform: "translateY(-100%)" },
           "50%": { transform: "translateY(100%)" },
@@ -123,6 +131,8 @@ export default {
         "scale-in": "scale-in 0.2s ease-out",
         "slide-in-right": "slide-in-right 0.3s ease-out",
         "slide-out-right": "slide-out-right 0.3s ease-out",
+        "step-in-right": "step-in-right 0.25s ease-out",
+        "step-in-left": "step-in-left 0.25s ease-out",
         scan: "scan 2s ease-in-out infinite",
         "pulse-glow": "pulse-glow 2s ease-in-out infinite",
         "draw-line": "draw-line 0.5s ease-out forwards",

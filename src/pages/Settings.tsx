@@ -31,6 +31,7 @@ const PREF_TOGGLES: { key: keyof AppPreferences; label: string; hint: string }[]
   { key: 'autoColorPlanes', label: 'Tô màu mặt phẳng', hint: 'Tự tô màu các mặt phẳng để dễ phân biệt.' },
   { key: 'autoRotate', label: 'Tự xoay', hint: 'Tự động xoay hình 3D.' },
   { key: 'showIllustrationValues', label: 'Hiện số ở bài minh hoạ', hint: 'Hiện giá trị đo được ở các hình minh hoạ đại diện.' },
+  { key: 'alwaysShowSolution', label: 'Luôn hiện lời giải', hint: 'Không ẩn đáp số và không cần bấm “Vì sao?” — lời giải hiện đầy đủ ngay.' },
 ];
 
 const Settings = () => {

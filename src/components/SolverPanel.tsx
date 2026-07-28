@@ -18,6 +18,7 @@ import {
   Lightbulb, CheckCircle2, XCircle, Play,
 } from 'lucide-react';
 import { gradeAnswer, type GradeVerdict } from '@/lib/gradeAnswer';
+import { loadPreferences } from '@/lib/preferences';
 import { useLocation } from 'react-router-dom';
 import { Button }      from '@/components/ui/button';
 import { Textarea }    from '@/components/ui/textarea';
@@ -327,11 +328,14 @@ function SolveResultViewImpl({
 }) {
   // Chế độ Học sinh: ẩn đáp số lúc đầu để em TỰ NGHĨ trước rồi mới hé (productive struggle).
   const isStudent = useLocation().pathname.startsWith('/student');
+  // Cài đặt "Luôn hiện lời giải" → bỏ ẩn đáp số & bỏ gating "Vì sao?".
+  const alwaysShow = useMemo(() => loadPreferences().alwaysShowSolution, []);
+  const gateStudent = isStudent && !alwaysShow;
   const step   = result.steps[currentStep] ?? null;
   const nSteps  = result.steps.length;
   const [showProblem, setShowProblem] = useState(false);
   const [showAll, setShowAll] = useState(false);          // xem TẤT CẢ bước cùng lúc
-  const [answerShown, setAnswerShown] = useState(!isStudent);
+  const [answerShown, setAnswerShown] = useState(!gateStudent);
 
   // Tự nhập đáp án để chấm (chấm tại máy dựa trên answer_value đã kiểm chứng).
   const [guess, setGuess] = useState('');
@@ -343,8 +347,8 @@ function SolveResultViewImpl({
     setGuess('');
     setVerdict(null);
     setShowGrade(false);
-    setAnswerShown(!isStudent);
-  }, [result, isStudent]);
+    setAnswerShown(!gateStudent);
+  }, [result, gateStudent]);
   const checkGuess = useCallback(() => {
     if (!guess.trim()) return;
     const g = gradeAnswer(guess, result.answer_value);
@@ -365,9 +369,10 @@ function SolveResultViewImpl({
     : 'bg-amber-500/12 text-amber-600 dark:text-amber-400 border-amber-500/30';
   const progressPct = nSteps > 0 ? ((currentStep + 1) / nSteps) * 100 : 0;
 
-  // Điều hướng bước + VUỐT trái/phải (mobile).
-  const goPrev = useCallback(() => setCurrentStep((s) => Math.max(0, s - 1)), [setCurrentStep]);
-  const goNext = useCallback(() => setCurrentStep((s) => Math.min(nSteps - 1, s + 1)), [setCurrentStep, nSteps]);
+  // Điều hướng bước + VUỐT trái/phải (mobile) + hướng trượt cho hiệu ứng.
+  const [dir, setDir] = useState<'next' | 'prev'>('next');
+  const goPrev = useCallback(() => { setDir('prev'); setCurrentStep((s) => Math.max(0, s - 1)); }, [setCurrentStep]);
+  const goNext = useCallback(() => { setDir('next'); setCurrentStep((s) => Math.min(nSteps - 1, s + 1)); }, [setCurrentStep, nSteps]);
   const touchRef = useRef<{ x: number; y: number } | null>(null);
   const onTouchStart = (e: React.TouchEvent) => {
     const t = e.touches[0];
@@ -524,8 +529,10 @@ function SolveResultViewImpl({
               ))}
             </div>
           ) : step ? (
-            // key theo bước ⇒ trạng thái "Vì sao?" reset khi chuyển bước.
-            <StepCard key={step.id ?? currentStep} step={step} index={currentStep} total={nSteps} constructedIds={constructedByStep?.[currentStep]} gated={isStudent} />
+            // key theo bước ⇒ remount ⇒ (1) trạng thái "Vì sao?" reset, (2) hiệu ứng trượt chạy lại.
+            <div key={currentStep} className={cn(compact && (dir === 'next' ? 'animate-step-in-right' : 'animate-step-in-left'))}>
+              <StepCard step={step} index={currentStep} total={nSteps} constructedIds={constructedByStep?.[currentStep]} gated={gateStudent} />
+            </div>
           ) : null}
         </ScrollArea>
 
