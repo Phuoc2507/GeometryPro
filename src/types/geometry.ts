@@ -279,6 +279,33 @@ export interface RevolutionSolid extends AdvanceFlags {
   innerSamples?: { x: number; r: number }[];
 }
 
+// ── Calculus Đợt 2: thiết diện đã biết & diện tích hình phẳng ──────
+// (1) Khối có thiết diện vuông góc trục đã biết: V = ∫ k·side(t)² dt.
+export interface SliceStack extends AdvanceFlags {
+  id: string;
+  axis: 'Ox' | 'Oy';
+  domain: [number, number];            // [a,b] theo biến trục
+  outer: ProfileFn;                    // biên "trên" miền đáy theo biến trục
+  inner?: ProfileFn;                   // biên "dưới"; bỏ ⇒ side = |outer|
+  section: 'square' | 'equilateral' | 'semicircle' | 'rect';
+  ratio?: number;                      // chỉ 'rect': cạnh vuông góc = ratio·side
+  volume?: Verified<number>;
+  color?: string;
+  samples?: { t: number; side: number }[];
+}
+
+// (2) Diện tích hình phẳng: S = ∫ |outer(x) − inner(x)| dx. ĐƠN VỊ² (không phải thể tích).
+export interface AreaRegion extends AdvanceFlags {
+  id: string;
+  outer: ProfileFn;                    // đường trên f(x)
+  inner: ProfileFn;                    // đường dưới g(x)
+  domain: [number, number];            // [a,b]
+  area?: Verified<number>;
+  color?: string;
+  slabDepth?: number;                  // bề dày "tấm" khi đùn để nhìn 3D
+  samples?: { x: number; top: number; bot: number }[];
+}
+
 export interface GeometryData {
   id?: string;
   position?: [number, number, number];
@@ -300,6 +327,8 @@ export interface GeometryData {
   surfaces?: Surface3D[];
   curves?: Curve3D[];
   revolutionSolids?: RevolutionSolid[];
+  sliceStacks?: SliceStack[];
+  areaRegions?: AreaRegion[];
   latexCode?: string;
   llmPrompt?: string;
   /** Ràng buộc từ step1, có thể kèm kết quả verify */
