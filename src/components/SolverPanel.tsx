@@ -367,57 +367,9 @@ function SolveResultViewImpl({
 
   return (
     <div className="h-full flex flex-col">
-      {/* ─── Đáp số — bản GỌN (mobile): 1 dòng, tự chấm ẩn sau nút ─── */}
-      {compact ? (
-        <div className="px-3 pt-2 pb-1.5 shrink-0">
-          {answerShown ? (
-            <div className="flex items-center gap-2 rounded-xl border border-primary/25 bg-primary/[0.06] px-3 py-2">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-primary shrink-0">Đáp số</span>
-              <MathText text={result.final_answer} className="text-sm font-semibold text-foreground break-words min-w-0 flex-1" />
-              <TierIcon className={cn('w-3.5 h-3.5 shrink-0', meta.tone === 'ok' ? 'text-green-500' : meta.tone === 'muted' ? 'text-blue-500' : 'text-amber-500')} />
-            </div>
-          ) : (
-            <div className="space-y-2">
-              <div className="flex items-center gap-2">
-                {canGrade && (
-                  <button
-                    onClick={() => setShowGrade((v) => !v)}
-                    className={cn('flex-1 h-9 rounded-xl border text-[13px] font-semibold inline-flex items-center justify-center gap-1.5 transition-colors',
-                      showGrade ? 'border-primary bg-primary/10 text-primary' : 'border-primary/40 text-primary hover:bg-primary/10')}
-                  >
-                    <Lightbulb className="w-4 h-4" /> Tự chấm
-                  </button>
-                )}
-                <button
-                  onClick={() => setAnswerShown(true)}
-                  className="flex-1 h-9 rounded-xl border border-dashed border-primary/50 text-primary text-[13px] font-semibold inline-flex items-center justify-center gap-1.5 hover:bg-primary/10 transition-colors"
-                >
-                  <Eye className="w-4 h-4" /> Xem đáp án
-                </button>
-              </div>
-              {canGrade && showGrade && (
-                <div className="space-y-2">
-                  <div className="flex gap-2">
-                    <input
-                      value={guess}
-                      onChange={(e) => { setGuess(e.target.value); setVerdict(null); }}
-                      onKeyDown={(e) => { if (e.key === 'Enter') checkGuess(); }}
-                      placeholder="Đáp số của em… vd 2√3, 4/3, pi/6"
-                      aria-label="Nhập đáp số của em"
-                      className="flex-1 min-w-0 h-10 rounded-xl border border-primary/40 bg-background/60 px-3 text-sm text-foreground outline-none focus:border-primary transition-colors"
-                    />
-                    <Button onClick={checkGuess} disabled={!guess.trim()} size="sm" className="h-10 px-4 rounded-xl shrink-0">
-                      Kiểm tra
-                    </Button>
-                  </div>
-                  {verdict && <AnswerFeedback verdict={verdict} />}
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-      ) : (
-      /* ─── Đáp số nổi bật (bản đầy đủ — desktop) ─── */
+      {/* ─── Đáp số (desktop). Bản GỌN (mobile) BỎ HẲN đáp số/tự chấm/xem đáp án —
+             chỉ còn lời giải từng bước. ─── */}
+      {!compact && (
       <div className="px-4 pt-4 pb-2 shrink-0">
         <div className="rounded-2xl border border-primary/25 bg-gradient-to-br from-primary/10 to-primary/[0.03] px-4 py-3.5">
           <div className="text-[10.5px] font-bold uppercase tracking-[0.14em] text-primary">Đáp số</div>

@@ -51,6 +51,15 @@ function StudentPanelContent({ compact }: { compact?: boolean } = {}) {
     );
   }
 
+  // Bản GỌN (mobile): CHỈ lời giải từng bước — bỏ tab Thuộc tính + bỏ đáp số/tự chấm.
+  if (compact) {
+    return (
+      <div className="h-full flex flex-col min-h-0">
+        <SolverContent compact />
+      </div>
+    );
+  }
+
   return (
     <div className="h-full flex flex-col">
       {/* Header — ẩn ở bản gọn (mobile) vì trùng tiêu đề, để chừa chỗ cho hình */}
@@ -98,7 +107,7 @@ export function MobileStudentRightPanel() {
   // Báo cho camera biết đáy màn bị panel che ~48% → camera nhắm lệch lên.
   const setBottomInset = camera?.setBottomInset;
   useEffect(() => {
-    setBottomInset?.(open ? 0.48 : 0);
+    setBottomInset?.(open ? 0.44 : 0);
     return () => setBottomInset?.(0);
   }, [open, setBottomInset]);
 
@@ -122,7 +131,7 @@ export function MobileStudentRightPanel() {
       )}
 
       {open && (
-        <div className="fixed inset-x-0 bottom-0 z-50 lg:hidden h-[48vh] flex flex-col glass bg-background/95 border-t border-border/50 rounded-t-2xl shadow-2xl animate-fade-in">
+        <div className="fixed inset-x-0 bottom-0 z-50 lg:hidden h-[44vh] flex flex-col glass bg-background/95 border-t border-border/50 rounded-t-2xl shadow-2xl animate-fade-in">
           {/* Tay nắm + nút đóng */}
           <div className="relative shrink-0">
             <div className="mx-auto mt-2 mb-1 h-1.5 w-10 rounded-full bg-border/70" />
