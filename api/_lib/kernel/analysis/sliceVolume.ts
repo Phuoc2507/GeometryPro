@@ -1,7 +1,7 @@
 // api/_lib/kernel/analysis/sliceVolume.ts
 // Lõi tất định cho khối "thiết diện đã biết" (Đợt 2): V = ∫ k·side(t)² dt, side = |outer−inner|.
 // k theo hình lát: vuông=1, tam giác đều=√3/4, nửa tròn=π/8, chữ nhật=ratio.
-import type { ProfileFn, SliceStack, Verified } from '../../../../src/types/geometry';
+import type { ProfileFn, SliceStack, AreaRegion, Verified } from '../../../../src/types/geometry';
 import { integrate } from './quadrature';
 import { compileProfile } from './revolution';
 
@@ -79,4 +79,44 @@ export function buildSliceStack(
     ...(r !== undefined ? { ratio: r } : {}),
     samples: sampleSide(outer, domain, inner),
   };
+}
+
+export function planarArea(
+  outer: ProfileFn, inner: ProfileFn, domain: [number, number],
+): { value: number; estimatedError: number } {
+  const [a, b] = domain;
+  const gf = compileProfile(outer);
+  const gg = compileProfile(inner);
+  return integrate((x) => Math.abs(gf(x) - gg(x)), a, b);
+}
+
+function sampleArea(
+  outer: ProfileFn, inner: ProfileFn, domain: [number, number], n = 64,
+): { x: number; top: number; bot: number }[] {
+  const [a, b] = domain;
+  const gf = compileProfile(outer);
+  const gg = compileProfile(inner);
+  const out: { x: number; top: number; bot: number }[] = [];
+  for (let i = 0; i <= n; i++) {
+    const x = a + ((b - a) * i) / n;
+    const f = gf(x), g = gg(x);
+    out.push({ x, top: Math.max(f, g), bot: Math.min(f, g) });
+  }
+  return out;
+}
+
+export function buildAreaRegion(
+  id: string,
+  outer: ProfileFn,
+  domain: [number, number],
+  inner?: ProfileFn,
+  color?: string,
+  slabDepth = 0.15,
+): AreaRegion {
+  const inr: ProfileFn = inner ?? { kind: 'const', c: 0 };
+  const { value, estimatedError } = planarArea(outer, inr, domain);
+  const verified = estimatedError <= 1e-6 * Math.max(1, Math.abs(value));
+  const latex = `S=\\int_{${domain[0]}}^{${domain[1]}} |f(x)-g(x)|\\,dx`;
+  const area: Verified<number> = { value, latex, verified, estimatedError };
+  return { id, outer, inner: inr, domain, area, color, slabDepth, samples: sampleArea(outer, inr, domain) };
 }

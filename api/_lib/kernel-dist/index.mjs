@@ -7772,6 +7772,32 @@ function buildSliceStack(id, section, outer, domain, color, inner, ratio, axis =
     samples: sampleSide(outer, domain, inner)
   };
 }
+function planarArea(outer, inner, domain) {
+  const [a, b] = domain;
+  const gf = compileProfile(outer);
+  const gg = compileProfile(inner);
+  return integrate((x) => Math.abs(gf(x) - gg(x)), a, b);
+}
+function sampleArea(outer, inner, domain, n = 64) {
+  const [a, b] = domain;
+  const gf = compileProfile(outer);
+  const gg = compileProfile(inner);
+  const out = [];
+  for (let i = 0; i <= n; i++) {
+    const x = a + (b - a) * i / n;
+    const f = gf(x), g = gg(x);
+    out.push({ x, top: Math.max(f, g), bot: Math.min(f, g) });
+  }
+  return out;
+}
+function buildAreaRegion(id, outer, domain, inner, color, slabDepth = 0.15) {
+  const inr = inner ?? { kind: "const", c: 0 };
+  const { value, estimatedError } = planarArea(outer, inr, domain);
+  const verified = estimatedError <= 1e-6 * Math.max(1, Math.abs(value));
+  const latex = `S=\\int_{${domain[0]}}^{${domain[1]}} |f(x)-g(x)|\\,dx`;
+  const area = { value, latex, verified, estimatedError };
+  return { id, outer, inner: inr, domain, area, color, slabDepth, samples: sampleArea(outer, inr, domain) };
+}
 
 // api/_lib/kernel/index.ts
 function runPlan(rawPlan) {
@@ -7806,6 +7832,7 @@ export {
   TriangleDimsSchema,
   attemptDeterministicRepair,
   buildAnalysisFigure,
+  buildAreaRegion,
   buildRevolutionSolidOx,
   buildRevolutionSolidOy,
   buildRevolutionSolidOyDisk,
@@ -7816,6 +7843,7 @@ export {
   evalProfile,
   executeOp,
   executePlan,
+  planarArea,
   resolveEntity,
   revolutionVolumeDisk,
   revolutionVolumeShellOy,

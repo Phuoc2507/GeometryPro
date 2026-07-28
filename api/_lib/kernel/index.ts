@@ -41,4 +41,4 @@ export { runAnalysis, runAny, AnalysisPlanSchema } from './analysis/runAnalysis'
 // Khối tròn xoay (Advance – rev-ox): builder cần chúng qua kernel-dist (không import .ts nguồn).
 export { buildAnalysisFigure } from './analysis/analysisFigure';
 export { evalProfile, revolutionVolumeDisk, buildRevolutionSolidOx, revolutionVolumeShellOy, buildRevolutionSolidOy, buildRevolutionSolidOyDisk } from './analysis/revolution';
-export { sectionK, sliceStackVolume, buildSliceStack } from './analysis/sliceVolume';
+export { sectionK, sliceStackVolume, buildSliceStack, planarArea, buildAreaRegion } from './analysis/sliceVolume';
