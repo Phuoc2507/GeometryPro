@@ -49,9 +49,22 @@ async function invokeLocalApi(endpoint: string, body: Record<string, unknown>): 
       credentials: 'same-origin',
       body: JSON.stringify(body),
     });
-    const data = await res.json() as LocalApiData;
-    cacheQuotaFromResponse(res, data);
-    if (!res.ok) return { data: null, error: { message: data?.error || `HTTP ${res.status}`, code: data?.code, status: res.status } };
+    // Đọc thân dạng CHỮ trước rồi mới thử parse JSON. Khi hàm máy chủ crash/quá giờ, Vercel trả về
+    // TRANG LỖI (không phải JSON, vd "An error occurred…") — gọi res.json() thẳng sẽ ném
+    // "Unexpected token 'A'…" khó hiểu. Tách ra để báo lỗi gọn gàng cho người dùng.
+    const rawBody = await res.text();
+    let data: LocalApiData | null = null;
+    try { data = rawBody ? (JSON.parse(rawBody) as LocalApiData) : null; }
+    catch { data = null; }
+    if (data) cacheQuotaFromResponse(res, data);
+    if (!res.ok) {
+      const message = data?.error
+        || (rawBody && !data
+          ? `Máy chủ đang lỗi hoặc quá tải (HTTP ${res.status}), vui lòng thử lại — nếu gửi ảnh, thử chụp gọn/đề ngắn hơn.`
+          : `HTTP ${res.status}`);
+      return { data: null, error: { message, code: data?.code, status: res.status } };
+    }
+    if (!data) return { data: null, error: { message: 'Máy chủ trả dữ liệu không hợp lệ, vui lòng thử lại.' } };
     return { data, error: null };
   } catch (err: unknown) {
     return { data: null, error: { message: err instanceof Error ? err.message : 'Network error' } };
