@@ -60,12 +60,12 @@ describe('splitProblem (Pass 0)', () => {
     expect(callVilao.mock.calls[0][2].timeoutMs).toBe(38000);
     expect(callVilao.mock.calls[0][2].imageBase64).toBe('BASE64');
   });
-  it('CHỮ: giữ hedge + timeout 13s (đề chữ nhanh, spike độc lập → hedge giúp thật)', async () => {
+  it('CHỮ: giữ hedge + timeout 18s (model nhanh spike ~16–19s; 13s cũ cắt trước khi nhả token)', async () => {
     callVilao.mockClear(); hedge.mockClear();
     callVilao.mockResolvedValue(JSON.stringify({ type: 'single', setup: 'x' }));
     await splitProblem('Cho (H) giới hạn y=x^2, x=0, x=2.', {});
     expect(hedge).toHaveBeenCalled();                    // chữ: có hedge chống spike
-    expect(callVilao.mock.calls[0][2].timeoutMs).toBe(13000);
+    expect(callVilao.mock.calls[0][2].timeoutMs).toBe(18000);
     expect(callVilao.mock.calls[0][2].imageBase64).toBe(null);
   });
   it('rev-ox 1 câu (type=single) → VẪN GIỮ template + params (engine tự dựng & kiểm)', async () => {

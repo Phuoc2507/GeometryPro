@@ -40,13 +40,16 @@ export async function splitProblem(problem, opts = {}) {
   const primaryKey = opts.apiKey || ADVANCE_API_KEY;   // undefined ⇒ callVilao tự dùng VILAO_API_KEY base
 
   // NGÂN SÁCH thời gian theo LOẠI đầu vào (nguồn gốc bug 504):
-  //  • CHỮ: nhanh (~5–10s). 13s/lượt + hedge (spike >6s → bắn lượt 2 song song, lấy cái nhanh).
+  //  • CHỮ: nhanh (~5–10s) nhưng model nhanh (gemini-3.5-flash-low) thỉnh thoảng spike ~16–19s. Timeout
+  //    18s/lượt + hedge (spike >6s → bắn lượt 2 song song, lấy cái nhanh). 13s CŨ cắt TRƯỚC khi spike nhả
+  //    token ⇒ {type:'single'} không template ⇒ đề calculus (rev-ox/section…) thỉnh thoảng "chưa vẽ được".
+  //    Worst-case wall = 6s (hedge delay) + 18s = 24s, vẫn dưới trần 60s Vercel.
   //  • ẢNH (vision): time-to-first-token LỚN (~16–40s tuỳ provider). Timeout 13s CŨ bắn TRƯỚC khi
   //    model nhả token đầu ⇒ client tự ngắt (CLIENT_DISCONNECT, 0 token) ⇒ MỌI lượt tách-ảnh hỏng ⇒
   //    fallback/retry chồng nhau > 60s ⇒ 504. Ảnh cần ngân sách RỘNG (38s < lằn 60s Vercel) và
   //    KHÔNG hedge: TTFT chậm là TƯƠNG QUAN (bắn lượt 2 song song cũng chậm y hệt) → chỉ tốn gấp đôi
   //    token mà không nhanh hơn. Đề chữ mới hưởng lợi từ hedge (spike độc lập).
-  const splitTimeoutMs = imageBase64 ? 38000 : 13000;
+  const splitTimeoutMs = imageBase64 ? 38000 : 18000;
   const runOnce = (apiKey, modelToUse) => callVilao(SPLIT_PROMPT, problem || 'Đọc đề trong ảnh đính kèm rồi phân loại.', {
     model: modelToUse, apiKey, imageBase64, maxTokens: 2048, timeoutMs: splitTimeoutMs, maxAttempts: 1,
   });
