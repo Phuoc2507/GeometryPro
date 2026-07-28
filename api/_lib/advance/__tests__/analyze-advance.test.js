@@ -51,6 +51,21 @@ describe('assembleAdvance — GỘP đọc-ảnh + tách-đề (ảnh → splitP
     expect(solveProblem).not.toHaveBeenCalled();   // KHÔNG vẽ bừa hình 3D lạ
   });
 
+  it('ẢNH-only đọc HỎNG (setup rỗng) → imageReadFailed + hoàn toàn bộ, KHÔNG chạy solveProblem (chống chồng 504)', async () => {
+    // Bug 504: ảnh vào, vision hỏng/timeout ⇒ effectiveText rỗng. Nếu vẫn chạy fallback solveProblem
+    // trên text RỖNG thì translator tự retry (maxAttempts:2) → chồng thời gian > 60s → 504. Phải báo thẳng.
+    const splitProblem = vi.fn().mockResolvedValue({ type: 'single' });   // vision không chép được đề
+    const solveProblem = vi.fn().mockResolvedValue({ ok: true, geometry: { points: [{ id: 'A' }] } });
+
+    const result = await assembleAdvance('', { splitProblem, solveProblem }, { imageBase64: 'x' });
+
+    expect(result.revUnsupported).toBe(true);      // hoàn TOÀN BỘ (vẽ được gì đâu)
+    expect(result.imageReadFailed).toBe(true);     // phân biệt "đọc ảnh hỏng" với "kiểu quay chưa hỗ trợ"
+    expect(result.mode).toBe('kernel');
+    expect(result.degraded).toBe(true);
+    expect(solveProblem).not.toHaveBeenCalled();   // KHÔNG chồng translator-retry → khỏi 504
+  });
+
   it('luồng CHỮ (không ảnh): splitProblem nhận đúng chữ, không kèm imageBase64', async () => {
     const splitProblem = vi.fn().mockResolvedValue({ type: 'single' });
     const buildAdvanceScene = vi.fn();

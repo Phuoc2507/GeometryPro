@@ -813,8 +813,9 @@ export function GeometryProvider({ children }: { children: React.ReactNode }) {
       } else if (data?.revUnsupported) {
         // Đề tròn xoay KHÔNG dựng được ⇒ KHÔNG vẽ hình lạ; báo thẳng, giữ nguyên canvas cũ.
         // Server đã hoàn TOÀN BỘ credit (không tính tiền khi không phục vụ được).
+        // `imageReadFailed` = đọc ẢNH hỏng (không chắc là đề tròn xoay) → tiêu đề nói về đọc ảnh cho đúng.
         toast({
-          title: 'Chưa vẽ được đề tròn xoay này',
+          title: data.imageReadFailed ? 'Chưa đọc được đề trong ảnh' : 'Chưa vẽ được đề tròn xoay này',
           description: data.error || 'Bạn thử gõ lại đề bằng chữ, hoặc chụp rõ hơn nhé.',
         });
         refreshProfile?.();

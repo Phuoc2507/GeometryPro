@@ -21,6 +21,16 @@ export const REV_UNSUPPORTED_MSG =
   'Đề tròn xoay này mình chưa dựng được khối (có thể ảnh đọc chưa rõ, hoặc kiểu quay chưa hỗ trợ). ' +
   'Bạn thử gõ lại đề bằng chữ, hoặc chụp rõ hơn giúp mình nhé.';
 
+// Đọc ẢNH hỏng (vision timeout / ảnh mờ) ⇒ không chép được đề. Báo THẲNG, KHÔNG chạy fallback bài đơn
+// trên text rỗng (translator sẽ tự retry → chồng thời gian → 504). Xem fail-fast trong assembleAdvance.
+export const IMAGE_READ_FAILED_MSG =
+  'Mình chưa đọc được đề trong ảnh (có thể ảnh hơi mờ hoặc chữ nhỏ). ' +
+  'Bạn thử chụp rõ/gần hơn, hoặc gõ đề bằng chữ giúp mình nhé.';
+
+// Chạm DEADLINE tổng (~52s) trước lằn 60s của Vercel ⇒ trả thông điệp sạch thay vì 504 thô (non-JSON).
+export const ADVANCE_DEADLINE_MSG =
+  'Đề này xử lý lâu quá mức cho phép. Bạn thử gõ đề bằng chữ (rút gọn), hoặc chụp rõ hơn rồi thử lại nhé.';
+
 // Nhận diện đề TRÒN XOAY một cách TẤT ĐỊNH (không LLM) — dùng ở nhánh fallback để chống vẽ-bừa.
 // Bắt "tròn xoay", hoặc (quay/xoay + quanh + trục Ox/Oy/hoành/tung).
 export function looksLikeRevolution(text) {
@@ -79,6 +89,14 @@ export async function assembleAdvance(problem, deps, opts = {}) {
     return { mode: 'kernel', degraded: true, ok: false, revUnsupported: true, error: REV_UNSUPPORTED_MSG };
   }
 
+  // FAIL-FAST (gốc bug 504): đề vào bằng ẢNH nhưng vision KHÔNG chép được đề (effectiveText rỗng) ⇒ đừng
+  // chạy fallback solveProblem trên text RỖNG — vừa vô nghĩa, vừa để translator tự retry (maxAttempts:2)
+  // chồng thời gian > 60s → 504. Báo thẳng + đánh dấu revUnsupported để handler HOÀN TOÀN BỘ (vẽ được gì
+  // đâu). `imageReadFailed` phân biệt "đọc ảnh hỏng" với "kiểu quay chưa hỗ trợ" (frontend nhắn cho hợp).
+  if (opts.imageBase64 && !effectiveText.trim()) {
+    return { mode: 'kernel', degraded: true, ok: false, revUnsupported: true, imageReadFailed: true, error: IMAGE_READ_FAILED_MSG };
+  }
+
   // single / build-fail / animation-fail → FALLBACK: xử bài đơn, đánh dấu degraded để handler hoàn credit.
   // solveProblem NÉM khi translator abstain → trả degraded sạch (KHÔNG để 500 xuyên lên handler).
   try {
@@ -131,7 +149,21 @@ async function handler(req, res) {
 
     // Có ảnh → splitProblem GỘP đọc-ảnh + tách-đề trong 1 lượt vision (chép đề vào split.setup rồi phân
     // loại). assembleAdvance lấy split.setup làm `effectiveText` cho nhận-diện tròn-xoay + fallback bài đơn.
-    const result = await assembleAdvance(problemSeed, { splitProblem, buildAdvanceScene, solveProblem, buildRevolutionScene }, { imageBase64 });
+    //
+    // DEADLINE tổng (~52s): chặn TRƯỚC lằn 60s của Vercel để trả JSON sạch thay vì 504 thô (non-JSON,
+    // frontend chỉ hiện "Lỗi Advance"). Chạm deadline ⇒ coi như revUnsupported (hoàn TOÀN BỘ, vẽ được gì
+    // đâu) + thông điệp thân thiện. Dù chống chồng thời gian ở các tầng dưới rồi, đây là lưới an toàn cuối.
+    const DEADLINE_MS = Number(process.env.ADVANCE_DEADLINE_MS) || 52000;
+    let deadlineTimer;
+    const deadline = new Promise((resolve) => { deadlineTimer = setTimeout(() => resolve({ __deadline: true }), DEADLINE_MS); });
+    let result = await Promise.race([
+      assembleAdvance(problemSeed, { splitProblem, buildAdvanceScene, solveProblem, buildRevolutionScene }, { imageBase64 }),
+      deadline,
+    ]);
+    clearTimeout(deadlineTimer);
+    if (result && result.__deadline) {
+      result = { mode: 'kernel', degraded: true, ok: false, revUnsupported: true, error: ADVANCE_DEADLINE_MSG };
+    }
 
     // ---- Fallback tụt-hạng: đã trừ mức Advance nhưng chỉ xử bài đơn ⇒ HOÀN chênh lệch xuống Vẽ kỹ ----
     // Công bằng: user chỉ bị tính bằng mức "Vẽ kỹ" (draw_detailed) khi không được phục vụ đa-cảnh.

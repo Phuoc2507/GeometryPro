@@ -35,11 +35,21 @@ export async function splitProblem(problem, opts = {}) {
   const model = opts.model || ADVANCE_MODEL;
   const primaryKey = opts.apiKey || ADVANCE_API_KEY;   // undefined ⇒ callVilao tự dùng VILAO_API_KEY base
 
-  // 13s/lượt, hedge tự lo retry nên callVilao KHÔNG tự retry (maxAttempts:1) → khỏi chồng phí token.
-  // Spike (>6s) → hedge bắn lượt 2 song song, lấy cái nhanh. 2 lượt song song nên tổng vẫn <60s.
+  // NGÂN SÁCH thời gian theo LOẠI đầu vào (nguồn gốc bug 504):
+  //  • CHỮ: nhanh (~5–10s). 13s/lượt + hedge (spike >6s → bắn lượt 2 song song, lấy cái nhanh).
+  //  • ẢNH (vision): time-to-first-token LỚN (~16–40s tuỳ provider). Timeout 13s CŨ bắn TRƯỚC khi
+  //    model nhả token đầu ⇒ client tự ngắt (CLIENT_DISCONNECT, 0 token) ⇒ MỌI lượt tách-ảnh hỏng ⇒
+  //    fallback/retry chồng nhau > 60s ⇒ 504. Ảnh cần ngân sách RỘNG (38s < lằn 60s Vercel) và
+  //    KHÔNG hedge: TTFT chậm là TƯƠNG QUAN (bắn lượt 2 song song cũng chậm y hệt) → chỉ tốn gấp đôi
+  //    token mà không nhanh hơn. Đề chữ mới hưởng lợi từ hedge (spike độc lập).
+  const splitTimeoutMs = imageBase64 ? 38000 : 13000;
   const runOnce = (apiKey, modelToUse) => callVilao(SPLIT_PROMPT, problem || 'Đọc đề trong ảnh đính kèm rồi phân loại.', {
-    model: modelToUse, apiKey, imageBase64, maxTokens: 2048, timeoutMs: 13000, maxAttempts: 1,
+    model: modelToUse, apiKey, imageBase64, maxTokens: 2048, timeoutMs: splitTimeoutMs, maxAttempts: 1,
   });
+
+  // Ảnh → 1 lượt trần trụi (không hedge). Chữ → bọc hedge chống spike.
+  const runGuarded = (apiKey, modelToUse) =>
+    imageBase64 ? runOnce(apiKey, modelToUse) : hedge(() => runOnce(apiKey, modelToUse), { delayMs: 6000 });
 
   // Có dùng OVERRIDE (khoá/model riêng khác base) không? Nếu có mà HỎNG thì còn đường lui về base.
   const usingOverride = (primaryKey && primaryKey !== process.env.VILAO_API_KEY) || model !== DEFAULT_SPLIT_MODEL;
@@ -48,12 +58,12 @@ export async function splitProblem(problem, opts = {}) {
   try {
     let raw;
     try {
-      raw = await hedge(() => runOnce(primaryKey, model), { delayMs: 6000 });
+      raw = await runGuarded(primaryKey, model);
     } catch (e) {
       // Override set-nhưng-hỏng (khoá 403/hết hạn, model lạ) KHÔNG được âm thầm giết bước vẽ:
       // lui về khoá base (VILAO_API_KEY) + model mặc định. Đa số user chỉ set đúng 1 khoá base này.
       if (!usingOverride) throw e;
-      raw = await hedge(() => runOnce(undefined, null), { delayMs: 6000 });  // null model → callVilao dùng VILAO_MODEL
+      raw = await runGuarded(undefined, null);  // null model → callVilao dùng VILAO_MODEL
     }
     parsed = JSON.parse(extractJson(raw));
   } catch {
