@@ -20,7 +20,7 @@ import { TimelinePlayer } from '@/components/layout/TimelinePlayer';
 import { AdvanceStepper } from '@/components/layout/AdvanceStepper';
 import { AdvanceSolutionPanel } from '@/components/AdvanceSolutionPanel';
 import { VideoExportPanel } from '@/components/layout/VideoExportPanel';
-import { SolverPanel, MobileSolverPanel } from '@/components/SolverPanel';
+import { RightPanel, MobileRightPanel } from '@/components/layout/RightPanel';
 import { GeometryData } from '@/types/geometry';
 
 interface LocalHistoryItem {
@@ -112,10 +112,10 @@ const StudentModeContent = () => {
         <LeftSidebar />
         <MobileSidebar />
 
-        <main className="flex-1 lg:[margin-right:var(--solver-w,20rem)] relative radial-gradient-bg min-h-screen">
+        <main className="flex-1 min-w-0 relative radial-gradient-bg min-h-screen">
           <TopToolbar />
           <GeometryCanvas />
-          
+
           <TimelineContainer />
 
           {/* Advance mode — bộ chuyển câu (tự ẩn khi không phải bài đa-câu) */}
@@ -126,16 +126,19 @@ const StudentModeContent = () => {
 
           <DropZone />
           <ScanningOverlay />
-          
+
           {!isVideoMode && <FloatingPromptBar />}
-          {!isVideoMode && <MobileSolverPanel />}
         </main>
 
-        {/* Solver Panel */}
+        {/* Panel phải: bê nguyên bộ Giáo viên (Xuất / Giải bài / Thuộc tính) sang Học sinh
+            làm nền — sẽ tinh chỉnh/lược bớt cho học sinh sau. */}
         {isVideoMode ? (
           <VideoExportPanel />
         ) : (
-          <SolverPanel />
+          <>
+            <RightPanel />
+            <MobileRightPanel />
+          </>
         )}
       </div>
     </>
