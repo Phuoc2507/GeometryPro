@@ -14,8 +14,9 @@ import { useState, useEffect, useMemo, useRef, useCallback, memo } from 'react';
 import type { Dispatch, SetStateAction } from 'react';
 import {
   ChevronLeft, ChevronRight, Sparkles, Loader2,
-  AlertTriangle, RotateCcw, BookOpen, ChevronDown,
+  AlertTriangle, RotateCcw, BookOpen, ChevronDown, Eye,
 } from 'lucide-react';
+import { useLocation } from 'react-router-dom';
 import { Button }      from '@/components/ui/button';
 import { Textarea }    from '@/components/ui/textarea';
 import { ScrollArea }  from '@/components/ui/scroll-area';
@@ -216,9 +217,12 @@ interface StepCardProps {
   step: import('@/hooks/useSolver').SolveStep;
   index: number;
   total: number;
+  constructedIds?: string[]; // điểm bước này DỰNG THÊM (đánh dấu khác điểm gốc)
 }
 
-function StepCard({ step, index }: StepCardProps) {
+function StepCard({ step, index, constructedIds }: StepCardProps) {
+  const constructed = new Set(constructedIds ?? []);
+  const hasConstructed = step.highlight?.some((id) => constructed.has(id)) ?? false;
   return (
     <div className="rounded-xl border border-border/60 bg-card/40 p-3.5 my-1 animate-fade-in">
       {/* Số thứ tự + tiêu đề bước */}
@@ -235,18 +239,35 @@ function StepCard({ step, index }: StepCardProps) {
       {/* Công thức khối */}
       {step.formula && <FormulaBlock formula={step.formula} />}
 
-      {/* Điểm liên quan bước này */}
+      {/* Điểm liên quan bước này — điểm DỰNG THÊM viền nét đứt màu chính. */}
       {step.highlight && step.highlight.length > 0 && (
-        <div className="flex flex-wrap gap-1.5 mt-3">
-          {step.highlight.map(id => (
-            <span
-              key={id}
-              className="inline-flex items-center justify-center min-w-6 h-6 px-1.5 rounded-full border border-border/70 bg-background/60 text-foreground/90 text-xs font-cm italic"
-            >
-              {id}
-            </span>
-          ))}
-        </div>
+        <>
+          <div className="flex flex-wrap gap-1.5 mt-3">
+            {step.highlight.map(id => {
+              const isNew = constructed.has(id);
+              return (
+                <span
+                  key={id}
+                  title={isNew ? 'Điểm dựng thêm ở bước này' : undefined}
+                  className={cn(
+                    'inline-flex items-center justify-center min-w-6 h-6 px-1.5 rounded-full border text-xs font-cm italic',
+                    isNew
+                      ? 'border-dashed border-primary/70 bg-primary/10 text-primary'
+                      : 'border-border/70 bg-background/60 text-foreground/90',
+                  )}
+                >
+                  {id}
+                </span>
+              );
+            })}
+          </div>
+          {hasConstructed && (
+            <p className="mt-1.5 text-[10.5px] text-primary/80 flex items-center gap-1">
+              <span className="inline-block w-2.5 h-2.5 rounded-full border border-dashed border-primary/70 bg-primary/10" />
+              điểm dựng thêm ở bước này
+            </p>
+          )}
+        </>
       )}
     </div>
   );
@@ -257,17 +278,22 @@ function StepCard({ step, index }: StepCardProps) {
 // đã nạp sẵn, KHÔNG gọi API). `onReset` có → hiện nút "Giải lại" (luồng solve on-demand);
 // không có → ẩn nút (advance chỉ xem lời giải đã lưu).
 function SolveResultViewImpl({
-  result, currentStep, setCurrentStep, onReset, problem,
+  result, currentStep, setCurrentStep, onReset, problem, constructedByStep,
 }: {
   result: import('@/hooks/useSolver').SolveResult;
   currentStep: number;
   setCurrentStep: Dispatch<SetStateAction<number>>;
   onReset?: () => void;
   problem?: string;
+  constructedByStep?: string[][]; // theo bước: id các điểm dựng thêm (để đánh dấu)
 }) {
+  // Chế độ Học sinh: ẩn đáp số lúc đầu để em TỰ NGHĨ trước rồi mới hé (productive struggle).
+  const isStudent = useLocation().pathname.startsWith('/student');
   const step   = result.steps[currentStep] ?? null;
   const nSteps  = result.steps.length;
   const [showProblem, setShowProblem] = useState(false);
+  const [showAll, setShowAll] = useState(false);          // xem TẤT CẢ bước cùng lúc
+  const [answerShown, setAnswerShown] = useState(!isStudent);
 
   const level = result.tier?.level ?? verifiedToLevel(result.verified);
   const meta = safetyTierMeta(level);
@@ -281,20 +307,34 @@ function SolveResultViewImpl({
 
   return (
     <div className="h-full flex flex-col">
-      {/* ─── Đáp số nổi bật ─── */}
+      {/* ─── Đáp số nổi bật (học sinh: ẩn tới khi bấm) ─── */}
       <div className="px-4 pt-4 pb-2 shrink-0">
         <div className="rounded-2xl border border-primary/25 bg-gradient-to-br from-primary/10 to-primary/[0.03] px-4 py-3.5">
           <div className="text-[10.5px] font-bold uppercase tracking-[0.14em] text-primary">Đáp số</div>
-          <MathText text={result.final_answer} className="mt-1.5 text-lg font-semibold text-foreground break-words" />
-          <span className={cn('inline-flex items-center gap-1.5 mt-2.5 text-[11px] font-semibold px-2.5 py-1 rounded-full border', chipTone)}>
-            <TierIcon className="w-3 h-3" />
-            {meta.description}
-            {level === 1 && result.tier?.exactness ? ` · ${exactnessLabel(result.tier.exactness)}` : ''}
-          </span>
-          {level === 3 && reasonMsg && (
-            <p className="text-[11px] mt-2 text-muted-foreground/90 leading-snug break-words">{reasonMsg}</p>
+          {answerShown ? (
+            <>
+              <MathText text={result.final_answer} className="mt-1.5 text-lg font-semibold text-foreground break-words" />
+              <span className={cn('inline-flex items-center gap-1.5 mt-2.5 text-[11px] font-semibold px-2.5 py-1 rounded-full border', chipTone)}>
+                <TierIcon className="w-3 h-3" />
+                {meta.description}
+                {level === 1 && result.tier?.exactness ? ` · ${exactnessLabel(result.tier.exactness)}` : ''}
+              </span>
+              {level === 3 && reasonMsg && (
+                <p className="text-[11px] mt-2 text-muted-foreground/90 leading-snug break-words">{reasonMsg}</p>
+              )}
+            </>
+          ) : (
+            <button
+              onClick={() => setAnswerShown(true)}
+              className="mt-2 w-full inline-flex items-center justify-center gap-2 h-10 rounded-xl border border-dashed border-primary/50 text-primary text-sm font-semibold hover:bg-primary/10 transition-colors"
+            >
+              <Eye className="w-4 h-4" /> Bấm để xem đáp số
+            </button>
           )}
         </div>
+        {!answerShown && (
+          <p className="text-[11px] text-muted-foreground/70 text-center mt-1.5">Thử tự làm theo các bước trước nhé — bấm khi muốn đối chiếu.</p>
+        )}
       </div>
 
       {/* ─── Đề bài (thu gọn, render đẹp như lời giải) ─── */}
@@ -317,48 +357,70 @@ function SolveResultViewImpl({
         </div>
       )}
 
-      {/* ─── Lời giải: tiêu đề + thanh tiến độ ─── */}
+      {/* ─── Lời giải: tiêu đề + nút xem tất cả + thanh tiến độ ─── */}
       <div className="px-4 pt-1 shrink-0">
-        <div className="flex items-center justify-between mb-2">
+        <div className="flex items-center justify-between mb-2 gap-2">
           <span className="text-[12.5px] font-semibold text-foreground">Lời giải từng bước</span>
-          <span className="text-[11px] text-muted-foreground tabular-nums">
-            {nSteps > 0 ? `Bước ${currentStep + 1} / ${nSteps}` : 'Không có bước'}
-          </span>
+          <div className="flex items-center gap-2">
+            {!showAll && (
+              <span className="text-[11px] text-muted-foreground tabular-nums">
+                {nSteps > 0 ? `Bước ${currentStep + 1} / ${nSteps}` : 'Không có bước'}
+              </span>
+            )}
+            {nSteps > 1 && (
+              <button
+                onClick={() => setShowAll((v) => !v)}
+                className="text-[11px] font-medium text-primary hover:underline shrink-0"
+              >
+                {showAll ? 'Từng bước' : 'Xem tất cả'}
+              </button>
+            )}
+          </div>
         </div>
-        <div className="h-1 rounded-full bg-secondary overflow-hidden">
-          <div className="h-full bg-primary rounded-full transition-all duration-300" style={{ width: `${progressPct}%` }} />
-        </div>
+        {!showAll && (
+          <div className="h-1 rounded-full bg-secondary overflow-hidden">
+            <div className="h-full bg-primary rounded-full transition-all duration-300" style={{ width: `${progressPct}%` }} />
+          </div>
+        )}
       </div>
 
-      {/* ─── Thẻ bước hiện tại (cuộn nếu dài) ─── */}
+      {/* ─── Thân: từng bước (điều hướng) hoặc tất cả các bước ─── */}
       {/* Ép child của viewport về block (Radix để display:table -> phình ngang theo công thức dài). */}
       <ScrollArea className="flex-1 px-4 pt-2 [&_[data-radix-scroll-area-viewport]>div]:!block [&_[data-radix-scroll-area-viewport]>div]:!min-w-0">
-        {step ? (
-          <StepCard step={step} index={currentStep} total={nSteps} />
-        ) : (
+        {nSteps === 0 ? (
           <p className="text-sm text-muted-foreground py-4 text-center">Không có bước nào.</p>
-        )}
+        ) : showAll ? (
+          <div className="space-y-1 pb-2">
+            {result.steps.map((s, i) => (
+              <StepCard key={i} step={s} index={i} total={nSteps} constructedIds={constructedByStep?.[i]} />
+            ))}
+          </div>
+        ) : step ? (
+          <StepCard step={step} index={currentStep} total={nSteps} constructedIds={constructedByStep?.[currentStep]} />
+        ) : null}
       </ScrollArea>
 
-      {/* ─── Điều hướng bước ─── */}
-      <div className="flex gap-2 px-4 py-3 shrink-0">
-        <Button
-          variant="outline" size="sm"
-          disabled={currentStep === 0}
-          onClick={() => setCurrentStep(s => s - 1)}
-          className="flex-1 gap-1 h-9"
-        >
-          <ChevronLeft className="w-4 h-4" /> Bước trước
-        </Button>
-        <Button
-          size="sm"
-          disabled={currentStep >= nSteps - 1}
-          onClick={() => setCurrentStep(s => s + 1)}
-          className="flex-1 gap-1 h-9"
-        >
-          Bước sau <ChevronRight className="w-4 h-4" />
-        </Button>
-      </div>
+      {/* ─── Điều hướng bước (ẩn khi xem tất cả) ─── */}
+      {!showAll && (
+        <div className="flex gap-2 px-4 py-3 shrink-0">
+          <Button
+            variant="outline" size="sm"
+            disabled={currentStep === 0}
+            onClick={() => setCurrentStep(s => s - 1)}
+            className="flex-1 gap-1 h-9"
+          >
+            <ChevronLeft className="w-4 h-4" /> Bước trước
+          </Button>
+          <Button
+            size="sm"
+            disabled={currentStep >= nSteps - 1}
+            onClick={() => setCurrentStep(s => s + 1)}
+            className="flex-1 gap-1 h-9"
+          >
+            Bước sau <ChevronRight className="w-4 h-4" />
+          </Button>
+        </div>
+      )}
 
       {/* ─── Giải lại (chỉ luồng solve on-demand) ─── */}
       {onReset && (
@@ -553,6 +615,7 @@ export function SolverContent({ creditNote }: { creditNote?: string } = {}) {
         setCurrentStep={setCurrentStep}
         onReset={handleReset}
         problem={job?.problem ?? geometry?.solve?.problem ?? undefined}
+        constructedByStep={reveal?.stepConstructIds}
       />
     );
   }
