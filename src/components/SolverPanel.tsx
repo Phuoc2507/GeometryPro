@@ -546,6 +546,8 @@ export function SolverContent({ creditNote }: { creditNote?: string } = {}) {
   // các effect/handler bên dưới KHÔNG phụ thuộc trực tiếp vào `camera` ⇒ không chạy lại mỗi khung ⇒ hết lag.
   const cameraRef                 = useRef(camera);
   cameraRef.current               = camera;
+  // Theo dõi (bài, bước) đã lấy nét — chỉ bay camera khi ĐỔI BƯỚC trong cùng lời giải.
+  const flyRef = useRef<{ result: unknown; step: number }>({ result: null, step: -1 });
 
   // Trạng thái giải LẤY THEO BÀI (khoá = geometryKey) từ SolveJobsProvider — không còn nằm trong panel,
   // nên đổi bài rồi quay lại vẫn thấy đúng "đang giải" / "đã giải" của bài đó.
@@ -629,6 +631,23 @@ export function SolverContent({ creditNote }: { creditNote?: string } = {}) {
       cam.setHighlightedIds(new Set());
       cam.setRevealVisibleIds(null);
     }
+
+    // ── Bay camera tới phần tử của bước (bài ĐƠN, không chỉ Advance) ──
+    // Chỉ bay khi ĐỔI BƯỚC trong CÙNG lời giải; đổi bài / lần đầu để CameraFitter
+    // fit toàn hình cho khỏi giật.
+    const prev = flyRef.current;
+    if (prev.result === result && prev.step !== currentStep && reveal && result && cam.requestFocus) {
+      const construct = reveal.stepConstructIds?.[currentStep] ?? [];
+      const focusIds = construct.length ? construct : (result.steps[currentStep]?.highlight ?? []);
+      const byId = new Map((reveal.mergedGeometry.points ?? []).map((p) => [p.id, p]));
+      const pts = focusIds
+        .map((id) => byId.get(id))
+        .map((p) => ({ x: Number(p?.x), y: Number(p?.y), z: Number(p?.z) }))
+        .filter((p) => Number.isFinite(p.x) && Number.isFinite(p.y) && Number.isFinite(p.z));
+      if (pts.length) cam.requestFocus(pts);
+    }
+    flyRef.current = { result, step: currentStep };
+
     return () => { const c = cameraRef.current; c?.setHighlightedIds(new Set()); c?.setRevealVisibleIds(null); };
   }, [result, currentStep, reveal]);
 

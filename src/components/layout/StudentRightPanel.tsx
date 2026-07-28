@@ -107,10 +107,14 @@ export function MobileStudentRightPanel() {
           <Sparkles className="w-5 h-5" />
         </Button>
       </SheetTrigger>
-      <SheetContent side="right" className="w-80 p-0 glass border-l border-border/50">
-        <ErrorBoundary>
-          <StudentPanelContent />
-        </ErrorBoundary>
+      {/* Sheet TRƯỢT TỪ DƯỚI, chỉ ~58% chiều cao → vẫn thấy hình phía trên để đối chiếu. */}
+      <SheetContent side="bottom" className="h-[58vh] p-0 glass border-t border-border/50 rounded-t-2xl flex flex-col">
+        <div className="mx-auto mt-2 mb-1 h-1.5 w-10 rounded-full bg-border/70 shrink-0" />
+        <div className="flex-1 min-h-0">
+          <ErrorBoundary>
+            <StudentPanelContent />
+          </ErrorBoundary>
+        </div>
       </SheetContent>
     </Sheet>
   );
