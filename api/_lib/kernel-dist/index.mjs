@@ -7712,6 +7712,67 @@ function buildRevolutionSolidOyDisk(id, outer, domain, color, inner) {
   };
 }
 
+// api/_lib/kernel/analysis/sliceVolume.ts
+function sectionK(section, ratio = 1) {
+  switch (section) {
+    case "square":
+      return 1;
+    case "equilateral":
+      return Math.sqrt(3) / 4;
+    case "semicircle":
+      return Math.PI / 8;
+    case "rect":
+      return ratio;
+  }
+}
+var LATEX_S = {
+  square: "s^2",
+  equilateral: "\\tfrac{\\sqrt3}{4}s^2",
+  semicircle: "\\tfrac{\\pi}{8}s^2",
+  rect: "k\\,s^2"
+};
+function compileSide(outer, inner) {
+  const go = compileProfile(outer);
+  const gi = inner ? compileProfile(inner) : null;
+  return (t) => Math.abs(go(t) - (gi ? gi(t) : 0));
+}
+function sliceStackVolume(section, outer, domain, inner, ratio = 1) {
+  const [a, b] = domain;
+  const side = compileSide(outer, inner);
+  const k = sectionK(section, ratio);
+  return integrate((t) => k * side(t) * side(t), a, b);
+}
+function sampleSide(outer, domain, inner, n = 64) {
+  const [a, b] = domain;
+  const side = compileSide(outer, inner);
+  const out = [];
+  for (let i = 0; i <= n; i++) {
+    const t = a + (b - a) * i / n;
+    const s = side(t);
+    out.push({ t, side: Number.isFinite(s) ? Math.max(0, s) : 0 });
+  }
+  return out;
+}
+function buildSliceStack(id, section, outer, domain, color, inner, ratio, axis = "Ox") {
+  const r = section === "rect" ? ratio && ratio > 0 ? ratio : 1 : void 0;
+  const { value, estimatedError } = sliceStackVolume(section, outer, domain, inner, r ?? 1);
+  const verified = estimatedError <= 1e-6 * Math.max(1, Math.abs(value));
+  const latex = `V=\\int_{${domain[0]}}^{${domain[1]}} ${LATEX_S[section]}\\,d${axis === "Oy" ? "y" : "x"}`;
+  const volume = { value, latex, verified, estimatedError };
+  return {
+    id,
+    axis,
+    domain,
+    outer,
+    section,
+    volume,
+    color,
+    ...inner ? { inner } : {},
+    ...r !== void 0 ? { ratio: r } : {},
+    samples: sampleSide(outer, domain, inner)
+  };
+}
+
 // api/_lib/kernel/index.ts
 function runPlan(rawPlan) {
   const trace = new Trace();
@@ -7748,6 +7809,7 @@ export {
   buildRevolutionSolidOx,
   buildRevolutionSolidOy,
   buildRevolutionSolidOyDisk,
+  buildSliceStack,
   checkDegeneracy,
   createEmptySymbolTable,
   entityTableToGeometryData,
@@ -7761,6 +7823,8 @@ export {
   runAnalysis,
   runAny,
   runPlan,
+  sectionK,
+  sliceStackVolume,
   toExactForm,
   toGeometryData,
   verifyAssert,
