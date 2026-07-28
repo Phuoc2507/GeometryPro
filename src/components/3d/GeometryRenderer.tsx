@@ -25,6 +25,7 @@ import { AnimatedDynamicPoint } from './AnimatedDynamicPoint';
 import { AnimatedSurface } from './AnimatedSurface';
 import { AnimatedCurve } from './AnimatedCurve';
 import AnimatedRevolutionSolid from './AnimatedRevolutionSolid';
+import AnimatedSliceStack from './AnimatedSliceStack';
 import { useHiddenLineDetection } from '@/hooks/useHiddenLineDetection';
 import { mapsEqual } from '@/hooks/useHiddenLineDetection';
 import { mergeLineDashStyles } from '@/lib/geometry/hiddenLineDetection';
@@ -394,6 +395,11 @@ export function GeometryRenderer({ geometry: geometryProp, isBuilding }: Geometr
       {/* ═══ Revolution Solids ═══ */}
       {(geometry.revolutionSolids || []).map((solid) => (
         <AnimatedRevolutionSolid key={solid.id} solid={solid} />
+      ))}
+
+      {/* ═══ Slice Stacks (thiết diện đã biết) ═══ */}
+      {(geometry.sliceStacks || []).map((s) => (
+        <AnimatedSliceStack key={s.id} solid={s} />
       ))}
 
       {/* ═══ Curves ═══ */}
