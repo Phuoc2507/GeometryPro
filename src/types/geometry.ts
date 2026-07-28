@@ -306,6 +306,23 @@ export interface AreaRegion extends AdvanceFlags {
   samples?: { x: number; top: number; bot: number }[];
 }
 
+// ── Calculus Đợt 3: thiết diện = mặt phẳng ∩ khối đa diện ───────────
+// Cách xác định điểm tạo mặt phẳng: đỉnh có tên, HOẶC điểm trên cạnh (t∈[0,1] từ v1→v2; 0.5 = trung điểm).
+export type SectionPointSpec =
+  | { vertex: string }                              // 'A', 'S', "C'"…
+  | { onEdge: [string, string]; t: number };        // t·(v2−v1)+v1; t=0.5 ⇒ trung điểm
+
+export type PolyhedronKind = 'cube' | 'box' | 'pyramid-quad' | 'prism-tri';
+
+export interface SectionCut extends AdvanceFlags {
+  id: string;
+  targetKind: PolyhedronKind;                       // khối bị cắt (nhãn)
+  polygon: [number, number, number][];              // đỉnh đa giác thiết diện, thứ tự vòng (engine dựng)
+  plane: { point: [number, number, number]; normal: [number, number, number] };
+  area?: Verified<number>;
+  color?: string;
+}
+
 export interface GeometryData {
   id?: string;
   position?: [number, number, number];
@@ -329,6 +346,7 @@ export interface GeometryData {
   revolutionSolids?: RevolutionSolid[];
   sliceStacks?: SliceStack[];
   areaRegions?: AreaRegion[];
+  sectionCuts?: SectionCut[];
   latexCode?: string;
   llmPrompt?: string;
   /** Ràng buộc từ step1, có thể kèm kết quả verify */
