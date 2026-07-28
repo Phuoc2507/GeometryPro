@@ -102,6 +102,10 @@ QUY TẮC MẪU GIẢI TÍCH (optional — chỉ thêm khi CHẮC CHẮN khớp)
       "outer": <biên TRÊN miền đáy theo biến trục>, "inner": <biên DƯỚI; BỎ nếu đáy tựa trục>,
       "domain":[a,b], "ratio": <chỉ 'rect': cạnh kia = ratio·cạnh đáy>, "fnLabel":"..", "parts":[..] }
   Cạnh lát tại mỗi vị trí = |outer − inner|. "domain" lấy như bài diện tích (cận cho sẵn hoặc nghiệm giao).
+- Nếu đề tính DIỆN TÍCH hình phẳng giới hạn bởi hai đường y=f(x), y=g(x) → "template":"area-plane",
+  "templateParams": { "outer":<đường f>, "inner":<đường g>, "domain":[a,b], "fnLabel":"..", "parts":[..] }.
+  "domain" = 2 hoành độ giao (giải f=g); nếu đề cho cận x thì dùng cận đó. Thứ tự outer/inner KHÔNG quan
+  trọng (engine lấy |f−g|).
 
 [Ví dụ 4 — rev-ox, đĩa đặc]
 Đề: "Cho miền phẳng giới hạn bởi y = √x, trục Ox và x = 4. a) Vẽ khối tròn xoay khi quay miền quanh Ox. b) Tính thể tích khối đó."
@@ -209,6 +213,23 @@ JSON:
     "domain": [0, 4],
     "fnLabel": "y=\\sqrt{x}",
     "parts": [ { "label": "Câu 1", "hoi": "Tính thể tích vật thể" } ]
+  }
+}
+
+[Ví dụ 10 — area-plane, diện tích giữa 2 đường]
+Đề: "Tính diện tích hình phẳng giới hạn bởi hai đường y=x và y=x²."
+JSON:
+{
+  "type": "single",
+  "setup": "Hình phẳng giới hạn bởi y=x và y=x²",
+  "parts": [ { "label": "Câu 1", "hoi": "Tính diện tích hình phẳng", "phan_tu_moi": [] } ],
+  "template": "area-plane",
+  "templateParams": {
+    "outer": { "kind": "poly", "coeffs": [0, 1] },
+    "inner": { "kind": "poly", "coeffs": [0, 0, 1] },
+    "domain": [0, 1],
+    "fnLabel": "y=x,\\ y=x^2",
+    "parts": [ { "label": "Câu 1", "hoi": "Tính diện tích hình phẳng" } ]
   }
 }
 

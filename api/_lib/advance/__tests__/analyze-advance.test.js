@@ -147,3 +147,27 @@ describe('assembleAdvance — Đợt 2: thiết diện đã biết (cross-known)
     expect(out.revUnsupported).toBe(true);
   });
 });
+
+describe('assembleAdvance — Đợt 2: diện tích hình phẳng (area-plane)', () => {
+  it('template area-plane → gọi buildAreaScene, trả mode advance', async () => {
+    const deps = {
+      splitProblem: async () => ({ type: 'single', template: 'area-plane',
+        templateParams: { outer: { kind: 'poly', coeffs: [0, 1] }, inner: { kind: 'poly', coeffs: [0, 0, 1] }, domain: [0, 1] } }),
+      buildAdvanceScene: async () => null, solveProblem: async () => ({ ok: false }),
+      buildRevolutionScene: () => null, buildSliceScene: () => null,
+      buildAreaScene: () => ({ base: { name: 'x', points: [{ id: 'p0' }] }, steps: [] }),
+    };
+    const out = await assembleAdvance('đề', deps, {});
+    expect(out.mode).toBe('advance');
+  });
+
+  it('đề diện tích KHÔNG ra template → guard trả AREA_UNSUPPORTED (hoàn credit)', async () => {
+    const deps = {
+      splitProblem: async () => ({ type: 'single' }),
+      buildAdvanceScene: async () => null, solveProblem: async () => ({ ok: false }),
+      buildRevolutionScene: () => null, buildSliceScene: () => null, buildAreaScene: () => null,
+    };
+    const out = await assembleAdvance('Tính diện tích hình phẳng giới hạn bởi hai đường', deps, {});
+    expect(out.revUnsupported).toBe(true);
+  });
+});
