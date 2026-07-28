@@ -96,6 +96,12 @@ QUY TẮC MẪU GIẢI TÍCH (optional — chỉ thêm khi CHẮC CHẮN khớp)
     Cận [c,d]: nếu 2 đường → giải x_ng(y)=x_tr(y) lấy 2 nghiệm y; nếu 1 đường tựa Oy → 2 nghiệm x(y)=0. (Ví dụ 8)
 - Trục quay khác Ox/Oy (vd đường x=k, y=k) → BỎ QUA "template".
 - Không chắc biên dạng/miền/trục → BỎ QUA "template".
+- Nếu đề tính THỂ TÍCH bằng THIẾT DIỆN đã biết (đáy là miền phẳng, thiết diện vuông góc trục là hình
+  vuông/tam giác đều/nửa tròn/chữ nhật) → dùng "template":"cross-known", "templateParams":
+    { "section":"square"|"equilateral"|"semicircle"|"rect",
+      "outer": <biên TRÊN miền đáy theo biến trục>, "inner": <biên DƯỚI; BỎ nếu đáy tựa trục>,
+      "domain":[a,b], "ratio": <chỉ 'rect': cạnh kia = ratio·cạnh đáy>, "fnLabel":"..", "parts":[..] }
+  Cạnh lát tại mỗi vị trí = |outer − inner|. "domain" lấy như bài diện tích (cận cho sẵn hoặc nghiệm giao).
 
 [Ví dụ 4 — rev-ox, đĩa đặc]
 Đề: "Cho miền phẳng giới hạn bởi y = √x, trục Ox và x = 4. a) Vẽ khối tròn xoay khi quay miền quanh Ox. b) Tính thể tích khối đó."
@@ -188,5 +194,22 @@ JSON:
   }
 }
 (Giải thích cận: x_ng=5−y², x_tr=3−y; giải 5−y²=3−y ⇒ y²−y−2=0 ⇒ y=−1, y=2. Trên [−1,2] có 5−y²≥3−y nên "outer"=5−y², "inner"=3−y; hệ số poly theo y.)
+
+[Ví dụ 9 — cross-known, thiết diện vuông]
+Đề: "Cho vật thể có đáy là hình phẳng giới hạn bởi y=√x, trục Ox và x=4. Thiết diện cắt vuông góc với Ox là hình vuông. Tính thể tích."
+JSON:
+{
+  "type": "single",
+  "setup": "Đáy giới hạn bởi y=√x, Ox, x=4; thiết diện vuông góc Ox là hình vuông",
+  "parts": [ { "label": "Câu 1", "hoi": "Tính thể tích vật thể", "phan_tu_moi": [] } ],
+  "template": "cross-known",
+  "templateParams": {
+    "section": "square",
+    "outer": { "kind": "sqrt", "a": 1, "b": 0 },
+    "domain": [0, 4],
+    "fnLabel": "y=\\sqrt{x}",
+    "parts": [ { "label": "Câu 1", "hoi": "Tính thể tích vật thể" } ]
+  }
+}
 
 Bây giờ hãy tách đề người dùng gửi. CHỈ trả JSON.`;

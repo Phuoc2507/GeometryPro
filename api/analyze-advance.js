@@ -21,6 +21,12 @@ export const REV_UNSUPPORTED_MSG =
   'Đề tròn xoay này mình chưa dựng được khối (có thể ảnh đọc chưa rõ, hoặc kiểu quay chưa hỗ trợ). ' +
   'Bạn thử gõ lại đề bằng chữ, hoặc chụp rõ hơn giúp mình nhé.';
 
+// Đợt 2: đề RÕ là "thể tích theo thiết diện đã biết" nhưng KHÔNG dựng được mẫu cross-known ⇒ báo thẳng
+// (chống ảo giác), tái dùng cờ revUnsupported để frontend HOÀN credit + hiện toast như tròn xoay.
+export const CROSS_UNSUPPORTED_MSG =
+  'Mình nhận ra đây là bài thể tích theo thiết diện nhưng chưa dựng được. ' +
+  'Bạn thử ghi rõ miền đáy (giới hạn bởi đường nào) và hình lát (vuông/tam giác đều/nửa tròn) giúp mình nhé.';
+
 // Đọc ẢNH hỏng (vision timeout / ảnh mờ) ⇒ không chép được đề. Báo THẲNG, KHÔNG chạy fallback bài đơn
 // trên text rỗng (translator sẽ tự retry → chồng thời gian → 504). Xem fail-fast trong assembleAdvance.
 export const IMAGE_READ_FAILED_MSG =
@@ -42,6 +48,13 @@ export function looksLikeRevolution(text) {
   return hasSpin && hasAxis;
 }
 
+// Nhận diện đề THỂ TÍCH THEO THIẾT DIỆN đã biết một cách TẤT ĐỊNH (không LLM) — dùng ở nhánh guard để
+// chống vẽ-bừa khi classifier trượt template cross-known. Cần cả "thiết diện" + tên hình lát.
+export function looksLikeCrossSection(text) {
+  const s = (text || '').toLowerCase();
+  return /thi[eế]t di[eệ]n/.test(s) && /(vu[oô]ng|tam gi[aá]c|n[uử]a (h[iì]nh )?tr[oò]n|ch[uữ] nh[aậ]t)/.test(s);
+}
+
 // ===== LÕI THUẦN (deps-injected) — test 3 nhánh KHÔNG cần mạng =====
 // deps = { splitProblem, buildAdvanceScene, solveProblem, buildRevolutionScene }. Xem test analyze-advance.test.js.
 export async function assembleAdvance(problem, deps, opts = {}) {
@@ -59,6 +72,14 @@ export async function assembleAdvance(problem, deps, opts = {}) {
       const scene = deps.buildRevolutionScene(split.templateParams);
       if (scene) return { mode: 'advance', scene };
     } catch { /* dựng mẫu hỏng → rơi xuống fallback bài đơn */ }
+  }
+
+  // Đợt 2: khối thiết diện đã biết. Engine dựng & tự-kiểm thể tích.
+  if (split.template === 'cross-known' && split.templateParams && deps.buildSliceScene) {
+    try {
+      const scene = deps.buildSliceScene(split.templateParams);
+      if (scene) return { mode: 'advance', scene };
+    } catch { /* dựng hỏng → fallback */ }
   }
 
   if (split.type === 'multi_question') {
@@ -85,6 +106,13 @@ export async function assembleAdvance(problem, deps, opts = {}) {
   // Đề RÕ là tròn xoay nhưng rơi tới đây (không dựng được mẫu rev-ox) ⇒ KHÔNG vẽ bừa hình 3D lạ
   // (chống ảo giác). Trả tín hiệu trung thực để frontend nhắn người dùng gõ lại / chụp rõ hơn.
   // (Bài đã dựng được rev-ox thì đã return ở nhánh trên, không chạm tới đây.)
+  // Đợt 2: đề RÕ là thể tích theo thiết diện nhưng không dựng nổi mẫu cross-known ⇒ báo thẳng (tái dùng
+  // cờ revUnsupported để frontend hoàn credit). Đặt TRƯỚC guard tròn xoay: đề thiết diện không khớp
+  // rev-ox/looksLikeRevolution nên cần bắt riêng, tránh rơi xuống fallback bài đơn (vẽ hình lạ).
+  if (looksLikeCrossSection(effectiveText)) {
+    return { mode: 'kernel', degraded: true, ok: false, revUnsupported: true, error: CROSS_UNSUPPORTED_MSG };
+  }
+
   if (looksLikeRevolution(effectiveText)) {
     return { mode: 'kernel', degraded: true, ok: false, revUnsupported: true, error: REV_UNSUPPORTED_MSG };
   }
@@ -140,11 +168,12 @@ async function handler(req, res) {
     }
 
     // ---- Nạp ĐỘNG các mảnh pipeline (lỗi import ⇒ rơi vào catch, hoàn credit) ----
-    const [{ splitProblem }, { buildAdvanceScene }, { solveProblem }, { buildRevolutionScene }] = await Promise.all([
+    const [{ splitProblem }, { buildAdvanceScene }, { solveProblem }, { buildRevolutionScene }, { buildSliceScene }] = await Promise.all([
       import('./_lib/advance/splitProblem.js'),
       import('./_lib/advance/buildAdvanceScene.js'),
       import('./_lib/kernel-bridge/solveWithKernel.js'),
       import('./_lib/advance/buildRevolutionScene.js'),
+      import('./_lib/advance/buildSliceScene.js'),
     ]);
 
     // Có ảnh → splitProblem GỘP đọc-ảnh + tách-đề trong 1 lượt vision (chép đề vào split.setup rồi phân
@@ -157,7 +186,7 @@ async function handler(req, res) {
     let deadlineTimer;
     const deadline = new Promise((resolve) => { deadlineTimer = setTimeout(() => resolve({ __deadline: true }), DEADLINE_MS); });
     let result = await Promise.race([
-      assembleAdvance(problemSeed, { splitProblem, buildAdvanceScene, solveProblem, buildRevolutionScene }, { imageBase64 }),
+      assembleAdvance(problemSeed, { splitProblem, buildAdvanceScene, solveProblem, buildRevolutionScene, buildSliceScene }, { imageBase64 }),
       deadline,
     ]);
     clearTimeout(deadlineTimer);

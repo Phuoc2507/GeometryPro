@@ -122,3 +122,28 @@ describe('assembleAdvance — đề tròn xoay không dựng được ⇒ báo t
     expect(solveProblem).toHaveBeenCalledTimes(1);
   });
 });
+
+describe('assembleAdvance — Đợt 2: thiết diện đã biết (cross-known)', () => {
+  it('template cross-known → gọi buildSliceScene, trả mode advance', async () => {
+    const deps = {
+      splitProblem: async () => ({ type: 'single', template: 'cross-known',
+        templateParams: { section: 'square', outer: { kind: 'sqrt', a: 1, b: 0 }, domain: [0, 4] } }),
+      buildAdvanceScene: async () => null,
+      solveProblem: async () => ({ ok: false }),
+      buildRevolutionScene: () => null,
+      buildSliceScene: () => ({ base: { name: 'x', points: [{ id: 'p0' }] }, steps: [] }),
+    };
+    const out = await assembleAdvance('đề', deps, {});
+    expect(out.mode).toBe('advance');
+  });
+
+  it('đề thiết diện KHÔNG ra template → guard trả CROSS_UNSUPPORTED (hoàn credit)', async () => {
+    const deps = {
+      splitProblem: async () => ({ type: 'single' }),
+      buildAdvanceScene: async () => null, solveProblem: async () => ({ ok: false }),
+      buildRevolutionScene: () => null, buildSliceScene: () => null,
+    };
+    const out = await assembleAdvance('Thiết diện vuông góc Ox là hình vuông, tính thể tích', deps, {});
+    expect(out.revUnsupported).toBe(true);
+  });
+});
