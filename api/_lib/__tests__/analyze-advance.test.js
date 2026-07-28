@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { assembleAdvance } from '../../analyze-advance.js'; // export named tu route file
+import { assembleAdvance, looksLikeSection } from '../../analyze-advance.js'; // export named tu route file
 import { CREDIT_COST } from '../entitlements.js';
 
 const geo = { name: 'g', points: [{ id: 'A' }, { id: 'B' }], lines: [], timeline: { duration: 5, tracks: [{}] } };
@@ -80,6 +80,50 @@ describe('assembleAdvance — 3 nhánh (không cần mạng)', () => {
     expect(r.degraded).toBe(true);
     expect(r.ok).toBe(false);
     expect(r.abstained).toBe(true);
+  });
+});
+
+// Đợt 3: thiết diện khối đa diện (section-poly).
+describe('assembleAdvance — section-poly (Đợt 3)', () => {
+  it('section-poly + scene ok → mode advance', async () => {
+    const scene = { base: geo, steps: [{ id: 'sec' }] };
+    const deps = {
+      splitProblem: vi.fn().mockResolvedValue({
+        type: 'single',
+        template: 'section-poly',
+        templateParams: { kind: 'cube', dims: { a: 1 }, points: [{ vertex: 'A' }] },
+      }),
+      buildSectionScene: vi.fn().mockReturnValue(scene),
+      buildAdvanceScene: vi.fn(),
+      solveProblem: vi.fn(),
+    };
+    const r = await assembleAdvance('...', deps);
+    expect(r.mode).toBe('advance');
+    expect(r.scene).toBe(scene);
+    expect(deps.buildSectionScene).toHaveBeenCalledOnce();
+    expect(deps.solveProblem).not.toHaveBeenCalled();
+  });
+
+  it('looksLikeSection: đề thiết diện khối = true, diện tích hình phẳng = false', () => {
+    expect(looksLikeSection('thiết diện của hình chóp S.ABCD cắt bởi mặt phẳng (MNP)')).toBe(true);
+    expect(looksLikeSection('tính diện tích hình phẳng giới hạn bởi y=x')).toBe(false);
+  });
+
+  it('đề rõ thiết diện khối nhưng không dựng được → guard revUnsupported (full refund)', async () => {
+    const deps = {
+      // classifier KHÔNG ra section-poly → không có builder chạy; guard tất định bắt.
+      splitProblem: vi.fn().mockResolvedValue({ type: 'single', setup: 's' }),
+      buildSectionScene: vi.fn().mockReturnValue(null),
+      buildAdvanceScene: vi.fn(),
+      solveProblem: vi.fn(),
+    };
+    const text = 'Cho hình chóp S.ABCD. Tính diện tích thiết diện cắt bởi mặt phẳng (MNP).';
+    const r = await assembleAdvance(text, deps);
+    expect(r.mode).toBe('kernel');
+    expect(r.degraded).toBe(true);
+    expect(r.ok).toBe(false);
+    expect(r.revUnsupported).toBe(true);
+    expect(deps.solveProblem).not.toHaveBeenCalled();
   });
 });
 

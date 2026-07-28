@@ -106,6 +106,12 @@ QUY TẮC MẪU GIẢI TÍCH (optional — chỉ thêm khi CHẮC CHẮN khớp)
   "templateParams": { "outer":<đường f>, "inner":<đường g>, "domain":[a,b], "fnLabel":"..", "parts":[..] }.
   "domain" = 2 hoành độ giao (giải f=g); nếu đề cho cận x thì dùng cận đó. Thứ tự outer/inner KHÔNG quan
   trọng (engine lấy |f−g|).
+- 'section-poly' (THIẾT DIỆN khối đa diện, KHÁC cross-known): đề cho một KHỐI (lập phương/hộp/chóp/lăng trụ)
+  và một MẶT PHẲNG QUA 3 ĐIỂM (đỉnh hoặc trung điểm cạnh), hỏi DỰNG / DIỆN TÍCH THIẾT DIỆN.
+  templateParams = { kind:'cube'|'box'|'pyramid-quad'|'prism-tri', dims:{a?,b?,c?,h?},
+    points:[p1,p2,p3] } với mỗi p = {"vertex":"A"} HOẶC {"onEdge":["A","B"],"t":0.5} (0.5=trung điểm).
+  Ký hiệu chuẩn: hộp/lập phương ABCD.A'B'C'D' (đáy ABCD z=0, nắp A'B'C'D'); chóp S.ABCD (đỉnh S);
+  lăng trụ ABC.A'B'C'. Kích thước ghi bằng "a" ⇒ dùng a=1 (nếu có b,c,h riêng thì điền).
 
 [Ví dụ 4 — rev-ox, đĩa đặc]
 Đề: "Cho miền phẳng giới hạn bởi y = √x, trục Ox và x = 4. a) Vẽ khối tròn xoay khi quay miền quanh Ox. b) Tính thể tích khối đó."
@@ -230,6 +236,44 @@ JSON:
     "domain": [0, 1],
     "fnLabel": "y=x,\\ y=x^2",
     "parts": [ { "label": "Câu 1", "hoi": "Tính diện tích hình phẳng" } ]
+  }
+}
+
+[Ví dụ 11 — section-poly, lập phương cắt qua 3 trung điểm]
+Đề: "Cho hình lập phương ABCD.A'B'C'D' cạnh a. Mặt phẳng đi qua trung điểm của AB, AD và AA'. Tính diện tích thiết diện."
+JSON:
+{
+  "type": "single",
+  "setup": "Hình lập phương ABCD.A'B'C'D' cạnh a; mặt phẳng qua trung điểm AB, AD, AA'",
+  "parts": [ { "label": "Câu 1", "hoi": "Tính diện tích thiết diện", "phan_tu_moi": ["mặt phẳng qua trung điểm AB, AD, AA'"] } ],
+  "template": "section-poly",
+  "templateParams": {
+    "kind": "cube",
+    "dims": { "a": 1 },
+    "points": [
+      { "onEdge": ["A", "B"], "t": 0.5 },
+      { "onEdge": ["A", "D"], "t": 0.5 },
+      { "onEdge": ["A", "A'"], "t": 0.5 }
+    ]
+  }
+}
+
+[Ví dụ 12 — section-poly, chóp tứ giác cắt qua đỉnh + 2 trung điểm]
+Đề: "Cho hình chóp S.ABCD đáy hình vuông cạnh a, SA⊥đáy, SA=a. Mặt phẳng qua A và trung điểm SB, SD. Tính diện tích thiết diện."
+JSON:
+{
+  "type": "single",
+  "setup": "Hình chóp S.ABCD đáy hình vuông cạnh a, SA⊥đáy, SA=a; mặt phẳng qua A và trung điểm SB, SD",
+  "parts": [ { "label": "Câu 1", "hoi": "Tính diện tích thiết diện", "phan_tu_moi": ["mặt phẳng qua A và trung điểm SB, SD"] } ],
+  "template": "section-poly",
+  "templateParams": {
+    "kind": "pyramid-quad",
+    "dims": { "a": 1, "b": 1, "h": 1 },
+    "points": [
+      { "vertex": "A" },
+      { "onEdge": ["S", "B"], "t": 0.5 },
+      { "onEdge": ["S", "D"], "t": 0.5 }
+    ]
   }
 }
 

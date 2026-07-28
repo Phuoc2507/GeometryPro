@@ -33,6 +33,12 @@ export const AREA_UNSUPPORTED_MSG =
   'Mình nhận ra đây là bài diện tích hình phẳng nhưng chưa dựng được. ' +
   'Bạn thử ghi rõ hai đường giới hạn miền (y=… và y=…) giúp mình nhé.';
 
+// Đợt 3: đề RÕ là "thiết diện khối đa diện" nhưng KHÔNG dựng được mẫu section-poly ⇒ báo thẳng (chống
+// ảo giác), tái dùng cờ revUnsupported để frontend HOÀN credit + hiện toast như tròn xoay.
+export const SECTION_UNSUPPORTED_MSG =
+  'Mình nhận ra đây là bài thiết diện của khối đa diện nhưng chưa dựng được. ' +
+  'Bạn thử ghi rõ khối (chóp/lăng trụ/hộp/lập phương) và 3 điểm xác định mặt phẳng cắt giúp mình nhé.';
+
 // Đọc ẢNH hỏng (vision timeout / ảnh mờ) ⇒ không chép được đề. Báo THẲNG, KHÔNG chạy fallback bài đơn
 // trên text rỗng (translator sẽ tự retry → chồng thời gian → 504). Xem fail-fast trong assembleAdvance.
 export const IMAGE_READ_FAILED_MSG =
@@ -67,6 +73,15 @@ export function looksLikeCrossSection(text) {
 export function looksLikeArea(text) {
   const s = (text || '').toLowerCase();
   return /di[eệ]n t[ií]ch/.test(s) && /(h[iì]nh ph[aẳ]ng|gi[oớ]i h[aạ]n|mi[eề]n)/.test(s);
+}
+
+// Nhận diện đề THIẾT DIỆN KHỐI ĐA DIỆN (Đợt 3) TẤT ĐỊNH: cần TỪ KHỐI + TÍN HIỆU CẮT. Đặt TRƯỚC
+// looksLikeCrossSection (Đợt 2) vì đề chóp/hộp có thể chứa "vuông/tam giác" ở đáy → dễ bị cross-known nuốt.
+export function looksLikeSection(text) {
+  const s = (text || '').toLowerCase();
+  const hasSolid = /(ch[oó]p|l[aă]ng tr[uụ]|h[iì]nh h[oộ]p|l[aậ]p ph[uươ]ng|t[uứ] di[eệ]n)/.test(s);
+  const hasCut = /(thi[eế]t di[eệ]n|c[aắ]t b[oở]i|m[aặ]t ph[aẳ]ng|mp\s*\()/.test(s);
+  return hasSolid && hasCut;
 }
 
 // ===== LÕI THUẦN (deps-injected) — test 3 nhánh KHÔNG cần mạng =====
@@ -104,6 +119,14 @@ export async function assembleAdvance(problem, deps, opts = {}) {
     } catch { /* dựng hỏng → fallback */ }
   }
 
+  // Đợt 3: thiết diện khối đa diện. Engine dựng đa giác giao & tự-kiểm diện tích.
+  if (split.template === 'section-poly' && split.templateParams && deps.buildSectionScene) {
+    try {
+      const scene = deps.buildSectionScene(split.templateParams);
+      if (scene) return { mode: 'advance', scene };
+    } catch { /* dựng hỏng → fallback */ }
+  }
+
   if (split.type === 'multi_question') {
     const scene = await deps.buildAdvanceScene(effectiveText, split, opts);
     if (scene) return { mode: 'advance', scene };
@@ -131,6 +154,13 @@ export async function assembleAdvance(problem, deps, opts = {}) {
   // Đợt 2: đề RÕ là thể tích theo thiết diện nhưng không dựng nổi mẫu cross-known ⇒ báo thẳng (tái dùng
   // cờ revUnsupported để frontend hoàn credit). Đặt TRƯỚC guard tròn xoay: đề thiết diện không khớp
   // rev-ox/looksLikeRevolution nên cần bắt riêng, tránh rơi xuống fallback bài đơn (vẽ hình lạ).
+  // Đợt 3: đề RÕ là thiết diện khối đa diện nhưng không dựng nổi mẫu section-poly ⇒ báo thẳng (tái dùng
+  // cờ revUnsupported để hoàn credit). Đặt TRƯỚC guard cross-known: đề chóp/hộp có thể chứa "vuông/tam
+  // giác" ở đáy → phải cho looksLikeSection bắt trước, tránh cross-known nuốt nhầm.
+  if (looksLikeSection(effectiveText)) {
+    return { mode: 'kernel', degraded: true, ok: false, revUnsupported: true, error: SECTION_UNSUPPORTED_MSG };
+  }
+
   if (looksLikeCrossSection(effectiveText)) {
     return { mode: 'kernel', degraded: true, ok: false, revUnsupported: true, error: CROSS_UNSUPPORTED_MSG };
   }
@@ -197,13 +227,14 @@ async function handler(req, res) {
     }
 
     // ---- Nạp ĐỘNG các mảnh pipeline (lỗi import ⇒ rơi vào catch, hoàn credit) ----
-    const [{ splitProblem }, { buildAdvanceScene }, { solveProblem }, { buildRevolutionScene }, { buildSliceScene }, { buildAreaScene }] = await Promise.all([
+    const [{ splitProblem }, { buildAdvanceScene }, { solveProblem }, { buildRevolutionScene }, { buildSliceScene }, { buildAreaScene }, { buildSectionScene }] = await Promise.all([
       import('./_lib/advance/splitProblem.js'),
       import('./_lib/advance/buildAdvanceScene.js'),
       import('./_lib/kernel-bridge/solveWithKernel.js'),
       import('./_lib/advance/buildRevolutionScene.js'),
       import('./_lib/advance/buildSliceScene.js'),
       import('./_lib/advance/buildAreaScene.js'),
+      import('./_lib/advance/buildSectionScene.js'),
     ]);
 
     // Có ảnh → splitProblem GỘP đọc-ảnh + tách-đề trong 1 lượt vision (chép đề vào split.setup rồi phân
@@ -216,7 +247,7 @@ async function handler(req, res) {
     let deadlineTimer;
     const deadline = new Promise((resolve) => { deadlineTimer = setTimeout(() => resolve({ __deadline: true }), DEADLINE_MS); });
     let result = await Promise.race([
-      assembleAdvance(problemSeed, { splitProblem, buildAdvanceScene, solveProblem, buildRevolutionScene, buildSliceScene, buildAreaScene }, { imageBase64 }),
+      assembleAdvance(problemSeed, { splitProblem, buildAdvanceScene, solveProblem, buildRevolutionScene, buildSliceScene, buildAreaScene, buildSectionScene }, { imageBase64 }),
       deadline,
     ]);
     clearTimeout(deadlineTimer);
