@@ -9,8 +9,12 @@ import { callVilao, hedge } from '../vilao.js';
 import { SPLIT_PROMPT } from './splitPrompt.js';
 import { coverageCheck } from './coverage.js';
 
-// Model mạnh cho bước tách đề — cấu hình qua ENV (benchmark chọn gpt-5.6-sol).
-const ADVANCE_MODEL = process.env.ADVANCE_MODEL || 'ram/gemini-3.5-flash-low';
+// Model/khoá cho bước tách đề. ADVANCE_MODEL/ADVANCE_API_KEY là OVERRIDE tuỳ chọn (A/B model, khoá
+// riêng). MẶC ĐỊNH = model & VILAO_API_KEY base. CẢNH BÁO CHÍ MẠNG cũ: override set-nhưng-hỏng (vd
+// ADVANCE_API_KEY còn trỏ khoá 403 cũ) sẽ ĐÈ base ⇒ MỌI lượt tách hỏng ⇒ "chưa vẽ được đề tròn xoay".
+// Nay có fallback tự-chữa: override hỏng → thử lại bằng khoá/model base (xem splitProblem).
+const DEFAULT_SPLIT_MODEL = 'ram/gemini-3.5-flash-low';
+const ADVANCE_MODEL = process.env.ADVANCE_MODEL || DEFAULT_SPLIT_MODEL;
 const ADVANCE_API_KEY = process.env.ADVANCE_API_KEY || undefined;
 
 // Trích JSON từ output LLM (có thể lẫn ```json ... ``` hoặc chữ thừa quanh object).
@@ -28,19 +32,29 @@ export async function splitProblem(problem, opts = {}) {
   // GỘP đọc-ảnh + phân-loại: nếu có ảnh, cùng 1 lượt vision vừa CHÉP đề (điền vào `setup`) vừa phân
   // loại — thay cho 2 lượt transcribe→split. SPLIT_PROMPT có nhánh "nếu có ảnh" hướng dẫn việc này.
   const imageBase64 = opts.imageBase64 || null;
+  const model = opts.model || ADVANCE_MODEL;
+  const primaryKey = opts.apiKey || ADVANCE_API_KEY;   // undefined ⇒ callVilao tự dùng VILAO_API_KEY base
+
+  // 13s/lượt, hedge tự lo retry nên callVilao KHÔNG tự retry (maxAttempts:1) → khỏi chồng phí token.
+  // Spike (>6s) → hedge bắn lượt 2 song song, lấy cái nhanh. 2 lượt song song nên tổng vẫn <60s.
+  const runOnce = (apiKey, modelToUse) => callVilao(SPLIT_PROMPT, problem || 'Đọc đề trong ảnh đính kèm rồi phân loại.', {
+    model: modelToUse, apiKey, imageBase64, maxTokens: 2048, timeoutMs: 13000, maxAttempts: 1,
+  });
+
+  // Có dùng OVERRIDE (khoá/model riêng khác base) không? Nếu có mà HỎNG thì còn đường lui về base.
+  const usingOverride = (primaryKey && primaryKey !== process.env.VILAO_API_KEY) || model !== DEFAULT_SPLIT_MODEL;
+
   let parsed;
   try {
-    const call = () => callVilao(SPLIT_PROMPT, problem || 'Đọc đề trong ảnh đính kèm rồi phân loại.', {
-      model: opts.model || ADVANCE_MODEL,
-      apiKey: opts.apiKey || ADVANCE_API_KEY,
-      imageBase64,
-      maxTokens: 2048,
-      // 13s/lượt, hedge tự lo retry nên callVilao KHÔNG tự retry (maxAttempts:1) → khỏi chồng phí token.
-      // Spike (>6s) → hedge bắn lượt 2 song song, lấy cái nhanh. 2 lượt song song nên tổng vẫn <60s.
-      timeoutMs: 13000,
-      maxAttempts: 1,
-    });
-    const raw = await hedge(call, { delayMs: 6000 });
+    let raw;
+    try {
+      raw = await hedge(() => runOnce(primaryKey, model), { delayMs: 6000 });
+    } catch (e) {
+      // Override set-nhưng-hỏng (khoá 403/hết hạn, model lạ) KHÔNG được âm thầm giết bước vẽ:
+      // lui về khoá base (VILAO_API_KEY) + model mặc định. Đa số user chỉ set đúng 1 khoá base này.
+      if (!usingOverride) throw e;
+      raw = await hedge(() => runOnce(undefined, null), { delayMs: 6000 });  // null model → callVilao dùng VILAO_MODEL
+    }
     parsed = JSON.parse(extractJson(raw));
   } catch {
     return { type: 'single' };

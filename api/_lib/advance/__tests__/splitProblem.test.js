@@ -34,6 +34,21 @@ describe('splitProblem (Pass 0)', () => {
     const r = await splitProblem('...', {});
     expect(r.type).toBe('single');
   });
+  it('override khoá HỎNG (403) → tự lui về khoá base → vẫn ra rev-ox (không "chưa vẽ được")', async () => {
+    // Bẫy hay gặp: ADVANCE_API_KEY còn trỏ khoá 403 cũ trên Vercel, đè VILAO_API_KEY tốt → mọi lượt tách
+    // hỏng → toast "chưa vẽ được đề tròn xoay". Fallback: override hỏng thì thử lại bằng khoá base.
+    const OK_JSON = JSON.stringify({
+      type: 'single', setup: 'Miền (H): y=x^2, Ox, x=0, x=2',
+      parts: [{ label: 'Câu 1', hoi: 'V quanh Ox', phan_tu_moi: [] }],
+      template: 'rev-ox',
+      templateParams: { outer: { kind: 'poly', coeffs: [0, 0, 1] }, domain: [0, 2], fnLabel: 'y=x^2' },
+    });
+    callVilao.mockImplementation((_sys, _user, o) =>
+      o.apiKey === 'BADKEY' ? Promise.reject(new Error('Vilao API error: 403')) : Promise.resolve(OK_JSON));
+    const r = await splitProblem('Cho (H) y=x^2, x=0, x=2. Tính V khối tròn xoay quanh Ox.', { apiKey: 'BADKEY' });
+    expect(r.template).toBe('rev-ox');
+    expect(r.templateParams.domain).toEqual([0, 2]);
+  });
   it('rev-ox 1 câu (type=single) → VẪN GIỮ template + params (engine tự dựng & kiểm)', async () => {
     // Regression: bài "tính thể tích khối tròn xoay" chỉ 1 câu ⇒ type=single; template từng bị vứt
     // ở guard multi_question nên nhánh rev-ox không bao giờ chạy → "chưa vẽ được".
