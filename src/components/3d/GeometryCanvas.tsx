@@ -1,5 +1,6 @@
-import { useRef, useEffect, useMemo, useCallback, type ComponentRef } from 'react';
-import { Hexagon } from 'lucide-react';
+import { useRef, useEffect, useMemo, useCallback, useState, type ComponentRef } from 'react';
+import { Hexagon, Crosshair, Hand, X } from 'lucide-react';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { Canvas, useThree } from '@react-three/fiber';
 import { OrbitControls, Grid, Environment, Html } from '@react-three/drei';
 import * as THREE from 'three';
@@ -515,6 +516,16 @@ export function GeometryCanvas({
     }
   }, [cameraContext]);
 
+  // Gợi ý thao tác 3D — hiện lần đầu (nhất là trên điện thoại: không rõ là kéo/chụm được).
+  const isMobile = useIsMobile();
+  const [hintDismissed, setHintDismissed] = useState(() => {
+    try { return localStorage.getItem('geo3d:seen-3d-hint') === '1'; } catch { return true; }
+  });
+  const dismissHint = useCallback(() => {
+    setHintDismissed(true);
+    try { localStorage.setItem('geo3d:seen-3d-hint', '1'); } catch { /* bỏ qua */ }
+  }, []);
+
   if (!state?.geometry && !state?.isScanning) {
     return null;
   }
@@ -546,6 +557,35 @@ export function GeometryCanvas({
           <Scene geometry={scaledGeometry} isBuilding={isBuilding} autoRotate={autoRotate} showCoordinateGrid={showCoordinateGrid} is2D={is2D} focus={cameraContext?.cameraFocus ?? focus} />
         </Canvas>
       </ErrorBoundary>
+
+      {/* ─── Lớp điều khiển nổi trên hình (khi đã có hình) ─── */}
+      {geometry && (
+        <>
+          {/* Gợi ý thao tác — tự ẩn khi bấm X, nhớ để không hiện lại. */}
+          {!hintDismissed && (
+            <div className="absolute top-16 left-1/2 -translate-x-1/2 z-20 flex items-center gap-2 px-3 py-1.5 rounded-full glass border border-border/50 shadow-sm animate-fade-in max-w-[calc(100vw-2rem)]">
+              <Hand className="w-3.5 h-3.5 text-primary shrink-0" />
+              <span className="text-xs text-foreground/90 whitespace-nowrap">
+                {isMobile ? 'Kéo để xoay · chụm 2 ngón để phóng to' : 'Kéo để xoay · lăn chuột để phóng to'}
+              </span>
+              <button onClick={dismissHint} aria-label="Ẩn gợi ý" className="text-muted-foreground hover:text-foreground shrink-0">
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          )}
+
+          {/* Nút "Về giữa" — kéo hình lệch/mất thì bấm để đưa về chính giữa. Đặt trên phải, dưới nút
+              mở bảng giải bài (mobile), tránh đè thanh nhập/bộ chuyển câu ở giữa-dưới. */}
+          <button
+            onClick={() => cameraContext?.resetCamera()}
+            aria-label="Đưa hình về giữa"
+            title="Đưa hình về giữa"
+            className="absolute top-20 right-4 lg:top-4 z-20 h-11 w-11 rounded-full glass border border-border/50 shadow-md flex items-center justify-center text-foreground/80 hover:text-primary hover:border-primary/40 active:scale-95 transition"
+          >
+            <Crosshair className="w-5 h-5" />
+          </button>
+        </>
+      )}
     </div>
   );
 }

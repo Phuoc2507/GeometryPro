@@ -138,7 +138,15 @@ export function useGeometryHistory() {
         const prev = parseLocalHistory(local);
         // Mục Advance có thể lớn → localStorage (~5MB) có thể TRÀN; persistLocalHistory bỏ bớt
         // mục cũ nhất để mục MỚI luôn lưu được (giữ newItem.id).
-        if (!persistLocalHistory([newItem, ...prev], newItem.id)) return null;
+        if (!persistLocalHistory([newItem, ...prev], newItem.id)) {
+          // Không nuốt im lặng: báo rõ để học sinh biết bài chưa được lưu (tránh reload là mất).
+          toast({
+            title: 'Bộ nhớ trình duyệt đã đầy',
+            description: 'Chưa lưu được bài này. Hãy đăng nhập để lưu trên đám mây, khỏi lo mất.',
+            variant: 'destructive',
+          });
+          return null;
+        }
         triggerSync();
         return newItem.id;
       }
@@ -165,7 +173,7 @@ export function useGeometryHistory() {
       handleSupabaseError(err, 'saving history');
     }
     return null;
-  }, [user, handleSupabaseError]);
+  }, [user, handleSupabaseError, toast]);
 
   // Cập nhật geometry_data của một bản đã lưu (dùng để lưu KÈM lời giải + điểm dựng).
   const updateGeometryData = useCallback(async (id: string, geometry: GeometryData) => {

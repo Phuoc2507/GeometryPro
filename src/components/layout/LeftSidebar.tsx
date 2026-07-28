@@ -445,6 +445,15 @@ function SidebarContent() {
                 ) : (
                   recents.map(renderHistoryItem)
                 )}
+                {/* Khách: nhắc bài chỉ lưu tạm trên máy này để không mất oan. */}
+                {!user && !historyLoading && recents.length > 0 && (
+                  <button
+                    onClick={() => openAuthModal()}
+                    className="w-full text-left mt-1 px-3 py-2 rounded-lg bg-amber-500/8 border border-amber-500/20 text-[11px] leading-relaxed text-amber-600/90 dark:text-amber-300/90 hover:bg-amber-500/12 transition-colors"
+                  >
+                    Bài đang lưu <strong>tạm trên trình duyệt này</strong>. <span className="underline">Đăng nhập</span> để khỏi mất khi xoá cache hay đổi máy.
+                  </button>
+                )}
               </div>
             )}
           </div>
