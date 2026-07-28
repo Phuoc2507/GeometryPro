@@ -10,10 +10,9 @@
  * gợi ý/ vì sao, ...). Vỏ panel (thu gọn + kéo rộng + sheet mobile) sao y RightPanel.
  */
 import { useState, useMemo } from 'react';
-import { ChevronRight, ChevronLeft, Box, Sparkles } from 'lucide-react';
+import { ChevronRight, ChevronLeft, Box, Sparkles, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { useGeometryOptional } from '@/context/GeometryContext';
 import { computeProperties } from '@/lib/geometry/calculations';
 import { cn } from '@/lib/utils';
@@ -86,7 +85,8 @@ function StudentPanelContent() {
   );
 }
 
-// Bản mobile (Sheet) — nút mở góc trên phải.
+// Bản mobile — panel DƯỚI tự dựng (KHÔNG overlay tối) nên hình phía trên vẫn
+// sáng và xoay/chụm được khi panel đang mở → xem hình + lời giải song song.
 export function MobileStudentRightPanel() {
   const context = useGeometryOptional();
   const [open, setOpen] = useState(false);
@@ -96,27 +96,41 @@ export function MobileStudentRightPanel() {
   if (!state.geometry) return null;
 
   return (
-    <Sheet open={open} onOpenChange={setOpen}>
-      <SheetTrigger asChild>
+    <>
+      {/* Nút mở — ẩn khi panel đang mở */}
+      {!open && (
         <Button
           variant="ghost"
           size="icon"
           aria-label="Mở bảng giải bài"
+          onClick={() => setOpen(true)}
           className="fixed top-4 right-4 z-50 lg:hidden glass border border-border/50"
         >
           <Sparkles className="w-5 h-5" />
         </Button>
-      </SheetTrigger>
-      {/* Sheet TRƯỢT TỪ DƯỚI, chỉ ~58% chiều cao → vẫn thấy hình phía trên để đối chiếu. */}
-      <SheetContent side="bottom" className="h-[58vh] p-0 glass border-t border-border/50 rounded-t-2xl flex flex-col">
-        <div className="mx-auto mt-2 mb-1 h-1.5 w-10 rounded-full bg-border/70 shrink-0" />
-        <div className="flex-1 min-h-0">
-          <ErrorBoundary>
-            <StudentPanelContent />
-          </ErrorBoundary>
+      )}
+
+      {open && (
+        <div className="fixed inset-x-0 bottom-0 z-50 lg:hidden h-[58vh] flex flex-col glass bg-background/95 border-t border-border/50 rounded-t-2xl shadow-2xl animate-fade-in">
+          {/* Tay nắm + nút đóng */}
+          <div className="relative shrink-0">
+            <div className="mx-auto mt-2 mb-1 h-1.5 w-10 rounded-full bg-border/70" />
+            <button
+              onClick={() => setOpen(false)}
+              aria-label="Đóng bảng giải bài"
+              className="absolute right-2.5 top-1.5 p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary/60 transition-colors"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+          <div className="flex-1 min-h-0">
+            <ErrorBoundary>
+              <StudentPanelContent />
+            </ErrorBoundary>
+          </div>
         </div>
-      </SheetContent>
-    </Sheet>
+      )}
+    </>
   );
 }
 
