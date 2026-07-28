@@ -26,6 +26,7 @@ import { AnimatedSurface } from './AnimatedSurface';
 import { AnimatedCurve } from './AnimatedCurve';
 import AnimatedRevolutionSolid from './AnimatedRevolutionSolid';
 import AnimatedSliceStack from './AnimatedSliceStack';
+import AnimatedAreaRegion from './AnimatedAreaRegion';
 import { useHiddenLineDetection } from '@/hooks/useHiddenLineDetection';
 import { mapsEqual } from '@/hooks/useHiddenLineDetection';
 import { mergeLineDashStyles } from '@/lib/geometry/hiddenLineDetection';
@@ -400,6 +401,11 @@ export function GeometryRenderer({ geometry: geometryProp, isBuilding }: Geometr
       {/* ═══ Slice Stacks (thiết diện đã biết) ═══ */}
       {(geometry.sliceStacks || []).map((s) => (
         <AnimatedSliceStack key={s.id} solid={s} />
+      ))}
+
+      {/* ═══ Area Regions (diện tích hình phẳng) ═══ */}
+      {(geometry.areaRegions || []).map((r) => (
+        <AnimatedAreaRegion key={r.id} region={r} />
       ))}
 
       {/* ═══ Curves ═══ */}
