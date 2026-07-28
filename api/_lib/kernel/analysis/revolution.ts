@@ -105,3 +105,30 @@ export function buildRevolutionSolidOy(
     samples: sampleProfile(outer, domain),
   };
 }
+
+// Quay quanh Oy bằng ĐĨA/VÀNH KHĂN theo y — dùng khi miền cho bởi các đường x=g(y) (biên dạng theo BIẾN
+// y, KHÔNG phải y=r(x)). Tiết diện tại mỗi y là vành khăn giữa x_trong(y) và x_ngoài(y):
+//   V = π ∫_c^d ([x_ng(y)]² − [x_tr(y)]²) dy   (đĩa đặc ⇒ x_tr=0).
+// ProfileFn vốn bất-biến-biến-số nên tái dùng thẳng revolutionVolumeDisk (nó tích phân π|ro²−ri²| trên
+// domain — ở đây domain là theo y, ro=x_ng(y), ri=x_tr(y)). Bổ khuyết cho buildRevolutionSolidOy (vỏ trụ,
+// chỉ nhận đường y=r(x)). Mẫu {x,r}: x = toạ độ TRỤC (=y), r = bán kính (=x_ng(y)) → frontend lathe quanh Y.
+export function buildRevolutionSolidOyDisk(
+  id: string,
+  outer: ProfileFn,          // x_ngoài(y) — đường XA trục Oy hơn (giá trị x lớn hơn)
+  domain: [number, number],  // [c, d] theo BIẾN y
+  color?: string,
+  inner?: ProfileFn,         // x_trong(y) — đường GẦN trục hơn; BỎ nếu miền tựa trục Oy (đĩa đặc)
+): RevolutionSolid {
+  const { value, estimatedError } = revolutionVolumeDisk(outer, domain, inner);
+  const verified = estimatedError <= 1e-6 * Math.max(1, Math.abs(value));
+  const latex = inner
+    ? `V=\\pi\\int_{${domain[0]}}^{${domain[1]}}\\left(\\left[x_{ng}(y)\\right]^2-\\left[x_{tr}(y)\\right]^2\\right)\\,dy`
+    : `V=\\pi\\int_{${domain[0]}}^{${domain[1]}}\\left[x(y)\\right]^2\\,dy`;
+  const volume: Verified<number> = { value, latex, verified, estimatedError };
+  return {
+    id, outer, axis: 'Oy', domain, method: inner ? 'washer' : 'disk', color, volume,
+    ...(inner ? { inner } : {}),
+    samples: sampleProfile(outer, domain),
+    ...(inner ? { innerSamples: sampleProfile(inner, domain) } : {}),
+  };
+}

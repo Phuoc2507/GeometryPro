@@ -78,6 +78,26 @@ describe('buildRevolutionScene', () => {
     expect(sc.steps[1].answer.approx).toBeCloseTo(Math.PI / 2, 4);
   });
 
+  it('rev quanh Oy THEO Y (profileVar=y, đường x=g(y)) — Ví dụ 4 → 30.6π, axis=Oy method=washer', () => {
+    // Lỗ hổng Oy Đợt 1: miền cho bởi x=5−y² & x=3−y quay quanh Oy ⇒ đĩa/vành khăn THEO y (không vỏ trụ).
+    const sc = buildRevolutionScene({
+      outer: { kind: 'poly', coeffs: [5, 0, -1] },   // x_ng = 5 − y²
+      inner: { kind: 'poly', coeffs: [3, -1] },      // x_tr = 3 − y
+      axis: 'Oy',
+      profileVar: 'y',
+      domain: [-1, 2],
+      fnLabel: 'x=5-y^2,\\ x=3-y',
+      parts: [{ label: 'Câu 1', hoi: 'Tính thể tích quanh Oy' }],
+    });
+    expect(sc.base.revolutionSolids[0].axis).toBe('Oy');
+    expect(sc.base.revolutionSolids[0].method).toBe('washer');
+    expect(sc.steps[1].answer.verified).toBe(true);
+    expect(sc.steps[1].answer.approx).toBeCloseTo(30.6 * Math.PI, 4);
+    // Đường x=g(y) ⇒ KHÔNG dùng cơ chế poly-curve (vốn plot y=f(x) → sai hướng); base dựa điểm mẫu (hoán xy).
+    expect(sc.base.curves.length).toBe(0);
+    expect(sc.base.points.length).toBeGreaterThan(0);   // vẫn qua gate points>0
+  });
+
   it('biên dạng poly ⇒ khung nhìn HIỆN đường cong biên dạng, KHÔNG rải điểm mẫu (tránh "vẽ hình khác")', () => {
     // Regression: trước đây visibleIds gồm ~34 điểm mẫu không nhãn ⇒ hiện thành đám chấm, ẩn mất
     // đường sinh r(x). Nay poly ⇒ hiện curve_r + khối; điểm mẫu vẫn ở base (qua gate) nhưng bị ẩn.

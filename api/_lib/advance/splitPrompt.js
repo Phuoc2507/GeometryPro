@@ -67,9 +67,11 @@ QUY TẮC MẪU GIẢI TÍCH (optional — chỉ thêm khi CHẮC CHẮN khớp)
 - Nếu đề yêu cầu QUAY một miền phẳng quanh trục Ox để tạo khối tròn xoay, thêm 2 trường ở cấp gốc:
   "template": "rev-ox",
   "templateParams": {
-    "outer": <biên dạng r(x) — đường XA trục hơn>,
-    "inner": <biên dạng đường GẦN trục hơn — CHỈ khi miền kẹp giữa 2 đường (vành khăn) quanh Ox; BỎ nếu miền tựa trục>,
+    "outer": <biên dạng đường XA trục hơn (theo BIẾN nêu ở "profileVar")>,
+    "inner": <biên dạng đường GẦN trục hơn — CHỈ khi miền kẹp giữa 2 đường (vành khăn); BỎ nếu miền tựa trục>,
     "axis": "Ox" | "Oy",   // trục quay; MẶC ĐỊNH "Ox" nếu không ghi
+    "profileVar": "x" | "y",  // biến của biên dạng; MẶC ĐỊNH "x" (đường y=f(x)). Dùng "y" khi các đường
+                              // cho dạng x=g(y) VÀ quay quanh Oy (tích phân theo y). Xem quy tắc bên dưới.
     "domain": [a, b],
     "fnLabel": "<LaTeX hàm, ví dụ y=\\sqrt{x}>",
     "parts": [ { "label":"Câu a", "hoi":".." }, { "label":"Câu b", "hoi":".." } ]
@@ -85,7 +87,13 @@ QUY TẮC MẪU GIẢI TÍCH (optional — chỉ thêm khi CHẮC CHẮN khớp)
     - Nếu đề cho cận x=.. rõ ràng → dùng đúng cận đó.
     - Nếu miền tựa trục Ox và chỉ cho 1 đường cong cắt Ox (vd y=√(4-x²)) → [a,b] là 2 nghiệm r(x)=0 (ở đây [-2,2]).
     - Nếu miền kẹp giữa 2 đường (vành khăn) → [a,b] là 2 hoành độ GIAO của 2 đường; "outer" là đường có |giá trị| LỚN hơn trên khoảng đó, "inner" là đường nhỏ hơn.
-- Hỗ trợ quay quanh **Ox** (đĩa/vành khăn) và **Oy** (vỏ trụ, đặt "axis":"Oy"). Với Oy: miền {a≤x≤b, 0≤y≤r(x)}, cận a≥0, KHÔNG dùng "inner".
+- Quay quanh **Ox** → đĩa/vành khăn theo x (mặc định, "profileVar":"x").
+- Quay quanh **Oy** có HAI trường hợp — chọn theo cách đề CHO đường:
+  • Đường dạng **y=f(x)** (miền {a≤x≤b, 0≤y≤r(x)}, cận a≥0) → VỎ TRỤ: đặt "axis":"Oy", GIỮ "profileVar":"x", KHÔNG dùng "inner". (Ví dụ 7)
+  • Đường dạng **x=g(y)** (đề cho x theo y, hoặc rút được x=g(y)) → ĐĨA/VÀNH KHĂN THEO Y: đặt "axis":"Oy" VÀ "profileVar":"y".
+    Khi đó MỌI biên dạng ("outer"/"inner", kể cả poly coeffs) tính theo BIẾN y; "domain":[c,d] là 2 cận theo y.
+    "outer" = đường XA trục Oy hơn (|x| lớn hơn), "inner" = đường GẦN Oy hơn (BỎ nếu miền tựa Oy → đĩa đặc).
+    Cận [c,d]: nếu 2 đường → giải x_ng(y)=x_tr(y) lấy 2 nghiệm y; nếu 1 đường tựa Oy → 2 nghiệm x(y)=0. (Ví dụ 8)
 - Trục quay khác Ox/Oy (vd đường x=k, y=k) → BỎ QUA "template".
 - Không chắc biên dạng/miền/trục → BỎ QUA "template".
 
@@ -160,5 +168,25 @@ JSON:
     "parts": [ { "label": "Câu 1", "hoi": "Tính thể tích khối tròn xoay quanh Oy" } ]
   }
 }
+
+[Ví dụ 8 — rev-oy THEO Y (đường x=g(y)), vành khăn dùng "profileVar":"y"]
+Đề: "Cho miền phẳng giới hạn bởi hai đường x = 5 − y² và x = 3 − y. Tính thể tích khối tròn xoay khi quay miền đó quanh trục Oy."
+JSON:
+{
+  "type": "single",
+  "setup": "Miền (H) giới hạn bởi x=5−y² và x=3−y",
+  "parts": [ { "label": "Câu 1", "hoi": "Tính thể tích khối tròn xoay quanh Oy", "phan_tu_moi": [] } ],
+  "template": "rev-ox",
+  "templateParams": {
+    "outer": { "kind": "poly", "coeffs": [5, 0, -1] },
+    "inner": { "kind": "poly", "coeffs": [3, -1] },
+    "axis": "Oy",
+    "profileVar": "y",
+    "domain": [-1, 2],
+    "fnLabel": "x=5-y^2,\\ x=3-y",
+    "parts": [ { "label": "Câu 1", "hoi": "Tính thể tích khối tròn xoay quanh Oy" } ]
+  }
+}
+(Giải thích cận: x_ng=5−y², x_tr=3−y; giải 5−y²=3−y ⇒ y²−y−2=0 ⇒ y=−1, y=2. Trên [−1,2] có 5−y²≥3−y nên "outer"=5−y², "inner"=3−y; hệ số poly theo y.)
 
 Bây giờ hãy tách đề người dùng gửi. CHỈ trả JSON.`;

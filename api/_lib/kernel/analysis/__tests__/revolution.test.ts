@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   evalProfile, revolutionVolumeDisk, buildRevolutionSolidOx,
-  revolutionVolumeShellOy, buildRevolutionSolidOy, sampleProfile,
+  revolutionVolumeShellOy, buildRevolutionSolidOy, buildRevolutionSolidOyDisk, sampleProfile,
 } from '../revolution';
 
 describe('evalProfile', () => {
@@ -79,6 +79,33 @@ describe('buildRevolutionSolidOy', () => {
     expect(s.volume?.value).toBeCloseTo(Math.PI / 2, 6);
     expect(s.volume?.verified).toBe(true);
     expect(s.volume?.latex).toContain('2\\pi');
+  });
+});
+
+describe('buildRevolutionSolidOyDisk (quanh Oy, đĩa/vành khăn theo y — đường x=g(y))', () => {
+  it('Ví dụ 4: x=5−y² (ngoài) & x=3−y (trong) quay quanh Oy trên y∈[−1,2] → 30.6π', () => {
+    // Miền kẹp giữa 2 đường x=g(y); tiết diện tại mỗi y là vành khăn (x_ng²−x_tr²).
+    // V=π∫_{-1}^{2}((5−y²)²−(3−y)²)dy = π·30.6 ≈ 96.13.
+    const s = buildRevolutionSolidOyDisk(
+      'rev1',
+      { kind: 'poly', coeffs: [5, 0, -1] },   // x_ng(y) = 5 − y²
+      [-1, 2], '#6366f1',
+      { kind: 'poly', coeffs: [3, -1] },      // x_tr(y) = 3 − y
+    );
+    expect(s.axis).toBe('Oy');
+    expect(s.method).toBe('washer');
+    expect(s.inner).toBeDefined();
+    expect(s.samples && s.samples.length).toBeGreaterThan(0);
+    expect(s.innerSamples && s.innerSamples.length).toBeGreaterThan(0);
+    expect(s.volume?.value).toBeCloseTo(30.6 * Math.PI, 5);
+    expect(s.volume?.verified).toBe(true);
+    expect(s.volume?.latex).toContain('dy');   // tích phân theo y (không phải dx)
+  });
+  it('đĩa đặc quanh Oy (không inner): x=√y trên y∈[0,4] → V=π∫y dy = 8π', () => {
+    const s = buildRevolutionSolidOyDisk('rev1', { kind: 'sqrt', a: 1, b: 0 }, [0, 4], '#6366f1');
+    expect(s.method).toBe('disk');
+    expect(s.inner).toBeUndefined();
+    expect(s.volume?.value).toBeCloseTo(8 * Math.PI, 6);
   });
 });
 

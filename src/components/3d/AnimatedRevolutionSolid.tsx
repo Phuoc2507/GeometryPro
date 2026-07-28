@@ -63,10 +63,12 @@ export default function AnimatedRevolutionSolid({ solid }: { solid: RevolutionSo
   const [a, b] = solid.domain;
   const aroundOy = solid.axis === 'Oy';
 
+  const oyDisk = aroundOy && solid.method !== 'shell';   // Oy bằng ĐĨA/VÀNH KHĂN theo y (đường x=g(y))
+
   const geometry = useMemo(() => {
     const outer = outerSamples(solid, AXIAL_STEPS);
-    if (aroundOy) {
-      // Quanh Oy (vỏ trụ): biên dạng KÍN trong mặt (bán kính=x, cao=y) — đáy y=0 từ x=a→b,
+    if (aroundOy && !oyDisk) {
+      // Quanh Oy VỎ TRỤ (đường y=r(x)): biên dạng KÍN trong mặt (bán kính=x, cao=y) — đáy y=0 từ x=a→b,
       // tường trái tại x=a, đường cong y=r(x), tường phải tại x=b. Lathe quanh trục Y (không xoay mesh).
       const loop = [
         new THREE.Vector2(a, 0),
@@ -75,6 +77,23 @@ export default function AnimatedRevolutionSolid({ solid }: { solid: RevolutionSo
         new THREE.Vector2(a, 0),
       ];
       return new THREE.LatheGeometry(loop, SEGMENTS);
+    }
+    if (oyDisk) {
+      // Quanh Oy ĐĨA/VÀNH KHĂN theo y (đường x=g(y)): mẫu {x:y(trục), r:x_ng(bán kính)} ⇒ lathe quanh
+      // trục Y với bán kính = r, cao = axial(=y). Giống loop washer của Ox NHƯNG mesh KHÔNG xoay
+      // (trục lathe = trục Y = Oy). Có innerSamples ⇒ khoét lỗ giữa (vành khăn).
+      const hasHole = !!(solid.innerSamples && solid.innerSamples.length);
+      if (hasHole) {
+        const inner = solid.innerSamples!.map((s) => ({ radius: Math.max(0, s.r), axial: s.x }));
+        const loop = [
+          ...outer.map((p) => new THREE.Vector2(Math.max(0, p.radius), p.axial)),
+          ...inner.slice().reverse().map((p) => new THREE.Vector2(Math.max(1e-3, p.radius), p.axial)),
+          new THREE.Vector2(Math.max(0, outer[0].radius), outer[0].axial), // khép kín
+        ];
+        return new THREE.LatheGeometry(loop, SEGMENTS);
+      }
+      const pts = outer.map((p) => new THREE.Vector2(Math.max(0, p.radius), p.axial));
+      return new THREE.LatheGeometry(pts, SEGMENTS);
     }
     const hasHole = !!(solid.innerSamples && solid.innerSamples.length);
     if (hasHole) {
@@ -90,7 +109,7 @@ export default function AnimatedRevolutionSolid({ solid }: { solid: RevolutionSo
     }
     const pts = outer.map((p) => new THREE.Vector2(p.radius, p.axial));
     return new THREE.LatheGeometry(pts, SEGMENTS);
-  }, [solid, a, b, aroundOy]);
+  }, [solid, a, b, aroundOy, oyDisk]);
 
   const clipPlane = useMemo(() => new THREE.Plane(new THREE.Vector3(-1, 0, 0), 0), []);
 
@@ -115,11 +134,13 @@ export default function AnimatedRevolutionSolid({ solid }: { solid: RevolutionSo
 
   if (solid.hidden) return null;
 
-  // Cắt lộ dần: quanh Ox lộ theo x (trái→phải); quanh Oy lộ theo chiều cao (dưới→lên).
+  // Cắt lộ dần: quanh Ox lộ theo x (trái→phải); quanh Oy lộ theo chiều cao/miền y (dưới→lên).
   const xCut = a + (b - a) * advanceT;
   if (aroundOy) {
     clipPlane.normal.set(0, -1, 0);
-    clipPlane.constant = maxHeight * advanceT;
+    // Vỏ trụ: khối cao 0→maxHeight ⇒ lộ theo maxHeight. Đĩa/vành khăn theo y: khối trải trên miền
+    // y=[a,b] (có thể âm) ⇒ lộ dọc theo chính miền đó (a→b).
+    clipPlane.constant = oyDisk ? a + (b - a) * advanceT : maxHeight * advanceT;
   } else {
     clipPlane.normal.set(-1, 0, 0);
     clipPlane.constant = xCut;

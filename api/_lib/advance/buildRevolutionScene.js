@@ -4,31 +4,49 @@
 // steps: Câu a hiện khối (+ anim sweep), Câu b hiện đáp án thể tích.
 // Nạp từ kernel-dist (bundle .mjs do `npm run build:kernel` sinh) — KHÔNG import .ts nguồn,
 // vì route .js chạy trên Node/Vercel không phân giải được specifier .ts không đuôi.
-import { buildAnalysisFigure, buildRevolutionSolidOx, buildRevolutionSolidOy } from '../kernel-dist/index.mjs';
+import { buildAnalysisFigure, buildRevolutionSolidOx, buildRevolutionSolidOy, buildRevolutionSolidOyDisk } from '../kernel-dist/index.mjs';
 
 export function buildRevolutionScene(params) {
   const { outer, domain, parts, inner, axis } = params;
+  // `profileVar` (mặc định 'x'): biên dạng cho theo BIẾN nào.
+  //  - 'x' ⇒ đường y=r(x) (mặc định, mọi trường hợp cũ).
+  //  - 'y' ⇒ đường x=g(y): CHỈ dùng cho quay quanh Oy bằng ĐĨA/VÀNH KHĂN theo y (lỗ hổng Oy Đợt 1).
+  const profileVar = params.profileVar === 'y' ? 'y' : 'x';
+  const oyDisk = axis === 'Oy' && profileVar === 'y';
   const revId = 'rev1';
   // Engine dựng khối + tự-kiểm thể tích và trả mẫu biên dạng.
   //  - Ox: phương pháp đĩa (hoặc vành khăn nếu có `inner`).
-  //  - Oy: phương pháp vỏ trụ (shell).
-  const solid = axis === 'Oy'
-    ? buildRevolutionSolidOy(revId, outer, domain, '#6366f1')
-    : buildRevolutionSolidOx(revId, outer, domain, '#6366f1', inner || undefined);
+  //  - Oy + đường y=r(x): phương pháp vỏ trụ (shell).
+  //  - Oy + đường x=g(y) (profileVar='y'): phương pháp đĩa/vành khăn theo y.
+  let solid;
+  if (oyDisk) {
+    solid = buildRevolutionSolidOyDisk(revId, outer, domain, '#6366f1', inner || undefined);
+  } else if (axis === 'Oy') {
+    solid = buildRevolutionSolidOy(revId, outer, domain, '#6366f1');
+  } else {
+    solid = buildRevolutionSolidOx(revId, outer, domain, '#6366f1', inner || undefined);
+  }
   const aroundOy = solid.axis === 'Oy';
 
   // Điểm mẫu cho base (qua gate points>0) lấy từ mẫu biên dạng engine đã tính — đúng cho MỌI kiểu
   // biên dạng (poly/sqrt/const/expr), không cần xấp xỉ poly. Lấy thưa ~9 điểm cho gọn hình.
+  // Mẫu {x,r}: x = toạ độ TRỤC, r = bán kính. Bình thường (đường y=r(x)) điểm màn hình là (x, r).
+  // Với Oy-đĩa (đường x=g(y)): trục=y, bán kính=x ⇒ HOÁN xy để điểm nằm đúng chỗ (x=g(y), y).
   const src = solid.samples && solid.samples.length ? solid.samples : [{ x: domain[0], r: 0 }];
   const stepEvery = Math.max(1, Math.floor(src.length / 8));
   const samplePts = src
     .filter((_, i) => i % stepEvery === 0)
-    .map((s, i) => ({ id: `r${i}`, label: '', x: s.x, y: s.r, z: 0 }));
+    .map((s, i) => oyDisk
+      ? ({ id: `r${i}`, label: '', x: s.r, y: s.x, z: 0 })
+      : ({ id: `r${i}`, label: '', x: s.x, y: s.r, z: 0 }));
 
+  // Cơ chế poly-curve của buildAnalysisFigure chỉ plot y=poly(x). Với Oy-đĩa đường là x=g(y) (biến y)
+  // nên KHÔNG dùng poly-curve (sẽ vẽ nhầm hướng) — dựa vào điểm mẫu đã hoán xy làm khung nhìn.
+  const usePolyCurve = !oyDisk && outer.kind === 'poly';
   const base = buildAnalysisFigure(aroundOy ? 'Tròn xoay quanh Oy' : 'Tròn xoay quanh Ox', {
-    // Vẽ curve mượt bằng poly khi biên dạng LÀ poly; kiểu khác dựa vào điểm mẫu + khối tròn xoay.
-    polys: outer.kind === 'poly' ? { r: outer.coeffs.slice() } : {},
-    polyDomains: outer.kind === 'poly' ? { r: domain } : {},
+    // Vẽ curve mượt bằng poly khi biên dạng LÀ poly (theo x); kiểu khác dựa vào điểm mẫu + khối tròn xoay.
+    polys: usePolyCurve ? { r: outer.coeffs.slice() } : {},
+    polyDomains: usePolyCurve ? { r: domain } : {},
     points: samplePts,
     solids: {},
   });

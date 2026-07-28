@@ -7693,6 +7693,24 @@ function buildRevolutionSolidOy(id, outer, domain, color) {
     samples: sampleProfile(outer, domain)
   };
 }
+function buildRevolutionSolidOyDisk(id, outer, domain, color, inner) {
+  const { value, estimatedError } = revolutionVolumeDisk(outer, domain, inner);
+  const verified = estimatedError <= 1e-6 * Math.max(1, Math.abs(value));
+  const latex = inner ? `V=\\pi\\int_{${domain[0]}}^{${domain[1]}}\\left(\\left[x_{ng}(y)\\right]^2-\\left[x_{tr}(y)\\right]^2\\right)\\,dy` : `V=\\pi\\int_{${domain[0]}}^{${domain[1]}}\\left[x(y)\\right]^2\\,dy`;
+  const volume = { value, latex, verified, estimatedError };
+  return {
+    id,
+    outer,
+    axis: "Oy",
+    domain,
+    method: inner ? "washer" : "disk",
+    color,
+    volume,
+    ...inner ? { inner } : {},
+    samples: sampleProfile(outer, domain),
+    ...inner ? { innerSamples: sampleProfile(inner, domain) } : {}
+  };
+}
 
 // api/_lib/kernel/index.ts
 function runPlan(rawPlan) {
@@ -7729,6 +7747,7 @@ export {
   buildAnalysisFigure,
   buildRevolutionSolidOx,
   buildRevolutionSolidOy,
+  buildRevolutionSolidOyDisk,
   checkDegeneracy,
   createEmptySymbolTable,
   entityTableToGeometryData,
