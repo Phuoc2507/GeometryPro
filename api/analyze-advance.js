@@ -79,7 +79,7 @@ export function looksLikeArea(text) {
 // looksLikeCrossSection (Đợt 2) vì đề chóp/hộp có thể chứa "vuông/tam giác" ở đáy → dễ bị cross-known nuốt.
 export function looksLikeSection(text) {
   const s = (text || '').toLowerCase();
-  const hasSolid = /(ch[oó]p|l[aă]ng tr[uụ]|h[iì]nh h[oộ]p|l[aậ]p ph[uươ]ng|t[uứ] di[eệ]n)/.test(s);
+  const hasSolid = /(ch[oó]p|l[aă]ng tr[uụ]|h[iì]nh h[oộ]p|l[aậ]p\s*ph[uư][ơo]?ng|t[uứ] di[eệ]n)/.test(s);
   const hasCut = /(thi[eế]t di[eệ]n|c[aắ]t b[oở]i|m[aặ]t ph[aẳ]ng|mp\s*\()/.test(s);
   return hasSolid && hasCut;
 }

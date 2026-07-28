@@ -109,6 +109,10 @@ describe('assembleAdvance — section-poly (Đợt 3)', () => {
     expect(looksLikeSection('tính diện tích hình phẳng giới hạn bởi y=x')).toBe(false);
   });
 
+  it('looksLikeSection: bắt được "lập phương" (cụm nguyên âm ươ)', () => {
+    expect(looksLikeSection('cho hình lập phương ABCD.A\'B\'C\'D\' cạnh a, tính diện tích thiết diện')).toBe(true);
+  });
+
   it('đề rõ thiết diện khối nhưng không dựng được → guard revUnsupported (full refund)', async () => {
     const deps = {
       // classifier KHÔNG ra section-poly → không có builder chạy; guard tất định bắt.
