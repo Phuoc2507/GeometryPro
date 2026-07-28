@@ -280,8 +280,8 @@ var ZodError = class _ZodError extends Error {
   constructor(issues) {
     super();
     this.issues = [];
-    this.addIssue = (sub3) => {
-      this.issues = [...this.issues, sub3];
+    this.addIssue = (sub4) => {
+      this.issues = [...this.issues, sub4];
     };
     this.addIssues = (subs = []) => {
       this.issues = [...this.issues, ...subs];
@@ -348,13 +348,13 @@ var ZodError = class _ZodError extends Error {
   flatten(mapper = (issue) => issue.message) {
     const fieldErrors = {};
     const formErrors = [];
-    for (const sub3 of this.issues) {
-      if (sub3.path.length > 0) {
-        const firstEl = sub3.path[0];
+    for (const sub4 of this.issues) {
+      if (sub4.path.length > 0) {
+        const firstEl = sub4.path[0];
         fieldErrors[firstEl] = fieldErrors[firstEl] || [];
-        fieldErrors[firstEl].push(mapper(sub3));
+        fieldErrors[firstEl].push(mapper(sub4));
       } else {
-        formErrors.push(mapper(sub3));
+        formErrors.push(mapper(sub4));
       }
     }
     return { formErrors, fieldErrors };
@@ -5193,13 +5193,13 @@ function decimalToExact(s) {
   if (!/^\d*\.?\d+$/.test(body) && !/^\d+\.?\d*$/.test(body)) {
     throw new Error(`Cannot parse rational from "${s}" (use "p/q" for fractions)`);
   }
-  const dot2 = body.indexOf(".");
-  if (dot2 === -1) {
+  const dot3 = body.indexOf(".");
+  if (dot3 === -1) {
     const v = BigInt(body);
     return makeExact(neg2 ? -v : v, 1n, 1);
   }
-  const intPart = body.slice(0, dot2) || "0";
-  const fracPart = body.slice(dot2 + 1) || "0";
+  const intPart = body.slice(0, dot3) || "0";
+  const fracPart = body.slice(dot3 + 1) || "0";
   const den = 10n ** BigInt(fracPart.length);
   const numAbs = BigInt(intPart) * den + BigInt(fracPart);
   return makeExact(neg2 ? -numAbs : numAbs, den, 1);
@@ -5452,13 +5452,13 @@ function iLineSphere(l, s) {
   };
 }
 function iLineLine(l1, l2) {
-  const cross2 = crossV(l1.dir, l2.dir);
+  const cross3 = crossV(l1.dir, l2.dir);
   const w = subV(l2.p, l1.p);
-  if (isZeroS(lenSqV(cross2))) {
+  if (isZeroS(lenSqV(cross3))) {
     return isZeroS(lenSqV(crossV(w, l1.dir))) ? { kind: "intersection", result: "coincident" } : { kind: "intersection", result: "parallel" };
   }
-  if (!isZeroS(dotV(w, cross2))) return { kind: "intersection", result: "none" };
-  const t = div(dotV(crossV(w, l2.dir), cross2), lenSqV(cross2));
+  if (!isZeroS(dotV(w, cross3))) return { kind: "intersection", result: "none" };
+  const t = div(dotV(crossV(w, l2.dir), cross3), lenSqV(cross3));
   return { kind: "intersection", result: "point", point: pointFromCoords(addV(l1.p, scaleV(l1.dir, t))) };
 }
 function computeIntersection(a, b) {
@@ -7799,6 +7799,206 @@ function buildAreaRegion(id, outer, domain, inner, color, slabDepth = 0.15) {
   return { id, outer, inner: inr, domain, area, color, slabDepth, samples: sampleArea(outer, inr, domain) };
 }
 
+// api/_lib/kernel/analysis/sectionCut.ts
+var sub3 = (a, b) => [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
+var add3 = (a, b) => [a[0] + b[0], a[1] + b[1], a[2] + b[2]];
+var scale2 = (a, k) => [a[0] * k, a[1] * k, a[2] * k];
+var dot2 = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+var cross2 = (a, b) => [
+  a[1] * b[2] - a[2] * b[1],
+  a[2] * b[0] - a[0] * b[2],
+  a[0] * b[1] - a[1] * b[0]
+];
+var norm = (a) => Math.sqrt(dot2(a, a));
+function ring(names) {
+  return names.map((n, i) => [n, names[(i + 1) % names.length]]);
+}
+function buildPolyhedron(kind, dims) {
+  const a = dims.a ?? 1;
+  if (kind === "cube" || kind === "box") {
+    const bx = kind === "cube" ? a : dims.b ?? a;
+    const cz = kind === "cube" ? a : dims.c ?? a;
+    const vertices2 = {
+      A: [0, 0, 0],
+      B: [a, 0, 0],
+      C: [a, bx, 0],
+      D: [0, bx, 0],
+      "A'": [0, 0, cz],
+      "B'": [a, 0, cz],
+      "C'": [a, bx, cz],
+      "D'": [0, bx, cz]
+    };
+    const bottom2 = ["A", "B", "C", "D"];
+    const top2 = ["A'", "B'", "C'", "D'"];
+    const edges2 = [
+      ...ring(bottom2),
+      ...ring(top2),
+      ["A", "A'"],
+      ["B", "B'"],
+      ["C", "C'"],
+      ["D", "D'"]
+    ];
+    const faces2 = [
+      bottom2,
+      top2,
+      ["A", "B", "B'", "A'"],
+      ["B", "C", "C'", "B'"],
+      ["C", "D", "D'", "C'"],
+      ["D", "A", "A'", "D'"]
+    ];
+    return { vertices: vertices2, edges: edges2, faces: faces2 };
+  }
+  if (kind === "pyramid-quad") {
+    const bx = dims.b ?? a;
+    const h2 = dims.h ?? a;
+    const vertices2 = {
+      A: [0, 0, 0],
+      B: [a, 0, 0],
+      C: [a, bx, 0],
+      D: [0, bx, 0],
+      S: [a / 2, bx / 2, h2]
+    };
+    const base = ["A", "B", "C", "D"];
+    const edges2 = [
+      ...ring(base),
+      ["S", "A"],
+      ["S", "B"],
+      ["S", "C"],
+      ["S", "D"]
+    ];
+    const faces2 = [base, ["A", "B", "S"], ["B", "C", "S"], ["C", "D", "S"], ["D", "A", "S"]];
+    return { vertices: vertices2, edges: edges2, faces: faces2 };
+  }
+  const h = dims.h ?? a;
+  const cy = Math.sqrt(3) / 2 * a;
+  const vertices = {
+    A: [0, 0, 0],
+    B: [a, 0, 0],
+    C: [a / 2, cy, 0],
+    "A'": [0, 0, h],
+    "B'": [a, 0, h],
+    "C'": [a / 2, cy, h]
+  };
+  const bottom = ["A", "B", "C"];
+  const top = ["A'", "B'", "C'"];
+  const edges = [
+    ...ring(bottom),
+    ...ring(top),
+    ["A", "A'"],
+    ["B", "B'"],
+    ["C", "C'"]
+  ];
+  const faces = [
+    bottom,
+    top,
+    ["A", "B", "B'", "A'"],
+    ["B", "C", "C'", "B'"],
+    ["C", "A", "A'", "C'"]
+  ];
+  return { vertices, edges, faces };
+}
+function resolveSectionPoint(poly, spec) {
+  if ("vertex" in spec) {
+    const v = poly.vertices[spec.vertex];
+    if (!v) throw new Error(`\u0110\u1EC9nh kh\xF4ng t\u1ED3n t\u1EA1i: ${spec.vertex}`);
+    return v;
+  }
+  const [n1, n2] = spec.onEdge;
+  const v1 = poly.vertices[n1];
+  const v2 = poly.vertices[n2];
+  if (!v1 || !v2) throw new Error(`C\u1EA1nh kh\xF4ng h\u1EE3p l\u1EC7: ${n1}${n2}`);
+  return add3(v1, scale2(sub3(v2, v1), spec.t));
+}
+function planeFrom3(p) {
+  if (p.length < 3) return null;
+  const n = cross2(sub3(p[1], p[0]), sub3(p[2], p[0]));
+  const len = norm(n);
+  if (len < 1e-9) return null;
+  return { point: p[0], normal: scale2(n, 1 / len) };
+}
+var EPS5 = 1e-7;
+var roundKey = (v) => v.map((x) => (Math.abs(x) < 1e-9 ? 0 : x).toFixed(6)).join(",");
+function orderRing(pts, normal) {
+  if (pts.length < 3) return pts;
+  const c = scale2(pts.reduce((s, p) => add3(s, p), [0, 0, 0]), 1 / pts.length);
+  const u0 = sub3(pts[0], c);
+  const uLen = norm(u0);
+  const u = uLen < EPS5 ? [1, 0, 0] : scale2(u0, 1 / uLen);
+  const v = cross2(normal, u);
+  return [...pts].sort((p, q) => {
+    const ap = Math.atan2(dot2(sub3(p, c), v), dot2(sub3(p, c), u));
+    const aq = Math.atan2(dot2(sub3(q, c), v), dot2(sub3(q, c), u));
+    return ap - aq;
+  });
+}
+function sliceConvexPolyhedron(poly, point, normal) {
+  const d = (v) => dot2(sub3(v, point), normal);
+  const seen = /* @__PURE__ */ new Set();
+  const pts = [];
+  const push = (v) => {
+    const k = roundKey(v);
+    if (!seen.has(k)) {
+      seen.add(k);
+      pts.push(v);
+    }
+  };
+  for (const [n1, n2] of poly.edges) {
+    const v1 = poly.vertices[n1];
+    const v2 = poly.vertices[n2];
+    const d1 = d(v1);
+    const d2 = d(v2);
+    if (Math.abs(d1) < EPS5) push(v1);
+    if (Math.abs(d2) < EPS5) push(v2);
+    if (d1 * d2 < -EPS5 * EPS5) {
+      const t = d1 / (d1 - d2);
+      push(add3(v1, scale2(sub3(v2, v1), t)));
+    }
+  }
+  if (pts.length < 3) return [];
+  return orderRing(pts, normal);
+}
+function polygonArea3D(pts) {
+  if (pts.length < 3) return 0;
+  let n = [0, 0, 0];
+  for (let i = 0; i < pts.length; i++) n = add3(n, cross2(pts[i], pts[(i + 1) % pts.length]));
+  return norm(n) / 2;
+}
+function fanArea(pts) {
+  let s = 0;
+  for (let i = 1; i < pts.length - 1; i++) s += norm(cross2(sub3(pts[i], pts[0]), sub3(pts[i + 1], pts[0]))) / 2;
+  return s;
+}
+function buildSectionCut(id, kind, dims, specs, color = "#f59e0b") {
+  if (!specs || specs.length < 3) return null;
+  const poly = buildPolyhedron(kind, dims);
+  let resolved;
+  try {
+    resolved = specs.slice(0, 3).map((s) => resolveSectionPoint(poly, s));
+  } catch {
+    return null;
+  }
+  const pl = planeFrom3(resolved);
+  if (!pl) return null;
+  const polygon = sliceConvexPolyhedron(poly, pl.point, pl.normal);
+  if (polygon.length < 3) return null;
+  const aNewell = polygonArea3D(polygon);
+  const aFan = fanArea(polygon);
+  const verified = Math.abs(aNewell - aFan) <= 1e-9 * Math.max(1, aNewell) && aNewell > EPS5;
+  const latex = `S_{\\text{thi\u1EBFt di\u1EC7n}}=${aNewell.toFixed(4)}`;
+  const area = { value: aNewell, latex, verified, estimatedError: Math.abs(aNewell - aFan) };
+  return {
+    sectionCut: {
+      id,
+      targetKind: kind,
+      polygon,
+      plane: { point: pl.point, normal: pl.normal },
+      area,
+      color
+    },
+    poly
+  };
+}
+
 // api/_lib/kernel/index.ts
 function runPlan(rawPlan) {
   const trace = new Trace();
@@ -7833,9 +8033,11 @@ export {
   attemptDeterministicRepair,
   buildAnalysisFigure,
   buildAreaRegion,
+  buildPolyhedron,
   buildRevolutionSolidOx,
   buildRevolutionSolidOy,
   buildRevolutionSolidOyDisk,
+  buildSectionCut,
   buildSliceStack,
   checkDegeneracy,
   createEmptySymbolTable,
@@ -7844,7 +8046,10 @@ export {
   executeOp,
   executePlan,
   planarArea,
+  planeFrom3,
+  polygonArea3D,
   resolveEntity,
+  resolveSectionPoint,
   revolutionVolumeDisk,
   revolutionVolumeShellOy,
   run,
@@ -7852,6 +8057,7 @@ export {
   runAny,
   runPlan,
   sectionK,
+  sliceConvexPolyhedron,
   sliceStackVolume,
   toExactForm,
   toGeometryData,

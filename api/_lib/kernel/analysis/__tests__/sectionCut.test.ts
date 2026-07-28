@@ -36,3 +36,38 @@ describe('sectionCut — khối chuẩn & giải điểm', () => {
     expect(Math.abs(pl.normal[2])).toBeGreaterThan(0);
   });
 });
+
+import { sliceConvexPolyhedron, polygonArea3D, buildSectionCut } from '../sectionCut';
+
+describe('sectionCut — cắt & diện tích', () => {
+  it('lập phương a=1 cắt qua 3 trung điểm AB,AD,AA\' ⇒ tam giác đều S=√3/8', () => {
+    const p = buildPolyhedron('cube', { a: 1 });
+    const pt = [[0.5, 0, 0], [0, 0.5, 0], [0, 0, 0.5]] as [number, number, number][];
+    const pl = planeFrom3(pt)!;
+    const polygon = sliceConvexPolyhedron(p, pl.point, pl.normal);
+    expect(polygon.length).toBe(3);
+    expect(polygonArea3D(polygon)).toBeCloseTo(Math.sqrt(3) / 8, 6);
+  });
+  it('mp song song đáy (z=1) cắt hộp 2×3×4 ⇒ hình chữ nhật S=6', () => {
+    const p = buildPolyhedron('box', { a: 2, b: 3, c: 4 });
+    const polygon = sliceConvexPolyhedron(p, [0, 0, 1], [0, 0, 1]);
+    expect(polygon.length).toBe(4);
+    expect(polygonArea3D(polygon)).toBeCloseTo(6, 6);
+  });
+  it('mp không cắt trong khối ⇒ []', () => {
+    const p = buildPolyhedron('cube', { a: 1 });
+    expect(sliceConvexPolyhedron(p, [0, 0, 5], [0, 0, 1]).length).toBe(0);
+  });
+  it('buildSectionCut: verified true + area đúng', () => {
+    const r = buildSectionCut('sec1', 'cube', { a: 1 },
+      [{ onEdge: ['A', 'B'], t: 0.5 }, { onEdge: ['A', 'D'], t: 0.5 }, { onEdge: ['A', "A'"], t: 0.5 }])!;
+    expect(r.sectionCut.area!.verified).toBe(true);
+    expect(r.sectionCut.area!.value).toBeCloseTo(Math.sqrt(3) / 8, 6);
+    expect(r.sectionCut.polygon.length).toBe(3);
+  });
+  it('buildSectionCut: 3 điểm thẳng hàng ⇒ null', () => {
+    const r = buildSectionCut('sec1', 'cube', { a: 1 },
+      [{ vertex: 'A' }, { onEdge: ['A', 'B'], t: 0.5 }, { vertex: 'B' }]);
+    expect(r).toBeNull();
+  });
+});

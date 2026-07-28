@@ -95,5 +95,81 @@ export function planeFrom3(p: Vec3[]): { point: Vec3; normal: Vec3 } | null {
   return { point: p[0], normal: scale(n, 1 / len) };
 }
 
-// (Task 3 sẽ thêm sliceConvexPolyhedron, polygonArea3D, buildSectionCut, và các re-export.)
-export const __vecHelpers = { sub, add, scale, dot, cross, norm };
+const EPS = 1e-7;
+const roundKey = (v: Vec3): string => v.map((x) => (Math.abs(x) < 1e-9 ? 0 : x).toFixed(6)).join(',');
+
+// Sắp các điểm đồng phẳng theo vòng quanh trọng tâm (dùng 2 vector trực chuẩn trong mp).
+function orderRing(pts: Vec3[], normal: Vec3): Vec3[] {
+  if (pts.length < 3) return pts;
+  const c = scale(pts.reduce((s, p) => add(s, p), [0, 0, 0] as Vec3), 1 / pts.length);
+  const u0 = sub(pts[0], c);
+  const uLen = norm(u0);
+  const u = uLen < EPS ? ([1, 0, 0] as Vec3) : scale(u0, 1 / uLen);
+  const v = cross(normal, u);
+  return [...pts].sort((p, q) => {
+    const ap = Math.atan2(dot(sub(p, c), v), dot(sub(p, c), u));
+    const aq = Math.atan2(dot(sub(q, c), v), dot(sub(q, c), u));
+    return ap - aq;
+  });
+}
+
+export function sliceConvexPolyhedron(poly: Poly, point: Vec3, normal: Vec3): Vec3[] {
+  const d = (v: Vec3): number => dot(sub(v, point), normal);
+  const seen = new Set<string>();
+  const pts: Vec3[] = [];
+  const push = (v: Vec3): void => { const k = roundKey(v); if (!seen.has(k)) { seen.add(k); pts.push(v); } };
+  for (const [n1, n2] of poly.edges) {
+    const v1 = poly.vertices[n1]; const v2 = poly.vertices[n2];
+    const d1 = d(v1); const d2 = d(v2);
+    if (Math.abs(d1) < EPS) push(v1);
+    if (Math.abs(d2) < EPS) push(v2);
+    if (d1 * d2 < -EPS * EPS) {                     // cắt hẳn qua cạnh
+      const t = d1 / (d1 - d2);
+      push(add(v1, scale(sub(v2, v1), t)));
+    }
+  }
+  if (pts.length < 3) return [];
+  return orderRing(pts, normal);
+}
+
+// Diện tích đa giác phẳng 3D (Newell): ½‖Σ vi × vi+1‖.
+export function polygonArea3D(pts: Vec3[]): number {
+  if (pts.length < 3) return 0;
+  let n: Vec3 = [0, 0, 0];
+  for (let i = 0; i < pts.length; i++) n = add(n, cross(pts[i], pts[(i + 1) % pts.length]));
+  return norm(n) / 2;
+}
+
+// Diện tích bằng quạt tam giác từ đỉnh 0 (độc lập với Newell) — dùng cross-check thứ tự vòng.
+function fanArea(pts: Vec3[]): number {
+  let s = 0;
+  for (let i = 1; i < pts.length - 1; i++) s += norm(cross(sub(pts[i], pts[0]), sub(pts[i + 1], pts[0]))) / 2;
+  return s;
+}
+
+export function buildSectionCut(
+  id: string, kind: PolyhedronKind, dims: { a?: number; b?: number; c?: number; h?: number },
+  specs: SectionPointSpec[], color = '#f59e0b',
+): { sectionCut: SectionCut; poly: Poly } | null {
+  if (!specs || specs.length < 3) return null;
+  const poly = buildPolyhedron(kind, dims);
+  let resolved: Vec3[];
+  try { resolved = specs.slice(0, 3).map((s) => resolveSectionPoint(poly, s)); }
+  catch { return null; }
+  const pl = planeFrom3(resolved);
+  if (!pl) return null;
+  const polygon = sliceConvexPolyhedron(poly, pl.point, pl.normal);
+  if (polygon.length < 3) return null;
+  const aNewell = polygonArea3D(polygon);
+  const aFan = fanArea(polygon);
+  const verified = Math.abs(aNewell - aFan) <= 1e-9 * Math.max(1, aNewell) && aNewell > EPS;
+  const latex = `S_{\\text{thiết diện}}=${aNewell.toFixed(4)}`;
+  const area: Verified<number> = { value: aNewell, latex, verified, estimatedError: Math.abs(aNewell - aFan) };
+  return {
+    sectionCut: {
+      id, targetKind: kind, polygon: polygon as [number, number, number][],
+      plane: { point: pl.point, normal: pl.normal }, area, color,
+    },
+    poly,
+  };
+}

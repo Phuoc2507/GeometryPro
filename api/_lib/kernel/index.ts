@@ -42,3 +42,4 @@ export { runAnalysis, runAny, AnalysisPlanSchema } from './analysis/runAnalysis'
 export { buildAnalysisFigure } from './analysis/analysisFigure';
 export { evalProfile, revolutionVolumeDisk, buildRevolutionSolidOx, revolutionVolumeShellOy, buildRevolutionSolidOy, buildRevolutionSolidOyDisk } from './analysis/revolution';
 export { sectionK, sliceStackVolume, buildSliceStack, planarArea, buildAreaRegion } from './analysis/sliceVolume';
+export { buildPolyhedron, resolveSectionPoint, planeFrom3, sliceConvexPolyhedron, polygonArea3D, buildSectionCut } from './analysis/sectionCut';
