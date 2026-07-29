@@ -70,6 +70,8 @@ QUY TẮC MẪU GIẢI TÍCH (optional — chỉ thêm khi CHẮC CHẮN khớp)
     "outer": <biên dạng đường XA trục hơn (theo BIẾN nêu ở "profileVar")>,
     "inner": <biên dạng đường GẦN trục hơn — CHỈ khi miền kẹp giữa 2 đường (vành khăn); BỎ nếu miền tựa trục>,
     "axis": "Ox" | "Oy",   // trục quay; MẶC ĐỊNH "Ox" nếu không ghi
+    "axisY": <số>,   // CHỈ khi quay quanh ĐƯỜNG THẲNG NGANG y=k (k≠0, không phải Ox): giữ "axis":"Ox",
+                     //   thêm "axisY": k. BỎ trường này nếu quay quanh chính Ox (k=0). Xem quy tắc bên dưới.
     "profileVar": "x" | "y",  // biến của biên dạng; MẶC ĐỊNH "x" (đường y=f(x)). Dùng "y" khi các đường
                               // cho dạng x=g(y) VÀ quay quanh Oy (tích phân theo y). Xem quy tắc bên dưới.
     "domain": [a, b],
@@ -94,7 +96,14 @@ QUY TẮC MẪU GIẢI TÍCH (optional — chỉ thêm khi CHẮC CHẮN khớp)
     Khi đó MỌI biên dạng ("outer"/"inner", kể cả poly coeffs) tính theo BIẾN y; "domain":[c,d] là 2 cận theo y.
     "outer" = đường XA trục Oy hơn (|x| lớn hơn), "inner" = đường GẦN Oy hơn (BỎ nếu miền tựa Oy → đĩa đặc).
     Cận [c,d]: nếu 2 đường → giải x_ng(y)=x_tr(y) lấy 2 nghiệm y; nếu 1 đường tựa Oy → 2 nghiệm x(y)=0. (Ví dụ 8)
-- Trục quay khác Ox/Oy (vd đường x=k, y=k) → BỎ QUA "template".
+- Quay quanh ĐƯỜNG THẲNG NGANG y=k (k≠0, vd "quay quanh y=1", "quanh đường y=2") → GIỮ "axis":"Ox",
+  thêm "axisY": k. Cách CHO biên dạng theo miền quay:
+  • Miền DƯỚI đường cong (giữa y=f(x) và trục Ox) rồi quay quanh y=k: có HAI bán kính (tới f và tới Ox).
+    Đặt "outer": f(x), "inner": { "kind":"const","c":0 } (chính là Ox), "axisY": k. (Ví dụ 13)
+  • Miền kẹp giữa HAI đường cong y=f(x), y=g(x) rồi quay quanh y=k → "outer":f, "inner":g, "axisY":k.
+  • Miền kẹp giữa đường cong y=f(x) và CHÍNH đường y=k → "outer":f, KHÔNG "inner", "axisY":k.
+  (Engine lấy |(outer−k)²−(inner−k)²| nên thứ tự outer/inner không quan trọng.)
+- Quay quanh đường thẳng ĐỨNG x=k (k≠0, không phải Oy) → BỎ QUA "template" (chưa hỗ trợ, để tránh sai).
 - Không chắc biên dạng/miền/trục → BỎ QUA "template".
 - Nếu đề tính THỂ TÍCH bằng THIẾT DIỆN đã biết (đáy là miền phẳng, thiết diện vuông góc trục là hình
   vuông/tam giác đều/nửa tròn/chữ nhật) → dùng "template":"cross-known", "templateParams":
@@ -207,6 +216,26 @@ JSON:
   }
 }
 (Giải thích cận: x_ng=5−y², x_tr=3−y; giải 5−y²=3−y ⇒ y²−y−2=0 ⇒ y=−1, y=2. Trên [−1,2] có 5−y²≥3−y nên "outer"=5−y², "inner"=3−y; hệ số poly theo y.)
+
+[Ví dụ 13 — rev quanh ĐƯỜNG THẲNG NGANG y=k dùng "axisY"]
+Đề: "Cho hình phẳng (H) giới hạn bởi y = x², trục Ox và x = 1. Tính thể tích khối tròn xoay khi quay (H) quanh đường thẳng y = 2."
+JSON:
+{
+  "type": "single",
+  "setup": "Miền (H): y=x², trục Ox, x=1; quay quanh đường thẳng y=2",
+  "parts": [ { "label": "Câu 1", "hoi": "Tính thể tích khối tròn xoay quanh đường y=2", "phan_tu_moi": [] } ],
+  "template": "rev-ox",
+  "templateParams": {
+    "outer": { "kind": "poly", "coeffs": [0, 0, 1] },
+    "inner": { "kind": "const", "c": 0 },
+    "axis": "Ox",
+    "axisY": 2,
+    "domain": [0, 1],
+    "fnLabel": "y=x^2,\\ y=2",
+    "parts": [ { "label": "Câu 1", "hoi": "Tính thể tích khối tròn xoay quanh đường y=2" } ]
+  }
+}
+(Miền dưới đường cong quay quanh y=2 ⇒ có 2 bán kính: tới Ox và tới y=x². "outer"=x², "inner"=0 (Ox), "axisY"=2. V=π∫₀¹|(x²−2)²−(0−2)²|dx=17π/15.)
 
 [Ví dụ 9 — cross-known, thiết diện vuông]
 Đề: "Cho vật thể có đáy là hình phẳng giới hạn bởi y=√x, trục Ox và x=4. Thiết diện cắt vuông góc với Ox là hình vuông. Tính thể tích."

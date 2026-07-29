@@ -270,6 +270,9 @@ export interface RevolutionSolid extends AdvanceFlags {
   outer: ProfileFn;         // biên ngoài r(x)
   inner?: ProfileFn;        // biên trong (washer) — Đợt 2, giữ optional
   axis: 'Ox' | 'Oy';        // Đợt 1 chỉ dùng 'Ox'
+  // Trục quay DỜI theo phương ngang y=axisY (chỉ với axis='Ox'). Mặc định/vắng ⇒ 0 (chính là Ox).
+  // Bán kính mỗi điểm = |r(x) − axisY|; renderer tịnh tiến khối lên y=axisY để hiển thị đúng.
+  axisY?: number;
   domain: [number, number]; // [a, b]
   method: 'disk' | 'washer' | 'shell';
   volume?: Verified<number>;

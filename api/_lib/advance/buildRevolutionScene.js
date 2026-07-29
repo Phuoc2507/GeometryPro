@@ -13,6 +13,9 @@ export function buildRevolutionScene(params) {
   //  - 'y' ⇒ đường x=g(y): CHỈ dùng cho quay quanh Oy bằng ĐĨA/VÀNH KHĂN theo y (lỗ hổng Oy Đợt 1).
   const profileVar = params.profileVar === 'y' ? 'y' : 'x';
   const oyDisk = axis === 'Oy' && profileVar === 'y';
+  // Trục quay DỜI ngang y=axisY (CHỈ với đĩa/vành khăn quanh Ox — quay quanh đường thẳng y=k≠0).
+  // Bỏ qua khi quay quanh Oy (đường x=k đứng chưa hỗ trợ ⇒ classifier phải abstain). Ép số hữu hạn.
+  const axisY = (axis !== 'Oy' && Number.isFinite(params.axisY)) ? Number(params.axisY) : 0;
   const revId = 'rev1';
   // Engine dựng khối + tự-kiểm thể tích và trả mẫu biên dạng.
   //  - Ox: phương pháp đĩa (hoặc vành khăn nếu có `inner`).
@@ -25,7 +28,8 @@ export function buildRevolutionScene(params) {
   } else if (axis === 'Oy') {
     solid = buildRevolutionSolidOy(revId, outer, domain, '#6366f1', inner || undefined);
   } else {
-    solid = buildRevolutionSolidOx(revId, outer, domain, '#6366f1', inner || undefined);
+    // Ox (có thể DỜI trục sang y=axisY): đĩa/vành khăn với bán kính so với đường y=axisY.
+    solid = buildRevolutionSolidOx(revId, outer, domain, '#6366f1', inner || undefined, axisY);
   }
   const aroundOy = solid.axis === 'Oy';
 
@@ -44,10 +48,14 @@ export function buildRevolutionScene(params) {
   // Cơ chế poly-curve của buildAnalysisFigure chỉ plot y=poly(x). Với Oy-đĩa đường là x=g(y) (biến y)
   // nên KHÔNG dùng poly-curve (sẽ vẽ nhầm hướng) — dựa vào điểm mẫu đã hoán xy làm khung nhìn.
   const usePolyCurve = !oyDisk && outer.kind === 'poly';
+  // Trục quay dời y=k: khi đang vẽ curve poly thì thêm đường thẳng NGANG y=k (poly hằng [k]) để học
+  // sinh THẤY trục quay. Chỉ thêm khi có curve (usePolyCurve) — nếu không, thêm curve axisK sẽ lật
+  // outlineIds từ điểm-mẫu sang curve và ẩn mất biên dạng sqrt/expr (đã có test canh giữ điểm mẫu).
+  const showAxisLine = usePolyCurve && axisY !== 0;
   const base = buildAnalysisFigure(aroundOy ? 'Tròn xoay quanh Oy' : 'Tròn xoay quanh Ox', {
     // Vẽ curve mượt bằng poly khi biên dạng LÀ poly (theo x); kiểu khác dựa vào điểm mẫu + khối tròn xoay.
-    polys: usePolyCurve ? { r: outer.coeffs.slice() } : {},
-    polyDomains: usePolyCurve ? { r: domain } : {},
+    polys: usePolyCurve ? { r: outer.coeffs.slice(), ...(showAxisLine ? { axisK: [axisY] } : {}) } : {},
+    polyDomains: usePolyCurve ? { r: domain, ...(showAxisLine ? { axisK: domain } : {}) } : {},
     points: samplePts,
     solids: {},
   });

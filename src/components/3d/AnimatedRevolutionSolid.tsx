@@ -62,6 +62,7 @@ export default function AnimatedRevolutionSolid({ solid }: { solid: RevolutionSo
 
   const [a, b] = solid.domain;
   const aroundOy = solid.axis === 'Oy';
+  const axisY = solid.axisY ?? 0;   // trục quay DỜI ngang y=axisY (chỉ Ox); 0 ⇒ quay quanh chính Ox
 
   const oyDisk = aroundOy && solid.method !== 'shell';   // Oy bằng ĐĨA/VÀNH KHĂN theo y (đường x=g(y))
 
@@ -109,20 +110,23 @@ export default function AnimatedRevolutionSolid({ solid }: { solid: RevolutionSo
       return new THREE.LatheGeometry(pts, SEGMENTS);
     }
     const hasHole = !!(solid.innerSamples && solid.innerSamples.length);
+    // Trục quay DỜI y=axisY: bán kính mỗi biên = |giá trị − axisY| (axisY=0 ⇒ như cũ, quay quanh Ox).
+    // Khối được tịnh tiến lên y=axisY ở mesh (position) để trục lathe nằm đúng đường thẳng y=k.
+    const rShift = (r: number): number => Math.abs(r - axisY);
     if (hasHole) {
       // Vành khăn (washer): biên dạng KÍN — đi theo biên ngoài (a→b) rồi vòng về biên trong (b→a),
       // tạo vỏ có lỗ rỗng ở giữa khi xoay quanh trục.
       const inner = solid.innerSamples!.map((s) => ({ radius: Math.max(0, s.r), axial: s.x }));
       const loop = [
-        ...outer.map((p) => new THREE.Vector2(p.radius, p.axial)),
-        ...inner.slice().reverse().map((p) => new THREE.Vector2(Math.max(1e-3, p.radius), p.axial)),
-        new THREE.Vector2(outer[0].radius, outer[0].axial), // khép kín
+        ...outer.map((p) => new THREE.Vector2(rShift(p.radius), p.axial)),
+        ...inner.slice().reverse().map((p) => new THREE.Vector2(Math.max(1e-3, rShift(p.radius)), p.axial)),
+        new THREE.Vector2(rShift(outer[0].radius), outer[0].axial), // khép kín
       ];
       return new THREE.LatheGeometry(loop, SEGMENTS);
     }
-    const pts = outer.map((p) => new THREE.Vector2(p.radius, p.axial));
+    const pts = outer.map((p) => new THREE.Vector2(rShift(p.radius), p.axial));
     return new THREE.LatheGeometry(pts, SEGMENTS);
-  }, [solid, a, b, aroundOy, oyDisk]);
+  }, [solid, a, b, aroundOy, oyDisk, axisY]);
 
   const clipPlane = useMemo(() => new THREE.Plane(new THREE.Vector3(-1, 0, 0), 0), []);
 
@@ -166,8 +170,15 @@ export default function AnimatedRevolutionSolid({ solid }: { solid: RevolutionSo
 
   return (
     <group>
-      {/* Khối bóng liền — Ox: xoay để trục lathe trùng Ox; Oy: giữ nguyên (lathe quanh Y). Cắt lộ dần. */}
-      <mesh geometry={geometry} rotation={aroundOy ? [0, 0, 0] : [0, 0, -Math.PI / 2]} castShadow receiveShadow>
+      {/* Khối bóng liền — Ox: xoay để trục lathe trùng Ox; Oy: giữ nguyên (lathe quanh Y). Cắt lộ dần.
+          Trục quay dời y=k ⇒ tịnh tiến khối lên [0, axisY, 0] để trục nằm đúng đường thẳng y=k. */}
+      <mesh
+        geometry={geometry}
+        position={aroundOy ? [0, 0, 0] : [0, axisY, 0]}
+        rotation={aroundOy ? [0, 0, 0] : [0, 0, -Math.PI / 2]}
+        castShadow
+        receiveShadow
+      >
         <meshPhysicalMaterial
           color={baseColor}
           roughness={0.25}
@@ -183,8 +194,9 @@ export default function AnimatedRevolutionSolid({ solid }: { solid: RevolutionSo
         />
       </mesh>
 
-      {/* Lát mờ minh hoạ tích phân (chỉ cho trục Ox; biến mất khi kết đông) */}
-      {!aroundOy && diskOpacity > 0.01 &&
+      {/* Lát mờ minh hoạ tích phân (chỉ cho trục Ox KHÔNG dời; biến mất khi kết đông). Trục dời y=k thì
+          bỏ lát (chúng dựng quanh y=0, bán kính chưa dời ⇒ sẽ lệch) — khối bóng liền đã đủ minh hoạ. */}
+      {!aroundOy && axisY === 0 && diskOpacity > 0.01 &&
         disks
           .filter((d) => d.x <= xCut)
           .map((d, i) => (

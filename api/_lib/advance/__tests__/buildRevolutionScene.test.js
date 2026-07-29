@@ -139,6 +139,56 @@ describe('buildRevolutionScene', () => {
     expect(sc.steps[0].visibleIds.filter((id) => pointIds.has(id)).length).toBeGreaterThan(0);
   });
 
+  it('TRỤC DỜI y=k: miền dưới y=x quay quanh đường y=1 → 2π/3, solid.axisY=1, có đường trục', () => {
+    // Quay quanh đường thẳng ngang y=1 (không phải Ox). Hai bán kính: tới Ox & tới y=x. inner=Ox (const 0).
+    const sc = buildRevolutionScene({
+      outer: { kind: 'poly', coeffs: [0, 1] },   // y = x
+      inner: { kind: 'const', c: 0 },            // trục Ox (y=0)
+      axis: 'Ox',
+      axisY: 1,
+      domain: [0, 1],
+      fnLabel: 'y=x,\\ y=1',
+      parts: [{ label: 'Câu 1', hoi: 'Tính thể tích khi quay quanh y=1' }],
+    });
+    expect(sc.base.revolutionSolids[0].axis).toBe('Ox');
+    expect(sc.base.revolutionSolids[0].axisY).toBe(1);
+    expect(sc.base.revolutionSolids[0].method).toBe('washer');
+    expect(sc.steps[1].answer.verified).toBe(true);
+    expect(sc.steps[1].answer.approx).toBeCloseTo((2 * Math.PI) / 3, 4);
+    // outer là poly ⇒ có curve biên dạng + curve đường trục y=1 (2 curve).
+    expect(sc.base.curves.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it('TRỤC DỜI đĩa đặc: miền giữa y=x² và y=1 quay quanh y=1 → 16π/15, method=disk', () => {
+    const sc = buildRevolutionScene({
+      outer: { kind: 'poly', coeffs: [0, 0, 1] }, // y = x²
+      axis: 'Ox',
+      axisY: 1,
+      domain: [-1, 1],
+      fnLabel: 'y=x^2,\\ y=1',
+      parts: [{ label: 'Câu 1', hoi: 'Tính thể tích khi quay quanh y=1' }],
+    });
+    expect(sc.base.revolutionSolids[0].axisY).toBe(1);
+    expect(sc.base.revolutionSolids[0].method).toBe('disk');
+    expect(sc.steps[1].answer.verified).toBe(true);
+    expect(sc.steps[1].answer.approx).toBeCloseTo((16 * Math.PI) / 15, 4);
+  });
+
+  it('axisY BỎ QUA khi quay quanh Oy (đường x=k đứng chưa hỗ trợ) ⇒ shell như thường', () => {
+    // Đề đưa axisY nhầm cùng axis=Oy: engine KHÔNG áp dời trục (chỉ Ox), vẫn tính vỏ trụ quanh Oy.
+    const sc = buildRevolutionScene({
+      outer: { kind: 'poly', coeffs: [0, 0, 1] },
+      axis: 'Oy',
+      axisY: 3,
+      domain: [0, 1],
+      fnLabel: 'y=x^2',
+      parts: [{ label: 'Câu 1', hoi: 'Tính thể tích quanh Oy' }],
+    });
+    expect(sc.base.revolutionSolids[0].axis).toBe('Oy');
+    expect(sc.base.revolutionSolids[0].axisY).toBeUndefined();
+    expect(sc.steps[1].answer.approx).toBeCloseTo(Math.PI / 2, 4);
+  });
+
   it('rev-ox 1 câu: y=x^2 trên [0,2] → 32π/5, nhãn bước gọn (Khối tròn xoay / Thể tích)', () => {
     // Bài điển hình chỉ 1 câu ⇒ templateParams.parts có 1 phần tử (hoặc vắng).
     const oneQ = buildRevolutionScene({

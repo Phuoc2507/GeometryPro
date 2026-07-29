@@ -7642,21 +7642,22 @@ function sampleProfile(outer, domain, n = 64) {
   }
   return out;
 }
-function revolutionVolumeDisk(outer, domain, inner) {
+function revolutionVolumeDisk(outer, domain, inner, axisY = 0) {
   const [a, b] = domain;
   const go = compileProfile(outer);
   const gi = inner ? compileProfile(inner) : null;
   const f = (x) => {
-    const ro = go(x);
-    const ri = gi ? gi(x) : 0;
+    const ro = go(x) - axisY;
+    const ri = gi ? gi(x) - axisY : 0;
     return Math.PI * Math.abs(ro * ro - ri * ri);
   };
   return integrate(f, a, b);
 }
-function buildRevolutionSolidOx(id, outer, domain, color, inner) {
-  const { value, estimatedError } = revolutionVolumeDisk(outer, domain, inner);
+function buildRevolutionSolidOx(id, outer, domain, color, inner, axisY = 0) {
+  const { value, estimatedError } = revolutionVolumeDisk(outer, domain, inner, axisY);
   const verified = estimatedError <= 1e-6 * Math.max(1, Math.abs(value));
-  const latex = inner ? `V=\\pi\\int_{${domain[0]}}^{${domain[1]}}\\left(\\left[r_{ng}(x)\\right]^2-\\left[r_{tr}(x)\\right]^2\\right)\\,dx` : `V=\\pi\\int_{${domain[0]}}^{${domain[1]}}\\left[r(x)\\right]^2\\,dx`;
+  const rad = (name) => axisY === 0 ? `\\left[${name}\\right]` : `\\left(${name}${axisY < 0 ? "+" : "-"}${Math.abs(axisY)}\\right)`;
+  const latex = inner ? `V=\\pi\\int_{${domain[0]}}^{${domain[1]}}\\left(${rad("r_{ng}(x)")}^2-${rad("r_{tr}(x)")}^2\\right)\\,dx` : `V=\\pi\\int_{${domain[0]}}^{${domain[1]}}${rad("r(x)")}^2\\,dx`;
   const volume = { value, latex, verified, estimatedError };
   return {
     id,
@@ -7667,6 +7668,7 @@ function buildRevolutionSolidOx(id, outer, domain, color, inner) {
     color,
     volume,
     ...inner ? { inner } : {},
+    ...axisY ? { axisY } : {},
     samples: sampleProfile(outer, domain),
     ...inner ? { innerSamples: sampleProfile(inner, domain) } : {}
   };

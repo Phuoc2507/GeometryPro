@@ -58,6 +58,50 @@ describe('revolutionVolumeDisk', () => {
     expect(swapped.value).toBeCloseTo(correct.value, 6);
     expect(swapped.value).toBeCloseTo((2 * Math.PI) / 15, 6);
   });
+
+  // ── Trục quay DỜI ngang y=k (axisY) ──────────────────────────────
+  it('TRỤC DỜI đĩa đặc: miền giữa y=x² và y=1 quay quanh y=1 → 16π/15 (bán kính=1−x²)', () => {
+    // Đường y=x² gặp y=1 tại x=±1; tiết diện đĩa đặc bán kính (1−x²). V=π∫_{-1}^{1}(1−x²)²dx=16π/15.
+    const { value, estimatedError } = revolutionVolumeDisk(
+      { kind: 'poly', coeffs: [0, 0, 1] }, [-1, 1], undefined, 1,
+    );
+    expect(value).toBeCloseTo((16 * Math.PI) / 15, 6);
+    expect(estimatedError).toBeLessThan(1e-6);
+  });
+  it('TRỤC DỜI vành khăn: miền dưới y=x (giữa y=x & Ox) trên [0,1] quay quanh y=1 → 2π/3', () => {
+    // Hai bán kính: tới Ox = |0−1|=1, tới đường y=x = |x−1|. V=π∫₀¹(1²−(1−x)²)dx=2π/3.
+    // Đường Ox nhập bằng inner=const 0; engine lấy |(x−1)²−(0−1)²| theo từng điểm.
+    const { value } = revolutionVolumeDisk(
+      { kind: 'poly', coeffs: [0, 1] }, [0, 1], { kind: 'const', c: 0 }, 1,
+    );
+    expect(value).toBeCloseTo((2 * Math.PI) / 3, 6);
+  });
+  it('TRỤC DỜI axisY=0 ⇒ đồng nhất với quay quanh Ox (không hồi quy)', () => {
+    const shifted = revolutionVolumeDisk({ kind: 'sqrt', a: 1, b: 0 }, [0, 4], undefined, 0);
+    const plain = revolutionVolumeDisk({ kind: 'sqrt', a: 1, b: 0 }, [0, 4]);
+    expect(shifted.value).toBeCloseTo(plain.value, 12);
+    expect(shifted.value).toBeCloseTo(8 * Math.PI, 6);
+  });
+});
+
+describe('buildRevolutionSolidOx TRỤC DỜI y=k (axisY)', () => {
+  it('miền dưới y=x quay quanh y=1 → 2π/3, gắn axisY, method=washer, verified', () => {
+    const s = buildRevolutionSolidOx(
+      'rev1', { kind: 'poly', coeffs: [0, 1] }, [0, 1], '#6366f1', { kind: 'const', c: 0 }, 1,
+    );
+    expect(s.axis).toBe('Ox');
+    expect(s.axisY).toBe(1);
+    expect(s.method).toBe('washer');
+    expect(s.volume?.value).toBeCloseTo((2 * Math.PI) / 3, 6);
+    expect(s.volume?.verified).toBe(true);
+    expect(s.volume?.latex).toContain('-1');   // latex bọc (r − 1)
+  });
+  it('axisY=0 (mặc định) GIỮ nguyên latex cũ "[r(x)]" — không đổi hiển thị bài quanh Ox', () => {
+    const s = buildRevolutionSolidOx('rev1', { kind: 'sqrt', a: 1, b: 0 }, [0, 4], '#6366f1');
+    expect(s.axisY).toBeUndefined();
+    expect(s.volume?.latex).toContain('\\left[r(x)\\right]');
+    expect(s.volume?.value).toBeCloseTo(8 * Math.PI, 6);
+  });
 });
 
 describe('revolutionVolumeShellOy (quanh Oy, vỏ trụ)', () => {

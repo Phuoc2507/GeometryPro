@@ -43,13 +43,16 @@ export function revolutionVolumeDisk(
   outer: ProfileFn,
   domain: [number, number],
   inner?: ProfileFn,
+  axisY = 0,
 ): { value: number; estimatedError: number } {
   const [a, b] = domain;
   const go = compileProfile(outer);
   const gi = inner ? compileProfile(inner) : null;
   const f = (x: number): number => {
-    const ro = go(x);
-    const ri = gi ? gi(x) : 0;
+    // Trục quay DỜI y=axisY: bán kính mỗi biên = KHOẢNG CÁCH tới trục = (giá trị − axisY). Mặc định
+    // axisY=0 ⇒ quay quanh Ox như cũ. Với miền tựa trục (không inner) đường kia CHÍNH là trục ⇒ ri=0.
+    const ro = go(x) - axisY;
+    const ri = gi ? gi(x) - axisY : 0;
     // Vành khăn (washer): V=π∫([r_ngoài]²−[r_trong]²)dx. Đĩa đặc: r_trong=0.
     // Lấy |ro²−ri²| theo TỪNG điểm để thể tích luôn ≥ 0 và BẰNG nhau dù đường trong/ngoài bị
     // gán nhầm thứ tự (lỗi phân loại hay gặp) — tiết diện tại mỗi x là hình vành khăn giữa 2 bán
@@ -65,16 +68,24 @@ export function buildRevolutionSolidOx(
   domain: [number, number],
   color?: string,
   inner?: ProfileFn,
+  axisY = 0,
 ): RevolutionSolid {
-  const { value, estimatedError } = revolutionVolumeDisk(outer, domain, inner);
+  const { value, estimatedError } = revolutionVolumeDisk(outer, domain, inner, axisY);
   const verified = estimatedError <= 1e-6 * Math.max(1, Math.abs(value));
+  // Bán kính so với trục DỜI y=axisY: bọc "(r − k)" (k dương ⇒ "r − k"; k âm ⇒ "r + |k|"). axisY=0 giữ
+  // NGUYÊN latex cũ "[r(x)]" để không đổi hiển thị 99% bài quay quanh Ox.
+  const rad = (name: string): string =>
+    axisY === 0
+      ? `\\left[${name}\\right]`
+      : `\\left(${name}${axisY < 0 ? '+' : '-'}${Math.abs(axisY)}\\right)`;
   const latex = inner
-    ? `V=\\pi\\int_{${domain[0]}}^{${domain[1]}}\\left(\\left[r_{ng}(x)\\right]^2-\\left[r_{tr}(x)\\right]^2\\right)\\,dx`
-    : `V=\\pi\\int_{${domain[0]}}^{${domain[1]}}\\left[r(x)\\right]^2\\,dx`;
+    ? `V=\\pi\\int_{${domain[0]}}^{${domain[1]}}\\left(${rad('r_{ng}(x)')}^2-${rad('r_{tr}(x)')}^2\\right)\\,dx`
+    : `V=\\pi\\int_{${domain[0]}}^{${domain[1]}}${rad('r(x)')}^2\\,dx`;
   const volume: Verified<number> = { value, latex, verified, estimatedError };
   return {
     id, outer, axis: 'Ox', domain, method: inner ? 'washer' : 'disk', color, volume,
     ...(inner ? { inner } : {}),
+    ...(axisY ? { axisY } : {}),
     samples: sampleProfile(outer, domain),
     ...(inner ? { innerSamples: sampleProfile(inner, domain) } : {}),
   };
