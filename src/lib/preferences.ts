@@ -25,7 +25,7 @@ export const DEFAULT_PREFERENCES: AppPreferences = {
   autoColorPlanes: false,
   autoRotate: false,
   showIllustrationValues: true,
-  alwaysShowSolution: false,
+  alwaysShowSolution: true, // mặc định HIỆN thẳng lời giải (bỏ gating "Vì sao?"); tắt để bật lại chế độ tự nghĩ
 };
 
 const STORAGE_KEY = 'geo3d:prefs';
