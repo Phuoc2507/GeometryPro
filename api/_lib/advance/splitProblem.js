@@ -32,6 +32,22 @@ function extractJson(raw) {
   return s.slice(i, j + 1);
 }
 
+// Vá escape JSON không hợp lệ (fallback khi JSON.parse chặt NÉM). Nguồn thực tế: gpt-5.6-sol thỉnh
+// thoảng nhả `"fnLabel":"y=-x^2+2x,\ y=0"` — `\<space>` (thin-space LaTeX lọt vào chuỗi) KHÔNG phải
+// escape JSON hợp lệ ⇒ parse chặt ném ⇒ mất template ⇒ "chưa vẽ được". Cách vá: escape LẠI mọi
+// backslash lẻ đứng trước ký tự không hợp lệ, NHƯNG giữ NGUYÊN escape hợp lệ. TỐI QUAN TRỌNG: cặp
+// `\\` (backslash đã escape — gemini, model prod, dùng đầy trong setup LaTeX: `\\le`, `\\sqrt`) phải
+// còn nguyên; nhánh 1 của regex nuốt trọn escape hợp lệ TRƯỚC nên `\\x` không bao giờ rơi vào nhánh vá.
+// Nhánh: (1) \uXXXX hoặc \["\\/bfnrtu] = escape hợp lệ → giữ; (2) \<ký tự khác> = lẻ → nhân đôi backslash;
+// (3) \ ở cuối chuỗi → nhân đôi. Cờ `s` để `.` bắt cả xuống dòng.
+function repairJsonEscapes(s) {
+  return s.replace(/\\(?:u[0-9a-fA-F]{4}|["\\/bfnrtu])|\\(.)|\\$/gs,
+    (m, bad) => {
+      if (bad !== undefined) return '\\\\' + bad;   // nhánh 2: backslash lẻ trước ký tự khác → nhân đôi
+      return m === '\\' ? '\\\\' : m;               // nhánh 3: backslash cuối chuỗi → nhân đôi; nhánh 1: giữ
+    });
+}
+
 export async function splitProblem(problem, opts = {}) {
   // GỘP đọc-ảnh + phân-loại: nếu có ảnh, cùng 1 lượt vision vừa CHÉP đề (điền vào `setup`) vừa phân
   // loại — thay cho 2 lượt transcribe→split. SPLIT_PROMPT có nhánh "nếu có ảnh" hướng dẫn việc này.
@@ -72,7 +88,12 @@ export async function splitProblem(problem, opts = {}) {
       if (!usingOverride) throw e;
       raw = await runGuarded(undefined, null);  // null model → callVilao dùng VILAO_MODEL
     }
-    parsed = JSON.parse(extractJson(raw));
+    const jsonText = extractJson(raw);
+    try {
+      parsed = JSON.parse(jsonText);            // đường chặt: model JSON đúng (gemini) → không đụng gì
+    } catch {
+      parsed = JSON.parse(repairJsonEscapes(jsonText));  // model nhả escape lỗi (gpt `\ `) → vá rồi thử lại
+    }
   } catch {
     return { type: 'single' };
   }

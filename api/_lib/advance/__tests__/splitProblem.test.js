@@ -83,6 +83,32 @@ describe('splitProblem (Pass 0)', () => {
     expect(r.templateParams.domain).toEqual([0, 2]);
     expect(r.templateParams.outer).toEqual({ kind: 'poly', coeffs: [0, 0, 1] });
   });
+  it('JSON escape HỎNG (gpt-5.6-sol nhả `\\ ` LaTeX) → vá khoan dung, VẪN giữ template', async () => {
+    // gpt-5.6-sol thỉnh thoảng in `"fnLabel":"y=-x^2+2x,\ y=0"` — `\<space>` KHÔNG phải escape JSON hợp
+    // lệ ⇒ JSON.parse ném ⇒ trước đây rơi thẳng về {type:'single'} MẤT template ⇒ "chưa vẽ được".
+    // `\\ ` trong nguồn JS = backslash+space trong chuỗi thật (đúng thứ model nhả).
+    const badJson = '{"type":"single","setup":"s",'
+      + '"parts":[{"label":"Câu 1","hoi":"S","phan_tu_moi":[]}],'
+      + '"template":"area-plane","templateParams":{"outer":{"kind":"poly","coeffs":[0,2,-1]},'
+      + '"inner":{"kind":"const","c":0},"domain":[0,2],"fnLabel":"y=-x^2+2x,\\ y=0"}}';
+    expect(() => JSON.parse(badJson)).toThrow();          // xác nhận payload thật sự HỎNG với parse chặt
+    callVilao.mockResolvedValue(badJson);
+    const r = await splitProblem('Tính diện tích y=-x^2+2x và Ox.', {});
+    expect(r.template).toBe('area-plane');
+    expect(r.templateParams.domain).toEqual([0, 2]);
+  });
+  it('vá escape KHÔNG được phá escape hợp lệ (`\\\\le`/`\\\\sqrt` của gemini) khi có 1 escape lỗi lẫn vào', async () => {
+    // Bẫy khi vá: backslash-đã-escape hợp lệ (`\\le` trong JSON = literal `\le`, hay gặp ở setup chứa
+    // LaTeX của gemini) KHÔNG được nhân đôi/hỏng. Payload: setup có `\\le` HỢP LỆ + fnLabel có `\ ` LỖI.
+    const mixed = '{"type":"single","setup":"x (1 \\\\le x \\\\le 3)",'
+      + '"parts":[{"label":"Câu 1","hoi":"S","phan_tu_moi":[]}],'
+      + '"template":"area-plane","templateParams":{"outer":{"kind":"poly","coeffs":[0,2,-1]},'
+      + '"domain":[0,2],"fnLabel":"f\\ g"}}';
+    callVilao.mockResolvedValue(mixed);
+    const r = await splitProblem('...', {});
+    expect(r.template).toBe('area-plane');
+    expect(r.setup).toBe('x (1 \\le x \\le 3)');            // escape hợp lệ giữ nguyên (literal `\le`)
+  });
   it('mẫu calculus khác (cross-known/area-plane/section-poly) 1 câu → CŨNG giữ template', async () => {
     // Regression Đợt 2/3: chỉ rev-ox từng được giữ; cross-known/area-plane/section-poly bị vứt ⇒
     // nhánh route (analyze-advance) không bao giờ chạy → tính năng chết dù unit test builder xanh.
