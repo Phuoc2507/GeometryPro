@@ -78,6 +78,26 @@ describe('buildRevolutionScene', () => {
     expect(sc.steps[1].answer.approx).toBeCloseTo(Math.PI / 2, 4);
   });
 
+  it('rev quanh Oy 2 ĐƯỜNG y=f(x) CHƯA nghịch đảo (lỗ hổng Oy): y=x & y=x² → π/6, KHÔNG còn 2π/3 sai', () => {
+    // Regression cho lỗ hổng bench (gemini-3.6-high/grok): LLM đưa cặp đường y(x) chưa nghịch đảo
+    // (outer=x, inner=x², axis=Oy, KHÔNG profileVar). Trước sửa: vỏ trụ bỏ inner ⇒ 2.0944 (=2π/3) mà
+    // vẫn verified:true (sai âm thầm). Sau sửa: chiều cao vỏ = outer−inner ⇒ π/6 ≈ 0.5236, verified:true.
+    const sc = buildRevolutionScene({
+      outer: { kind: 'poly', coeffs: [0, 1] },       // y = x
+      inner: { kind: 'poly', coeffs: [0, 0, 1] },    // y = x²
+      axis: 'Oy',
+      domain: [0, 1],
+      fnLabel: 'y=x,\\ y=x^2',
+      parts: [{ label: 'Câu 1', hoi: 'Tính thể tích quanh Oy' }],
+    });
+    expect(sc.base.revolutionSolids[0].axis).toBe('Oy');
+    expect(sc.base.revolutionSolids[0].method).toBe('shell');
+    expect(sc.base.revolutionSolids[0].innerSamples.length).toBeGreaterThan(0);
+    expect(sc.steps[1].answer.verified).toBe(true);
+    expect(sc.steps[1].answer.approx).toBeCloseTo(Math.PI / 6, 4);
+    expect(sc.steps[1].answer.approx).not.toBeCloseTo((2 * Math.PI) / 3, 2); // KHÔNG còn giá trị sai cũ
+  });
+
   it('rev quanh Oy THEO Y (profileVar=y, đường x=g(y)) — Ví dụ 4 → 30.6π, axis=Oy method=washer', () => {
     // Lỗ hổng Oy Đợt 1: miền cho bởi x=5−y² & x=3−y quay quanh Oy ⇒ đĩa/vành khăn THEO y (không vỏ trụ).
     const sc = buildRevolutionScene({

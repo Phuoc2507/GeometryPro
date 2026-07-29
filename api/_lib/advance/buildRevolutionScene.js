@@ -16,13 +16,14 @@ export function buildRevolutionScene(params) {
   const revId = 'rev1';
   // Engine dựng khối + tự-kiểm thể tích và trả mẫu biên dạng.
   //  - Ox: phương pháp đĩa (hoặc vành khăn nếu có `inner`).
-  //  - Oy + đường y=r(x): phương pháp vỏ trụ (shell).
+  //  - Oy + đường y=r(x): phương pháp vỏ trụ (shell); có `inner` ⇒ miền 2 đường, chiều cao vỏ = outer−inner
+  //    (vá lỗ hổng Oy: LLM đưa cặp y(x) chưa nghịch đảo vẫn ra thể tích ĐÚNG thay vì bỏ inner → sai).
   //  - Oy + đường x=g(y) (profileVar='y'): phương pháp đĩa/vành khăn theo y.
   let solid;
   if (oyDisk) {
     solid = buildRevolutionSolidOyDisk(revId, outer, domain, '#6366f1', inner || undefined);
   } else if (axis === 'Oy') {
-    solid = buildRevolutionSolidOy(revId, outer, domain, '#6366f1');
+    solid = buildRevolutionSolidOy(revId, outer, domain, '#6366f1', inner || undefined);
   } else {
     solid = buildRevolutionSolidOx(revId, outer, domain, '#6366f1', inner || undefined);
   }

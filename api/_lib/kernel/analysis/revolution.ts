@@ -12,7 +12,9 @@ export function compileProfile(f: ProfileFn): (x: number) => number {
     case 'poly': return (x) => f.coeffs.reduce((acc, c, i) => acc + c * x ** i, 0);
     case 'sqrt': return (x) => f.a * Math.sqrt(x) + f.b;
     case 'const': return () => f.c;
-    case 'expr': { const g = parseExpr(f.expr); return (x) => g({ x }); }
+    // ProfileFn là biên dạng 1 BIẾN theo toạ độ trục. Gán giá trị cho CẢ x lẫn y để biểu thức viết
+    // theo y (đường x=g(y) khi quay quanh Oy — vd 'sqrt(y)', '3-y') không văng "Biến chưa gán: y".
+    case 'expr': { const g = parseExpr(f.expr); return (x) => g({ x, y: x }); }
   }
 }
 
@@ -78,15 +80,25 @@ export function buildRevolutionSolidOx(
   };
 }
 
-// Quay quanh Oy bằng phương pháp VỎ TRỤ (shell): miền {a≤x≤b, 0≤y≤r(x)} (giả thiết a≥0)
-//   V = 2π ∫_a^b x·r(x) dx.
+// Quay quanh Oy bằng phương pháp VỎ TRỤ (shell), miền là các dải đứng tại mỗi x∈[a,b] (giả thiết a≥0):
+//   - 1 đường (miền tựa trục hoành): {0≤y≤r(x)} ⇒ V = 2π ∫_a^b x·r(x) dx.
+//   - 2 đường y=f(x) (miền kẹp giữa outer & inner): chiều cao vỏ = |outer(x)−inner(x)| ⇒
+//       V = 2π ∫_a^b x·|outer(x)−inner(x)| dx.
+//     Lấy |·| để BỀN với hoán đổi nhãn trên/dưới (lỗi phân loại hay gặp). ĐÂY là vá "lỗ hổng Oy":
+//     khi LLM đưa cặp đường y(x) CHƯA nghịch đảo (vd outer=x, inner=x²), trước đây vỏ trụ bỏ inner ⇒
+//     tính 2π/3 mà vẫn verified (sai âm thầm); nay trừ inner ⇒ ra đúng π/6 (bằng đĩa/vành khăn theo y).
 export function revolutionVolumeShellOy(
   outer: ProfileFn,
   domain: [number, number],
+  inner?: ProfileFn,
 ): { value: number; estimatedError: number } {
   const [a, b] = domain;
-  const g = compileProfile(outer);
-  const f = (x: number): number => 2 * Math.PI * x * g(x);
+  const go = compileProfile(outer);
+  const gi = inner ? compileProfile(inner) : null;
+  const f = (x: number): number => {
+    const h = gi ? Math.abs(go(x) - gi(x)) : go(x);
+    return 2 * Math.PI * x * h;
+  };
   return integrate(f, a, b);
 }
 
@@ -95,14 +107,19 @@ export function buildRevolutionSolidOy(
   outer: ProfileFn,
   domain: [number, number],
   color?: string,
+  inner?: ProfileFn,
 ): RevolutionSolid {
-  const { value, estimatedError } = revolutionVolumeShellOy(outer, domain);
+  const { value, estimatedError } = revolutionVolumeShellOy(outer, domain, inner);
   const verified = estimatedError <= 1e-6 * Math.max(1, Math.abs(value));
-  const latex = `V=2\\pi\\int_{${domain[0]}}^{${domain[1]}} x\\,r(x)\\,dx`;
+  const latex = inner
+    ? `V=2\\pi\\int_{${domain[0]}}^{${domain[1]}} x\\left(r_{ng}(x)-r_{tr}(x)\\right)\\,dx`
+    : `V=2\\pi\\int_{${domain[0]}}^{${domain[1]}} x\\,r(x)\\,dx`;
   const volume: Verified<number> = { value, latex, verified, estimatedError };
   return {
     id, outer, axis: 'Oy', domain, method: 'shell', color, volume,
+    ...(inner ? { inner } : {}),
     samples: sampleProfile(outer, domain),
+    ...(inner ? { innerSamples: sampleProfile(inner, domain) } : {}),
   };
 }
 

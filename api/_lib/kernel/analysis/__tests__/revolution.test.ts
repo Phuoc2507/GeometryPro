@@ -20,6 +20,12 @@ describe('evalProfile', () => {
     expect(evalProfile({ kind: 'expr', expr: '1/x' }, 4)).toBeCloseTo(0.25, 12);
     expect(evalProfile({ kind: 'expr', expr: 'sqrt(4 - x^2)' }, 0)).toBeCloseTo(2, 12);
   });
+  it('expr theo BIẾN y (đường x=g(y) quanh Oy): không ném "Biến chưa gán: y"', () => {
+    // Lỗ hổng Oy: đĩa/vành khăn theo y nhận biên dạng viết theo y (vd x=√y). ProfileFn 1 biến ⇒ gán
+    // giá trị trục cho CẢ x lẫn y để expr theo y không văng lỗi (trước đây chỉ gán x ⇒ 500).
+    expect(evalProfile({ kind: 'expr', expr: 'sqrt(y)' }, 4)).toBeCloseTo(2, 12);
+    expect(evalProfile({ kind: 'expr', expr: '3 - y' }, 1)).toBeCloseTo(2, 12);
+  });
 });
 
 describe('revolutionVolumeDisk', () => {
@@ -60,6 +66,25 @@ describe('revolutionVolumeShellOy (quanh Oy, vỏ trụ)', () => {
     expect(value).toBeCloseTo(Math.PI / 2, 6);
     expect(estimatedError).toBeLessThan(1e-6);
   });
+  it('MIỀN 2 ĐƯỜNG y=x (trên) & y=x² (dưới) quay quanh Oy → π/6 (chiều cao vỏ = outer−inner)', () => {
+    // Lỗ hổng Oy: khi LLM đưa cặp đường y=f(x) CHƯA nghịch đảo (outer=x, inner=x²), vỏ trụ phải lấy
+    // chiều cao = |outer−inner| ⇒ 2π∫₀¹ x(x−x²)dx = π/6. Trước sửa: bỏ inner ⇒ 2π/3 (SAI).
+    const { value, estimatedError } = revolutionVolumeShellOy(
+      { kind: 'poly', coeffs: [0, 1] },       // outer = x
+      [0, 1],
+      { kind: 'poly', coeffs: [0, 0, 1] },    // inner = x²
+    );
+    expect(value).toBeCloseTo(Math.PI / 6, 6);
+    expect(estimatedError).toBeLessThan(1e-6);
+  });
+  it('vỏ trụ 2 đường BỀN với hoán đổi trên/dưới (|outer−inner|) ⇒ cùng π/6', () => {
+    const swapped = revolutionVolumeShellOy(
+      { kind: 'poly', coeffs: [0, 0, 1] },    // outer = x²
+      [0, 1],
+      { kind: 'poly', coeffs: [0, 1] },       // inner = x
+    );
+    expect(swapped.value).toBeCloseTo(Math.PI / 6, 6);
+  });
 });
 
 describe('sampleProfile (mẫu cho frontend)', () => {
@@ -77,6 +102,21 @@ describe('buildRevolutionSolidOy', () => {
     expect(s.method).toBe('shell');
     expect(s.samples && s.samples.length).toBeGreaterThan(0);
     expect(s.volume?.value).toBeCloseTo(Math.PI / 2, 6);
+    expect(s.volume?.verified).toBe(true);
+    expect(s.volume?.latex).toContain('2\\pi');
+  });
+  it('vỏ trụ 2 đường (có inner): y=x & y=x² quanh Oy → π/6, có inner+innerSamples, latex trừ (ng−tr)', () => {
+    const s = buildRevolutionSolidOy(
+      'rev1',
+      { kind: 'poly', coeffs: [0, 1] },       // outer = x
+      [0, 1], '#6366f1',
+      { kind: 'poly', coeffs: [0, 0, 1] },    // inner = x²
+    );
+    expect(s.axis).toBe('Oy');
+    expect(s.method).toBe('shell');
+    expect(s.inner).toBeDefined();
+    expect(s.innerSamples && s.innerSamples.length).toBeGreaterThan(0);
+    expect(s.volume?.value).toBeCloseTo(Math.PI / 6, 6);
     expect(s.volume?.verified).toBe(true);
     expect(s.volume?.latex).toContain('2\\pi');
   });

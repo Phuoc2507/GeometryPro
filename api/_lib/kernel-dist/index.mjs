@@ -7624,7 +7624,7 @@ function compileProfile(f) {
       return () => f.c;
     case "expr": {
       const g = parseExpr(f.expr);
-      return (x) => g({ x });
+      return (x) => g({ x, y: x });
     }
   }
 }
@@ -7671,16 +7671,20 @@ function buildRevolutionSolidOx(id, outer, domain, color, inner) {
     ...inner ? { innerSamples: sampleProfile(inner, domain) } : {}
   };
 }
-function revolutionVolumeShellOy(outer, domain) {
+function revolutionVolumeShellOy(outer, domain, inner) {
   const [a, b] = domain;
-  const g = compileProfile(outer);
-  const f = (x) => 2 * Math.PI * x * g(x);
+  const go = compileProfile(outer);
+  const gi = inner ? compileProfile(inner) : null;
+  const f = (x) => {
+    const h = gi ? Math.abs(go(x) - gi(x)) : go(x);
+    return 2 * Math.PI * x * h;
+  };
   return integrate(f, a, b);
 }
-function buildRevolutionSolidOy(id, outer, domain, color) {
-  const { value, estimatedError } = revolutionVolumeShellOy(outer, domain);
+function buildRevolutionSolidOy(id, outer, domain, color, inner) {
+  const { value, estimatedError } = revolutionVolumeShellOy(outer, domain, inner);
   const verified = estimatedError <= 1e-6 * Math.max(1, Math.abs(value));
-  const latex = `V=2\\pi\\int_{${domain[0]}}^{${domain[1]}} x\\,r(x)\\,dx`;
+  const latex = inner ? `V=2\\pi\\int_{${domain[0]}}^{${domain[1]}} x\\left(r_{ng}(x)-r_{tr}(x)\\right)\\,dx` : `V=2\\pi\\int_{${domain[0]}}^{${domain[1]}} x\\,r(x)\\,dx`;
   const volume = { value, latex, verified, estimatedError };
   return {
     id,
@@ -7690,7 +7694,9 @@ function buildRevolutionSolidOy(id, outer, domain, color) {
     method: "shell",
     color,
     volume,
-    samples: sampleProfile(outer, domain)
+    ...inner ? { inner } : {},
+    samples: sampleProfile(outer, domain),
+    ...inner ? { innerSamples: sampleProfile(inner, domain) } : {}
   };
 }
 function buildRevolutionSolidOyDisk(id, outer, domain, color, inner) {

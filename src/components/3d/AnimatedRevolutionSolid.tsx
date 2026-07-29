@@ -68,8 +68,21 @@ export default function AnimatedRevolutionSolid({ solid }: { solid: RevolutionSo
   const geometry = useMemo(() => {
     const outer = outerSamples(solid, AXIAL_STEPS);
     if (aroundOy && !oyDisk) {
-      // Quanh Oy VỎ TRỤ (đường y=r(x)): biên dạng KÍN trong mặt (bán kính=x, cao=y) — đáy y=0 từ x=a→b,
-      // tường trái tại x=a, đường cong y=r(x), tường phải tại x=b. Lathe quanh trục Y (không xoay mesh).
+      // Quanh Oy VỎ TRỤ. Biên dạng KÍN trong mặt kinh tuyến (bán kính=x, cao=y); lathe quanh trục Y.
+      const hasHole = !!(solid.innerSamples && solid.innerSamples.length);
+      if (hasHole) {
+        // Miền 2 đường (vỏ trụ RỖNG): dải đứng kẹp giữa đường trong (đáy) & đường ngoài (đỉnh) tại mỗi
+        // bán kính x∈[a,b] ⇒ tiết diện = đường trong (a→b) rồi vòng về đường ngoài (b→a). Khớp thể tích
+        // 2π∫x(outer−inner)dx (vá lỗ hổng Oy: hình không còn to quá như khi bỏ đường trong).
+        const inner = solid.innerSamples!;
+        const loop = [
+          ...inner.map((s) => new THREE.Vector2(s.x, Math.max(0, s.r))),
+          ...outer.slice().reverse().map((p) => new THREE.Vector2(p.axial, Math.max(0, p.radius))),
+          new THREE.Vector2(inner[0].x, Math.max(0, inner[0].r)), // khép kín
+        ];
+        return new THREE.LatheGeometry(loop, SEGMENTS);
+      }
+      // 1 đường (đáy y=0 từ x=a→b, tường trái x=a, đường cong y=r(x), tường phải x=b).
       const loop = [
         new THREE.Vector2(a, 0),
         ...outer.map((p) => new THREE.Vector2(p.axial, Math.max(0, p.radius))),
