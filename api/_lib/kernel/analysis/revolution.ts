@@ -2,7 +2,7 @@
 // Lõi tất định cho khối tròn xoay quanh Ox (phương pháp đĩa):
 //   V = π ∫_a^b [r(x)]² dx  — tích phân bằng Simpson (integrate) + tự-kiểm sai số.
 import type { ProfileFn, RevolutionSolid, Verified } from '../../../../src/types/geometry';
-import { integrate } from './quadrature';
+import { integrate, refineBounds, fmtBound } from './quadrature';
 import { parseExpr } from './expr';
 
 // Biên dịch biên dạng r(x) MỘT LẦN thành hàm số nhanh — dùng cho vòng lặp nóng (integrate lấy mẫu
@@ -20,6 +20,22 @@ export function compileProfile(f: ProfileFn): (x: number) => number {
 
 export function evalProfile(f: ProfileFn, x: number): number {
   return compileProfile(f)(x);
+}
+
+// Tinh chỉnh cận [a,b] về nghiệm CHÍNH XÁC của "outer − mốc" (mốc = inner nếu có 2 đường, hoặc đường trục
+// `baseline` khi miền tựa trục — 0 với Ox/Oy, axisY khi quay quanh y=k). Vá "lỗ cận vô tỉ": LLM chỉ cần
+// đưa cận gần đúng, engine snap về giao điểm/nghiệm thật. Cận CHO SẴN (không phải giao) không có nghiệm cắt
+// gần đó ⇒ refineBounds giữ nguyên (fail-safe). Xem quadrature.refineBounds.
+export function refineProfileBounds(
+  outer: ProfileFn,
+  inner: ProfileFn | undefined,
+  domain: [number, number],
+  baseline = 0,
+): [number, number] {
+  const go = compileProfile(outer);
+  const gi = inner ? compileProfile(inner) : null;
+  const h = (x: number): number => go(x) - (gi ? gi(x) : baseline);
+  return refineBounds(h, domain);
 }
 
 // Mẫu biên dạng ngoài để frontend dựng LatheGeometry mà KHÔNG cần parser (engine là nguồn sự thật).
@@ -70,7 +86,9 @@ export function buildRevolutionSolidOx(
   inner?: ProfileFn,
   axisY = 0,
 ): RevolutionSolid {
-  const { value, estimatedError } = revolutionVolumeDisk(outer, domain, inner, axisY);
+  // Cận tựa trục DỜI y=axisY ⇒ mốc = axisY (đĩa: nghiệm r=axisY; vành khăn: giao outer=inner). Vá cận vô tỉ.
+  const dom = refineProfileBounds(outer, inner, domain, axisY);
+  const { value, estimatedError } = revolutionVolumeDisk(outer, dom, inner, axisY);
   const verified = estimatedError <= 1e-6 * Math.max(1, Math.abs(value));
   // Bán kính so với trục DỜI y=axisY: bọc "(r − k)" (k dương ⇒ "r − k"; k âm ⇒ "r + |k|"). axisY=0 giữ
   // NGUYÊN latex cũ "[r(x)]" để không đổi hiển thị 99% bài quay quanh Ox.
@@ -79,15 +97,15 @@ export function buildRevolutionSolidOx(
       ? `\\left[${name}\\right]`
       : `\\left(${name}${axisY < 0 ? '+' : '-'}${Math.abs(axisY)}\\right)`;
   const latex = inner
-    ? `V=\\pi\\int_{${domain[0]}}^{${domain[1]}}\\left(${rad('r_{ng}(x)')}^2-${rad('r_{tr}(x)')}^2\\right)\\,dx`
-    : `V=\\pi\\int_{${domain[0]}}^{${domain[1]}}${rad('r(x)')}^2\\,dx`;
+    ? `V=\\pi\\int_{${fmtBound(dom[0])}}^{${fmtBound(dom[1])}}\\left(${rad('r_{ng}(x)')}^2-${rad('r_{tr}(x)')}^2\\right)\\,dx`
+    : `V=\\pi\\int_{${fmtBound(dom[0])}}^{${fmtBound(dom[1])}}${rad('r(x)')}^2\\,dx`;
   const volume: Verified<number> = { value, latex, verified, estimatedError };
   return {
-    id, outer, axis: 'Ox', domain, method: inner ? 'washer' : 'disk', color, volume,
+    id, outer, axis: 'Ox', domain: dom, method: inner ? 'washer' : 'disk', color, volume,
     ...(inner ? { inner } : {}),
     ...(axisY ? { axisY } : {}),
-    samples: sampleProfile(outer, domain),
-    ...(inner ? { innerSamples: sampleProfile(inner, domain) } : {}),
+    samples: sampleProfile(outer, dom),
+    ...(inner ? { innerSamples: sampleProfile(inner, dom) } : {}),
   };
 }
 
@@ -120,17 +138,18 @@ export function buildRevolutionSolidOy(
   color?: string,
   inner?: ProfileFn,
 ): RevolutionSolid {
-  const { value, estimatedError } = revolutionVolumeShellOy(outer, domain, inner);
+  const dom = refineProfileBounds(outer, inner, domain);
+  const { value, estimatedError } = revolutionVolumeShellOy(outer, dom, inner);
   const verified = estimatedError <= 1e-6 * Math.max(1, Math.abs(value));
   const latex = inner
-    ? `V=2\\pi\\int_{${domain[0]}}^{${domain[1]}} x\\left(r_{ng}(x)-r_{tr}(x)\\right)\\,dx`
-    : `V=2\\pi\\int_{${domain[0]}}^{${domain[1]}} x\\,r(x)\\,dx`;
+    ? `V=2\\pi\\int_{${fmtBound(dom[0])}}^{${fmtBound(dom[1])}} x\\left(r_{ng}(x)-r_{tr}(x)\\right)\\,dx`
+    : `V=2\\pi\\int_{${fmtBound(dom[0])}}^{${fmtBound(dom[1])}} x\\,r(x)\\,dx`;
   const volume: Verified<number> = { value, latex, verified, estimatedError };
   return {
-    id, outer, axis: 'Oy', domain, method: 'shell', color, volume,
+    id, outer, axis: 'Oy', domain: dom, method: 'shell', color, volume,
     ...(inner ? { inner } : {}),
-    samples: sampleProfile(outer, domain),
-    ...(inner ? { innerSamples: sampleProfile(inner, domain) } : {}),
+    samples: sampleProfile(outer, dom),
+    ...(inner ? { innerSamples: sampleProfile(inner, dom) } : {}),
   };
 }
 
@@ -147,16 +166,17 @@ export function buildRevolutionSolidOyDisk(
   color?: string,
   inner?: ProfileFn,         // x_trong(y) — đường GẦN trục hơn; BỎ nếu miền tựa trục Oy (đĩa đặc)
 ): RevolutionSolid {
-  const { value, estimatedError } = revolutionVolumeDisk(outer, domain, inner);
+  const dom = refineProfileBounds(outer, inner, domain);   // cận theo y; vá cận vô tỉ (giao x_ng=x_tr / x=0)
+  const { value, estimatedError } = revolutionVolumeDisk(outer, dom, inner);
   const verified = estimatedError <= 1e-6 * Math.max(1, Math.abs(value));
   const latex = inner
-    ? `V=\\pi\\int_{${domain[0]}}^{${domain[1]}}\\left(\\left[x_{ng}(y)\\right]^2-\\left[x_{tr}(y)\\right]^2\\right)\\,dy`
-    : `V=\\pi\\int_{${domain[0]}}^{${domain[1]}}\\left[x(y)\\right]^2\\,dy`;
+    ? `V=\\pi\\int_{${fmtBound(dom[0])}}^{${fmtBound(dom[1])}}\\left(\\left[x_{ng}(y)\\right]^2-\\left[x_{tr}(y)\\right]^2\\right)\\,dy`
+    : `V=\\pi\\int_{${fmtBound(dom[0])}}^{${fmtBound(dom[1])}}\\left[x(y)\\right]^2\\,dy`;
   const volume: Verified<number> = { value, latex, verified, estimatedError };
   return {
-    id, outer, axis: 'Oy', domain, method: inner ? 'washer' : 'disk', color, volume,
+    id, outer, axis: 'Oy', domain: dom, method: inner ? 'washer' : 'disk', color, volume,
     ...(inner ? { inner } : {}),
-    samples: sampleProfile(outer, domain),
-    ...(inner ? { innerSamples: sampleProfile(inner, domain) } : {}),
+    samples: sampleProfile(outer, dom),
+    ...(inner ? { innerSamples: sampleProfile(inner, dom) } : {}),
   };
 }

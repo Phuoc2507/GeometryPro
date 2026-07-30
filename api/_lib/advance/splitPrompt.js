@@ -89,6 +89,9 @@ QUY TẮC MẪU GIẢI TÍCH (optional — chỉ thêm khi CHẮC CHẮN khớp)
     - Nếu đề cho cận x=.. rõ ràng → dùng đúng cận đó.
     - Nếu miền tựa trục Ox và chỉ cho 1 đường cong cắt Ox (vd y=√(4-x²)) → [a,b] là 2 nghiệm r(x)=0 (ở đây [-2,2]).
     - Nếu miền kẹp giữa 2 đường (vành khăn) → [a,b] là 2 hoành độ GIAO của 2 đường; "outer" là đường có |giá trị| LỚN hơn trên khoảng đó, "inner" là đường nhỏ hơn.
+    - CẬN VÔ TỈ (giao điểm hoặc nghiệm không "đẹp", vd x=√2, x=(1+√5)/2): CỨ đưa GIÁ TRỊ THẬP PHÂN GẦN ĐÚNG
+      (2–3 chữ số, vd 1.414, 1.618) — engine TỰ tinh chỉnh về nghiệm chính xác từ chính các đường bạn cho.
+      ĐỪNG bỏ qua bài chỉ vì cận là số vô tỉ; đừng cố giải căn thức chính xác trong đầu.
 - Quay quanh **Ox** → đĩa/vành khăn theo x (mặc định, "profileVar":"x").
 - Quay quanh **Oy** có HAI trường hợp — chọn theo cách đề CHO đường:
   • Đường dạng **y=f(x)** (miền {a≤x≤b, 0≤y≤r(x)}, cận a≥0) → VỎ TRỤ: đặt "axis":"Oy", GIỮ "profileVar":"x", KHÔNG dùng "inner". (Ví dụ 7)

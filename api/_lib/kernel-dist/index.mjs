@@ -6642,6 +6642,60 @@ function integrate(f, a, b, tol = 1e-9, maxN = 1 << 18) {
     prev = cur;
   }
 }
+function nearestRoot(h, x0, w) {
+  const N = 80;
+  const lo = x0 - w, hi = x0 + w;
+  let best = null;
+  let bestDist = Infinity;
+  const consider = (root) => {
+    const d = Math.abs(root - x0);
+    if (d < bestDist) {
+      bestDist = d;
+      best = root;
+    }
+  };
+  let px = lo, py = h(lo);
+  for (let i = 1; i <= N; i++) {
+    const x = lo + (hi - lo) * i / N;
+    const y = h(x);
+    if (Number.isFinite(py) && py === 0) consider(px);
+    if (Number.isFinite(py) && Number.isFinite(y) && py * y < 0) {
+      let a1 = px, b1 = x, fa = py;
+      for (let k = 0; k < 60; k++) {
+        const m = (a1 + b1) / 2;
+        const fm = h(m);
+        if (!Number.isFinite(fm)) break;
+        if (fa * fm <= 0) b1 = m;
+        else {
+          a1 = m;
+          fa = fm;
+        }
+      }
+      consider((a1 + b1) / 2);
+    }
+    px = x;
+    py = y;
+  }
+  if (Number.isFinite(py) && py === 0) consider(px);
+  return best;
+}
+function refineBounds(h, domain) {
+  const [a, b] = domain;
+  const span = b - a;
+  if (!(span > 1e-12) || !Number.isFinite(span)) return [a, b];
+  const w = 0.25 * span;
+  const na = nearestRoot(h, a, w);
+  const nb = nearestRoot(h, b, w);
+  const ra = na != null ? na : a;
+  const rb = nb != null ? nb : b;
+  if (!(rb > ra) || !Number.isFinite(ra) || !Number.isFinite(rb)) return [a, b];
+  return [ra, rb];
+}
+function fmtBound(n) {
+  if (!Number.isFinite(n)) return String(n);
+  if (Number.isInteger(n)) return String(n);
+  return String(Math.round(n * 1e3) / 1e3);
+}
 
 // api/_lib/kernel/analysis/paramsolve.ts
 function optimizeParam(f, lo, hi, sense, grid = 400) {
@@ -7631,6 +7685,12 @@ function compileProfile(f) {
 function evalProfile(f, x) {
   return compileProfile(f)(x);
 }
+function refineProfileBounds(outer, inner, domain, baseline = 0) {
+  const go = compileProfile(outer);
+  const gi = inner ? compileProfile(inner) : null;
+  const h = (x) => go(x) - (gi ? gi(x) : baseline);
+  return refineBounds(h, domain);
+}
 function sampleProfile(outer, domain, n = 64) {
   const [a, b] = domain;
   const g = compileProfile(outer);
@@ -7654,23 +7714,24 @@ function revolutionVolumeDisk(outer, domain, inner, axisY = 0) {
   return integrate(f, a, b);
 }
 function buildRevolutionSolidOx(id, outer, domain, color, inner, axisY = 0) {
-  const { value, estimatedError } = revolutionVolumeDisk(outer, domain, inner, axisY);
+  const dom = refineProfileBounds(outer, inner, domain, axisY);
+  const { value, estimatedError } = revolutionVolumeDisk(outer, dom, inner, axisY);
   const verified = estimatedError <= 1e-6 * Math.max(1, Math.abs(value));
   const rad = (name) => axisY === 0 ? `\\left[${name}\\right]` : `\\left(${name}${axisY < 0 ? "+" : "-"}${Math.abs(axisY)}\\right)`;
-  const latex = inner ? `V=\\pi\\int_{${domain[0]}}^{${domain[1]}}\\left(${rad("r_{ng}(x)")}^2-${rad("r_{tr}(x)")}^2\\right)\\,dx` : `V=\\pi\\int_{${domain[0]}}^{${domain[1]}}${rad("r(x)")}^2\\,dx`;
+  const latex = inner ? `V=\\pi\\int_{${fmtBound(dom[0])}}^{${fmtBound(dom[1])}}\\left(${rad("r_{ng}(x)")}^2-${rad("r_{tr}(x)")}^2\\right)\\,dx` : `V=\\pi\\int_{${fmtBound(dom[0])}}^{${fmtBound(dom[1])}}${rad("r(x)")}^2\\,dx`;
   const volume = { value, latex, verified, estimatedError };
   return {
     id,
     outer,
     axis: "Ox",
-    domain,
+    domain: dom,
     method: inner ? "washer" : "disk",
     color,
     volume,
     ...inner ? { inner } : {},
     ...axisY ? { axisY } : {},
-    samples: sampleProfile(outer, domain),
-    ...inner ? { innerSamples: sampleProfile(inner, domain) } : {}
+    samples: sampleProfile(outer, dom),
+    ...inner ? { innerSamples: sampleProfile(inner, dom) } : {}
   };
 }
 function revolutionVolumeShellOy(outer, domain, inner) {
@@ -7684,39 +7745,41 @@ function revolutionVolumeShellOy(outer, domain, inner) {
   return integrate(f, a, b);
 }
 function buildRevolutionSolidOy(id, outer, domain, color, inner) {
-  const { value, estimatedError } = revolutionVolumeShellOy(outer, domain, inner);
+  const dom = refineProfileBounds(outer, inner, domain);
+  const { value, estimatedError } = revolutionVolumeShellOy(outer, dom, inner);
   const verified = estimatedError <= 1e-6 * Math.max(1, Math.abs(value));
-  const latex = inner ? `V=2\\pi\\int_{${domain[0]}}^{${domain[1]}} x\\left(r_{ng}(x)-r_{tr}(x)\\right)\\,dx` : `V=2\\pi\\int_{${domain[0]}}^{${domain[1]}} x\\,r(x)\\,dx`;
+  const latex = inner ? `V=2\\pi\\int_{${fmtBound(dom[0])}}^{${fmtBound(dom[1])}} x\\left(r_{ng}(x)-r_{tr}(x)\\right)\\,dx` : `V=2\\pi\\int_{${fmtBound(dom[0])}}^{${fmtBound(dom[1])}} x\\,r(x)\\,dx`;
   const volume = { value, latex, verified, estimatedError };
   return {
     id,
     outer,
     axis: "Oy",
-    domain,
+    domain: dom,
     method: "shell",
     color,
     volume,
     ...inner ? { inner } : {},
-    samples: sampleProfile(outer, domain),
-    ...inner ? { innerSamples: sampleProfile(inner, domain) } : {}
+    samples: sampleProfile(outer, dom),
+    ...inner ? { innerSamples: sampleProfile(inner, dom) } : {}
   };
 }
 function buildRevolutionSolidOyDisk(id, outer, domain, color, inner) {
-  const { value, estimatedError } = revolutionVolumeDisk(outer, domain, inner);
+  const dom = refineProfileBounds(outer, inner, domain);
+  const { value, estimatedError } = revolutionVolumeDisk(outer, dom, inner);
   const verified = estimatedError <= 1e-6 * Math.max(1, Math.abs(value));
-  const latex = inner ? `V=\\pi\\int_{${domain[0]}}^{${domain[1]}}\\left(\\left[x_{ng}(y)\\right]^2-\\left[x_{tr}(y)\\right]^2\\right)\\,dy` : `V=\\pi\\int_{${domain[0]}}^{${domain[1]}}\\left[x(y)\\right]^2\\,dy`;
+  const latex = inner ? `V=\\pi\\int_{${fmtBound(dom[0])}}^{${fmtBound(dom[1])}}\\left(\\left[x_{ng}(y)\\right]^2-\\left[x_{tr}(y)\\right]^2\\right)\\,dy` : `V=\\pi\\int_{${fmtBound(dom[0])}}^{${fmtBound(dom[1])}}\\left[x(y)\\right]^2\\,dy`;
   const volume = { value, latex, verified, estimatedError };
   return {
     id,
     outer,
     axis: "Oy",
-    domain,
+    domain: dom,
     method: inner ? "washer" : "disk",
     color,
     volume,
     ...inner ? { inner } : {},
-    samples: sampleProfile(outer, domain),
-    ...inner ? { innerSamples: sampleProfile(inner, domain) } : {}
+    samples: sampleProfile(outer, dom),
+    ...inner ? { innerSamples: sampleProfile(inner, dom) } : {}
   };
 }
 
@@ -7763,21 +7826,22 @@ function sampleSide(outer, domain, inner, n = 64) {
 }
 function buildSliceStack(id, section, outer, domain, color, inner, ratio, axis = "Ox") {
   const r = section === "rect" ? ratio && ratio > 0 ? ratio : 1 : void 0;
-  const { value, estimatedError } = sliceStackVolume(section, outer, domain, inner, r ?? 1);
+  const dom = refineProfileBounds(outer, inner, domain);
+  const { value, estimatedError } = sliceStackVolume(section, outer, dom, inner, r ?? 1);
   const verified = estimatedError <= 1e-6 * Math.max(1, Math.abs(value));
-  const latex = `V=\\int_{${domain[0]}}^{${domain[1]}} ${LATEX_S[section]}\\,d${axis === "Oy" ? "y" : "x"}`;
+  const latex = `V=\\int_{${fmtBound(dom[0])}}^{${fmtBound(dom[1])}} ${LATEX_S[section]}\\,d${axis === "Oy" ? "y" : "x"}`;
   const volume = { value, latex, verified, estimatedError };
   return {
     id,
     axis,
-    domain,
+    domain: dom,
     outer,
     section,
     volume,
     color,
     ...inner ? { inner } : {},
     ...r !== void 0 ? { ratio: r } : {},
-    samples: sampleSide(outer, domain, inner)
+    samples: sampleSide(outer, dom, inner)
   };
 }
 function planarArea(outer, inner, domain) {
@@ -7800,11 +7864,12 @@ function sampleArea(outer, inner, domain, n = 64) {
 }
 function buildAreaRegion(id, outer, domain, inner, color, slabDepth = 0.15) {
   const inr = inner ?? { kind: "const", c: 0 };
-  const { value, estimatedError } = planarArea(outer, inr, domain);
+  const dom = refineProfileBounds(outer, inr, domain);
+  const { value, estimatedError } = planarArea(outer, inr, dom);
   const verified = estimatedError <= 1e-6 * Math.max(1, Math.abs(value));
-  const latex = `S=\\int_{${domain[0]}}^{${domain[1]}} |f(x)-g(x)|\\,dx`;
+  const latex = `S=\\int_{${fmtBound(dom[0])}}^{${fmtBound(dom[1])}} |f(x)-g(x)|\\,dx`;
   const area = { value, latex, verified, estimatedError };
-  return { id, outer, inner: inr, domain, area, color, slabDepth, samples: sampleArea(outer, inr, domain) };
+  return { id, outer, inner: inr, domain: dom, area, color, slabDepth, samples: sampleArea(outer, inr, dom) };
 }
 
 // api/_lib/kernel/analysis/sectionCut.ts

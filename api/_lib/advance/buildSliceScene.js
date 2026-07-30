@@ -9,9 +9,11 @@ export function buildSliceScene(params) {
   const solidAxis = axis === 'Oy' ? 'Oy' : 'Ox';
   const id = 'slice1';
   const solid = buildSliceStack(id, sec, outer, domain, '#0ea5e9', inner || undefined, ratio, solidAxis);
+  // Cận có thể ĐÃ được engine tinh chỉnh về giao điểm chính xác (vá cận vô tỉ) ⇒ dùng cận đã tinh chỉnh.
+  const dom = solid.domain;
 
   // Điểm mẫu cho gate points>0, lấy thưa từ mẫu cạnh (điểm biên trên miền đáy: (t, side)).
-  const src = solid.samples && solid.samples.length ? solid.samples : [{ t: domain[0], side: 0 }];
+  const src = solid.samples && solid.samples.length ? solid.samples : [{ t: dom[0], side: 0 }];
   const stepEvery = Math.max(1, Math.floor(src.length / 8));
   const samplePts = src
     .filter((_, i) => i % stepEvery === 0)
@@ -21,7 +23,7 @@ export function buildSliceScene(params) {
   const usePolyCurve = outer && outer.kind === 'poly';
   const base = buildAnalysisFigure('Thể tích theo thiết diện', {
     polys: usePolyCurve ? { r: outer.coeffs.slice() } : {},
-    polyDomains: usePolyCurve ? { r: domain } : {},
+    polyDomains: usePolyCurve ? { r: dom } : {},
     points: samplePts,
     solids: {},
   });
@@ -38,7 +40,7 @@ export function buildSliceScene(params) {
     {
       id: 's0', label: partA.label,
       visibleIds: [...outlineIds, id], highlightIds: [id],
-      anim: { param: 'sweep', label: 'Xếp lát', tMax: domain[1], autoplay: true },
+      anim: { param: 'sweep', label: 'Xếp lát', tMax: dom[1], autoplay: true },
     },
     {
       id: 's1', label: partB.label,

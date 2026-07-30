@@ -218,3 +218,23 @@ describe('buildRevolutionSolidOx', () => {
     expect(s.volume?.latex).toContain('\\int');
   });
 });
+
+describe('buildRevolutionSolidOx — vá cận vô tỉ', () => {
+  it('vành khăn y=2 (ngoài) & y=x² (trong) quanh Ox: cận snap về ±√2 từ gợi ý 1.41', () => {
+    // Giao 2=x² tại x=±√2; V=π∫_{−√2}^{√2}(2²−(x²)²)dx=π·32√2/5. LLM chỉ đưa cận thập phân gần đúng.
+    const s = buildRevolutionSolidOx(
+      'rev1', { kind: 'const', c: 2 }, [-1.41, 1.41], '#6366f1', { kind: 'poly', coeffs: [0, 0, 1] },
+    );
+    expect(s.domain[0]).toBeCloseTo(-Math.SQRT2, 6);
+    expect(s.domain[1]).toBeCloseTo(Math.SQRT2, 6);
+    expect(s.volume?.value).toBeCloseTo((Math.PI * 32 * Math.SQRT2) / 5, 4);
+    expect(s.volume?.verified).toBe(true);
+  });
+  it('đĩa cận CHO SẴN [1,2] (không phải giao điểm) GIỮ nguyên — không tinh chỉnh', () => {
+    // y=x² quay quanh Ox trên [1,2]: V=π∫_1^2 x⁴dx=31π/5. h=x² không đổi dấu quanh 1 hay 2 ⇒ cận giữ.
+    const s = buildRevolutionSolidOx('rev1', { kind: 'poly', coeffs: [0, 0, 1] }, [1, 2]);
+    expect(s.domain).toEqual([1, 2]);
+    expect(s.volume?.value).toBeCloseTo((31 * Math.PI) / 5, 6);
+    expect(s.volume?.verified).toBe(true);
+  });
+});

@@ -24,3 +24,24 @@ describe('areaRegion — diện tích hình phẳng', () => {
     expect(r.inner).toEqual({ kind: 'const', c: 0 });
   });
 });
+
+describe('areaRegion — vá cận vô tỉ', () => {
+  it('giữa y=x+1 và y=x²: cận snap về (1±√5)/2 từ gợi ý thập phân ⇒ S=5√5/6', () => {
+    // Giao x+1=x² tại x=(1±√5)/2 ≈ −0.618, 1.618; S=(√5)³/6=5√5/6≈1.8634.
+    const r = buildAreaRegion(
+      'a3', { kind: 'poly', coeffs: [1, 1] }, [-0.62, 1.62], { kind: 'poly', coeffs: [0, 0, 1] },
+    );
+    expect(r.domain[0]).toBeCloseTo((1 - Math.sqrt(5)) / 2, 6);
+    expect(r.domain[1]).toBeCloseTo((1 + Math.sqrt(5)) / 2, 6);
+    expect(r.area!.value).toBeCloseTo((5 * Math.sqrt(5)) / 6, 5);
+    expect(r.area!.verified).toBe(true);
+  });
+  it('giữa y=3−x² và Ox: cận snap về ±√3 từ gợi ý 1.73 ⇒ S=4√3', () => {
+    // 3−x²=0 tại x=±√3; S=∫_{−√3}^{√3}(3−x²)dx=4√3≈6.9282. inner vắng ⇒ mốc = Ox.
+    const r = buildAreaRegion('a4', { kind: 'poly', coeffs: [3, 0, -1] }, [-1.73, 1.73]);
+    expect(r.domain[0]).toBeCloseTo(-Math.sqrt(3), 6);
+    expect(r.domain[1]).toBeCloseTo(Math.sqrt(3), 6);
+    expect(r.area!.value).toBeCloseTo(4 * Math.sqrt(3), 5);
+    expect(r.area!.verified).toBe(true);
+  });
+});

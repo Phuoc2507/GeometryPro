@@ -2,8 +2,8 @@
 // Lõi tất định cho khối "thiết diện đã biết" (Đợt 2): V = ∫ k·side(t)² dt, side = |outer−inner|.
 // k theo hình lát: vuông=1, tam giác đều=√3/4, nửa tròn=π/8, chữ nhật=ratio.
 import type { ProfileFn, SliceStack, AreaRegion, Verified } from '../../../../src/types/geometry';
-import { integrate } from './quadrature';
-import { compileProfile } from './revolution';
+import { integrate, fmtBound } from './quadrature';
+import { compileProfile, refineProfileBounds } from './revolution';
 
 export type SectionKind = 'square' | 'equilateral' | 'semicircle' | 'rect';
 
@@ -69,15 +69,16 @@ export function buildSliceStack(
   axis: 'Ox' | 'Oy' = 'Ox',
 ): SliceStack {
   const r = section === 'rect' ? (ratio && ratio > 0 ? ratio : 1) : undefined;
-  const { value, estimatedError } = sliceStackVolume(section, outer, domain, inner, r ?? 1);
+  const dom = refineProfileBounds(outer, inner, domain);   // cận đáy = giao/cắt trục ⇒ vá cận vô tỉ
+  const { value, estimatedError } = sliceStackVolume(section, outer, dom, inner, r ?? 1);
   const verified = estimatedError <= 1e-6 * Math.max(1, Math.abs(value));
-  const latex = `V=\\int_{${domain[0]}}^{${domain[1]}} ${LATEX_S[section]}\\,d${axis === 'Oy' ? 'y' : 'x'}`;
+  const latex = `V=\\int_{${fmtBound(dom[0])}}^{${fmtBound(dom[1])}} ${LATEX_S[section]}\\,d${axis === 'Oy' ? 'y' : 'x'}`;
   const volume: Verified<number> = { value, latex, verified, estimatedError };
   return {
-    id, axis, domain, outer, section, volume, color,
+    id, axis, domain: dom, outer, section, volume, color,
     ...(inner ? { inner } : {}),
     ...(r !== undefined ? { ratio: r } : {}),
-    samples: sampleSide(outer, domain, inner),
+    samples: sampleSide(outer, dom, inner),
   };
 }
 
@@ -114,9 +115,10 @@ export function buildAreaRegion(
   slabDepth = 0.15,
 ): AreaRegion {
   const inr: ProfileFn = inner ?? { kind: 'const', c: 0 };
-  const { value, estimatedError } = planarArea(outer, inr, domain);
+  const dom = refineProfileBounds(outer, inr, domain);   // cận = 2 hoành độ giao f=g ⇒ vá cận vô tỉ
+  const { value, estimatedError } = planarArea(outer, inr, dom);
   const verified = estimatedError <= 1e-6 * Math.max(1, Math.abs(value));
-  const latex = `S=\\int_{${domain[0]}}^{${domain[1]}} |f(x)-g(x)|\\,dx`;
+  const latex = `S=\\int_{${fmtBound(dom[0])}}^{${fmtBound(dom[1])}} |f(x)-g(x)|\\,dx`;
   const area: Verified<number> = { value, latex, verified, estimatedError };
-  return { id, outer, inner: inr, domain, area, color, slabDepth, samples: sampleArea(outer, inr, domain) };
+  return { id, outer, inner: inr, domain: dom, area, color, slabDepth, samples: sampleArea(outer, inr, dom) };
 }

@@ -30,3 +30,20 @@ describe('sliceVolume — thiết diện đã biết', () => {
     expect(v.value).toBeCloseTo(12, 6);
   });
 });
+
+describe('buildSliceStack — vá cận vô tỉ', () => {
+  it('vuông, đáy y=2−x² (cắt Ox tại ±√2) từ gợi ý 1.41 ⇒ cận snap ±√2, V=64√2/15', () => {
+    // Đáy là đoạn giữa parabol 2−x² và Ox ⇒ cận = nghiệm 2−x²=0 = ±√2.
+    // V=∫_{−√2}^{√2}(2−x²)²dx=64√2/15≈6.0339. LLM chỉ đưa cận thập phân gần đúng.
+    const s = buildSliceStack('s1', 'square', { kind: 'poly', coeffs: [2, 0, -1] }, [-1.41, 1.41]);
+    expect(s.domain[0]).toBeCloseTo(-Math.SQRT2, 6);
+    expect(s.domain[1]).toBeCloseTo(Math.SQRT2, 6);
+    expect(s.volume!.value).toBeCloseTo((64 * Math.SQRT2) / 15, 4);
+    expect(s.volume!.verified).toBe(true);
+  });
+  it('cận CHO SẴN [0,4] (đáy √x không cắt trục trong khoảng) GIỮ nguyên', () => {
+    const s = buildSliceStack('s1', 'square', sqrtX, [0, 4]);
+    expect(s.domain).toEqual([0, 4]);
+    expect(s.volume!.value).toBeCloseTo(8, 6);
+  });
+});

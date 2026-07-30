@@ -6,9 +6,12 @@ export function buildAreaScene(params) {
   const { outer, inner, domain, parts } = params;
   const id = 'area1';
   const region = buildAreaRegion(id, outer, domain, inner || undefined, '#22c55e');
+  // Engine có thể ĐÃ tinh chỉnh cận về giao điểm chính xác (vá cận vô tỉ) ⇒ dùng cận đã tinh chỉnh cho
+  // curve/anim để khớp với miền thật (không vẽ curve lố qua giao điểm).
+  const dom = region.domain;
 
   // Điểm mẫu gate: lấy thưa biên trên miền.
-  const src = region.samples && region.samples.length ? region.samples : [{ x: domain[0], top: 0, bot: 0 }];
+  const src = region.samples && region.samples.length ? region.samples : [{ x: dom[0], top: 0, bot: 0 }];
   const stepEvery = Math.max(1, Math.floor(src.length / 8));
   const samplePts = src
     .filter((_, i) => i % stepEvery === 0)
@@ -17,8 +20,8 @@ export function buildAreaScene(params) {
   // Vẽ 2 đường f,g mượt khi LÀ poly.
   const polys = {};
   const polyDomains = {};
-  if (outer && outer.kind === 'poly') { polys.f = outer.coeffs.slice(); polyDomains.f = domain; }
-  if (inner && inner.kind === 'poly') { polys.g = inner.coeffs.slice(); polyDomains.g = domain; }
+  if (outer && outer.kind === 'poly') { polys.f = outer.coeffs.slice(); polyDomains.f = dom; }
+  if (inner && inner.kind === 'poly') { polys.g = inner.coeffs.slice(); polyDomains.g = dom; }
   const base = buildAnalysisFigure('Diện tích hình phẳng', { polys, polyDomains, points: samplePts, solids: {} });
   base.areaRegions = [region];
 
@@ -33,7 +36,7 @@ export function buildAreaScene(params) {
     {
       id: 's0', label: partA.label,
       visibleIds: [...outlineIds, id], highlightIds: [id],
-      anim: { param: 'sweep', label: 'Tô miền', tMax: domain[1], autoplay: true },
+      anim: { param: 'sweep', label: 'Tô miền', tMax: dom[1], autoplay: true },
     },
     {
       id: 's1', label: partB.label,

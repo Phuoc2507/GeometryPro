@@ -32,12 +32,15 @@ export function buildRevolutionScene(params) {
     solid = buildRevolutionSolidOx(revId, outer, domain, '#6366f1', inner || undefined, axisY);
   }
   const aroundOy = solid.axis === 'Oy';
+  // Engine có thể ĐÃ tinh chỉnh cận về giao điểm/nghiệm chính xác (vá cận vô tỉ) ⇒ dùng cận đã tinh chỉnh
+  // cho curve/đường trục/anim để khớp miền thật.
+  const dom = solid.domain;
 
   // Điểm mẫu cho base (qua gate points>0) lấy từ mẫu biên dạng engine đã tính — đúng cho MỌI kiểu
   // biên dạng (poly/sqrt/const/expr), không cần xấp xỉ poly. Lấy thưa ~9 điểm cho gọn hình.
   // Mẫu {x,r}: x = toạ độ TRỤC, r = bán kính. Bình thường (đường y=r(x)) điểm màn hình là (x, r).
   // Với Oy-đĩa (đường x=g(y)): trục=y, bán kính=x ⇒ HOÁN xy để điểm nằm đúng chỗ (x=g(y), y).
-  const src = solid.samples && solid.samples.length ? solid.samples : [{ x: domain[0], r: 0 }];
+  const src = solid.samples && solid.samples.length ? solid.samples : [{ x: dom[0], r: 0 }];
   const stepEvery = Math.max(1, Math.floor(src.length / 8));
   const samplePts = src
     .filter((_, i) => i % stepEvery === 0)
@@ -55,7 +58,7 @@ export function buildRevolutionScene(params) {
   const base = buildAnalysisFigure(aroundOy ? 'Tròn xoay quanh Oy' : 'Tròn xoay quanh Ox', {
     // Vẽ curve mượt bằng poly khi biên dạng LÀ poly (theo x); kiểu khác dựa vào điểm mẫu + khối tròn xoay.
     polys: usePolyCurve ? { r: outer.coeffs.slice(), ...(showAxisLine ? { axisK: [axisY] } : {}) } : {},
-    polyDomains: usePolyCurve ? { r: domain, ...(showAxisLine ? { axisK: domain } : {}) } : {},
+    polyDomains: usePolyCurve ? { r: dom, ...(showAxisLine ? { axisK: dom } : {}) } : {},
     points: samplePts,
     solids: {},
   });
@@ -81,7 +84,7 @@ export function buildRevolutionScene(params) {
       label: partA.label,
       visibleIds: [...outlineIds, revId],
       highlightIds: [revId],
-      anim: { param: 'sweep', label: 'Quét tròn xoay', tMax: domain[1], autoplay: true },
+      anim: { param: 'sweep', label: 'Quét tròn xoay', tMax: dom[1], autoplay: true },
     },
     {
       id: 's1',
