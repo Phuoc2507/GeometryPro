@@ -487,6 +487,15 @@ KẾT QUẢ TRƯỚC BỊ PHẲNG (mọi điểm có z≈0). Hãy dựng lại h
     sendEvent('Hoàn tất!', 100);
     // Draw rơi về LLM: gắn tier engine (Mức 2/3) lên hình để banner giáo viên hiện lý do.
     if (engineClassification) normalizedGeometry.classification = engineClassification;
+    // Nở hình 'expr' (đường cong/miền/khối tròn xoay) thành mẫu số để frontend vẽ mượt — CHUNG cho
+    // Vẽ nhanh + Vẽ kỹ (điểm hội tụ sau mọi nhánh normalize/regen). Nạp ĐỘNG như kernel-bridge:
+    // kernel-dist chưa build ⇒ rơi êm, giữ hình thô (không giết route). Idempotent + fail-safe.
+    try {
+      const { expandExprGeometry } = await import('./_lib/exprExpand.js');
+      normalizedGeometry = expandExprGeometry(normalizedGeometry);
+    } catch (exprErr) {
+      console.warn('[exprExpand] bỏ qua (không chặn luồng):', exprErr?.message);
+    }
     const finalPayload = {
       step1: {
         // Ảnh mà không trích được đề -> dùng ĐÚNG placeholder (frontend lọc thành ô trống), KHÔNG

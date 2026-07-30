@@ -203,7 +203,7 @@ export function normalizeGeometryData(data) {
       }));
   }
 
-  const annotationArrays = ['vectors', 'angles', 'rightAngles', 'equalMarks', 'parallelMarks', 'dynamicPoints', 'curves', 'agents', 'measurements'];
+  const annotationArrays = ['vectors', 'angles', 'rightAngles', 'equalMarks', 'parallelMarks', 'dynamicPoints', 'curves', 'revolutionSolids', 'areaRegions', 'agents', 'measurements'];
   for (const key of annotationArrays) {
     if (Array.isArray(data[key]) && data[key].length > 0) {
       normalized[key] = data[key];
@@ -211,7 +211,7 @@ export function normalizeGeometryData(data) {
   }
 
   // Remove empty optional arrays
-  const optionalKeys = ['spheres', 'circles', 'cylinders', 'cones', 'planes', 'vectors', 'angles', 'rightAngles', 'equalMarks', 'parallelMarks', 'dynamicPoints', 'surfaces', 'curves', 'agents', 'measurements'];
+  const optionalKeys = ['spheres', 'circles', 'cylinders', 'cones', 'planes', 'vectors', 'angles', 'rightAngles', 'equalMarks', 'parallelMarks', 'dynamicPoints', 'surfaces', 'curves', 'revolutionSolids', 'areaRegions', 'agents', 'measurements'];
   for (const key of optionalKeys) {
     if (Array.isArray(normalized[key]) && normalized[key].length === 0) delete normalized[key];
   }
