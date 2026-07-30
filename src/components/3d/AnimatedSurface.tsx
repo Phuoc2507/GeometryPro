@@ -14,10 +14,36 @@ interface Props {
   isBuilding: boolean;
 }
 
+/** True khi trục quay là Ox (nằm ngang): axis='Ox'/'x' hoặc vector [1,0,0] (thành phần x trội).
+ *  Mặc định (vắng) ⇒ đứng, quay quanh trục thẳng đứng như các mặt paraboloid/torus cũ. */
+export function surfaceIsHorizontalAxis(surface: Surface3D): boolean {
+  const ax = surface.axis;
+  if (Array.isArray(ax)) {
+    const [x = 0, y = 0, z = 0] = ax;
+    return Math.abs(x) > Math.abs(y) && Math.abs(x) > Math.abs(z);
+  }
+  if (typeof ax === 'string') { const s = ax.toLowerCase(); return s === 'ox' || s === 'x'; }
+  return false;
+}
+
 /** Radius and height of the generating profile as a function of t ∈ [0, 1],
- *  in three-space (vertical axis = y), for each surface-of-revolution type. */
-function profileOf(surface: Surface3D): (t: number) => { radius: number; y: number } {
+ *  in three-space (axis of revolution = local +y), for each surface-of-revolution type. */
+export function profileOf(surface: Surface3D): (t: number) => { radius: number; y: number } {
   const p = surface.params ?? {};
+
+  // Đường sinh đa thức (parabola) do Vẽ nhanh phát: bán kính r(x)=a·x²+b·x+c trên [xMin,xMax],
+  // toạ độ dọc trục = x. Ví dụ y=x² trên [0,2] ⇒ vertex bán kính 0 tại gốc, mở tới r=4 ở x=2.
+  const isPoly = surface.curve === 'parabola'
+    || (('a' in p) && ('xMin' in p || 'xMax' in p));
+  if (isPoly) {
+    const a = p.a ?? 1, b = p.b ?? 0, c = p.c ?? 0;
+    const xMin = p.xMin ?? 0, xMax = p.xMax ?? 2;
+    return (t) => {
+      const x = xMin + t * (xMax - xMin);
+      return { radius: Math.abs(a * x * x + b * x + c), y: x };
+    };
+  }
+
   switch (surface.type) {
     case 'paraboloid': {
       const a = p.a || 2;
@@ -72,6 +98,13 @@ export function AnimatedSurface({ surface, delay, isBuilding }: Props) {
   const { x: cx, y: cy, z: cz } = surface.center ?? { x: 0, y: 0, z: 0 };
 
   const profile = useMemo(() => profileOf(surface), [surface]);
+  // Trục quay của profile là local +Y (thẳng đứng). Với axis='Ox' xoay cả group −90° quanh trục Z
+  // three (= math +Y) để local +Y trỏ theo math +X ⇒ khối tròn xoay NẰM NGANG mở dọc Ox. Mọi contour
+  // (kinh tuyến/vĩ tuyến) dùng frame local nên xoay theo group là nhất quán.
+  const rotation = useMemo<[number, number, number]>(
+    () => (surfaceIsHorizontalAxis(surface) ? [0, 0, -Math.PI / 2] : [0, 0, 0]),
+    [surface],
+  );
 
   // Pickable (invisible) body so manual-mode delete / add-point still work.
   const pickGeometry = useMemo(() => {
@@ -113,7 +146,7 @@ export function AnimatedSurface({ surface, delay, isBuilding }: Props) {
   });
 
   return (
-    <group ref={groupRef} position={[cx, cz, cy]}>
+    <group ref={groupRef} position={[cx, cz, cy]} rotation={rotation}>
       {/* Outline meridians (left/right edges of the apparent contour). */}
       <ProfileMeridians groupRef={groupRef} profile={profile} color={color} opacity={opacity} />
 

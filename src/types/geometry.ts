@@ -146,9 +146,13 @@ export interface Surface3D {
   label?: string;
   type: 'hyperboloid' | 'paraboloid' | 'torus' | 'revolution';
   center: { x: number; y: number; z: number };
-  params: Record<string, number>; // a, b, c, r, R etc.
+  params: Record<string, number>; // a, b, c, r, R etc. (parabola: a,b,c,xMin,xMax)
   color?: string;
   opacity?: number;
+  /** Trục quay. Vắng ⇒ đứng (quanh Oz). 'Ox'/[1,0,0] ⇒ nằm ngang, mở dọc trục x. Vẽ nhanh phát field này. */
+  axis?: 'Ox' | 'Oy' | 'Oz' | [number, number, number];
+  /** Loại đường sinh: 'parabola' ⇒ bán kính = a·x²+b·x+c trên [xMin,xMax] (thay cho r0/h/taper mặc định). */
+  curve?: string;
 }
 
 // ConstraintVerifier — structured constraint from step1 parse
