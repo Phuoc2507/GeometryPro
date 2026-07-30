@@ -151,7 +151,7 @@ export function TopToolbar() {
                 aria-label="Tạo Video (Animation)"
                 className={state.videoMode
                   ? "h-9 w-9 bg-red-500 hover:bg-red-600 text-white"
-                  : "h-9 w-9 text-muted-foreground hover:text-red-500 hover:bg-red-500/10"}
+                  : "h-9 w-9 text-red-500 hover:text-red-600 hover:bg-red-500/10"}
                 onClick={() => setVideoMode(!state.videoMode)}
               >
                 <Youtube className="w-5 h-5" />
@@ -175,7 +175,7 @@ export function TopToolbar() {
                       variant="ghost"
                       size="icon"
                       aria-label="Lưu hình học"
-                      className="h-9 w-9 text-muted-foreground hover:text-emerald-500 hover:bg-emerald-500/10"
+                      className="h-9 w-9 text-emerald-500 hover:text-emerald-600 hover:bg-emerald-500/10"
                     >
                       <Save className="w-4 h-4" />
                     </Button>
@@ -195,7 +195,7 @@ export function TopToolbar() {
                       variant="ghost"
                       size="icon"
                       aria-label="Xuất ảnh / LaTeX"
-                      className="h-9 w-9 text-muted-foreground hover:text-primary hover:bg-primary/10"
+                      className="h-9 w-9 text-primary hover:text-primary hover:bg-primary/10"
                       onClick={() => setIsCaptureOpen(true)}
                     >
                       <Download className="w-4 h-4" />
