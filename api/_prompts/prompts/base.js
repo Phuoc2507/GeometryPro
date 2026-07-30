@@ -37,6 +37,11 @@ QUY TẮC ĐẶT TOẠ ĐỘ THEO LOẠI HÌNH
    - Hình nón: mảng "cones" với apex, baseCenter, radius. ĐƯỜNG SINH (lines) của khối nón phải nối từ ĐỈNH nón đến các điểm nằm TRÊN ĐƯỜNG TRÒN ĐÁY của nón (tức là các điểm cách tâm đáy một khoảng bằng đúng bán kính). KHÔNG nối đỉnh nón với điểm nằm ngoài nón!
    - Mặt cong 3D (paraboloid, hyperboloid): mảng "surfaces" với type, center, params {a, b, c, vMin, vMax}
    - Đường cong 2D (parabola): mảng "curves" với type="parabola", params={a, b, c, xMin, xMax} (Phương trình y = ax^2 + bx + c). Đừng dùng lines để nối tay các điểm Parabol 2D, hãy dùng curves!
+   - Đồ thị/đường sinh y=f(x) TỔNG QUÁT (e^x, ln, √, lượng giác, phân thức): mảng "curves" với type="expr", expr="<biểu thức 1 biến x>", params={xMin, xMax}, plane (mặc định "xy"), fill (true nếu tô xuống trục). ĐỪNG nối tay bằng "lines" — luôn dùng curves type="expr" cho đường cong không phải đa thức.
+   - HÌNH PHẲNG giới hạn bởi 2 đường y=f(x), y=g(x) trên [a,b]: mảng "areaRegions" với outer={kind:"expr",expr:"f"}, inner={kind:"expr",expr:"g"}, domain:[a,b]. Nếu miền tựa trục hoành thì inner={kind:"const",c:0}.
+   - KHỐI TRÒN XOAY: THÊM 1 phần tử "revolutionSolids" với outer={kind:"expr",expr:"<r(x)>"}, inner (nếu vành khăn), domain:[a,b], axis:"Ox" (hoặc "Oy"), method:"disk"|"washer". TUYỆT ĐỐI KHÔNG kèm số thể tích/đáp số — chỉ vẽ hình (hệ thống tự tính mẫu & tô bán trong suốt).
+   - NGỮ PHÁP "expr" (bắt buộc theo đúng, sai sẽ bị bỏ): hàm được phép: sin, cos, tan, sqrt, abs, exp, ln, log (ln=log=logarit TỰ NHIÊN); hằng: pi, e; toán tử: + - * / ^ ; biến DUY NHẤT là x. PHẢI viết dấu nhân tường minh (2*x, KHÔNG "2x"); dùng exp(x/2) hoặc e^(x/2) CHỨ KHÔNG e^{x/2}; không ngoặc nhọn/không LaTeX. Ví dụ hợp lệ: "exp(x/2)*sqrt(x)", "ln(x)+1", "1/(x^2+1)", "sqrt(4-x^2)".
+   - VỆ SINH NHÃN đường cong: chỉ đặt label cho điểm CÓ NGHĨA (O, giao trục, cận a/b); điểm phụ trên đường sinh để label rỗng "".
    - Vật chuyển động: mảng "agents" với id, label, initialPosition, color. (Kết hợp với "timeline" nếu có).
    - Mặt phẳng (đa giác): mảng "planes" với id, pointIds, points, color, opacity. Chỉ tạo mặt biên thật sự của khối hoặc mặt cắt được đề bài nêu rõ; KHÔNG ghép các điểm không đồng phẳng và KHÔNG tạo mặt chạy xuyên qua lòng khối. pointIds phải tham chiếu đúng ID trong "points"; points phải là cùng các tọa độ theo thứ tự đi quanh đường biên, không đi theo đường chéo. Với không gian có nhiều điểm phụ, không dùng điểm ngoài biên để tạo plane. Dùng opacity 0.08–0.15 để tránh các mặt chồng lên nhau quá đậm.
 
@@ -77,7 +82,7 @@ OUTPUT FORMAT — CHỈ JSON THUẦN, KHÔNG MARKDOWN
     "lines": [{"id": "l1", "from": "A", "to": "B", "style": "solid"}, ...],
     "planes": [{"id": "p1", "pointIds": ["A","B","C"], "points": [{"x":-2,"y":-2,"z":0}, {"x":2,"y":-2,"z":0}, {"x":2,"y":2,"z":0}], "color": "#3b82f6", "opacity": 0.12}],
     "circles": [...], "spheres": [...], "cones": [...], "cylinders": [...],
-    "surfaces": [...], "curves": [...], "agents": [...], "timeline": {...}
+    "surfaces": [...], "curves": [...], "areaRegions": [...], "revolutionSolids": [...], "agents": [...], "timeline": {...}
   }
 }
 // --- LUẬT BỔ SUNG TỪ OPTIMIZER ---
