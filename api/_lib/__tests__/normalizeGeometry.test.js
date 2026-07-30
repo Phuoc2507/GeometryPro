@@ -101,3 +101,34 @@ describe('normalizeGeometryData plane references', () => {
     expect(normalized.planes[0].points).toHaveLength(4);
   });
 });
+
+describe('normalizeGeometryData surfaces — center BẮT BUỘC (chống crash canvas)', () => {
+  it('surface THIẾU center ⇒ mặc định gốc toạ độ (không để undefined lọt tới renderer)', () => {
+    const n = normalizeGeometryData({
+      name: 's', points: [], lines: [],
+      surfaces: [{ type: 'paraboloid', params: { a: 2, h: 4 } }],   // KHÔNG có center
+    });
+    expect(n.surfaces).toHaveLength(1);
+    expect(n.surfaces[0].center).toEqual({ x: 0, y: 0, z: 0 });
+    expect(n.surfaces[0].id).toBeTruthy();
+  });
+  it('surface center = id điểm ⇒ resolve về toạ độ điểm đó', () => {
+    const n = normalizeGeometryData({
+      name: 's', points: [{ id: 'O', x: 1, y: 2, z: 3 }], lines: [],
+      surfaces: [{ id: 'sf1', type: 'revolution', center: 'O', params: {} }],
+    });
+    expect(n.surfaces[0].center).toEqual({ x: 1, y: 2, z: 3 });
+  });
+  it('surface center object {x,y,z} + params thiếu ⇒ giữ center, params={}', () => {
+    const n = normalizeGeometryData({
+      name: 's', points: [], lines: [],
+      surfaces: [{ type: 'torus', center: { x: 0, y: 5, z: 0 } }],   // KHÔNG có params
+    });
+    expect(n.surfaces[0].center).toEqual({ x: 0, y: 5, z: 0 });
+    expect(n.surfaces[0].params).toEqual({});
+  });
+  it('không có surfaces ⇒ không chèn mảng rỗng', () => {
+    const n = normalizeGeometryData({ name: 's', points: [], lines: [] });
+    expect(n.surfaces).toBeUndefined();
+  });
+});

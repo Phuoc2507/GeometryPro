@@ -17,7 +17,7 @@ interface Props {
 /** Radius and height of the generating profile as a function of t ∈ [0, 1],
  *  in three-space (vertical axis = y), for each surface-of-revolution type. */
 function profileOf(surface: Surface3D): (t: number) => { radius: number; y: number } {
-  const p = surface.params;
+  const p = surface.params ?? {};
   switch (surface.type) {
     case 'paraboloid': {
       const a = p.a || 2;
@@ -67,7 +67,9 @@ export function AnimatedSurface({ surface, delay, isBuilding }: Props) {
     [surface.color, autoColor],
   );
   const opacity = surface.opacity ?? 1;
-  const { x: cx, y: cy, z: cz } = surface.center;
+  // center/params BẮT BUỘC theo type, nhưng dữ liệu runtime (LLM/geometry đã lưu) có thể thiếu ⇒ mặc định
+  // gốc toạ độ thay vì destructure undefined làm CRASH cả canvas (THREE mất context → màn hình trắng).
+  const { x: cx, y: cy, z: cz } = surface.center ?? { x: 0, y: 0, z: 0 };
 
   const profile = useMemo(() => profileOf(surface), [surface]);
 

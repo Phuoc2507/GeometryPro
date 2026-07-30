@@ -189,7 +189,21 @@ export function normalizeGeometryData(data) {
     });
   }
 
-  const annotationArrays = ['vectors', 'angles', 'rightAngles', 'equalMarks', 'parallelMarks', 'dynamicPoints', 'surfaces', 'curves', 'agents', 'measurements'];
+  // Surfaces (mặt cong tròn xoay) cần center + params HỢP LỆ: renderer AnimatedSurface destructure
+  // `surface.center` — thiếu ⇒ crash CẢ canvas (THREE mất context). LLM đôi khi quên center ⇒ resolve
+  // (id điểm hoặc {x,y,z}) rồi mặc định gốc toạ độ; params thiếu ⇒ {} (profileOf tự có default a/h/…).
+  if (Array.isArray(data.surfaces)) {
+    normalized.surfaces = data.surfaces
+      .filter((s) => s && typeof s === 'object')
+      .map((s, i) => ({
+        ...s,
+        id: s.id || `surface-${i}`,
+        center: resolveCenter(s.center) || { x: 0, y: 0, z: 0 },
+        params: (s.params && typeof s.params === 'object') ? s.params : {},
+      }));
+  }
+
+  const annotationArrays = ['vectors', 'angles', 'rightAngles', 'equalMarks', 'parallelMarks', 'dynamicPoints', 'curves', 'agents', 'measurements'];
   for (const key of annotationArrays) {
     if (Array.isArray(data[key]) && data[key].length > 0) {
       normalized[key] = data[key];
