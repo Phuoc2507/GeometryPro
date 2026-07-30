@@ -435,6 +435,99 @@ export const generateProjectedLatex = (
         });
     }
 
+    // Vẽ KHỐI TRÒN XOAY của chế độ Advance (revolutionSolids). Đây là field RIÊNG, KHÁC `surfaces`
+    // (renderer 3D dùng AnimatedRevolutionSolid với LatheGeometry), nên trước đây bản LaTeX bỏ trắng.
+    // Ta dựng lại đúng phép biến hình mesh để hình xuất khớp canvas: vài vĩ tuyến (vòng kín) + hai
+    // đường bao trái/phải (silhouette), cùng tông tím như surfaces. Xem [[verifying-frontend-geo3d]].
+    if (Array.isArray(geometry.revolutionSolids) && geometry.revolutionSolids.length > 0) {
+        latex += `\n  % Vẽ khối tròn xoay (Advance)\n`;
+        geometry.revolutionSolids.forEach(solid => {
+            if (!solid || typeof solid !== 'object' || solid.hidden) return;
+            try {
+                const aroundOy = solid.axis === 'Oy';
+                const axisY = typeof solid.axisY === 'number' ? solid.axisY : 0;
+                // Oy KHÔNG 'shell' ⇒ đĩa/vành khăn theo y (mẫu {x:y, r:bán kính}); còn lại vỏ trụ.
+                const oyDisk = aroundOy && solid.method !== 'shell';
+
+                // Biên dạng: ưu tiên mẫu engine {x,r} (đúng cho MỌI kiểu kể cả 'expr'); nếu thiếu thì tự
+                // lấy mẫu outer poly/sqrt/const trên domain ('expr' không parser ở trình duyệt ⇒ bỏ qua).
+                let samples: { x: number; r: number }[] =
+                    Array.isArray(solid.samples) ? solid.samples.filter(s => s && Number.isFinite(s.x) && Number.isFinite(s.r)) : [];
+                if (!samples.length) {
+                    const dom = Array.isArray(solid.domain) ? solid.domain : [0, 1];
+                    const da = Number(dom[0]) || 0, db = Number(dom[1]) || 1;
+                    const f = solid.outer;
+                    const evalP = (x: number): number => {
+                        if (!f) return NaN;
+                        if (f.kind === 'poly') return (f.coeffs || []).reduce((acc, c, i) => acc + c * x ** i, 0);
+                        if (f.kind === 'sqrt') return f.a * Math.sqrt(x) + f.b;
+                        if (f.kind === 'const') return f.c;
+                        return NaN; // 'expr'
+                    };
+                    const N = 48;
+                    for (let i = 0; i <= N; i++) {
+                        const x = da + ((db - da) * i) / N;
+                        const r = evalP(x);
+                        if (Number.isFinite(r)) samples.push({ x, r: Math.max(0, r) });
+                    }
+                }
+                if (!samples.length) return;   // không có gì để vẽ
+
+                // (x,r) → bán kính vòng ρ + điểm 3D (toạ độ TOÁN) theo góc quét, KHỚP mesh AnimatedRevolutionSolid:
+                //  • Ox: lathe quanh Y → xoay −90° quanh Z → tịnh tiến [0,axisY,0] ⇒ vòng bán kính |r−axisY|
+                //    trong mặt (y,z), tâm (x, 0, axisY).
+                //  • Oy vỏ trụ: lathe quanh Y (math-z là trục) ⇒ vòng bán kính x, ở độ cao z=r, trong mặt (x,y).
+                //  • Oy đĩa/vành: vòng bán kính r, ở độ cao z=x (x = toạ độ y của mẫu).
+                const ringOf = (s: { x: number; r: number }) => {
+                    if (aroundOy) {
+                        const rho = oyDisk ? Math.max(0, s.r) : Math.max(0, s.x);
+                        const z = oyDisk ? s.x : Math.max(0, s.r);
+                        return { rho, pt: (a: number) => ({ x: rho * Math.cos(a), y: rho * Math.sin(a), z }) };
+                    }
+                    const rho = Math.abs(s.r - axisY);
+                    return { rho, pt: (a: number) => ({ x: s.x, y: rho * Math.sin(a), z: axisY - rho * Math.cos(a) }) };
+                };
+
+                const ANG = 32;      // điểm mỗi vòng
+                const EPS = 0.02;    // bỏ vòng bán kính ~0 (đỉnh/đáy)
+                const leftPath: string[] = [];
+                const rightPath: string[] = [];
+                const ringPaths: string[][] = [];
+                const N = samples.length;
+                const ringEvery = Math.max(1, Math.floor(N / 5));   // giữ ~6 vĩ tuyến gợi khối
+                samples.forEach((s, si) => {
+                    const { rho, pt } = ringOf(s);
+                    if (rho <= EPS) return;
+                    const ring2d: { x: number; y: number }[] = [];
+                    for (let ai = 0; ai < ANG; ai++) {
+                        const a = (ai / ANG) * Math.PI * 2;
+                        ring2d.push(project3DTo2D(pt(a), cameraPos, target));
+                    }
+                    // Đường bao: điểm cực-trái/phải (theo x màn hình) của vòng — giống cách vẽ nón/trụ.
+                    let minI = 0, maxI = 0;
+                    for (let ai = 1; ai < ANG; ai++) {
+                        if (ring2d[ai].x < ring2d[minI].x) minI = ai;
+                        if (ring2d[ai].x > ring2d[maxI].x) maxI = ai;
+                    }
+                    leftPath.push(`(${formatCoord(ring2d[minI].x)}, ${formatCoord(ring2d[minI].y)})`);
+                    rightPath.push(`(${formatCoord(ring2d[maxI].x)}, ${formatCoord(ring2d[maxI].y)})`);
+                    if (si === 0 || si === N - 1 || si % ringEvery === 0) {
+                        ringPaths.push(ring2d.map(p => `(${formatCoord(p.x)}, ${formatCoord(p.y)})`));
+                    }
+                });
+
+                ringPaths.forEach(r => {
+                    latex += `  \\draw[purple!55, thick] ${r.join(' -- ')} -- cycle;\n`;
+                });
+                if (leftPath.length > 1) latex += `  \\draw[purple!70, thick] ${leftPath.join(' -- ')};\n`;
+                if (rightPath.length > 1) latex += `  \\draw[purple!70, thick] ${rightPath.join(' -- ')};\n`;
+            } catch (err) {
+                // Một khối lỗi KHÔNG được kéo sập cả bản vẽ; bỏ qua khối đó.
+                console.warn('[TikZ] bỏ qua khối tròn xoay lỗi:', err);
+            }
+        });
+    }
+
     // Vẽ các đường cong (Curves)
     if (geometry.curves && geometry.curves.length > 0) {
         latex += `\n  % Vẽ các đường cong 2D (Curves)\n`;
