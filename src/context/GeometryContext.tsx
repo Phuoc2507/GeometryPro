@@ -772,7 +772,27 @@ export function GeometryProvider({ children }: { children: React.ReactNode }) {
     // Advance gọi 1 lần (KHÔNG stream) ~30-40s. Nếu không mô phỏng tiến trình thì overlay đứng
     // hình ở 0% → trông như treo. Mô phỏng progress + hiện luôn "đề đang xử lý" vào ô streaming
     // (đề chữ user gõ, hoặc ghi chú đang đọc ảnh) để người dùng thấy máy đang chạy.
-    dispatch({ type: 'APPEND_STREAMING_TEXT', text: imageBase64 ? '📷 Đang đọc đề từ ảnh…\n' : `📝 ${prompt}\n` });
+    const streamSeed = imageBase64 ? '📷 Đang đọc đề từ ảnh…\n' : `📝 ${prompt}\n`;
+    dispatch({ type: 'APPEND_STREAMING_TEXT', text: streamSeed });
+    // Hiện bài ĐANG GIẢI ở thanh bên (mục "Đang xử lý") — Advance trước đây KHÔNG đẩy vào hàng đợi nên
+    // panel trống suốt lúc giải (khác Vẽ nhanh/Vẽ kỹ). Thêm 1 item 'processing' cho đồng nhất; feed tiến
+    // trình vào chính item vì ScanningOverlay ưu tiên đọc item đang active (activeQueueId). Item được dọn ở
+    // finally (mọi lối ra) — kết quả sống ở canvas + Recents nếu thành công, hoặc đã báo toast nếu lỗi.
+    const queueId = `q_${Date.now()}_${++queueIdCounter}`;
+    dispatch({
+      type: 'QUEUE_ADD',
+      item: {
+        id: queueId,
+        prompt: imageBase64 ? '📷 Đang đọc đề từ ảnh…' : prompt,
+        mode: 'advance',
+        status: 'processing',
+        progress: 0,
+        statusText: SCAN_STATUSES[0],
+        streamingText: streamSeed,
+        geometry: null,
+        createdAt: Date.now(),
+      },
+    });
     let progress = 0;
     let statusIndex = 0;
     const totalStatuses = SCAN_STATUSES.length;
@@ -787,7 +807,9 @@ export function GeometryProvider({ children }: { children: React.ReactNode }) {
       else if (progress < 75) statusIndex = 3;
       else if (progress < 90) statusIndex = 4;
       else statusIndex = 5;
-      dispatch({ type: 'UPDATE_SCAN_PROGRESS', progress, status: SCAN_STATUSES[Math.min(statusIndex, totalStatuses - 1)] });
+      const status = SCAN_STATUSES[Math.min(statusIndex, totalStatuses - 1)];
+      dispatch({ type: 'UPDATE_SCAN_PROGRESS', progress, status });
+      dispatch({ type: 'QUEUE_UPDATE', id: queueId, updates: { progress, statusText: status } });
     }, 500);
     try {
       const { data, error } = await invokeLocalApi('/api/analyze-advance', imageBase64 ? { imageBase64, prompt: prompt || undefined } : { prompt });
@@ -844,6 +866,9 @@ export function GeometryProvider({ children }: { children: React.ReactNode }) {
       }
     } finally {
       clearInterval(progressInterval);
+      // Dọn item hàng đợi ở MỌI lối ra (xong/lỗi/huỷ) để không treo card 'processing' lại thanh bên.
+      // QUEUE_REMOVE tự trả activeQueueId về null nếu đang trỏ tới item này (lượt mới không bị đụng).
+      dispatch({ type: 'QUEUE_REMOVE', id: queueId });
       if (scanSessionRef.current === sessionId) dispatch({ type: 'STOP_SCANNING' });
     }
   }, [refreshProfile, addToHistory]);
