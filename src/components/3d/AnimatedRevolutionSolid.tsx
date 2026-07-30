@@ -4,6 +4,13 @@ import { useThree } from '@react-three/fiber';
 import { useGeometry } from '@/context/GeometryContext';
 import type { ProfileFn, RevolutionSolid } from '@/types/geometry';
 
+// Quyết định vật liệu khối: dim (Advance) ưu tiên; translucent (Vẽ nhanh/Vẽ kỹ) bán trong suốt; else đục.
+export function solidMaterialForTest(solid: { dim?: boolean; translucent?: boolean }): { transparent: boolean; opacity: number } {
+  if (solid.dim) return { transparent: true, opacity: 0.25 };
+  if (solid.translucent) return { transparent: true, opacity: 0.55 };
+  return { transparent: false, opacity: 1 };
+}
+
 const SEGMENTS = 96;   // đủ mịn để mặt cong bóng liền
 const AXIAL_STEPS = 64;
 const DISK_COUNT = 14;
@@ -165,7 +172,7 @@ export default function AnimatedRevolutionSolid({ solid }: { solid: RevolutionSo
 
   const baseColor = solid.color ?? '#6366f1';
   const dim = !!solid.dim;
-  const opacity = dim ? 0.25 : 1;
+  const mat = solidMaterialForTest(solid);
   const diskOpacity = Math.max(0, 1 - advanceT) * 0.35;
 
   return (
@@ -186,8 +193,8 @@ export default function AnimatedRevolutionSolid({ solid }: { solid: RevolutionSo
           clearcoat={1}
           clearcoatRoughness={0.2}
           side={THREE.DoubleSide}
-          transparent={dim}
-          opacity={opacity}
+          transparent={mat.transparent}
+          opacity={mat.opacity}
           emissive={solid.highlight ? new THREE.Color(baseColor) : new THREE.Color('#000000')}
           emissiveIntensity={solid.highlight ? 0.25 : 0}
           clippingPlanes={[clipPlane]}
