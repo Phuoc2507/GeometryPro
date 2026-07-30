@@ -75,3 +75,46 @@ describe('expandExprGeometry', () => {
     expect(expandExprGeometry(g).points).toHaveLength(1);
   });
 });
+
+describe('expandExprGeometry · dọn điểm/đường lệch mặt phẳng (hình đồ-thị-phẳng)', () => {
+  it('hình có khối tròn xoay: bỏ point off-trục (y≠0) + line trỏ tới nó; giữ thứ TRÊN trục', () => {
+    const g = expandExprGeometry({
+      name: 'Vật thể tròn xoay quanh Ox',
+      points: [
+        { id: 'O', label: 'O', x: 0, y: 0, z: 0 },
+        { id: 'A', label: '1', x: 1, y: 0, z: 0 },
+        { id: 'E', label: 'x', x: 3.5, y: 0, z: 0 },
+        { id: 'C', label: 'C', x: 1, y: 1.6487, z: 0 }, // đỉnh đường cong: chiều cao nhét vào math-Y ⇒ lệch mặt phẳng
+        { id: 'D', label: 'D', x: 2, y: 3.8442, z: 0 },
+      ],
+      lines: [
+        { id: 'l_axis', from: 'O', to: 'E' },
+        { id: 'l_left', from: 'A', to: 'C' },
+        { id: 'l_right', from: 'B', to: 'D' },
+      ],
+      revolutionSolids: [{ id: 's', outer: { kind: 'expr', expr: 'exp(x/2)*sqrt(x)' }, domain: [1, 2], axis: 'Ox', method: 'disk' }],
+    });
+    expect(g.points.map((p) => p.id).sort()).toEqual(['A', 'E', 'O']); // C, D bị bỏ
+    expect(g.lines.map((l) => l.id)).toEqual(['l_axis']);              // l_left(→C), l_right(→D) bị bỏ
+  });
+
+  it('KHÔNG đụng hình 3D thường (không có đường expr/miền tô/khối): điểm off-trục GIỮ nguyên', () => {
+    const g = expandExprGeometry({
+      name: 'Hình chóp S.ABC',
+      points: [{ id: 'S', label: 'S', x: 1, y: 2, z: 3 }, { id: 'A', label: 'A', x: 0, y: 0, z: 0 }],
+      lines: [{ id: 'SA', from: 'S', to: 'A' }],
+    });
+    expect(g.points).toHaveLength(2); // không có mảng phẳng ⇒ không trigger ⇒ giữ S(1,2,3)
+    expect(g.lines).toHaveLength(1);
+  });
+
+  it('đường expr cũng trigger dọn (không chỉ khối tròn xoay)', () => {
+    const g = expandExprGeometry({
+      name: 'Đồ thị',
+      points: [{ id: 'V', label: 'V', x: 0, y: 5, z: 0 }, { id: 'O', label: 'O', x: 0, y: 0, z: 0 }],
+      lines: [],
+      curves: [{ id: 'c', type: 'expr', expr: 'x^2', params: { xMin: -2, xMax: 2 }, plane: 'xy' }],
+    });
+    expect(g.points.map((p) => p.id)).toEqual(['O']); // V(0,5,0) off-trục bị bỏ
+  });
+});

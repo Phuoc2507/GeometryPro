@@ -18,8 +18,8 @@ describe('curveThreePoints', () => {
 });
 
 describe('curveWorldPoints (toạ độ SAU <group rotation> — camera thấy)', () => {
-  it('xy: (x,y) → (x,−y,0) khớp render rot[π/2,0,0]', () => {
-    expect(curveWorldPoints([{ x: 1, y: 2 }], 'xy')[0]).toEqual({ x: 1, y: -2, z: 0 });
+  it('xy: (x,y) → (x,+y,0) khớp render rot[−π/2,0,0] (đồ thị TRÊN trục, trùng miền tô)', () => {
+    expect(curveWorldPoints([{ x: 1, y: 2 }], 'xy')[0]).toEqual({ x: 1, y: 2, z: 0 });
   });
   it('xz: (x,y) → (x,y,0) (group không xoay)', () => {
     expect(curveWorldPoints([{ x: 1, y: 2 }], 'xz')[0]).toEqual({ x: 1, y: 2, z: 0 });
@@ -70,13 +70,13 @@ describe('computeFitBounds', () => {
     });
     expect(b.cx).toBeCloseTo(5, 9); // (0..10)/2
   });
-  it('đồ thị y=f(x) THUẦN trên xy: camera căn theo THẾ GIỚI (y→−y), không lệch', () => {
-    // y∈[0,4] render tại world-Y∈[−4,0] (rot[π/2] ⇒ (x,0,y)→(x,−y,0)); tâm y phải ≈ −2, KHÔNG phải 0.
+  it('đồ thị y=f(x) THUẦN trên xy: camera căn theo THẾ GIỚI (y→+y), đồ thị TRÊN trục', () => {
+    // y∈[0,4] render tại world-Y∈[0,4] (rot[−π/2] ⇒ (x,0,y)→(x,+y,0)); tâm y ≈ +2, cùng hướng miền tô.
     const b = computeFitBounds({
       name: 'x', points: [], lines: [],
       curves: [{ id: 'c', type: 'expr', params: {}, plane: 'xy', samples: [{ x: 0, y: 0 }, { x: 1, y: 2 }, { x: 2, y: 4 }] }],
     })!;
-    expect(b.cy).toBeCloseTo(-2, 9);
+    expect(b.cy).toBeCloseTo(2, 9);
     expect(b.cz).toBeCloseTo(0, 9); // toàn bộ đường nằm trên mặt z=0 sau xoay
   });
 });

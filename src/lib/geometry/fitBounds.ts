@@ -29,9 +29,11 @@ export function curveThreePoints(
 
 // Đường cong SAU khi <group rotation> của AnimatedCurve xoay điểm về không gian THẾ GIỚI (camera thấy).
 // AnimatedCurve dựng điểm PRE-rotation qua curveThreePoints rồi bọc trong <group> xoay theo mặt phẳng:
-//   xy → rot[π/2,0,0]: (x,0,y) → (x,−y,0)  |  xz → rot[0,0,0]: (x,y,0) giữ nguyên  |
+//   xy → rot[−π/2,0,0]: (x,0,y) → (x,+y,0)  |  xz → rot[0,0,0]: (x,y,0) giữ nguyên  |
 //   yz → rot[0,−π/2,0]: (0,y,x) → (−x,y,0).
-// Camera phải bao theo toạ độ SAU xoay này (không thì đồ thị y=f(x) thuần bị lệch/khuất). Bản đồ đóng:
+// xy dùng +y (KHÔNG −y) để đồ thị y=f(x) nằm TRÊN trục, TRÙNG hướng miền tô (areaThreePoints cũng +y) —
+// nếu lệch dấu, đường cong và miền tô nó viền thành ẢNH GƯƠNG qua Ox. Camera phải bao theo toạ độ SAU
+// xoay này (không thì đồ thị bị lệch/khuất). Bản đồ đóng:
 export function curveWorldPoints(
   samples: { x: number; y: number }[] | undefined,
   plane: 'xy' | 'xz' | 'yz' = 'xy',
@@ -45,7 +47,7 @@ export function curveWorldPoints(
     if (t > progress) break;
     const { x, y } = samples[i];
     if (!fin(x) || !fin(y)) continue;
-    if (plane === 'xy') out.push({ x, y: -y, z: 0 });
+    if (plane === 'xy') out.push({ x, y, z: 0 });
     else if (plane === 'xz') out.push({ x, y, z: 0 });
     else out.push({ x: -x, y, z: 0 }); // yz
   }

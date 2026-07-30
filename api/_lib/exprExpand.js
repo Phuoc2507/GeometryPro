@@ -85,7 +85,41 @@ export function expandExprSolid(solid) {
   }
 }
 
-// Map toàn geometry. Bỏ phần tử null (drop fail-safe). Xoá key nếu rỗng sau khi nở.
+const AXIS_EPS = 1e-6;
+
+// Hình ĐỒ-THỊ-PHẲNG (có đường expr / miền tô / khối tròn xoay) được vẽ trong MẶT PHẲNG ĐỨNG three-Z=0
+// (đường cong/miền tô ở đó). Nhưng `points`/`lines` chung render theo quy ước math z-up → three=(x, z, y):
+// điểm có math-Y≠0 bị đẩy vào CHIỀU SÂU (three-Z=math-Y), lệch hẳn khỏi đường cong — thành đoạn/chấm
+// lửng lơ, lại kéo lệch khung camera. LLM hay phát điểm biên (đỉnh đường cong, cận x=a/x=b) với chiều
+// cao BỎ NHẦM vào math-Y. Dọn: trong hình đồ-thị-phẳng, bỏ point |y|>eps (ngoài trục) + line trỏ tới
+// point đã bỏ; GIỮ nhãn/vạch TRÊN trục (y≈0). CHỈ chạy khi có 3 mảng phẳng — hình khối 3D thường không
+// có nên KHÔNG bị đụng (điểm 3D như đỉnh chóp giữ nguyên).
+function sanitizePlanarFigurePointsLines(geometry) {
+  const isPlanar =
+    (Array.isArray(geometry.curves) && geometry.curves.length > 0) ||
+    (Array.isArray(geometry.areaRegions) && geometry.areaRegions.length > 0) ||
+    (Array.isArray(geometry.revolutionSolids) && geometry.revolutionSolids.length > 0);
+  if (!isPlanar) return geometry;
+
+  const out = { ...geometry };
+  const removed = new Set();
+  if (Array.isArray(geometry.points)) {
+    out.points = geometry.points.filter((p) => {
+      const y = Number(p && p.y);
+      const offAxis = Number.isFinite(y) && Math.abs(y) > AXIS_EPS;
+      if (offAxis && p && p.id != null) removed.add(p.id);
+      return !offAxis;
+    });
+  }
+  if (Array.isArray(geometry.lines)) {
+    out.lines = geometry.lines.filter((l) => !(l && (removed.has(l.from) || removed.has(l.to))));
+  }
+  return out;
+}
+
+// Map toàn geometry. Bỏ phần tử null (drop fail-safe). Xoá key nếu rỗng sau khi nở. Cuối cùng dọn
+// điểm/đường lệch mặt phẳng cho hình đồ-thị-phẳng (theo mảng SAU nở — nếu tất cả khối/đường bị drop thì
+// không còn là hình phẳng ⇒ không dọn).
 export function expandExprGeometry(geometry) {
   if (!geometry || typeof geometry !== 'object') return geometry;
   const out = { ...geometry };
@@ -101,5 +135,5 @@ export function expandExprGeometry(geometry) {
     const mapped = geometry.revolutionSolids.map(expandExprSolid).filter(Boolean);
     if (mapped.length) out.revolutionSolids = mapped; else delete out.revolutionSolids;
   }
-  return out;
+  return sanitizePlanarFigurePointsLines(out);
 }

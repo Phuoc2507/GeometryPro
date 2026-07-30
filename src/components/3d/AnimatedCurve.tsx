@@ -55,7 +55,7 @@ export function AnimatedCurve({ curve, delay, isBuilding, opacityFactor = 1 }: A
   let rotation: [number, number, number] = [0, 0, 0];
   const plane = curve.plane || 'xy';
   if (plane === 'xy') {
-    rotation = [Math.PI / 2, 0, 0]; // Math (x, y) -> Three (x, 0, y)
+    rotation = [-Math.PI / 2, 0, 0]; // rot[−π/2]: (x,0,y) → (x,+y,0) — đồ thị TRÊN trục, trùng miền tô
   } else if (plane === 'xz') {
     rotation = [0, 0, 0]; // Math (x, z) -> Three (x, y, 0)
   } else if (plane === 'yz') {
