@@ -97,14 +97,15 @@ export function UserMenu() {
     <>
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="sm" className="gap-2 px-2">
+        {/* Chỉ AVATAR — bỏ tên hiển thị vì nó lấy từ phần trước @ của email (lộ Gmail).
+            Tên/email đầy đủ chỉ hiện BÊN TRONG menu khi chính chủ mở ra. */}
+        <Button variant="ghost" size="icon" aria-label="Tài khoản" className="rounded-full">
           <Avatar className="w-7 h-7">
-            <AvatarImage src={profile?.avatar_url || undefined} alt={displayName} />
+            <AvatarImage src={profile?.avatar_url || undefined} alt="Ảnh đại diện" />
             <AvatarFallback className="text-xs bg-primary/10 text-primary">
               {initials}
             </AvatarFallback>
           </Avatar>
-          <span className="hidden md:inline max-w-24 truncate">{displayName}</span>
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-48">
