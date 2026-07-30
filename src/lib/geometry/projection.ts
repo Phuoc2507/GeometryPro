@@ -332,15 +332,23 @@ export const generateProjectedLatex = (
     if (geometry.surfaces && geometry.surfaces.length > 0) {
         latex += `\n  % Vẽ các mặt cong (Surfaces)\n`;
         geometry.surfaces.forEach(s => {
+            // Dữ liệu mặt cong đến từ LLM / lịch sử ẩn danh CHƯA qua normalizeGeometry ⇒ center/params
+            // có thể thiếu. Đọc thẳng `s.center.x` khi center=undefined sẽ THROW ngay trong useMemo dựng
+            // TikZ → React unmount → SẬP cả RightPanel/TeacherPage. Mặc định gốc toạ độ + params rỗng, và
+            // bọc try/catch để MỘT mặt lỗi không kéo sập toàn bộ hình. Xem [[verifying-frontend-geo3d]].
+            if (!s || typeof s !== 'object') return;
+            const center = s.center ?? { x: 0, y: 0, z: 0 };
+            const params = s.params ?? {};
+            try {
             if (s.type === 'hyperboloid') {
-                const a = s.params.a || 2;
-                const b = s.params.b || 2;
-                const c = s.params.c || 1.5;
-                const vMin = s.params.vMin || -0.327;
-                const vMax = s.params.vMax || 1.098;
-                const cx = s.center.x;
-                const cy = s.center.y;
-                const cz = s.center.z;
+                const a = params.a || 2;
+                const b = params.b || 2;
+                const c = params.c || 1.5;
+                const vMin = params.vMin || -0.327;
+                const vMax = params.vMax || 1.098;
+                const cx = center.x;
+                const cy = center.y;
+                const cz = center.z;
 
                 const getP = (u: number, v: number) => {
                     return {
@@ -395,7 +403,7 @@ export const generateProjectedLatex = (
                     const ring2d: { x: number; y: number }[] = [];
                     for (let ai = 0; ai < ANG; ai++) {
                         const angle = (ai / ANG) * Math.PI * 2;
-                        const p3d = revolutionPoint(s.center, along, radius, angle, horizontal);
+                        const p3d = revolutionPoint(center, along, radius, angle, horizontal);
                         ring2d.push(project3DTo2D(p3d, cameraPos, target));
                     }
                     // Đường bao: điểm cực tiểu / cực đại theo x màn hình của vòng này.
@@ -419,6 +427,10 @@ export const generateProjectedLatex = (
                 });
                 if (leftPath.length > 1) latex += `  \\draw[purple!70, thick] ${leftPath.join(' -- ')};\n`;
                 if (rightPath.length > 1) latex += `  \\draw[purple!70, thick] ${rightPath.join(' -- ')};\n`;
+            }
+            } catch (err) {
+                // Một mặt cong hỏng KHÔNG được làm sập cả bản vẽ; bỏ qua mặt đó.
+                console.warn('[TikZ] bỏ qua mặt cong lỗi:', err);
             }
         });
     }

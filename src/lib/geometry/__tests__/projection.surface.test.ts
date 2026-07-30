@@ -72,6 +72,26 @@ describe('generateProjectedLatex · mặt tròn xoay (BUG: trước đây không
     expect(latex).toMatch(/purple!(55|70), thick\]/);
   });
 
+  it('CHỐNG CRASH: surface THIẾU center (lịch sử ẩn danh) KHÔNG throw, sập cả bảng', () => {
+    const noCenter = { id: 'x', type: 'revolution', curve: 'parabola', axis: [1, 0, 0],
+      params: { a: 1, b: 0, c: 0, xMin: 0, xMax: 2 } } as unknown as Surface3D; // center vắng
+    expect(() => generateProjectedLatex(baseGeom(noCenter), CAM, TARGET)).not.toThrow();
+  });
+
+  it('CHỐNG CRASH: surface THIẾU params và hyperboloid thiếu center đều không throw', () => {
+    const noParams = { id: 'y', type: 'revolution', center: { x: 0, y: 0, z: 0 } } as unknown as Surface3D;
+    const hyperNoCenter = { id: 'z', type: 'hyperboloid', params: { a: 1, c: 1.5 } } as unknown as Surface3D;
+    expect(() => generateProjectedLatex(baseGeom(noParams), CAM, TARGET)).not.toThrow();
+    expect(() => generateProjectedLatex(baseGeom(hyperNoCenter), CAM, TARGET)).not.toThrow();
+  });
+
+  it('CHỐNG CRASH: phần tử surface null/không phải object bị bỏ qua', () => {
+    const geom = { name: 't', points: [], lines: [], surfaces: [null, undefined, 'bad', parabolaOx] } as unknown as GeometryData;
+    expect(() => generateProjectedLatex(geom, CAM, TARGET)).not.toThrow();
+    // Mặt hợp lệ vẫn được vẽ dù có phần tử rác đứng trước.
+    expect(generateProjectedLatex(geom, CAM, TARGET)).toMatch(/purple!(55|70), thick\]/);
+  });
+
   it('hyperboloid GIỮ nhánh cũ (vẫn vẽ vòng + kinh tuyến purple)', () => {
     const hyper: Surface3D = {
       id: 'h', type: 'hyperboloid', center: { x: 0, y: 0, z: 0 },

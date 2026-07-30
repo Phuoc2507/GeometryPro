@@ -77,16 +77,18 @@ export function profileOf(surface: Surface3D): (t: number) => { radius: number; 
  * Khớp phép quay của renderer 3D: local +Y → math +X khi nằm ngang.
  */
 export function revolutionPoint(
-  center: { x: number; y: number; z: number },
+  center: { x: number; y: number; z: number } | undefined | null,
   along: number,
   r: number,
   angle: number,
   horizontal: boolean,
 ): { x: number; y: number; z: number } {
+  // center có thể undefined với dữ liệu runtime chưa chuẩn hoá ⇒ mặc định gốc toạ độ, không throw.
+  const cx = center?.x ?? 0, cy = center?.y ?? 0, cz = center?.z ?? 0;
   const cos = Math.cos(angle);
   const sin = Math.sin(angle);
   if (horizontal) {
-    return { x: center.x + along, y: center.y + r * cos, z: center.z + r * sin };
+    return { x: cx + along, y: cy + r * cos, z: cz + r * sin };
   }
-  return { x: center.x + r * cos, y: center.y + r * sin, z: center.z + along };
+  return { x: cx + r * cos, y: cy + r * sin, z: cz + along };
 }
