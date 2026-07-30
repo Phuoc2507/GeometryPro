@@ -26,6 +26,13 @@ export function surfaceIsHorizontalAxis(surface: Surface3D): boolean {
   return false;
 }
 
+/** Độ mờ của ĐƯỜNG viền mặt tròn xoay. Mặt chỉ vẽ bằng kinh/vĩ tuyến (không tô mesh), nên opacity
+ *  thấp từ LLM (vd 0.15) làm đường gần như vô hình trên nền tối. Nâng sàn để luôn đủ rõ mà vẫn nhạt
+ *  hơn nét khối đặc (opacity=1). */
+export function surfaceLineOpacity(surface: Surface3D): number {
+  return Math.max(0.6, surface.opacity ?? 1);
+}
+
 /** Radius and height of the generating profile as a function of t ∈ [0, 1],
  *  in three-space (axis of revolution = local +y), for each surface-of-revolution type. */
 export function profileOf(surface: Surface3D): (t: number) => { radius: number; y: number } {
@@ -92,7 +99,7 @@ export function AnimatedSurface({ surface, delay, isBuilding }: Props) {
     () => (autoColor ? (surface.color || '#8b5cf6') : '#94a3b8'),
     [surface.color, autoColor],
   );
-  const opacity = surface.opacity ?? 1;
+  const lineOpacity = surfaceLineOpacity(surface);
   // center/params BẮT BUỘC theo type, nhưng dữ liệu runtime (LLM/geometry đã lưu) có thể thiếu ⇒ mặc định
   // gốc toạ độ thay vì destructure undefined làm CRASH cả canvas (THREE mất context → màn hình trắng).
   const { x: cx, y: cy, z: cz } = surface.center ?? { x: 0, y: 0, z: 0 };
@@ -147,8 +154,8 @@ export function AnimatedSurface({ surface, delay, isBuilding }: Props) {
 
   return (
     <group ref={groupRef} position={[cx, cz, cy]} rotation={rotation}>
-      {/* Outline meridians (left/right edges of the apparent contour). */}
-      <ProfileMeridians groupRef={groupRef} profile={profile} color={color} opacity={opacity} />
+      {/* Outline meridians (left/right edges of the apparent contour) — nét đậm nhất, định hình bao. */}
+      <ProfileMeridians groupRef={groupRef} profile={profile} color={color} opacity={lineOpacity} lineWidth={2.2} />
 
       {/* Parallels: front arc solid, arc behind the surface dashed. */}
       {parallels.map((ring, i) => (
@@ -158,7 +165,8 @@ export function AnimatedSurface({ surface, delay, isBuilding }: Props) {
           radius={ring.radius}
           y={ring.y}
           color={color}
-          opacity={opacity * 0.9}
+          opacity={lineOpacity * 0.85}
+          lineWidth={1.8}
           hiddenWhen={() => true}
         />
       ))}

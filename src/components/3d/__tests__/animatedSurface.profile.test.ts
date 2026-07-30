@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { profileOf, surfaceIsHorizontalAxis } from '../AnimatedSurface';
+import { profileOf, surfaceIsHorizontalAxis, surfaceLineOpacity } from '../AnimatedSurface';
 import type { Surface3D } from '@/types/geometry';
 
 /** Case Vẽ nhanh: paraboloid quanh Ox, y=x² trên [0,2] (Câu: quay (H): y=x², y=0, x=2 quanh Ox). */
@@ -33,6 +33,14 @@ describe('AnimatedSurface · nhận diện trục quay', () => {
     expect(surfaceIsHorizontalAxis({ ...parabolaOx, axis: 'Ox' })).toBe(true);
     expect(surfaceIsHorizontalAxis({ ...parabolaOx, axis: undefined })).toBe(false);
     expect(surfaceIsHorizontalAxis({ ...parabolaOx, axis: [0, 0, 1] })).toBe(false);
+  });
+});
+
+describe('AnimatedSurface · độ rõ đường viền', () => {
+  it('opacity thấp (0.15 từ LLM) được nâng sàn ≥0.6; opacity cao giữ nguyên', () => {
+    expect(surfaceLineOpacity({ ...parabolaOx, opacity: 0.15 })).toBeCloseTo(0.6, 9);
+    expect(surfaceLineOpacity({ ...parabolaOx, opacity: 0.9 })).toBeCloseTo(0.9, 9);
+    expect(surfaceLineOpacity({ ...parabolaOx, opacity: undefined })).toBeCloseTo(1, 9);
   });
 });
 
