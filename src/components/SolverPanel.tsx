@@ -115,18 +115,30 @@ function splitSentences(text: string): string[] {
 }
 
 /**
- * Đề bài do người dùng dán / đọc từ ảnh thường chứa LaTeX THÔ, không có $...$
- * (vd "A. \frac{\sqrt{3}a^3}{9}."). Tự bọc các "mảnh LaTeX" (token chứa \ ^ _ { })
- * vào $...$ để render đẹp như lời giải. Nếu đã có $ (lời giải AI) thì giữ nguyên.
+ * Đề bài / giải thích do AI xuất đôi khi chứa LaTeX THÔ, KHÔNG có $...$
+ * (vd "\frac{MG}{MS} = \frac{1}{3} \text{ và } \frac{MI}{MD} = \frac{1}{3}").
+ * Tự bọc TRỌN cụm LaTeX vào $...$ để KaTeX render. Xử lý được:
+ *   • ngoặc lồng nhiều tầng: \frac{a\sqrt{3}}{2}, \sqrt{\frac{1}{2}}
+ *   • \text{ và } (khoảng trắng/chữ Việt trong ngoặc)
+ *   • biến có mũ/chỉ số: a^2, x_1
+ * KHÔNG nuốt chữ tiếng Việt (chỉ nối biến 1 chữ khi có mũ/chỉ số, không nối từ ≥2 chữ).
+ * Nếu văn bản đã có $ (lời giải chuẩn) thì giữ nguyên.
  */
 function autoMathWrap(text: string): string {
   if (!text || text.includes('$')) return text;
-  return text.replace(/\S+/g, (tok) => {
-    const m = tok.match(/^(.*?)([.,;]*)$/);        // tách dấu câu đuôi (. , ;) khỏi phần công thức
-    const core = m ? m[1] : tok;
-    const tail = m ? m[2] : '';
-    if (core && /[\\^_{}]/.test(core)) return `$${core}$${tail}`;
-    return tok;
+  const B0 = String.raw`\{[^{}]*\}`;
+  const B1 = String.raw`\{(?:[^{}]|${B0})*\}`;
+  const B2 = String.raw`\{(?:[^{}]|${B1})*\}`;                  // ngoặc lồng tới ~3 tầng
+  const ATOM = String.raw`\\[a-zA-Z]+(?:\s*${B2})*`;            // \frac{..}{..}, \sqrt{..}, \text{ .. }
+  const VAR = String.raw`[A-Za-z][\^_](?:${B2}|[A-Za-z0-9]+)`;  // a^3, x_1, a^{n+1}
+  const PIECE = `(?:${ATOM}|${VAR}|${B2}|\\d+(?:\\.\\d+)?|[=+\\-*/^_<>(),.|])`;
+  const RUN = new RegExp(`(?:${ATOM}|${VAR})(?:\\s*${PIECE})*`, 'g');
+  return text.replace(RUN, (m) => {
+    const mm = m.match(/^([\s\S]*?)([\s.,;]*)$/);              // đẩy dấu câu/khoảng trắng ĐUÔI ra ngoài $...$
+    const core = mm ? mm[1] : m;
+    const tail = mm ? mm[2] : '';
+    if (!core || !/[\\^_]/.test(core)) return m;               // chỉ bọc khi thật sự có yếu tố LaTeX
+    return `$${core}$${tail}`;
   });
 }
 
@@ -249,8 +261,8 @@ function StepCard({ step, index, constructedIds, gated }: StepCardProps) {
         </button>
       ) : (
         <>
-          {/* Giải thích (chữ + công thức inline) */}
-          <MathText text={step.explanation} className="text-sm text-muted-foreground leading-relaxed mt-2.5" />
+          {/* Giải thích (chữ + công thức inline). autoMathWrap: bọc LaTeX thô nếu AI quên $...$ */}
+          <MathText text={autoMathWrap(step.explanation)} className="text-sm text-muted-foreground leading-relaxed mt-2.5" />
 
           {/* Công thức khối */}
           {step.formula && <FormulaBlock formula={step.formula} />}
