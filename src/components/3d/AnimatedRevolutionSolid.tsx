@@ -171,7 +171,6 @@ export default function AnimatedRevolutionSolid({ solid }: { solid: RevolutionSo
   }
 
   const baseColor = solid.color ?? '#6366f1';
-  const dim = !!solid.dim;
   const mat = solidMaterialForTest(solid);
   const diskOpacity = Math.max(0, 1 - advanceT) * 0.35;
 
