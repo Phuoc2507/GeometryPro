@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import { useThree } from '@react-three/fiber';
 import { useGeometry } from '@/context/GeometryContext';
 import type { ProfileFn, RevolutionSolid } from '@/types/geometry';
+import { revolutionPhase, sweepIndexCount, buildBladeRegion } from '@/lib/geometry/revolutionAnim';
 
 // Quyết định vật liệu khối: dim (Advance) ưu tiên; translucent (Vẽ nhanh/Vẽ kỹ) bán trong suốt; else đục.
 export function solidMaterialForTest(solid: { dim?: boolean; translucent?: boolean }): { transparent: boolean; opacity: number } {
@@ -13,7 +14,6 @@ export function solidMaterialForTest(solid: { dim?: boolean; translucent?: boole
 
 const SEGMENTS = 96;   // đủ mịn để mặt cong bóng liền
 const AXIAL_STEPS = 64;
-const DISK_COUNT = 14;
 
 function evalProfile(f: ProfileFn, x: number): number {
   switch (f.kind) {
@@ -45,33 +45,20 @@ function outerSamples(solid: RevolutionSolid, steps: number) {
   return profileSamplesForTest(solid.outer, solid.domain, steps);
 }
 
-// Nội suy tuyến tính bán kính tại x từ mảng mẫu {x, r} (đã sắp theo x tăng dần).
-function interpRadius(samples: { x: number; r: number }[], x: number): number {
-  if (!samples.length) return 0;
-  if (x <= samples[0].x) return Math.max(0, samples[0].r);
-  const last = samples[samples.length - 1];
-  if (x >= last.x) return Math.max(0, last.r);
-  for (let i = 1; i < samples.length; i++) {
-    if (x <= samples[i].x) {
-      const p = samples[i - 1], q = samples[i];
-      const t = (x - p.x) / (q.x - p.x || 1);
-      return Math.max(0, p.r + t * (q.r - p.r));
-    }
-  }
-  return Math.max(0, last.r);
-}
-
 export default function AnimatedRevolutionSolid({ solid }: { solid: RevolutionSolid }) {
   const { state } = useGeometry();
   const advanceT = state.advanceT ?? 0;
   const { gl } = useThree();
-  gl.localClippingEnabled = true; // bật cắt cục bộ để lộ dần
+  gl.localClippingEnabled = true; // bật cắt cục bộ cho lưỡi phẳng "vẽ dần" (giai đoạn 1)
 
   const [a, b] = solid.domain;
   const aroundOy = solid.axis === 'Oy';
   const axisY = solid.axisY ?? 0;   // trục quay DỜI ngang y=axisY (chỉ Ox); 0 ⇒ quay quanh chính Ox
 
   const oyDisk = aroundOy && solid.method !== 'shell';   // Oy bằng ĐĨA/VÀNH KHĂN theo y (đường x=g(y))
+
+  // Nhịp animation: [0, END] vẽ miền phẳng; [END, 1] quay 0°→360° tạo khối.
+  const ph = revolutionPhase(advanceT);
 
   const geometry = useMemo(() => {
     const outer = outerSamples(solid, AXIAL_STEPS);
@@ -135,56 +122,66 @@ export default function AnimatedRevolutionSolid({ solid }: { solid: RevolutionSo
     return new THREE.LatheGeometry(pts, SEGMENTS);
   }, [solid, a, b, aroundOy, oyDisk, axisY]);
 
-  const clipPlane = useMemo(() => new THREE.Plane(new THREE.Vector3(-1, 0, 0), 0), []);
+  // "Lưỡi phẳng" = miền kinh tuyến sinh khối (ShapeGeometry). Vòng khớp CHÍNH XÁC hệ đầu-vào Lathe
+  // (x=bán kính, y=cao) nên khi đặt lệch góc [0, φ−π/2, 0] nó trùng đúng lát φ của khối.
+  const bladeGeometry = useMemo(() => {
+    const outer = outerSamples(solid, AXIAL_STEPS);
+    const inner = solid.innerSamples && solid.innerSamples.length
+      ? solid.innerSamples.map((s) => ({ radius: Math.max(0, s.r), axial: s.x }))
+      : null;
+    const region = buildBladeRegion({ outer, inner, domain: solid.domain, aroundOy, oyDisk, axisY });
+    if (region.length < 3) return null;
+    const shape = new THREE.Shape(region.map((p) => new THREE.Vector2(p.x, p.y)));
+    return new THREE.ShapeGeometry(shape);
+  }, [solid, aroundOy, oyDisk, axisY]);
 
-  // Chiều cao lớn nhất của biên dạng (để cắt lộ theo trục Y khi quay quanh Oy).
+  // Chiều cao lớn nhất của biên dạng (để "vẽ dần" lưỡi phẳng theo trục Y khi quay quanh Oy vỏ trụ).
   const maxHeight = useMemo(() => {
     const s = solid.samples;
     if (!s || !s.length) return 1;
     return Math.max(1e-3, ...s.map((p) => Math.max(0, p.r)));
   }, [solid]);
 
-  const disks = useMemo(() => {
-    const outer = solid.samples && solid.samples.length
-      ? solid.samples
-      : outerSamples(solid, AXIAL_STEPS).map((p) => ({ x: p.axial, r: p.radius }));
-    const arr: { x: number; r: number }[] = [];
-    for (let i = 0; i < DISK_COUNT; i++) {
-      const x = a + ((b - a) * (i + 0.5)) / DISK_COUNT;
-      arr.push({ x, r: Math.max(1e-3, interpRadius(outer, x)) });
-    }
-    return arr;
-  }, [solid, a, b]);
+  // Mặt phẳng cắt "vẽ dần" lưỡi phẳng ở GIAI ĐOẠN 1 (world-space; lưỡi lúc này ở góc 0).
+  const bladeClip = useMemo(() => new THREE.Plane(new THREE.Vector3(-1, 0, 0), 0), []);
 
   if (solid.hidden) return null;
 
-  // Cắt lộ dần: quanh Ox lộ theo x (trái→phải); quanh Oy lộ theo chiều cao/miền y (dưới→lên).
-  const xCut = a + (b - a) * advanceT;
-  if (aroundOy) {
-    clipPlane.normal.set(0, -1, 0);
-    // Vỏ trụ: khối cao 0→maxHeight ⇒ lộ theo maxHeight. Đĩa/vành khăn theo y: khối trải trên miền
-    // y=[a,b] (có thể âm) ⇒ lộ dọc theo chính miền đó (a→b).
-    clipPlane.constant = oyDisk ? a + (b - a) * advanceT : maxHeight * advanceT;
-  } else {
-    clipPlane.normal.set(-1, 0, 0);
-    clipPlane.constant = xCut;
+  // ── Khối: lộ mặt theo GÓC quay bằng drawRange (rẻ, không dựng lại mesh mỗi frame). GĐ1 ⇒ 0 (ẩn). ──
+  const totalIndices = geometry.index ? geometry.index.count : 0;
+  geometry.setDrawRange(0, sweepIndexCount(totalIndices, ph.sweepFrac));
+
+  // ── Lưỡi phẳng: GĐ1 hiện & "vẽ dần" (clip a→b); GĐ2 quay tới góc φ rồi mờ dần khi sắp kín khối. ──
+  const FADE_START = 0.75;
+  const bladeOpacity = ph.phase === 1
+    ? 0.7
+    : 0.7 * (1 - Math.max(0, Math.min(1, (ph.sweepFrac - FADE_START) / (1 - FADE_START))));
+
+  if (ph.phase === 1) {
+    if (aroundOy && !oyDisk) {
+      bladeClip.normal.set(0, -1, 0);
+      bladeClip.constant = maxHeight * ph.drawFrac;   // vỏ trụ: lộ theo chiều cao
+    } else if (aroundOy) {
+      bladeClip.normal.set(0, -1, 0);
+      bladeClip.constant = a + (b - a) * ph.drawFrac;  // đĩa/vành khăn Oy: lộ theo miền y
+    } else {
+      bladeClip.normal.set(-1, 0, 0);
+      bladeClip.constant = a + (b - a) * ph.drawFrac;  // Ox: lộ trái→phải theo trục
+    }
   }
+  const bladeClipPlanes = ph.phase === 1 ? [bladeClip] : undefined;
 
   const baseColor = solid.color ?? '#6366f1';
   const mat = solidMaterialForTest(solid);
-  const diskOpacity = Math.max(0, 1 - advanceT) * 0.35;
 
+  // Nhóm ngoài mang phép biến đổi đặt khối vào thế giới (Ox: xoay để trục lathe trùng Ox + tịnh tiến
+  // lên y=axisY nếu dời trục; Oy: giữ nguyên). Cả khối lẫn lưỡi phẳng là con để xoay đồng bộ.
   return (
-    <group>
-      {/* Khối bóng liền — Ox: xoay để trục lathe trùng Ox; Oy: giữ nguyên (lathe quanh Y). Cắt lộ dần.
-          Trục quay dời y=k ⇒ tịnh tiến khối lên [0, axisY, 0] để trục nằm đúng đường thẳng y=k. */}
-      <mesh
-        geometry={geometry}
-        position={aroundOy ? [0, 0, 0] : [0, axisY, 0]}
-        rotation={aroundOy ? [0, 0, 0] : [0, 0, -Math.PI / 2]}
-        castShadow
-        receiveShadow
-      >
+    <group
+      position={aroundOy ? [0, 0, 0] : [0, axisY, 0]}
+      rotation={aroundOy ? [0, 0, 0] : [0, 0, -Math.PI / 2]}
+    >
+      <mesh geometry={geometry} castShadow receiveShadow>
         <meshPhysicalMaterial
           color={baseColor}
           roughness={0.25}
@@ -196,21 +193,25 @@ export default function AnimatedRevolutionSolid({ solid }: { solid: RevolutionSo
           opacity={mat.opacity}
           emissive={solid.highlight ? new THREE.Color(baseColor) : new THREE.Color('#000000')}
           emissiveIntensity={solid.highlight ? 0.25 : 0}
-          clippingPlanes={[clipPlane]}
         />
       </mesh>
 
-      {/* Lát mờ minh hoạ tích phân (chỉ cho trục Ox KHÔNG dời; biến mất khi kết đông). Trục dời y=k thì
-          bỏ lát (chúng dựng quanh y=0, bán kính chưa dời ⇒ sẽ lệch) — khối bóng liền đã đủ minh hoạ. */}
-      {!aroundOy && axisY === 0 && diskOpacity > 0.01 &&
-        disks
-          .filter((d) => d.x <= xCut)
-          .map((d, i) => (
-            <mesh key={i} position={[d.x, 0, 0]} rotation={[0, 0, Math.PI / 2]}>
-              <cylinderGeometry args={[d.r, d.r, ((b - a) / DISK_COUNT) * 0.85, 40]} />
-              <meshBasicMaterial color="#f59e0b" transparent opacity={diskOpacity} />
-            </mesh>
-          ))}
+      {/* Lưỡi phẳng sinh khối. Đặt lệch góc φ−π/2 để trùng lát φ hiện tại của khối (base −π/2: hệ
+          shape x=bán kính→trục Z, y=cao→Y, khớp lát φ=0 của Lathe). GĐ1 ở góc 0 và được clip "vẽ dần". */}
+      {bladeGeometry && bladeOpacity > 0.02 && (
+        <group rotation={[0, ph.angle - Math.PI / 2, 0]}>
+          <mesh geometry={bladeGeometry}>
+            <meshBasicMaterial
+              color={baseColor}
+              side={THREE.DoubleSide}
+              transparent
+              opacity={bladeOpacity}
+              depthWrite={false}
+              clippingPlanes={bladeClipPlanes}
+            />
+          </mesh>
+        </group>
+      )}
     </group>
   );
 }
