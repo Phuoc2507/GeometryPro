@@ -35,4 +35,16 @@ describe('scaleGeometry · co samples đồng bộ với points', () => {
     const out = scaleGeometry(small)!;
     expect(out.revolutionSolids![0].samples![1]).toMatchObject({ x: 40, r: 10 });
   });
+  it('hình méo THIẾU domain (>20) không ném — giữ nguyên domain', () => {
+    const broken = {
+      name: 'big', points: [{ id: 'A', label: 'A', x: 40, y: 0, z: 0 }], lines: [],
+      // domain bị bỏ (payload LLM méo); trước đây scaleDomain deref d[0] → ném NGOÀI ErrorBoundary.
+      revolutionSolids: [{ id: 's', outer: { kind: 'expr', expr: 'x' }, axis: 'Ox', method: 'disk', samples: [{ x: 0, r: 0 }, { x: 40, r: 10 }] }],
+      areaRegions: [{ id: 'a', outer: { kind: 'expr', expr: 'x' }, inner: { kind: 'const', c: 0 }, samples: [{ x: 0, top: 0, bot: 0 }, { x: 40, top: 20, bot: 0 }] }],
+    } as unknown as GeometryData;
+    expect(() => scaleGeometry(broken)).not.toThrow();
+    const out = scaleGeometry(broken)!;
+    expect(out.revolutionSolids![0].domain).toBeUndefined();
+    expect(out.revolutionSolids![0].samples![1]).toMatchObject({ x: 8, r: 2 }); // samples vẫn co
+  });
 });

@@ -150,14 +150,16 @@ export function scaleGeometry(geometry: GeometryData | null): GeometryData | nul
     }),
     revolutionSolids: normalized.revolutionSolids?.map((solid) => ({
       ...solid,
-      domain: scaleDomain(solid.domain),
+      domain: Array.isArray(solid.domain) ? scaleDomain(solid.domain) : solid.domain, // hình méo thiếu domain → giữ nguyên, không deref
+
       ...(solid.axisY !== undefined ? { axisY: solid.axisY / factor } : {}),
       ...(Array.isArray(solid.samples) ? { samples: solid.samples.map(scaleXR) } : {}),
       ...(Array.isArray(solid.innerSamples) ? { innerSamples: solid.innerSamples.map(scaleXR) } : {}),
     })),
     areaRegions: normalized.areaRegions?.map((area) => ({
       ...area,
-      domain: scaleDomain(area.domain),
+      domain: Array.isArray(area.domain) ? scaleDomain(area.domain) : area.domain, // méo thiếu domain → giữ nguyên
+
       ...(Array.isArray(area.samples) ? { samples: area.samples.map(scaleArea) } : {}),
     })),
   };

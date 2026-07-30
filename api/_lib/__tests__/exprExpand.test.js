@@ -47,6 +47,15 @@ describe('expandExprSolid', () => {
     const s = expandExprSolid({ id: 's2', outer: { kind: 'poly', coeffs: [0, 0, 1] }, inner: { kind: 'const', c: 0 }, domain: [0, 2], axis: 'Ox', method: 'washer' });
     expect(Array.isArray(s.innerSamples)).toBe(true);
   });
+  it('CHỐT AN TOÀN: volume LLM nhét vào bị XOÁ (nở mới)', () => {
+    const s = expandExprSolid({ id: 's3', outer: { kind: 'expr', expr: 'x' }, domain: [0, 2], axis: 'Ox', method: 'disk', volume: { value: 8.377, verified: true } });
+    expect(s.samples.length).toBeGreaterThanOrEqual(2);
+    expect(s.volume).toBeUndefined();
+  });
+  it('CHỐT AN TOÀN: volume bị XOÁ cả ở nhánh idempotent (đã translucent)', () => {
+    const pre = { id: 's4', outer: { kind: 'expr', expr: 'x' }, domain: [0, 2], axis: 'Ox', method: 'disk', translucent: true, samples: [{ x: 0, r: 0 }, { x: 2, r: 2 }], volume: { value: 8.377, verified: true } };
+    expect(expandExprSolid(pre).volume).toBeUndefined();
+  });
 });
 
 describe('expandExprGeometry', () => {

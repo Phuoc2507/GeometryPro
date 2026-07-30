@@ -27,6 +27,31 @@ export function curveThreePoints(
   return out;
 }
 
+// Đường cong SAU khi <group rotation> của AnimatedCurve xoay điểm về không gian THẾ GIỚI (camera thấy).
+// AnimatedCurve dựng điểm PRE-rotation qua curveThreePoints rồi bọc trong <group> xoay theo mặt phẳng:
+//   xy → rot[π/2,0,0]: (x,0,y) → (x,−y,0)  |  xz → rot[0,0,0]: (x,y,0) giữ nguyên  |
+//   yz → rot[0,−π/2,0]: (0,y,x) → (−x,y,0).
+// Camera phải bao theo toạ độ SAU xoay này (không thì đồ thị y=f(x) thuần bị lệch/khuất). Bản đồ đóng:
+export function curveWorldPoints(
+  samples: { x: number; y: number }[] | undefined,
+  plane: 'xy' | 'xz' | 'yz' = 'xy',
+  progress = 1,
+): XYZ[] {
+  if (!Array.isArray(samples)) return [];
+  const out: XYZ[] = [];
+  const n = samples.length;
+  for (let i = 0; i < n; i++) {
+    const t = n > 1 ? i / (n - 1) : 0;
+    if (t > progress) break;
+    const { x, y } = samples[i];
+    if (!fin(x) || !fin(y)) continue;
+    if (plane === 'xy') out.push({ x, y: -y, z: 0 });
+    else if (plane === 'xz') out.push({ x, y, z: 0 });
+    else out.push({ x: -x, y, z: 0 }); // yz
+  }
+  return out;
+}
+
 // Khối tròn xoay: hộp bao AN TOÀN (hơi rộng chút cũng chấp nhận — camera không mất hình). Ox: trục ∥
 // Three-X trên [x0,x1], bán kính ±R quanh Three-Y=axisY & Three-Z=0. Oy: trục ∥ Three-Y, bán kính ±R.
 export function revolutionThreePoints(solid: {
@@ -74,7 +99,7 @@ export function areaThreePoints(area: { samples?: { x: number; top: number; bot:
 export function extraFitPoints(geometry: GeometryData | null): XYZ[] {
   if (!geometry) return [];
   const pts: XYZ[] = [];
-  for (const c of geometry.curves ?? []) pts.push(...curveThreePoints(c.samples, c.plane, 1));
+  for (const c of geometry.curves ?? []) pts.push(...curveWorldPoints(c.samples, c.plane, 1));
   for (const a of geometry.areaRegions ?? []) pts.push(...areaThreePoints(a));
   for (const s of geometry.revolutionSolids ?? []) pts.push(...revolutionThreePoints(s));
   return pts;

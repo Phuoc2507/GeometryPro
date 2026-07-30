@@ -63,7 +63,9 @@ export function expandExprArea(area) {
 export function expandExprSolid(solid) {
   if (!solid || typeof solid !== 'object') return null;
   const hasSamples = Array.isArray(solid.samples) && solid.samples.length >= 2;
-  if (hasSamples && solid.translucent) return solid; // idempotent
+  // volume: undefined = chốt AN TOÀN — Vẽ nhanh/Vẽ kỹ CHỈ VẼ, không bao giờ kèm số thể tích/đáp số dù
+  // LLM có nhét vào (kể cả nhánh idempotent đã translucent). Xoá tận gốc trước khi ra renderer.
+  if (hasSamples && solid.translucent) return { ...solid, volume: undefined }; // idempotent
   const { outer, inner, domain } = solid;
   if (!outer || !Array.isArray(domain) || domain.length !== 2) return solid;
   const a = Number(domain[0]), b = Number(domain[1]);
@@ -71,7 +73,7 @@ export function expandExprSolid(solid) {
   try {
     const samples = hasSamples ? solid.samples : sampleProfile(outer, [a, b]);
     if (!samples || samples.length < 2) return null;
-    const out = { ...solid, samples, translucent: true };
+    const out = { ...solid, samples, translucent: true, volume: undefined };
     if (inner) {
       out.innerSamples = Array.isArray(solid.innerSamples) && solid.innerSamples.length >= 2
         ? solid.innerSamples
