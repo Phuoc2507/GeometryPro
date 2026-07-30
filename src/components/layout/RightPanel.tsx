@@ -11,6 +11,7 @@ import { wrapTikzAsDocument } from '@/lib/geometry/latexDocument';
 import { computeProperties } from '@/lib/geometry/calculations';
 import { cn } from '@/lib/utils';
 import { scaleGeometry } from '@/lib/geometry/scaleGeometry';
+import { projectScene } from '@/lib/advanceProject';
 import { CaptureModal } from '@/components/CaptureModal';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { SolverContent, ResizeHandle } from '@/components/SolverPanel';
@@ -32,10 +33,24 @@ function PanelContent() {
   const camera = useCameraOptional();
   const cameraStateContext = useCameraStateOptional();
 
+  // Ở chế độ Advance, HÌNH TRÊN CANVAS = base + cờ hiển thị của BƯỚC hiện tại (projectScene): các phần
+  // tử như revolutionSolids trong base mặc định `hidden:true`, chỉ hiện khi bước lộ ra. Bản LaTeX phải
+  // dựng từ CÙNG hình đó, không phải base thô — nếu không khối tròn xoay (đang hiện trên canvas) sẽ bị
+  // bỏ trắng trong LaTeX vì ở base nó vẫn hidden. Bài thường (advanceScene=null) giữ nguyên base.
+  const effectiveGeometry = useMemo(() => {
+    const g = context?.state.geometry;
+    if (!g) return null;
+    const scene = context?.state.advanceScene;
+    if (scene && scene.base && Array.isArray(scene.steps)) {
+      return projectScene(g, scene.steps, context?.state.currentStep ?? 0);
+    }
+    return g;
+  }, [context?.state.geometry, context?.state.advanceScene, context?.state.currentStep]);
+
   const scaledGeometry = useMemo(() => {
-    if (!context?.state.geometry) return null;
-    return scaleGeometry(context.state.geometry);
-  }, [context?.state.geometry]);
+    if (!effectiveGeometry) return null;
+    return scaleGeometry(effectiveGeometry);
+  }, [effectiveGeometry]);
 
   const properties = useMemo(() => {
     if (!context?.state.geometry) return null;
@@ -89,8 +104,8 @@ function PanelContent() {
   // TikZ follows only the settled camera. Live camera updates therefore redraw
   // the lightweight SVG without rebuilding the source dozens of times a second.
   const dynamicLatex = useMemo(() => {
-    const geometry = context?.state.geometry;
-    if (!geometry || !settledFixedCamera) return geometry?.latexCode || '';
+    const geometry = effectiveGeometry;
+    if (!geometry || !settledFixedCamera) return context?.state.geometry?.latexCode || '';
     return generateProjectedLatex(
       scaledGeometry || geometry,
       settledFixedCamera.cameraPos,
@@ -100,6 +115,7 @@ function PanelContent() {
       tikzScale * (settledFixedCamera.zoom || 1)
     );
   }, [
+    effectiveGeometry,
     context?.state.geometry,
     context?.state.showPoints,
     scaledGeometry,

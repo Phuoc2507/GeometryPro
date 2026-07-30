@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { generateProjectedLatex, project3DTo2D } from '../projection';
-import type { GeometryData, RevolutionSolid } from '@/types/geometry';
+import { projectScene } from '@/lib/advanceProject';
+import type { GeometryData, RevolutionSolid, AdvanceStep } from '@/types/geometry';
 
 // Cùng quy tắc format toạ độ như projection.ts (không export nên chép lại để so khớp chuỗi).
 const fmt = (v: number): string => {
@@ -99,5 +100,39 @@ describe('generateProjectedLatex · khối tròn xoay Advance (revolutionSolids)
     } as unknown as GeometryData;
     expect(() => generateProjectedLatex(geom, CAM, TARGET)).not.toThrow();
     expect(generateProjectedLatex(geom, CAM, TARGET)).toMatch(/purple!(55|70), thick\]/);
+  });
+});
+
+// HỢP ĐỒNG END-TO-END (khoá lỗi "vẫn chưa được"): scene Advance lưu solid ở base với
+// hidden:true (mặc định). RightPanel PHẢI chiếu qua projectScene trước khi sinh LaTeX,
+// nếu không generator bỏ qua solid ẩn ⇒ không có vòng tròn. Test này khoá đúng chuỗi đó.
+describe('HỢP ĐỒNG: base ẩn → projectScene lộ → LaTeX vẽ vòng (khoá RightPanel)', () => {
+  const sceneBase = {
+    name: 'khối tròn xoay', points: [{ id: 'A', label: 'A', x: 0, y: 0, z: 0 }], lines: [],
+    revolutionSolids: [{ ...revOx, hidden: true }],
+  } as unknown as GeometryData;
+  const steps: AdvanceStep[] = [
+    { id: 's0', label: 'Đề bài', visibleIds: ['A'] },
+    { id: 's1', label: 'Dựng khối tròn xoay', visibleIds: ['A', 'sol'] },
+  ];
+
+  it('base thô (solid.hidden=true) ⇒ generator KHÔNG vẽ vòng nào', () => {
+    const latex = generateProjectedLatex(sceneBase, CAM, TARGET);
+    expect(latex).not.toMatch(/purple!(55|70), thick\]/);
+  });
+
+  it('projectScene ở bước ẩn (step 0) ⇒ vẫn KHÔNG vẽ (solid chưa lộ)', () => {
+    const g = projectScene(sceneBase, steps, 0);
+    expect(g.revolutionSolids?.[0].hidden).toBe(true);
+    expect(generateProjectedLatex(g, CAM, TARGET)).not.toMatch(/purple!(55|70), thick\]/);
+  });
+
+  it('projectScene ở bước lộ (step 1) ⇒ solid.hidden=false ⇒ generator VẼ vòng + đường bao', () => {
+    const g = projectScene(sceneBase, steps, 1);
+    expect(g.revolutionSolids?.[0].hidden).toBe(false);
+    const latex = generateProjectedLatex(g, CAM, TARGET);
+    expect(latex).toContain('Vẽ khối tròn xoay (Advance)');
+    expect(latex).toMatch(/purple!55, thick\].*-- cycle/);
+    expect((latex.match(/purple!70, thick\]/g) || []).length).toBeGreaterThanOrEqual(2);
   });
 });
