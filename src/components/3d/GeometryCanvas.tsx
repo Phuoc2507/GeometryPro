@@ -16,6 +16,7 @@ import {
   type CaptureHandler,
 } from '@/context/CameraContext';
 import { scaleGeometry } from '@/lib/geometry/scaleGeometry';
+import { computeFitBounds } from '@/lib/geometry/fitBounds';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import type { GeometryData } from '@/types/geometry';
 
@@ -29,30 +30,17 @@ function CameraFitter({ geometry, is2D }: { geometry: GeometryData | null; is2D?
   const prevNonceRef = useRef<number>(resetNonce);
 
   useEffect(() => {
-    if (!geometry?.points?.length) return;
-    const name = geometry.name || '';
+    const bounds = computeFitBounds(geometry);
+    if (!bounds) return;
+    const name = geometry?.name || '';
     const nonceChanged = resetNonce !== prevNonceRef.current;
     // Fit khi có hình MỚI, hoặc khi người dùng bấm "Đặt lại góc nhìn" (R / menu View).
     if (name === prevNameRef.current && !nonceChanged) return;
     prevNameRef.current = name;
     prevNonceRef.current = resetNonce;
 
-    // Bounding box in Three.js coords (math: z-up → three: y-up)
-    let minX = Infinity, maxX = -Infinity;
-    let minY = Infinity, maxY = -Infinity; // three Y = math Z
-    let minZ = Infinity, maxZ = -Infinity; // three Z = math Y
-
-    geometry.points.forEach((p) => {
-      const x = Number(p.x), y = Number(p.z), z = Number(p.y);
-      if (!isNaN(x)) { minX = Math.min(minX, x); maxX = Math.max(maxX, x); }
-      if (!isNaN(y)) { minY = Math.min(minY, y); maxY = Math.max(maxY, y); }
-      if (!isNaN(z)) { minZ = Math.min(minZ, z); maxZ = Math.max(maxZ, z); }
-    });
-
-    const cx = (minX + maxX) / 2;
-    const cy = (minY + maxY) / 2;
-    const cz = (minZ + maxZ) / 2;
-    const size = Math.max(maxX - minX, maxY - minY, maxZ - minZ, 2);
+    // bounds ở toạ độ Three (đã gộp points + samples của curve/area/solid).
+    const { cx, cy, cz, size, R } = bounds;
     if (is2D) {
       // Look from underneath to make X right and Y up (due to coordinate handedness)
       camera.position.set(cx, -10, cz);
@@ -60,14 +48,11 @@ function CameraFitter({ geometry, is2D }: { geometry: GeometryData | null; is2D?
       camera.up.set(0, 0, 1); // Three.js Z (Math Y) is Up
       if ((camera as THREE.OrthographicCamera).isOrthographicCamera) {
         const orthCamera = camera as THREE.OrthographicCamera;
-        // zoom to fit the size on the canvas
         orthCamera.zoom = Math.min(canvasSize.width, canvasSize.height) / (size * 1.2);
         orthCamera.updateProjectionMatrix();
       }
     } else {
-      // Ôm SÁT hình theo FOV + tỉ lệ khung nhìn để lấp đầy khung (màn dọc/mobile
-      // -> fit theo chiều hẹp), thay cho khoảng cách cố định cũ để bớt "trống".
-      const R = 0.5 * Math.hypot(maxX - minX, maxY - minY, maxZ - minZ) || 1;
+      // Ôm SÁT hình theo FOV + tỉ lệ khung nhìn (màn dọc/mobile -> fit theo chiều hẹp).
       const fov = (((camera as THREE.PerspectiveCamera).fov ?? 50) * Math.PI) / 180;
       const aspect = Math.max(0.1, canvasSize.width / Math.max(1, canvasSize.height));
       const distV = R / Math.tan(fov / 2);
@@ -82,7 +67,6 @@ function CameraFitter({ geometry, is2D }: { geometry: GeometryData | null; is2D?
     camera.updateProjectionMatrix();
 
     // Đồng bộ pose vào cameraState để CaptureModal/CameraTracker khớp góc nhìn.
-    // CameraTracker sẽ no-op vì camera đã ở đúng vị trí -> không lặp vô hạn.
     if (commitCameraState) {
       const pos = camera.position;
       const targetVec = new THREE.Vector3(cx, cy, cz);
