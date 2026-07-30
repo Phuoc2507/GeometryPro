@@ -40,6 +40,8 @@ export { entityTableToGeometryData } from './entityToGeometry';
 export { runAnalysis, runAny, AnalysisPlanSchema } from './analysis/runAnalysis';
 // Khối tròn xoay (Advance – rev-ox): builder cần chúng qua kernel-dist (không import .ts nguồn).
 export { buildAnalysisFigure } from './analysis/analysisFigure';
-export { evalProfile, revolutionVolumeDisk, buildRevolutionSolidOx, revolutionVolumeShellOy, buildRevolutionSolidOy, buildRevolutionSolidOyDisk } from './analysis/revolution';
+export { evalProfile, compileProfile, sampleProfile, revolutionVolumeDisk, buildRevolutionSolidOx, revolutionVolumeShellOy, buildRevolutionSolidOy, buildRevolutionSolidOyDisk } from './analysis/revolution';
 export { sectionK, sliceStackVolume, buildSliceStack, planarArea, buildAreaRegion } from './analysis/sliceVolume';
 export { buildPolyhedron, resolveSectionPoint, planeFrom3, sliceConvexPolyhedron, polygonArea3D, buildSectionCut } from './analysis/sectionCut';
+// Parser biểu thức 1 biến — dùng bởi api/_lib/exprExpand.js (nở đường cong 'expr' của Vẽ nhanh/Vẽ kỹ).
+export { parseExpr, evalExpr } from './analysis/expr';
