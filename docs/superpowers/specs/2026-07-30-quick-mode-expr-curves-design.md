@@ -1,8 +1,8 @@
-# Vẽ nhanh — Đường cong biểu thức & Khối tròn xoay mượt (expr curves)
+# Vẽ nhanh & Vẽ kỹ — Đường cong biểu thức & Khối tròn xoay mượt (expr curves)
 
 **Ngày:** 2026-07-30
-**Phạm vi:** Chế độ **Vẽ nhanh** (`drawMode: "quick"`) — route `api/analyze-geometry.js`.
-**Mục tiêu 1 câu:** Cho Vẽ nhanh vẽ **mọi đồ thị `y=f(x)` mượt** (kể cả `e^{x/2}·√x`, ln, lượng giác, phân thức) và, với bài tròn xoay, **dựng khối 3D mượt** — thay cho polyline 3 điểm gãy khúc + nhãn rối hiện nay.
+**Phạm vi:** **Vẽ nhanh + Vẽ kỹ** (`drawMode: "quick"` và `"detailed"`) — **cùng** route `api/analyze-geometry.js`, cùng `BASE_PROMPT`. (Advance có route riêng `analyze-advance.js`, đã tự vẽ mượt — không đụng.)
+**Mục tiêu 1 câu:** Cho Vẽ nhanh **và Vẽ kỹ** vẽ **mọi đồ thị `y=f(x)` mượt** (kể cả `e^{x/2}·√x`, ln, lượng giác, phân thức) và, với bài tròn xoay, **dựng khối 3D mượt** — thay cho polyline 3 điểm gãy khúc + nhãn rối hiện nay.
 
 ---
 
@@ -29,16 +29,17 @@
 ## 2. Kiến trúc
 
 ```
-LLM (quick) trả JSON geometry
+LLM (quick HOẶC detailed) trả JSON geometry
         │  curves:[{type:'expr', expr, params:{xMin,xMax}, plane, fill?}]
         │  revolutionSolids:[{outer:{kind:'expr',expr}, domain, axis, method}]
         ▼
 normalizeGeometryData  (giữ nguyên field expr / samples / revolutionSolids)
         ▼
-expandQuickExpr  ◄── helper MỚI, server-side, KHÔNG gọi LLM
+expandExprGeometry  ◄── helper MỚI, server-side, KHÔNG gọi LLM
+        │  chạy ở điểm CHUNG của route → phủ CẢ quick lẫn detailed (Vẽ nhanh + Vẽ kỹ)
         │  • curve type:'expr'      → compileProfile → sample [xMin,xMax] (~80 pt, bỏ non-finite) → curve.samples
         │  • revolutionSolids expr  → sampleProfile(outer/inner) → samples/innerSamples (bỏ non-finite)
-        │  • KHÔNG gán volume (Vẽ nhanh không khẳng định đáp số)
+        │  • KHÔNG gán volume (Vẽ nhanh/Vẽ kỹ không khẳng định đáp số)
         ▼
 trả về frontend
         ▼
@@ -46,7 +47,7 @@ AnimatedCurve            : có samples → vẽ Line mượt + fill Shape từ s
 AnimatedRevolutionSolid  : dựng Lathe từ samples (đã hỗ trợ sẵn)
 ```
 
-**Ranh giới an toàn:** Vẽ nhanh chỉ **vẽ hình theo biểu thức model đưa**; **không** tính/khẳng định thể tích (việc đó thuộc Advance). Không đụng cổng "Mức 3" (đó là cổng SHAPE của lời giải, không phải hình vẽ).
+**Ranh giới an toàn:** Vẽ nhanh & Vẽ kỹ chỉ **vẽ hình theo biểu thức model đưa**; **không** tính/khẳng định thể tích (việc đó thuộc Advance). Không đụng cổng "Mức 3" (đó là cổng SHAPE của lời giải, không phải hình vẽ).
 
 ---
 
@@ -61,14 +62,14 @@ AnimatedRevolutionSolid  : dựng Lathe từ samples (đã hỗ trợ sẵn)
 
 Backward-compat: chỉ thêm literal + field optional → code cũ (kiểm `type==='parabola'|…`) không đổi.
 
-### 3.2 Helper server MỚI — `api/_lib/quickExpand.js`
+### 3.2 Helper server MỚI — `api/_lib/exprExpand.js`
 - `expandExprCurve(curve)` → nếu `type==='expr'`: `compileProfile({kind:'expr',expr})`, lấy `N=80` mẫu đều trên `[xMin,xMax]`, **bỏ điểm `!isFinite(y)`**; gán `curve.samples`. Nếu <2 mẫu hữu hạn → trả `null` (drop curve, fail-safe). `parseExpr` ném lỗi → bắt, trả `null` (không crash route).
 - `expandExprSolid(solid)` → với `outer`/`inner` là `expr` (hoặc thiếu `samples`): `sampleProfile` → `samples`/`innerSamples`, lọc non-finite. **Không** gán `volume`.
-- `expandQuickExpr(geometry)` → map `geometry.curves` qua `expandExprCurve` (bỏ null), `geometry.revolutionSolids` qua `expandExprSolid` (bỏ null).
+- `expandExprGeometry(geometry)` → map `geometry.curves` qua `expandExprCurve` (bỏ null), `geometry.revolutionSolids` qua `expandExprSolid` (bỏ null). Idempotent: curve/solid đã có `samples` thì bỏ qua.
 - Import từ kernel entry. **Nếu** `compileProfile`/`sampleProfile`/`parseExpr` chưa export ở entry `kernel-dist` → export thêm + `npm run build:kernel` + commit `api/_lib/kernel-dist/index.mjs` (file này git-tracked).
 
-### 3.3 Route — `api/analyze-geometry.js`
-Sau `normalizeGeometryData`, TRƯỚC khi trả về (nhánh LLM quick): `geometry = expandQuickExpr(geometry)`.
+### 3.3 Route — `api/analyze-geometry.js` (phủ CẢ quick lẫn detailed)
+Vẽ nhanh (`quick`, dòng 238) và Vẽ kỹ (`detailed`, dòng 272) **chung route này**. Gọi `geometry = expandExprGeometry(geometry)` **một lần ở điểm CHUNG** — sau `normalizeGeometryData`, TRƯỚC khi trả response — để cả hai nhánh cùng được bung (không lặp code từng nhánh). Idempotent nên chạy 1 lần là đủ dù nhánh nào.
 Kiểm `normalizeGeometryData` **không** nuốt `expr` / `samples` / `revolutionSolids`; nếu nuốt → nới whitelist.
 
 ### 3.4 Renderer — `src/components/3d/AnimatedCurve.tsx`
@@ -77,7 +78,8 @@ Trong `useMemo` (dòng 47): nhánh mới **đặt trước** kiểm analytic —
 - `type==='expr'` mà thiếu samples → trả `{points:[], shapeGeometry:null}` (vẽ rỗng, không crash).
 - Nhánh parabola/cubic/rational **giữ nguyên**.
 
-### 3.5 Prompt — `api/_prompts/prompts/base.js` + `levels.js`
+### 3.5 Prompt — `api/_prompts/prompts/base.js` (DÙNG CHUNG cho Vẽ nhanh + Vẽ kỹ)
+Đặt phần dạy vào **`BASE_PROMPT`** (không phải `LEVEL_STATIC`) để **cả hai** chế độ cùng nhận. `LEVEL_STATIC`/`LEVEL_CINEMATIC` chỉ chỉnh mức chi tiết, không cần đụng.
 - Dạy: mọi đồ thị/đường sinh `y=f(x)` (kể cả e^x, ln, √, lượng giác, phân thức) → xuất `curves` `{type:'expr', expr, params:{xMin,xMax}, plane, fill?}`; **ngừng nối tay bằng `lines`**.
 - Kèm **bảng token `parseExpr` chấp nhận** (đọc `parseExpr` khi thực thi để chép ĐÚNG) + ví dụ `exp(x/2)*sqrt(x)`.
 - Bài **tròn xoay** → xuất thêm 1 `revolutionSolids` `{outer:{kind:'expr',expr}, domain:[a,b], axis:'Ox'|'Oy', method:'disk'}` (khối 3D); **không** kèm số thể tích.
@@ -100,16 +102,16 @@ Trong `useMemo` (dòng 47): nhánh mới **đặt trước** kiểm analytic —
 | Mẫu non-finite (ln≤0, cực 1/x, √âm) làm vỡ Line/Lathe | `expandQuickExpr` lọc `!isFinite`; <2 mẫu → drop. |
 | `normalizeGeometryData` nuốt field mới | Test round-trip + audit whitelist. |
 | Kernel entry chưa export sampler | Export + rebuild `kernel-dist` + commit (đã note). |
-| Quick mode "chậm đi" | Chỉ thêm sampling tất định (~vài chục phép tính); **không** thêm gọi LLM. |
+| Vẽ nhanh/Vẽ kỹ "chậm đi" | Chỉ thêm sampling tất định (~vài chục phép tính); **không** thêm gọi LLM. |
 
 ## 5. Ngoài phạm vi (YAGNI)
-- **Không** tính/khẳng định thể tích ở Vẽ nhanh (Advance lo).
+- **Không** tính/khẳng định thể tích ở Vẽ nhanh/Vẽ kỹ (Advance lo).
 - **Không** parser biểu thức ở frontend.
-- **Không** đụng Advance mode, Vẽ kỹ, hay manual mode.
+- **Không** đụng Advance mode hay manual mode.
 - **Không** refactor `AnimatedLine` / các curve analytic cũ.
 
 ## 6. Tiêu chí thành công
-1. Đề trong ảnh (`e^{x/2}√x` quanh Ox [1,2]) ở Vẽ nhanh → **đường sinh mượt + khối tròn xoay 3D mượt**, nhãn sạch.
+1. Đề trong ảnh (`e^{x/2}√x` quanh Ox [1,2]) ở **cả Vẽ nhanh lẫn Vẽ kỹ** → **đường sinh mượt + khối tròn xoay 3D mượt**, nhãn sạch.
 2. Đồ thị hàm phi-đa-thức bất kỳ (ln, sin, 1/x) vẽ mượt, không NaN/crash.
 3. `npm run build` xanh; unit test mới xanh; test cũ không vỡ.
-4. Không hồi quy Advance/Vẽ kỹ (Curve3D dùng chung, đổi backward-compat).
+4. Không hồi quy Advance & manual mode (Curve3D dùng chung, đổi backward-compat).
