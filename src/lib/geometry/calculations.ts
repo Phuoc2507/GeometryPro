@@ -195,6 +195,9 @@ export function angleBetweenPoints(vertex: Point3D, p1: Point3D, p2: Point3D): n
 
 // ═══ Format number nicely ═══
 export function fmt(n: number, decimals = 2): string {
+  // Toạ độ null/undefined/NaN (dữ liệu lỗi) KHÔNG được phép ném — nếu không sẽ trắng cả bảng
+  // (fmt được gọi trong initializer của useState ở CoordInput). Coi như 0.
+  if (typeof n !== 'number' || !Number.isFinite(n)) return '0';
   if (Number.isInteger(n)) return n.toString();
   return n.toFixed(decimals).replace(/\.?0+$/, '');
 }
