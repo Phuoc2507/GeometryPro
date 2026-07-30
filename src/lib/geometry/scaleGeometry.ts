@@ -95,6 +95,10 @@ export function scaleGeometry(geometry: GeometryData | null): GeometryData | nul
     y: point.y / factor,
     z: point.z / factor,
   });
+  const scaleXY = (s: { x: number; y: number }) => ({ ...s, x: s.x / factor, y: s.y / factor });
+  const scaleXR = (s: { x: number; r: number }) => ({ ...s, x: s.x / factor, r: s.r / factor });
+  const scaleArea = (s: { x: number; top: number; bot: number }) => ({ ...s, x: s.x / factor, top: s.top / factor, bot: s.bot / factor });
+  const scaleDomain = (d: [number, number]): [number, number] => [d[0] / factor, d[1] / factor];
 
   return {
     ...normalized,
@@ -140,7 +144,21 @@ export function scaleGeometry(geometry: GeometryData | null): GeometryData | nul
         if (params.numB !== undefined) params.numB /= factor;
         if (params.denA !== undefined) params.denA *= factor;
       }
-      return { ...curve, params };
+      const scaledCurve = { ...curve, params };
+      if (Array.isArray(curve.samples)) scaledCurve.samples = curve.samples.map(scaleXY);
+      return scaledCurve;
     }),
+    revolutionSolids: normalized.revolutionSolids?.map((solid) => ({
+      ...solid,
+      domain: scaleDomain(solid.domain),
+      ...(solid.axisY !== undefined ? { axisY: solid.axisY / factor } : {}),
+      ...(Array.isArray(solid.samples) ? { samples: solid.samples.map(scaleXR) } : {}),
+      ...(Array.isArray(solid.innerSamples) ? { innerSamples: solid.innerSamples.map(scaleXR) } : {}),
+    })),
+    areaRegions: normalized.areaRegions?.map((area) => ({
+      ...area,
+      domain: scaleDomain(area.domain),
+      ...(Array.isArray(area.samples) ? { samples: area.samples.map(scaleArea) } : {}),
+    })),
   };
 }
