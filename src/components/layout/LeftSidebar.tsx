@@ -166,6 +166,10 @@ function SidebarContent() {
 
   const queue = context?.state.queue || [];
   const activeId = context?.state.activeQueueId;
+  // Bài ĐANG MỞ = item có id khớp ?id trên URL (mọi đường nạp đều set ?id; đổi bài
+  // luôn kéo theo re-render vì state.geometry đổi nên đọc ở render là đủ tươi).
+  let activeHistoryId: string | null = null;
+  try { activeHistoryId = new URLSearchParams(window.location.search).get('id'); } catch { /* no window */ }
 
   const activeQueueItems = queue.filter(q => q.status !== 'error' && q.status !== 'done');
   
@@ -220,14 +224,24 @@ function SidebarContent() {
   };
 
   const renderHistoryItem = (item: HistoryItem) => {
+    const isActive = !!activeHistoryId && item.id === activeHistoryId;
     return (
-      <div 
+      <div
         key={item.id}
         onClick={() => handleLoadHistory(item)}
-        className="group relative flex items-center justify-between px-3 py-2 rounded-lg hover:bg-secondary/40 cursor-pointer transition-colors"
+        aria-current={isActive ? 'true' : undefined}
+        className={cn(
+          "group relative flex items-center justify-between px-3 py-2 rounded-lg cursor-pointer transition-colors",
+          isActive ? "bg-primary/12 ring-1 ring-inset ring-primary/40" : "hover:bg-secondary/40",
+        )}
       >
+        {/* Vạch nhấn bên trái cho bài đang mở */}
+        {isActive && <span className="absolute left-0 top-1.5 bottom-1.5 w-1 rounded-r-full bg-primary" />}
         <div className="flex-1 min-w-0 pr-2">
-          <p className="text-[15px] font-medium text-foreground overflow-hidden whitespace-nowrap text-clip">{item.name || "Hình không tên"}</p>
+          <p className={cn(
+            "text-[15px] font-medium overflow-hidden whitespace-nowrap text-clip",
+            isActive ? "text-primary" : "text-foreground",
+          )}>{item.name || "Hình không tên"}</p>
           {(() => {
             const dm = historyDrawMode(item);
             if (!dm) return null;
