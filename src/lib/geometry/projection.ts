@@ -1,5 +1,6 @@
 import { Line3D, Point3D, PointCoordinates } from '@/types/geometry';
 import { isLineDashed } from './hiddenLineDetection';
+import { profileOf, revolutionPoint, surfaceIsHorizontalAxis } from './surfaceProfile';
 
 export interface ProjectedPoint extends Point3D {
     projected: { x: number; y: number };
@@ -373,6 +374,51 @@ export const generateProjectedLatex = (
                     }
                     latex += `  \\draw[purple!40, dashed] ${pts.join(' -- ')};\n`;
                 }
+            } else {
+                // Mặt TRÒN XOAY tổng quát (paraboloid/torus/revolution — gồm đường sinh parabola của
+                // Vẽ nhanh). Dùng chung profileOf với renderer 3D nên hình LaTeX khớp canvas.
+                // Vẽ: (1) vài vĩ tuyến (vòng tròn) chiếu thành đa giác kín; (2) hai đường bao trái/phải
+                // (silhouette) nối các điểm cực-x của từng vòng — giống cách vẽ nón/trụ trong file này.
+                const profile = profileOf(s);
+                const horizontal = surfaceIsHorizontalAxis(s);
+                const T_STEPS = 24;   // số lát dọc trục
+                const ANG = 32;       // số điểm mỗi vòng
+                const EPS = 0.02;     // bỏ vòng bán kính ~0 (đỉnh)
+
+                // Mỗi lát: chiếu cả vòng, lưu điểm cực-trái/phải (theo x màn hình) để dựng đường bao.
+                const leftPath: string[] = [];
+                const rightPath: string[] = [];
+                const ringPaths: string[][] = [];
+                for (let ti = 0; ti <= T_STEPS; ti++) {
+                    const t = ti / T_STEPS;
+                    const { radius, y: along } = profile(t);
+                    const ring2d: { x: number; y: number }[] = [];
+                    for (let ai = 0; ai < ANG; ai++) {
+                        const angle = (ai / ANG) * Math.PI * 2;
+                        const p3d = revolutionPoint(s.center, along, radius, angle, horizontal);
+                        ring2d.push(project3DTo2D(p3d, cameraPos, target));
+                    }
+                    // Đường bao: điểm cực tiểu / cực đại theo x màn hình của vòng này.
+                    let minI = 0, maxI = 0;
+                    for (let ai = 1; ai < ANG; ai++) {
+                        if (ring2d[ai].x < ring2d[minI].x) minI = ai;
+                        if (ring2d[ai].x > ring2d[maxI].x) maxI = ai;
+                    }
+                    if (radius > EPS) {
+                        leftPath.push(`(${formatCoord(ring2d[minI].x)}, ${formatCoord(ring2d[minI].y)})`);
+                        rightPath.push(`(${formatCoord(ring2d[maxI].x)}, ${formatCoord(ring2d[maxI].y)})`);
+                    }
+                    // Giữ vài vĩ tuyến (kể cả hai đầu) làm nét ngang gợi khối tròn.
+                    if (radius > EPS && (ti === 0 || ti === T_STEPS || ti % 6 === 0)) {
+                        ringPaths.push(ring2d.map(p => `(${formatCoord(p.x)}, ${formatCoord(p.y)})`));
+                    }
+                }
+
+                ringPaths.forEach(r => {
+                    latex += `  \\draw[purple!55, thick] ${r.join(' -- ')} -- cycle;\n`;
+                });
+                if (leftPath.length > 1) latex += `  \\draw[purple!70, thick] ${leftPath.join(' -- ')};\n`;
+                if (rightPath.length > 1) latex += `  \\draw[purple!70, thick] ${rightPath.join(' -- ')};\n`;
             }
         });
     }
