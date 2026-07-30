@@ -6,6 +6,7 @@ import { Curve3D } from '@/types/geometry';
 import { getCssHslVar } from '@/lib/getCssHslVar';
 import { useAnimationOptional } from '@/context/AnimationContext';
 import { useGeometryOptional } from '@/context/GeometryContext';
+import { curveThreePoints } from '@/lib/geometry/fitBounds';
 
 interface AnimatedCurveProps {
   curve: Curve3D;
@@ -45,6 +46,41 @@ export function AnimatedCurve({ curve, delay, isBuilding, opacityFactor = 1 }: A
   });
 
   const { points, shapeGeometry } = useMemo(() => {
+    // Nhánh MỚI: engine đã gửi samples {x,y} (đường 'expr' hoặc bất kỳ) → vẽ thẳng, không eval/parser.
+    if (curve.samples && curve.samples.length >= 2) {
+      const planeS = curve.plane || 'xy';
+      const coords = curveThreePoints(curve.samples, planeS, progress);
+      const pts = coords.map((c) => new THREE.Vector3(c.x, c.y, c.z));
+      if (pts.length < 2) {
+        if (pts.length === 1) pts.push(pts[0].clone());
+        else {
+          const x0 = curve.samples[0].x;
+          pts.push(new THREE.Vector3(x0, 0, 0), new THREE.Vector3(x0, 0, 0));
+        }
+      }
+      let shapeGeo: THREE.ShapeGeometry | null = null;
+      if (curve.fill) {
+        const vec2Pts: THREE.Vector2[] = [];
+        const n = curve.samples.length;
+        for (let i = 0; i < n; i++) {
+          const t = n > 1 ? i / (n - 1) : 0;
+          if (t > progress) break;
+          const s = curve.samples[i];
+          if (!Number.isFinite(s.x) || !Number.isFinite(s.y)) continue;
+          vec2Pts.push(new THREE.Vector2(s.x, s.y));
+        }
+        if (vec2Pts.length > 2) {
+          const shape = new THREE.Shape();
+          shape.moveTo(vec2Pts[0].x, 0);
+          shape.lineTo(vec2Pts[0].x, vec2Pts[0].y);
+          for (let i = 1; i < vec2Pts.length; i++) shape.lineTo(vec2Pts[i].x, vec2Pts[i].y);
+          shape.lineTo(vec2Pts[vec2Pts.length - 1].x, 0);
+          shape.lineTo(vec2Pts[0].x, 0);
+          shapeGeo = new THREE.ShapeGeometry(shape);
+        }
+      }
+      return { points: pts, shapeGeometry: shapeGeo };
+    }
     if (curve.type !== 'parabola' && curve.type !== 'cubic' && curve.type !== 'rational') return { points: [], shapeGeometry: null };
     
     // We can extract xMin and xMax
