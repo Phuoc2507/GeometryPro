@@ -244,8 +244,12 @@ export interface Agent3D {
 
 export interface Curve3D extends AdvanceFlags {
   id: string;
-  type: 'parabola' | 'cubic' | 'rational';
+  type: 'parabola' | 'cubic' | 'rational' | 'expr';
   params: Record<string, number>; // e.g. {a, b, c, d, xMin, xMax}
+  /** Biểu thức 1 biến x (cùng ngữ pháp parseExpr: exp, sqrt, ln/log, sin/cos/tan, abs, pi, e, ^). */
+  expr?: string;
+  /** Mẫu {x,y} do engine tính sẵn (từ expr) ⇒ frontend vẽ Line mượt mà KHÔNG cần parser. */
+  samples?: { x: number; y: number }[];
   color?: string;
   style?: 'solid' | 'dashed';
   plane?: 'xy' | 'xz' | 'yz'; // Which mathematical plane the curve is drawn on
@@ -281,6 +285,8 @@ export interface RevolutionSolid extends AdvanceFlags {
   method: 'disk' | 'washer' | 'shell';
   volume?: Verified<number>;
   color?: string;
+  /** Vẽ nhanh/Vẽ kỹ: khối bán trong suốt (nhìn xuyên thấy đường sinh). Advance KHÔNG set ⇒ giữ khối đục. */
+  translucent?: boolean;
   // Mẫu biên dạng do engine tính sẵn ⇒ frontend dựng LatheGeometry mà KHÔNG cần parser biểu thức.
   samples?: { x: number; r: number }[];
   innerSamples?: { x: number; r: number }[];
