@@ -15,7 +15,7 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useGeometryOptional } from '@/context/GeometryContext';
 import { useCameraOptional } from '@/context/CameraContext';
-import { computeProperties } from '@/lib/geometry/calculations';
+import { computeProperties, isAnalysisFigure } from '@/lib/geometry/calculations';
 import { cn } from '@/lib/utils';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { SolverContent, ResizeHandle } from '@/components/SolverPanel';
@@ -67,7 +67,9 @@ function StudentPanelContent({ compact }: { compact?: boolean } = {}) {
         <div className="p-4 border-b border-border/50">
           <h2 className="font-semibold text-foreground">{state.geometry.name}</h2>
           <p className="text-xs text-muted-foreground mt-1">
-            {properties?.shapeType || 'Geometry'} • {state.geometry.points.length} đỉnh • {state.geometry.lines.length} cạnh
+            {/* Cảnh giải tích: chỉ hiện loại hình, bỏ "N đỉnh • N cạnh" (điểm mẫu đường sinh không phải đỉnh). */}
+            {properties?.shapeType || 'Geometry'}
+            {!isAnalysisFigure(state.geometry) && ` • ${state.geometry.points.length} đỉnh • ${state.geometry.lines.length} cạnh`}
           </p>
         </div>
       )}

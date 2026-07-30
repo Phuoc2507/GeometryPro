@@ -83,8 +83,49 @@ export interface GeometryProperties {
   radius?: number;
 }
 
+// ═══ Cảnh GIẢI TÍCH (Advance) — tròn xoay / thiết diện / hình phẳng ═══
+// Có bất kỳ field giải tích nào (revolutionSolids/sliceStacks/areaRegions/sectionCuts) ⇒
+// đây KHÔNG phải khối đa diện cổ điển. Base của nó chứa rất nhiều điểm mẫu đường sinh + khung
+// dây (tất cả z=0) chỉ để qua gate points>0; tuyệt đối không được coi là "đa giác phẳng".
+export function isAnalysisFigure(g: GeometryData): boolean {
+  return !!(
+    (g.revolutionSolids && g.revolutionSolids.length > 0) ||
+    (g.sliceStacks && g.sliceStacks.length > 0) ||
+    (g.areaRegions && g.areaRegions.length > 0) ||
+    (g.sectionCuts && g.sectionCuts.length > 0)
+  );
+}
+
+// Nhãn loại hình cho cảnh giải tích (ưu tiên theo field xuất hiện). null nếu không phải.
+function analysisShapeType(g: GeometryData): string | null {
+  if (g.revolutionSolids && g.revolutionSolids.length > 0) {
+    return g.revolutionSolids.some(s => s && s.axis === 'Oy')
+      ? 'Khối tròn xoay quanh Oy'
+      : 'Khối tròn xoay quanh Ox';
+  }
+  if (g.sliceStacks && g.sliceStacks.length > 0) return 'Vật thể (thiết diện)';
+  if (g.areaRegions && g.areaRegions.length > 0) return 'Hình phẳng';
+  if (g.sectionCuts && g.sectionCuts.length > 0) return 'Thiết diện';
+  return null;
+}
+
 export function computeProperties(geometry: GeometryData): GeometryProperties {
   const edgeLengths = computeEdgeLengths(geometry);
+
+  // Cảnh giải tích: trả loại hình đúng và KHÔNG đo trên điểm mẫu (shoelace các điểm z=0 là vô
+  // nghĩa — từng gây "Đa giác phẳng • Diện tích đáy 1.33" cho bài quay quanh Ox). Đáp số chính
+  // xác (thể tích/diện tích) do engine tự-kiểm, hiển thị ở tab "Giải bài".
+  const analysisShape = analysisShapeType(geometry);
+  if (analysisShape) {
+    return {
+      edgeLengths: [],
+      baseArea: null,
+      height: null,
+      volume: null,
+      totalSurfaceArea: null,
+      shapeType: analysisShape,
+    };
+  }
 
   // Check for special shapes first
   if (geometry.spheres && geometry.spheres.length > 0) {

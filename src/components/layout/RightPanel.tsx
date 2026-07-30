@@ -8,7 +8,7 @@ import { useGeometryOptional } from '@/context/GeometryContext';
 import { useCameraOptional, useCameraStateOptional, type CameraState } from '@/context/CameraContext';
 import { project3DTo2D, generateProjectedLatex } from '@/lib/geometry/projection';
 import { wrapTikzAsDocument } from '@/lib/geometry/latexDocument';
-import { computeProperties } from '@/lib/geometry/calculations';
+import { computeProperties, isAnalysisFigure } from '@/lib/geometry/calculations';
 import { cn } from '@/lib/utils';
 import { scaleGeometry } from '@/lib/geometry/scaleGeometry';
 import { projectScene } from '@/lib/advanceProject';
@@ -162,7 +162,9 @@ function PanelContent() {
       <div className="p-4 border-b border-border/50">
         <h2 className="font-semibold text-foreground">{state.geometry.name}</h2>
         <p className="text-xs text-muted-foreground mt-1">
-          {properties?.shapeType || 'Geometry'} • {state.geometry.points.length} đỉnh • {state.geometry.lines.length} cạnh
+          {/* Cảnh giải tích: chỉ hiện loại hình, bỏ "N đỉnh • N cạnh" (điểm mẫu đường sinh không phải đỉnh). */}
+          {properties?.shapeType || 'Geometry'}
+          {!isAnalysisFigure(state.geometry) && ` • ${state.geometry.points.length} đỉnh • ${state.geometry.lines.length} cạnh`}
         </p>
       </div>
 

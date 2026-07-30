@@ -11,7 +11,8 @@ import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { useGeometryOptional } from '@/context/GeometryContext';
-import { computeProperties, fmt } from '@/lib/geometry/calculations';
+import { computeProperties, fmt, isAnalysisFigure } from '@/lib/geometry/calculations';
+import { projectScene } from '@/lib/advanceProject';
 import { DynamicPointControls } from '@/components/DynamicPointControls';
 import { cn } from '@/lib/utils';
 
@@ -95,9 +96,35 @@ function VertexRow({ point, onUpdate, onUndo, onRedo }: {
 export function GeometryPropertiesTab() {
   const context = useGeometryOptional();
   const [copied, setCopied] = useState(false);
-  const geometry = context?.state.geometry ?? null;
+  const rawGeometry = context?.state.geometry ?? null;
+  const advanceScene = context?.state.advanceScene ?? null;
+  const currentStep = context?.state.currentStep ?? 0;
+
+  // Ở Advance, hình = base + cờ hiển thị của BƯỚC hiện tại (projectScene) — giống canvas & LaTeX.
+  // Base thô chứa điểm mẫu đường sinh ẩn (r_s*) không phải đỉnh hình; phải chiếu để đo/liệt kê
+  // đúng phần đang thấy. Bài thường (advanceScene=null) giữ nguyên base.
+  const geometry = useMemo(() => {
+    if (!rawGeometry) return null;
+    if (advanceScene && advanceScene.base && Array.isArray(advanceScene.steps)) {
+      return projectScene(rawGeometry, advanceScene.steps, currentStep);
+    }
+    return rawGeometry;
+  }, [rawGeometry, advanceScene, currentStep]);
 
   const properties = useMemo(() => (geometry ? computeProperties(geometry) : null), [geometry]);
+  const analysisFig = useMemo(() => (geometry ? isAnalysisFigure(geometry) : false), [geometry]);
+
+  // Đỉnh/cạnh để ĐẾM & LIỆT KÊ: ở Advance chỉ lấy phần ĐANG HIỆN (bỏ điểm mẫu/khung dây ẩn);
+  // bài thường giữ nguyên toàn bộ.
+  const inAdvance = !!advanceScene;
+  const listPoints = useMemo(
+    () => (geometry ? (inAdvance ? geometry.points.filter(p => !p.hidden) : geometry.points) : []),
+    [geometry, inAdvance],
+  );
+  const listLines = useMemo(
+    () => (geometry ? (inAdvance ? geometry.lines.filter(l => !l.hidden) : geometry.lines) : []),
+    [geometry, inAdvance],
+  );
 
   // Gán màu cho các NHÓM cạnh bằng nhau: cạnh sắp theo độ dài, mỗi độ dài lặp lại ≥2 lần được 1 màu.
   const edgeView = useMemo(() => {
@@ -143,12 +170,17 @@ export function GeometryPropertiesTab() {
               <Box className="w-3 h-3" /> {properties.shapeType}
             </span>
           )}
-          <span className="inline-flex items-center text-xs font-semibold px-2.5 py-1 rounded-full bg-secondary/60 text-muted-foreground border border-border/50">
-            {geometry.points.length} đỉnh
-          </span>
-          <span className="inline-flex items-center text-xs font-semibold px-2.5 py-1 rounded-full bg-secondary/60 text-muted-foreground border border-border/50">
-            {geometry.lines.length} cạnh
-          </span>
+          {/* Đỉnh/cạnh: ẩn với cảnh giải tích (tròn xoay/thiết diện/hình phẳng) — không có đỉnh hình học. */}
+          {!analysisFig && (
+            <>
+              <span className="inline-flex items-center text-xs font-semibold px-2.5 py-1 rounded-full bg-secondary/60 text-muted-foreground border border-border/50">
+                {listPoints.length} đỉnh
+              </span>
+              <span className="inline-flex items-center text-xs font-semibold px-2.5 py-1 rounded-full bg-secondary/60 text-muted-foreground border border-border/50">
+                {listLines.length} cạnh
+              </span>
+            </>
+          )}
         </div>
 
         {/* ─── Dynamic Point Sliders ─── */}
@@ -209,6 +241,8 @@ export function GeometryPropertiesTab() {
         )}
 
         {/* ─── Tọa độ đỉnh — SỬA ĐƯỢC TRỰC TIẾP ─── */}
+        {/* Ẩn cả khối khi không có đỉnh nào để hiện (cảnh giải tích: chỉ đường sinh/khối, không đỉnh). */}
+        {listPoints.length > 0 && (
         <div>
           <div className="flex items-center justify-between mb-1">
             <h3 className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
@@ -232,11 +266,12 @@ export function GeometryPropertiesTab() {
             <span className="text-center">x</span><span className="text-center">y</span><span className="text-center">z</span>
           </div>
           <div className="space-y-1">
-            {geometry.points.map((point) => (
+            {listPoints.map((point) => (
               <VertexRow key={point.id} point={point} onUpdate={context.updatePoint} onUndo={context.undo} onRedo={context.redo} />
             ))}
           </div>
         </div>
+        )}
 
         {/* Nâng cao — JSON + Prompt (dev/debug, thu gọn) */}
         <Collapsible>
