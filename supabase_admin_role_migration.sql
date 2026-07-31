@@ -58,7 +58,7 @@ with check (
 commit;
 
 -- ────────────────────────────────────────────────────────────────────────────
--- 3) CẤP QUYỀN ADMIN cho tài khoản đầu tiên.
+-- ► CẤP QUYỀN ADMIN cho tài khoản đầu tiên (chạy SAU khi đã đăng nhập ít nhất 1 lần).
 --    Bỏ comment dòng dưới, thay email đúng, rồi Run riêng câu này:
 --
 -- update public.profiles set role = 'admin'
