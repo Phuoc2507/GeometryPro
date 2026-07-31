@@ -4,6 +4,7 @@ import {
   formatSpecialPoints,
 } from './_lib/jsonHelpers.js';
 import { normalizeGeometryData } from './_lib/normalizeGeometry.js';
+import { ENGINE_FIGURE_VERSION, isStaleEngineCache } from './_lib/engineCacheVersion.js';
 // LƯU Ý: kernel-bridge được nạp ĐỘNG bên trong handler, KHÔNG import tĩnh ở đây.
 // Lý do: nó import từ api/_lib/kernel-dist/ — thư mục BỊ GITIGNORE, chỉ sinh ra bởi
 // `npm run build:kernel`. Nếu môi trường triển khai không sinh kịp, import tĩnh sẽ làm
@@ -118,8 +119,14 @@ async function handler(req, res) {
           .maybeSingle();
           
         if (data && data.response) {
-          console.log('Cache hit for prompt:', trimmedPrompt.substring(0, 50));
-          cachedResponse = data.response;
+          // Payload engine ('kernel') từ phiên bản HÌNH cũ hơn (vd cache TRƯỚC khi thêm `curves`) ⇒
+          // BỎ QUA để chạy lại engine phục vụ hình mới, thay vì phục vụ mãi hình cũ đã lỗi thời.
+          if (isStaleEngineCache(data.response)) {
+            console.log('Cache bỏ qua (engine payload hình cũ) cho prompt:', trimmedPrompt.substring(0, 50));
+          } else {
+            console.log('Cache hit for prompt:', trimmedPrompt.substring(0, 50));
+            cachedResponse = data.response;
+          }
         }
       } catch (err) {
         console.warn('Cache read error:', err.message);
@@ -202,6 +209,7 @@ async function handler(req, res) {
             },
             mode: drawMode,
             engine: 'kernel', // để đo tỉ lệ engine phục vụ so với luồng cũ
+            figureVersion: ENGINE_FIGURE_VERSION, // đóng dấu phiên bản HÌNH để cache cũ tự miss khi bump
           };
           if (promptHash && supabase) {
             supabase.from('ai_cache').insert([{
@@ -330,6 +338,7 @@ Hãy:
               },
               mode: drawMode,
               engine: 'kernel',
+              figureVersion: ENGINE_FIGURE_VERSION, // đóng dấu phiên bản HÌNH để cache cũ tự miss khi bump
             };
             if (promptHash && supabase) {
               supabase.from('ai_cache').insert([{
