@@ -7,6 +7,7 @@ import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { useGeometryOptional } from '@/context/GeometryContext';
 import { useCameraOptional, useCameraStateOptional, type CameraState } from '@/context/CameraContext';
 import { project3DTo2D, generateProjectedLatex } from '@/lib/geometry/projection';
+import { buildRevolutionSolidFigure } from '@/lib/geometry/revolutionSolidFigure';
 import { wrapTikzAsDocument } from '@/lib/geometry/latexDocument';
 import { computeProperties, isAnalysisFigure } from '@/lib/geometry/calculations';
 import { cn } from '@/lib/utils';
@@ -668,6 +669,39 @@ function PanelContent() {
                     return null;
                   });
 
+                  // 5b. Vẽ KHỐI TRÒN XOAY (revolutionSolids). Trước đây preview BỎ QUA hẳn field này ⇒ bài
+                  // "thể tích khối tròn xoay" hiện trên canvas 3D nhưng preview/LaTeX trống. Nay dùng CHUNG
+                  // helper với trình xuất TikZ nên hình preview KHỚP mã LaTeX xuất ra.
+                  const revolutionSolidsSvg = (scaledGeometry.revolutionSolids || []).map(solid => {
+                    if (!solid || solid.hidden) return null;
+                    let fig = null;
+                    try {
+                      fig = buildRevolutionSolidFigure(solid, fixedCamera.cameraPos, fixedCamera.target, project3DTo2D);
+                    } catch { fig = null; }
+                    if (!fig) return null;
+                    const S = (p: { x: number; y: number }) => `${(p.x * scale).toFixed(2)} ${(-p.y * scale).toFixed(2)}`;
+                    const pathOf = (pts: { x: number; y: number }[], close = false) =>
+                      pts.map((p, i) => `${i === 0 ? 'M' : 'L'} ${S(p)}`).join(' ') + (close ? ' Z' : '');
+                    const [upper, lower] = fig.silhouettes;
+                    return (
+                      <g key={solid.id}>
+                        {/* Thân khối tô nhạt */}
+                        <path d={pathOf(fig.body, true)} fill="#a855f7" fillOpacity={0.16} stroke="none" />
+                        {/* Trục quay nét đứt */}
+                        <path d={pathOf([fig.axis[0], fig.axis[1]])} stroke="#9ca3af" strokeWidth={1} strokeDasharray="4,3" fill="none" />
+                        {/* Elip nắp hai đầu: nửa gần nét liền, nửa xa nét đứt */}
+                        {fig.caps.map((arc, i) => (
+                          <path key={`cap${i}`} d={pathOf(arc.pts)} fill="none"
+                            stroke={arc.near ? '#7e22ce' : '#c084fc'} strokeWidth={arc.near ? 1.5 : 1}
+                            strokeDasharray={arc.near ? undefined : '5,4'} />
+                        ))}
+                        {/* Hai đường sinh nét liền */}
+                        {upper.length > 1 && <path d={pathOf(upper)} stroke="#7e22ce" strokeWidth={2} fill="none" />}
+                        {lower.length > 1 && <path d={pathOf(lower)} stroke="#7e22ce" strokeWidth={2} fill="none" />}
+                      </g>
+                    );
+                  });
+
                   // 6. Vẽ các tác nhân (Agents)
                   const agentsSvg = (scaledGeometry.agents || []).map(a => {
                     const p3d = { id: a.id, label: a.label, x: a.initialPosition[0], y: a.initialPosition[1], z: a.initialPosition[2] };
@@ -689,6 +723,7 @@ function PanelContent() {
                     <g transform={`translate(${offsetX} ${offsetY})`}>
                       {spheresSvg}
                       {surfacesSvg}
+                      {revolutionSolidsSvg}
                       {conesSvg}
                       {cylindersSvg}
                       {circlesSvg}
