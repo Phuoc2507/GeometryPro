@@ -1,0 +1,32 @@
+{
+  "id": "vsgeo-0029__rename",
+  "source": {
+    "type": "exam",
+    "ref": "Tốt nghiệp THPT 2024 - mã đề 101 - câu 29 (đã chuẩn hoá lời văn)"
+  },
+  "statement_vi": "Cho hình chóp M.NPQR có đáy NPQR là hình vuông cạnh a. Cạnh bên MN vuông góc với mặt phẳng đáy và MN = a*sqrt(2). Tính khoảng cách từ điểm Q đến mặt phẳng (MPR).",
+  "figure": {
+    "coords_given": false
+  },
+  "answer": {
+    "canonical": "a*sqrt(10)/5",
+    "type": "surd",
+    "human_note": "khoảng cách từ C đến (SBD); trùng khoảng cách từ A do đối xứng qua BD"
+  },
+  "tags": {
+    "topic": [
+      "khoang_cach",
+      "vuong_goc"
+    ],
+    "answer_form": "surd",
+    "difficulty": 3,
+    "requires_auxiliary_construction": true
+  },
+  "solution_ref_vi": "Đặt A(0,0,0), B(a,0,0), C(a,a,0), D(0,a,0), S(0,0,a*sqrt(2)). Mặt phẳng (SBD) qua S,B,D có phương trình sqrt(2)x + sqrt(2)y + z = sqrt(2)a. Khoảng cách từ C(a,a,0): |sqrt(2)a+sqrt(2)a-sqrt(2)a| / sqrt(2+2+1) = sqrt(2)a/sqrt(5) = a*sqrt(10)/5.",
+  "verified_by_engine": false,
+  "scale_degree": 1,
+  "variant": {
+    "kind": "rename",
+    "parentSeedId": "vsgeo-0029"
+  }
+}

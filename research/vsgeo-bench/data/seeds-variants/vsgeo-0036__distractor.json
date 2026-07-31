@@ -1,0 +1,31 @@
+{
+  "id": "vsgeo-0036__distractor",
+  "source": {
+    "type": "exam",
+    "ref": "Tốt nghiệp THPT 2023 - mã đề 101 - câu 48 (đã chuẩn hoá lời văn)"
+  },
+  "statement_vi": "Xét khối nón (N) có đỉnh và đường tròn đáy cùng nằm trên một mặt cầu bán kính bằng 2. Biết độ dài đường sinh của (N) bằng 2*sqrt(3). Tính thể tích khối nón (N). Ngoài ra, gọi K là một điểm tuỳ ý trong không gian (K không liên quan đến yêu cầu của bài).",
+  "figure": {
+    "coords_given": false
+  },
+  "answer": {
+    "canonical": "3*pi",
+    "type": "surd",
+    "human_note": "thể tích khối nón nội tiếp mặt cầu; h=3, r^2=3"
+  },
+  "tags": {
+    "topic": [
+      "mat_cau_non_tru"
+    ],
+    "answer_form": "surd",
+    "difficulty": 4,
+    "requires_auxiliary_construction": true
+  },
+  "solution_ref_vi": "Gọi h là chiều cao, r bán kính đáy nón. Đáy và đỉnh trên mặt cầu R=2 nên r^2 + (2-h)^2 = 4, suy ra r^2 = 4h - h^2. Đường sinh l^2 = r^2 + h^2 = 4h = (2*sqrt(3))^2 = 12, nên h=3, r^2 = 12-9 = 3. Thể tích = 1/3*pi*r^2*h = 1/3*pi*3*3 = 3*pi.",
+  "verified_by_engine": false,
+  "scale_degree": 0,
+  "variant": {
+    "kind": "distractor",
+    "parentSeedId": "vsgeo-0036"
+  }
+}

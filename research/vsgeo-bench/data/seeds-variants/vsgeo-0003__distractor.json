@@ -1,47 +1,28 @@
 {
   "id": "vsgeo-0003__distractor",
   "source": {
-    "type": "synthetic",
-    "ref": "tự sinh: ba giao điểm trục toạ độ A(1,0,0), B(0,2,0), C(0,0,3)"
+    "type": "exam",
+    "ref": "Tốt nghiệp THPT 2025 - mã đề 0101 - phần I câu 12 (đã chuẩn hoá lời văn)"
   },
-  "statement_vi": "Trong không gian Oxyz, cho ba điểm A(1,0,0), B(0,2,0), C(0,0,3). Viết phương trình mặt phẳng (ABC). Ngoài ra, gọi K là một điểm tuỳ ý trong không gian (K không liên quan đến yêu cầu của bài).",
+  "statement_vi": "Cho hình chóp S.ABC có SA vuông góc với mặt phẳng đáy (ABC); tam giác ABC vuông tại A với AB=4, AC=5 và SA=3. Tính thể tích khối chóp S.ABC. Ngoài ra, gọi K là một điểm tuỳ ý trong không gian (K không liên quan đến yêu cầu của bài).",
   "figure": {
-    "coords_given": true,
-    "points": [
-      {
-        "id": "A",
-        "x": 1,
-        "y": 0,
-        "z": 0
-      },
-      {
-        "id": "B",
-        "x": 0,
-        "y": 2,
-        "z": 0
-      },
-      {
-        "id": "C",
-        "x": 0,
-        "y": 0,
-        "z": 3
-      }
-    ]
+    "coords_given": false
   },
   "answer": {
-    "canonical": "6x+3y+2z-6=0",
-    "type": "plane_eq",
-    "human_note": "phương trình mặt phẳng (ABC)"
+    "canonical": "10",
+    "type": "rational",
+    "human_note": "diện tích đáy = 1/2*4*5 = 10; V = 1/3*10*3 = 10 (đáp án chính thức)"
   },
   "tags": {
     "topic": [
-      "toa_do_oxyz"
+      "the_tich",
+      "vuong_goc"
     ],
-    "answer_form": "plane_eq",
+    "answer_form": "rational",
     "difficulty": 2,
     "requires_auxiliary_construction": false
   },
-  "solution_ref_vi": "Mặt phẳng chắn ba trục có phương trình theo đoạn chắn: x/1 + y/2 + z/3 = 1. Nhân hai vế với 6 được 6x + 3y + 2z = 6, tức 6x + 3y + 2z - 6 = 0.",
+  "solution_ref_vi": "Tam giác ABC vuông tại A nên S_ABC = 1/2*AB*AC = 1/2*4*5 = 10. Vì SA vuông góc đáy, chiều cao là SA=3. V = 1/3*S_ABC*SA = 1/3*10*3 = 10.",
   "verified_by_engine": false,
   "scale_degree": 0,
   "variant": {

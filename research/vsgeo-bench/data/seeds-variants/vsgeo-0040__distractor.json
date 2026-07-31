@@ -1,0 +1,46 @@
+{
+  "id": "vsgeo-0040__distractor",
+  "source": {
+    "type": "exam",
+    "ref": "Tốt nghiệp THPT 2026 - mã đề 0101 - phần II câu 4 ý d (Đúng/Sai, đã chuẩn hoá lời văn)"
+  },
+  "statement_vi": "Trong không gian Oxyz (một đơn vị dài trên mỗi trục ứng với 10 mét thực tế), một mục tiêu cần bảo vệ ở gốc O. Vành đai bảo vệ là đường tròn tâm O bán kính 7 (đơn vị) nằm trong mặt phẳng (Oxy). Một máy bay bay theo đường thẳng từ M(5;10;4) đến N(14;-2;4). Trong quá trình bay từ M đến N, vị trí máy bay gần vành đai bảo vệ nhất có tọa độ (8;6;4). Khẳng định này đúng hay sai? Ngoài ra, gọi K là một điểm tuỳ ý trong không gian (K không liên quan đến yêu cầu của bài).",
+  "figure": {
+    "points": [
+      {
+        "id": "M",
+        "x": 5,
+        "y": 10,
+        "z": 4
+      },
+      {
+        "id": "N",
+        "x": 14,
+        "y": -2,
+        "z": 4
+      }
+    ],
+    "coords_given": true
+  },
+  "answer": {
+    "canonical": "true",
+    "type": "boolean",
+    "human_note": "Hình chiếu Oxy của MN cách O đúng 10 (>7); chân vuông góc tại (8;6), z=4 -> điểm gần nhất (8;6;4). Đúng."
+  },
+  "tags": {
+    "topic": [
+      "toa_do_oxyz",
+      "khoang_cach"
+    ],
+    "answer_form": "boolean",
+    "difficulty": 3,
+    "requires_auxiliary_construction": false
+  },
+  "solution_ref_vi": "Đường bay ở z=4; khoảng cách tới vành đai chỉ phụ thuộc bán kính xy. Hình chiếu MN xuống Oxy đi qua (5,10) hướng (3,-4), khoảng cách từ O tới đường này = |5*(-4)-10*3|/5 = 10, đạt tại chân vuông góc. Giải (5+9s)*9+(10-12s)*(-12)=0 được s=1/3, điểm (8,6); giữ z=4 nên điểm gần nhất là (8;6;4). Khẳng định ĐÚNG.",
+  "verified_by_engine": false,
+  "scale_degree": 0,
+  "variant": {
+    "kind": "distractor",
+    "parentSeedId": "vsgeo-0040"
+  }
+}

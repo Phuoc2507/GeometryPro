@@ -1,0 +1,32 @@
+{
+  "id": "vsgeo-0034__distractor",
+  "source": {
+    "type": "exam",
+    "ref": "Tốt nghiệp THPT 2023 - mã đề 101 - câu 34 (đã chuẩn hoá lời văn)"
+  },
+  "statement_vi": "Cho hình hộp chữ nhật ABCD.A'B'C'D' có AB = 1, BC = 2, AA' = 2. Tính khoảng cách giữa hai đường thẳng AD' và DC'. Ngoài ra, gọi K là một điểm tuỳ ý trong không gian (K không liên quan đến yêu cầu của bài).",
+  "figure": {
+    "coords_given": false
+  },
+  "answer": {
+    "canonical": "sqrt(6)/3",
+    "type": "surd",
+    "human_note": "khoảng cách giữa hai đường thẳng chéo nhau AD' và DC'"
+  },
+  "tags": {
+    "topic": [
+      "khoang_cach",
+      "toa_do_oxyz"
+    ],
+    "answer_form": "surd",
+    "difficulty": 3,
+    "requires_auxiliary_construction": true
+  },
+  "solution_ref_vi": "Gắn A(0,0,0), B(1,0,0), C(1,2,0), D(0,2,0), A'(0,0,2), D'(0,2,2), C'(1,2,2). AD' có VTCP (0,1,1); DC' có VTCP (1,0,2); [u,v]=(2,1,-1), |[u,v]|=sqrt(6). AD=D-A=(0,2,0). Khoảng cách = |AD.[u,v]| / |[u,v]| = 2/sqrt(6) = sqrt(6)/3.",
+  "verified_by_engine": false,
+  "scale_degree": 0,
+  "variant": {
+    "kind": "distractor",
+    "parentSeedId": "vsgeo-0034"
+  }
+}

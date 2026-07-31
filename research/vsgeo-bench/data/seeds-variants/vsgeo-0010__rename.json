@@ -1,0 +1,31 @@
+{
+  "id": "vsgeo-0010__rename",
+  "source": {
+    "type": "exam",
+    "ref": "Tốt nghiệp THPT 2023 - mã đề 101 - câu 13 (đã chuẩn hoá lời văn)"
+  },
+  "statement_vi": "Cho hình trụ có chiều cao h=3 và bán kính đáy r=4. Tính diện tích xung quanh của hình trụ.",
+  "figure": {
+    "coords_given": false
+  },
+  "answer": {
+    "canonical": "24*pi",
+    "type": "surd",
+    "human_note": "Sxq = 2*pi*r*h = 2*pi*4*3 = 24*pi (đáp án chính thức C)"
+  },
+  "tags": {
+    "topic": [
+      "mat_cau_non_tru"
+    ],
+    "answer_form": "surd",
+    "difficulty": 1,
+    "requires_auxiliary_construction": false
+  },
+  "solution_ref_vi": "Diện tích xung quanh hình trụ Sxq = 2*pi*r*h = 2*pi*4*3 = 24*pi.",
+  "verified_by_engine": false,
+  "scale_degree": 0,
+  "variant": {
+    "kind": "rename",
+    "parentSeedId": "vsgeo-0010"
+  }
+}

@@ -1,0 +1,32 @@
+{
+  "id": "vsgeo-0038__rename",
+  "source": {
+    "type": "exam",
+    "ref": "Tốt nghiệp THPT 2025 - mã đề 0101 - phần III câu 6 (trả lời ngắn, đã chuẩn hoá lời văn)"
+  },
+  "statement_vi": "Một chân đế trang trí được làm từ khối chóp cụt tứ giác đều có hai cạnh đáy lần lượt bằng 7,4 cm và 10,4 cm, chiều cao 1,5 cm. Từ khối đó người ta khoét bỏ một vật thể M, trong đó M là chỏm cầu nhận được khi cắt khối cầu bán kính 5,8 cm bởi một mặt phẳng có giao tuyến là đường tròn bán kính 3,5 cm (khoét phần chỏm nhỏ hơn). Tính thể tích khối chân đế còn lại (cm^3), làm tròn đến hàng phần mười.",
+  "figure": {
+    "coords_given": false
+  },
+  "answer": {
+    "canonical": "96.5",
+    "type": "rational",
+    "human_note": "đơn vị cm^3; giá trị chưa làm tròn ~ 96.48 = 119.94 - (pi/3)*h^2*(3R-h) với h=5.8-sqrt(5.8^2-3.5^2); so khớp theo sai số vì đề làm tròn phần mười"
+  },
+  "tags": {
+    "topic": [
+      "the_tich",
+      "mat_cau_non_tru"
+    ],
+    "answer_form": "rational",
+    "difficulty": 4,
+    "requires_auxiliary_construction": false
+  },
+  "solution_ref_vi": "Thể tích chóp cụt = (h/3)(S1+S2+sqrt(S1*S2)) = (1.5/3)(54.76+108.16+76.96) = 119.94. Khoảng cách tâm cầu tới mặt cắt = sqrt(5.8^2-3.5^2) = sqrt(21.39) ~ 4.6249; chiều cao chỏm nhỏ h = 5.8-4.6249 = 1.1751; thể tích chỏm = (pi*h^2/3)(3*5.8-h) ~ 23.46. Thể tích còn lại = 119.94-23.46 ~ 96.48, làm tròn = 96.5.",
+  "verified_by_engine": false,
+  "scale_degree": 0,
+  "variant": {
+    "kind": "rename",
+    "parentSeedId": "vsgeo-0038"
+  }
+}

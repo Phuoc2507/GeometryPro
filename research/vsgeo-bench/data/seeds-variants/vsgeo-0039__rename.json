@@ -1,0 +1,31 @@
+{
+  "id": "vsgeo-0039__rename",
+  "source": {
+    "type": "exam",
+    "ref": "Tốt nghiệp THPT 2026 - mã đề 0101 - phần III câu 1 (trả lời ngắn, đã chuẩn hoá lời văn)"
+  },
+  "statement_vi": "Cho hình lập phương RTUV.XYZF có cạnh bằng 6 (với X, Y, Z, F lần lượt nằm trên R, T, U, V). Gọi G là trung điểm của đoạn thẳng RT. Tính khoảng cách từ điểm Z đến mặt phẳng (XGV).",
+  "figure": {
+    "coords_given": false
+  },
+  "answer": {
+    "canonical": "3*sqrt(6)",
+    "type": "surd",
+    "human_note": "khoảng cách từ P đến (MED); giá trị 3*sqrt(6) ~ 7.35 (đề yêu cầu làm tròn phần trăm)"
+  },
+  "tags": {
+    "topic": [
+      "khoang_cach"
+    ],
+    "answer_form": "surd",
+    "difficulty": 3,
+    "requires_auxiliary_construction": true
+  },
+  "solution_ref_vi": "Đặt A(0,0,0), B(6,0,0), C(6,6,0), D(0,6,0), M(0,0,6), N(6,0,6), P(6,6,6), Q(0,6,6). E=(3,0,0). Mặt phẳng (MED) qua M,E,D có VTPT [ME,MD]=(36,18,18)~(2,1,1), phương trình 2x+y+z-6=0. Khoảng cách từ P(6,6,6) = |12+6+6-6|/sqrt(6) = 18/sqrt(6) = 3*sqrt(6) ~ 7.35.",
+  "verified_by_engine": false,
+  "scale_degree": 0,
+  "variant": {
+    "kind": "rename",
+    "parentSeedId": "vsgeo-0039"
+  }
+}

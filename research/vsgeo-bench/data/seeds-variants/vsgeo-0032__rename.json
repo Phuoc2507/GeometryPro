@@ -1,0 +1,32 @@
+{
+  "id": "vsgeo-0032__rename",
+  "source": {
+    "type": "exam",
+    "ref": "Tốt nghiệp THPT 2024 - mã đề 101 - câu 48 (đã chuẩn hoá lời văn)"
+  },
+  "statement_vi": "Cho hình chóp M.NPQ có đáy NPQ là tam giác vuông cân tại N với NP = 2a. Mặt bên MNP là tam giác đều và nằm trong mặt phẳng vuông góc với mặt phẳng đáy. Tính diện tích mặt cầu ngoại tiếp hình chóp M.NPQ.",
+  "figure": {
+    "coords_given": false
+  },
+  "answer": {
+    "canonical": "28*pi*a^2/3",
+    "type": "surd",
+    "human_note": "diện tích mặt cầu ngoại tiếp = 4*pi*R^2 với R^2 = 7a^2/3"
+  },
+  "tags": {
+    "topic": [
+      "mat_cau_non_tru",
+      "vuong_goc"
+    ],
+    "answer_form": "surd",
+    "difficulty": 4,
+    "requires_auxiliary_construction": true
+  },
+  "solution_ref_vi": "Chọn hệ trục A(0,0,0), B(2a,0,0), C(0,2a,0); vì SAB đều cạnh 2a và nằm trong mặt phẳng vuông góc đáy (mặt phẳng y=0) nên S=(a,0,a*sqrt(3)). Tâm mặt cầu I=(a,a,z); từ IA=IS được z=a*sqrt(3)/3. R^2 = 2a^2 + z^2 = 7a^2/3. Diện tích = 4*pi*R^2 = 28*pi*a^2/3.",
+  "verified_by_engine": false,
+  "scale_degree": 1,
+  "variant": {
+    "kind": "rename",
+    "parentSeedId": "vsgeo-0032"
+  }
+}

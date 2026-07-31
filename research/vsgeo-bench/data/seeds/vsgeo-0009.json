@@ -1,0 +1,23 @@
+{
+  "id": "vsgeo-0009",
+  "source": {
+    "type": "exam",
+    "ref": "Tốt nghiệp THPT 2024 - mã đề 101 - câu 22 (đã chuẩn hoá lời văn)"
+  },
+  "statement_vi": "Cho hình nón có bán kính đáy r=3 và độ dài đường sinh l=5. Tính chiều cao của hình nón.",
+  "figure": { "coords_given": false },
+  "answer": {
+    "canonical": "4",
+    "type": "rational",
+    "human_note": "h = sqrt(l^2 - r^2) = sqrt(25-9) = 4 (đáp án chính thức)"
+  },
+  "tags": {
+    "topic": ["mat_cau_non_tru"],
+    "answer_form": "rational",
+    "difficulty": 1,
+    "requires_auxiliary_construction": false
+  },
+  "solution_ref_vi": "Trong hình nón, l^2 = r^2 + h^2 nên h = sqrt(l^2 - r^2) = sqrt(5^2 - 3^2) = sqrt(16) = 4.",
+  "verified_by_engine": false,
+  "scale_degree": 0
+}

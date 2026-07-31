@@ -24,8 +24,10 @@ describe("3 bài pilot mẫu — phải luôn hợp lệ và đúng đa dạng d
     if (res.ok) expect(res.seed.answer.type).toBe("rational");
   });
 
-  it("vsgeo-0003 hợp lệ và là dạng plane_eq", () => {
-    const res = validateSeed(docBai("vsgeo-0003"));
+  // 0003 nay là bài dễ dạng rational (thể tích chóp) sau khi thay tầng synthetic bằng đề THẬT.
+  // Vẫn giữ độ phủ dạng plane_eq bằng một seed đề-thật hiện có (0016: mặt phẳng qua điểm + VTPT).
+  it("vsgeo-0016 hợp lệ và là dạng plane_eq", () => {
+    const res = validateSeed(docBai("vsgeo-0016"));
     expect(res.ok).toBe(true);
     if (res.ok) expect(res.seed.answer.type).toBe("plane_eq");
   });

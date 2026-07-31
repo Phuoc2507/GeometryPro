@@ -1,0 +1,32 @@
+{
+  "id": "vsgeo-0041__rename",
+  "source": {
+    "type": "exam",
+    "ref": "Tốt nghiệp THPT 2026 - mã đề 0101 - phần III câu 3 (trả lời ngắn, đã chuẩn hoá lời văn)"
+  },
+  "statement_vi": "Xét khối tròn xoay tạo thành khi quay hình phẳng giới hạn bởi trục Ox và nửa trên của elip x^2/1,5^2 + y^2/1^2 = 1 quanh trục Ox (một đơn vị dài trên mỗi trục ứng với 1 xăng-ti-mét). Sau đó khoan một lỗ hình trụ bán kính 0,2 cm có trục nằm trên trục Ox, xuyên dọc theo trục xoay. Tính thể tích phần còn lại (cm^3), làm tròn đến hàng phần trăm.",
+  "figure": {
+    "coords_given": false
+  },
+  "answer": {
+    "canonical": "5.91",
+    "type": "rational",
+    "human_note": "đơn vị cm^3; giá trị chính xác 96*sqrt(6)*pi/125 ~ 5.9096; so khớp theo sai số vì đề làm tròn phần trăm"
+  },
+  "tags": {
+    "topic": [
+      "the_tich",
+      "mat_cau_non_tru"
+    ],
+    "answer_form": "rational",
+    "difficulty": 4,
+    "requires_auxiliary_construction": false
+  },
+  "solution_ref_vi": "Bán kính lát cắt R(x)=sqrt(1-x^2/2.25). Lỗ trụ r=0.2 chỉ cắt phần R>=0.2, tức |x|<=x0 với x0=sqrt(2.16). Thể tích còn lại = tích phân từ -x0 đến x0 của pi*(1-x^2/2.25-0.04) dx = 1.28*pi*x0 = 96*sqrt(6)*pi/125 ~ 5.91.",
+  "verified_by_engine": false,
+  "scale_degree": 0,
+  "variant": {
+    "kind": "rename",
+    "parentSeedId": "vsgeo-0041"
+  }
+}

@@ -1,0 +1,23 @@
+{
+  "id": "vsgeo-0019",
+  "source": {
+    "type": "exam",
+    "ref": "Tốt nghiệp THPT 2025 - mã đề 0101 - phần I câu 2 (đã chuẩn hoá lời văn)"
+  },
+  "statement_vi": "Cho hình hộp ABCD.A'B'C'D'. Trong các mặt phẳng (CC'A'A), (BB'C'C), (A'B'C'D'), (AA'D'D), đường thẳng AB song song với mặt phẳng nào?",
+  "figure": { "coords_given": false },
+  "answer": {
+    "canonical": "(A'B'C'D')",
+    "type": "mcq",
+    "human_note": "AB nằm ở mặt đáy dưới, song song với mặt đáy trên (A'B'C'D'); ba mặt phẳng còn lại đều chứa A hoặc B nên cắt AB (đáp án chính thức C)"
+  },
+  "tags": {
+    "topic": ["song_song"],
+    "answer_form": "mcq",
+    "difficulty": 2,
+    "requires_auxiliary_construction": false
+  },
+  "solution_ref_vi": "Hai mặt đáy của hình hộp song song nhau. AB thuộc mặt đáy (ABCD) và không thuộc (A'B'C'D') nên AB song song với (A'B'C'D'). Các mặt (CC'A'A) và (AA'D'D) chứa điểm A, mặt (BB'C'C) chứa điểm B, nên đều cắt AB — không song song.",
+  "verified_by_engine": false,
+  "scale_degree": 0
+}

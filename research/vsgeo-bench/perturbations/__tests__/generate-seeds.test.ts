@@ -3,6 +3,7 @@ import { readdirSync, readFileSync, existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { generateVariantsForSeed } from "../generate";
+import { extractVertexLabels, extractRayAnchors } from "../rename";
 import { validateVariant } from "../../data/schema/problem";
 import type { Seed } from "../types";
 
@@ -34,11 +35,23 @@ describe("generate — chạy trên seed THẬT, mọi biến thể phải hợp
     }
   });
 
-  it("mỗi seed có ít nhất rename + distractor (hai phép luôn áp dụng được)", async () => {
+  it("mỗi seed: distractor phổ quát; rename áp được TRỪ khi đáp án tham chiếu nhãn đỉnh", async () => {
     for (const seed of docSeeds()) {
       const kinds = new Set((await generateVariantsForSeed(seed)).map((v) => v.variant.kind));
-      expect(kinds.has("rename")).toBe(true);
-      expect(kinds.has("distractor")).toBe(true);
+      // distractor là phép AN TOÀN phổ quát: ngân hàng câu nhiễu có phương án KHÔNG mang nhãn HOA
+      // nào (BANK[1]/BANK[2]) nên luôn chèn được -> mọi seed đều có distractor.
+      expect(kinds.has("distractor"), `${seed.id} phải có distractor`).toBe(true);
+      // rename GIỮ NGUYÊN đáp án (§4.3). Nếu đáp án THAM CHIẾU nhãn đỉnh (vd mcq "(A'B'C'D')",
+      // point/vector là "AB"...) thì đổi tên đỉnh trong đề mà không đổi đáp án sẽ desync câu hỏi–đáp
+      // án, nên rename CỐ Ý bỏ (ném) — đây KHÔNG phải lỗi. Chỉ ĐÒI rename khi đáp án không có nhãn đỉnh.
+      const answerRefsVertex =
+        extractVertexLabels(seed.answer.canonical).length > 0 ||
+        extractRayAnchors(seed.answer.canonical).length > 0;
+      if (!answerRefsVertex) {
+        expect(kinds.has("rename"), `${seed.id} (đáp án không có nhãn đỉnh) phải có rename`).toBe(true);
+      }
+      // Bất biến tối thiểu: dù bỏ phép nào, mỗi seed vẫn phải sinh được ÍT NHẤT một biến thể tất định.
+      expect(kinds.size, `${seed.id} phải sinh ít nhất 1 biến thể`).toBeGreaterThan(0);
     }
   });
 

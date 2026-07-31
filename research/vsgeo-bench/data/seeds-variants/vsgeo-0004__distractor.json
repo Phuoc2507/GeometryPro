@@ -1,0 +1,31 @@
+{
+  "id": "vsgeo-0004__distractor",
+  "source": {
+    "type": "exam",
+    "ref": "Tốt nghiệp THPT 2024 - mã đề 101 - câu 8 (đã chuẩn hoá lời văn)"
+  },
+  "statement_vi": "Cho khối lăng trụ tam giác có diện tích đáy B=6 và chiều cao h=3. Tính thể tích khối lăng trụ. Ngoài ra, gọi K là một điểm tuỳ ý trong không gian (K không liên quan đến yêu cầu của bài).",
+  "figure": {
+    "coords_given": false
+  },
+  "answer": {
+    "canonical": "18",
+    "type": "rational",
+    "human_note": "V = B*h = 6*3 = 18 (đáp án chính thức)"
+  },
+  "tags": {
+    "topic": [
+      "the_tich"
+    ],
+    "answer_form": "rational",
+    "difficulty": 1,
+    "requires_auxiliary_construction": false
+  },
+  "solution_ref_vi": "Thể tích khối lăng trụ = diện tích đáy nhân chiều cao = 6*3 = 18.",
+  "verified_by_engine": false,
+  "scale_degree": 0,
+  "variant": {
+    "kind": "distractor",
+    "parentSeedId": "vsgeo-0004"
+  }
+}

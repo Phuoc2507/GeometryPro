@@ -1,0 +1,45 @@
+{
+  "id": "vsgeo-0012__distractor",
+  "source": {
+    "type": "exam",
+    "ref": "Tốt nghiệp THPT 2026 - mã đề 0101 - phần I câu 5 (đã chuẩn hoá lời văn)"
+  },
+  "statement_vi": "Trong không gian Oxyz, cho hai điểm A(1;5;1) và B(3;3;1). Tìm toạ độ của vectơ AB. Ngoài ra, gọi K là một điểm tuỳ ý trong không gian (K không liên quan đến yêu cầu của bài).",
+  "figure": {
+    "points": [
+      {
+        "id": "A",
+        "x": 1,
+        "y": 5,
+        "z": 1
+      },
+      {
+        "id": "B",
+        "x": 3,
+        "y": 3,
+        "z": 1
+      }
+    ],
+    "coords_given": true
+  },
+  "answer": {
+    "canonical": "(2,-2,0)",
+    "type": "vector",
+    "human_note": "AB = B - A = (3-1, 3-5, 1-1) = (2,-2,0) (đáp án chính thức)"
+  },
+  "tags": {
+    "topic": [
+      "toa_do_oxyz"
+    ],
+    "answer_form": "vector",
+    "difficulty": 1,
+    "requires_auxiliary_construction": false
+  },
+  "solution_ref_vi": "Vectơ AB = B - A = (3-1; 3-5; 1-1) = (2; -2; 0).",
+  "verified_by_engine": false,
+  "scale_degree": 0,
+  "variant": {
+    "kind": "distractor",
+    "parentSeedId": "vsgeo-0012"
+  }
+}

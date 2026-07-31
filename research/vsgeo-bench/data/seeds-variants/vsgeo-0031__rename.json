@@ -1,0 +1,32 @@
+{
+  "id": "vsgeo-0031__rename",
+  "source": {
+    "type": "exam",
+    "ref": "Tốt nghiệp THPT 2024 - mã đề 101 - câu 44 (đã chuẩn hoá lời văn)"
+  },
+  "statement_vi": "Cho lăng trụ đứng MNP.M'N'P' có đáy MNP là tam giác vuông cân tại M với MN = a. Biết góc giữa hai mặt phẳng (M'NP) và (MNP) bằng 30 độ. Tính thể tích khối lăng trụ MNP.M'N'P'.",
+  "figure": {
+    "coords_given": false
+  },
+  "answer": {
+    "canonical": "a^3*sqrt(6)/12",
+    "type": "surd",
+    "human_note": "thể tích khối lăng trụ"
+  },
+  "tags": {
+    "topic": [
+      "the_tich",
+      "goc"
+    ],
+    "answer_form": "surd",
+    "difficulty": 3,
+    "requires_auxiliary_construction": true
+  },
+  "solution_ref_vi": "Gọi M là trung điểm BC thì AM vuông góc BC, AM = BC/2 = a*sqrt(2)/2 (tam giác vuông cân, BC=a*sqrt(2)). Góc giữa (A'BC) và (ABC) là A'MA, nên AA' = AM*tan(30) = (a*sqrt(2)/2)*(1/sqrt(3)) = a*sqrt(6)/6. Diện tích đáy = a^2/2. Thể tích = (a^2/2)*(a*sqrt(6)/6) = a^3*sqrt(6)/12.",
+  "verified_by_engine": false,
+  "scale_degree": 1,
+  "variant": {
+    "kind": "rename",
+    "parentSeedId": "vsgeo-0031"
+  }
+}
