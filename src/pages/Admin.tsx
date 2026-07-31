@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   ArrowLeft, ShieldCheck, AlertTriangle, MessageSquare, BarChart3,
-  Loader2, Inbox, RefreshCw, Users, Receipt,
+  Loader2, Inbox, RefreshCw, Users, Receipt, Copy,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -52,6 +52,47 @@ function truncate(text: string | null | undefined, n = 80): string {
   return text.length > n ? text.slice(0, n) + '…' : text;
 }
 
+async function copyText(text: string) {
+  try { await navigator.clipboard.writeText(text); toast.success('Đã copy'); }
+  catch { toast.error('Không copy được'); }
+}
+
+// Nút copy nhỏ gắn cạnh nhãn trường.
+function CopyBtn({ text }: { text: string }) {
+  return (
+    <Button variant="ghost" size="sm" className="h-6 gap-1 px-1.5 text-[11px] text-muted-foreground" onClick={() => copyText(text)}>
+      <Copy className="h-3 w-3" /> Copy
+    </Button>
+  );
+}
+
+// Bộ lọc theo trạng thái (thêm mục "Tất cả").
+function StatusFilter({ value, onChange }: { value: 'all' | Status; onChange: (v: 'all' | Status) => void }) {
+  return (
+    <Select value={value} onValueChange={(v) => onChange(v as 'all' | Status)}>
+      <SelectTrigger className="h-8 w-[140px] shrink-0 text-xs"><SelectValue /></SelectTrigger>
+      <SelectContent>
+        <SelectItem value="all" className="text-xs">Tất cả trạng thái</SelectItem>
+        {STATUSES.map((s) => <SelectItem key={s} value={s} className="text-xs">{s}</SelectItem>)}
+      </SelectContent>
+    </Select>
+  );
+}
+
+// Trạng thái lỗi tải + nút thử lại (phân biệt với "không có dữ liệu").
+function ErrorPanel({ message, onRetry }: { message: string; onRetry: () => void }) {
+  return (
+    <div className="flex flex-col items-center justify-center py-16 text-center">
+      <div className="mb-4 rounded-full bg-destructive/10 p-4"><AlertTriangle className="h-8 w-8 text-destructive" /></div>
+      <h3 className="text-lg font-semibold">Không tải được dữ liệu</h3>
+      <p className="mt-1 max-w-md text-sm text-muted-foreground break-words">{message}</p>
+      <Button variant="outline" size="sm" className="mt-4 gap-1.5" onClick={onRetry}>
+        <RefreshCw className="h-3.5 w-3.5" /> Thử lại
+      </Button>
+    </div>
+  );
+}
+
 // Trạng thái "chưa có dữ liệu / sắp có".
 function EmptyState({ icon: Icon, title, hint }: { icon: typeof Inbox; title: string; hint: string }) {
   return (
@@ -91,6 +132,10 @@ const Admin = () => {
   const [loadingFeedback, setLoadingFeedback] = useState(true);
   const [selectedReport, setSelectedReport] = useState<ProblemReport | null>(null);
   const [selectedFeedback, setSelectedFeedback] = useState<UserFeedback | null>(null);
+  const [reportsError, setReportsError] = useState<string | null>(null);
+  const [feedbackError, setFeedbackError] = useState<string | null>(null);
+  const [reportFilter, setReportFilter] = useState<'all' | Status>('all');
+  const [feedbackFilter, setFeedbackFilter] = useState<'all' | Status>('all');
 
   // Chặn truy cập: chưa đăng nhập hoặc không phải admin → về trang chủ.
   // Bảo mật thật nằm ở RLS phía Supabase; đây chỉ là lớp điều hướng cho UI.
@@ -106,8 +151,8 @@ const Admin = () => {
       .select('*')
       .order('created_at', { ascending: false })
       .limit(FETCH_LIMIT);
-    if (error) toast.error('Không tải được danh sách bài lỗi: ' + error.message);
-    else setReports(data ?? []);
+    if (error) { setReportsError(error.message); toast.error('Không tải được danh sách bài lỗi: ' + error.message); }
+    else { setReportsError(null); setReports(data ?? []); }
     setLoadingReports(false);
   }, []);
 
@@ -118,8 +163,8 @@ const Admin = () => {
       .select('*')
       .order('created_at', { ascending: false })
       .limit(FETCH_LIMIT);
-    if (error) toast.error('Không tải được feedback: ' + error.message);
-    else setFeedback(data ?? []);
+    if (error) { setFeedbackError(error.message); toast.error('Không tải được feedback: ' + error.message); }
+    else { setFeedbackError(null); setFeedback(data ?? []); }
     setLoadingFeedback(false);
   }, []);
 
@@ -162,6 +207,13 @@ const Admin = () => {
     return { byEndpoint, byStage, unresolved, newFeedback };
   }, [reports, feedback]);
 
+  const shownReports = useMemo(
+    () => (reportFilter === 'all' ? reports : reports.filter((r) => r.status === reportFilter)),
+    [reports, reportFilter]);
+  const shownFeedback = useMemo(
+    () => (feedbackFilter === 'all' ? feedback : feedback.filter((f) => f.status === feedbackFilter)),
+    [feedback, feedbackFilter]);
+
   if (authLoading || !user || !isAdmin) {
     return (
       <div className="min-h-screen radial-gradient-bg flex items-center justify-center">
@@ -188,22 +240,22 @@ const Admin = () => {
         </div>
 
         <Tabs defaultValue="failures" className="w-full">
-          <TabsList className="grid h-auto w-full grid-cols-3 sm:grid-cols-5">
-            <TabsTrigger value="failures" className="gap-1.5">
+          <TabsList className="flex h-auto w-full justify-start gap-1 overflow-x-auto sm:grid sm:grid-cols-5">
+            <TabsTrigger value="failures" className="shrink-0 gap-1.5">
               <AlertTriangle className="h-4 w-4" /> Bài lỗi
               {reports.length > 0 && <Badge variant="secondary" className="ml-1">{reports.length}</Badge>}
             </TabsTrigger>
-            <TabsTrigger value="feedback" className="gap-1.5">
+            <TabsTrigger value="feedback" className="shrink-0 gap-1.5">
               <MessageSquare className="h-4 w-4" /> Feedback
               {feedback.length > 0 && <Badge variant="secondary" className="ml-1">{feedback.length}</Badge>}
             </TabsTrigger>
-            <TabsTrigger value="users" className="gap-1.5">
+            <TabsTrigger value="users" className="shrink-0 gap-1.5">
               <Users className="h-4 w-4" /> Người dùng
             </TabsTrigger>
-            <TabsTrigger value="orders" className="gap-1.5">
+            <TabsTrigger value="orders" className="shrink-0 gap-1.5">
               <Receipt className="h-4 w-4" /> Đơn hàng
             </TabsTrigger>
-            <TabsTrigger value="stats" className="gap-1.5">
+            <TabsTrigger value="stats" className="shrink-0 gap-1.5">
               <BarChart3 className="h-4 w-4" /> Thống kê
             </TabsTrigger>
           </TabsList>
@@ -218,15 +270,22 @@ const Admin = () => {
                     Đề bài, JSON của AI, thông báo lỗi và model của những lần vẽ thất bại (mới nhất trước).
                   </CardDescription>
                 </div>
-                <Button variant="outline" size="sm" onClick={fetchReports} disabled={loadingReports} className="gap-1.5 shrink-0">
-                  <RefreshCw className={`h-3.5 w-3.5 ${loadingReports ? 'animate-spin' : ''}`} /> Làm mới
-                </Button>
+                <div className="flex shrink-0 items-center gap-2">
+                  <StatusFilter value={reportFilter} onChange={setReportFilter} />
+                  <Button variant="outline" size="sm" onClick={fetchReports} disabled={loadingReports} className="gap-1.5">
+                    <RefreshCw className={`h-3.5 w-3.5 ${loadingReports ? 'animate-spin' : ''}`} /> Làm mới
+                  </Button>
+                </div>
               </CardHeader>
               <CardContent>
                 {loadingReports ? (
                   <div className="flex justify-center py-16"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
+                ) : reportsError ? (
+                  <ErrorPanel message={reportsError} onRetry={fetchReports} />
                 ) : reports.length === 0 ? (
                   <EmptyState icon={Inbox} title="Chưa có bài lỗi" hint="Khi máy vẽ sai hoặc không vẽ được, hệ thống sẽ tự ghi lại vào đây để bạn xem và sửa." />
+                ) : shownReports.length === 0 ? (
+                  <EmptyState icon={Inbox} title="Không có bài ở trạng thái này" hint="Đổi bộ lọc trạng thái để xem các bài khác." />
                 ) : (
                   <div className="overflow-x-auto">
                     <Table>
@@ -240,7 +299,7 @@ const Admin = () => {
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {reports.map((r) => (
+                        {shownReports.map((r) => (
                           <TableRow key={r.id} className="cursor-pointer" onClick={() => setSelectedReport(r)}>
                             <TableCell className="text-xs text-muted-foreground whitespace-nowrap">{fmtDate(r.created_at)}</TableCell>
                             <TableCell className="text-sm">{truncate(r.prompt, 70)}</TableCell>
@@ -267,15 +326,22 @@ const Admin = () => {
                   <CardTitle>Feedback người dùng</CardTitle>
                   <CardDescription>Góp ý và báo lỗi người dùng gửi, kèm bản vẽ liên quan.</CardDescription>
                 </div>
-                <Button variant="outline" size="sm" onClick={fetchFeedback} disabled={loadingFeedback} className="gap-1.5 shrink-0">
-                  <RefreshCw className={`h-3.5 w-3.5 ${loadingFeedback ? 'animate-spin' : ''}`} /> Làm mới
-                </Button>
+                <div className="flex shrink-0 items-center gap-2">
+                  <StatusFilter value={feedbackFilter} onChange={setFeedbackFilter} />
+                  <Button variant="outline" size="sm" onClick={fetchFeedback} disabled={loadingFeedback} className="gap-1.5">
+                    <RefreshCw className={`h-3.5 w-3.5 ${loadingFeedback ? 'animate-spin' : ''}`} /> Làm mới
+                  </Button>
+                </div>
               </CardHeader>
               <CardContent>
                 {loadingFeedback ? (
                   <div className="flex justify-center py-16"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
+                ) : feedbackError ? (
+                  <ErrorPanel message={feedbackError} onRetry={fetchFeedback} />
                 ) : feedback.length === 0 ? (
                   <EmptyState icon={Inbox} title="Chưa có feedback" hint="Khi người dùng bấm “Báo lỗi / Góp ý”, nội dung sẽ hiện ở đây." />
+                ) : shownFeedback.length === 0 ? (
+                  <EmptyState icon={Inbox} title="Không có feedback ở trạng thái này" hint="Đổi bộ lọc trạng thái để xem các mục khác." />
                 ) : (
                   <div className="overflow-x-auto">
                     <Table>
@@ -288,7 +354,7 @@ const Admin = () => {
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {feedback.map((f) => (
+                        {shownFeedback.map((f) => (
                           <TableRow key={f.id} className="cursor-pointer" onClick={() => setSelectedFeedback(f)}>
                             <TableCell className="text-xs text-muted-foreground whitespace-nowrap">{fmtDate(f.created_at)}</TableCell>
                             <TableCell className="text-xs">{f.kind}</TableCell>
@@ -392,11 +458,14 @@ const Admin = () => {
                     {selectedReport.duration_ms != null && <Badge variant="outline">{selectedReport.duration_ms}ms</Badge>}
                     {selectedReport.image_provided && <Badge variant="outline">có ảnh</Badge>}
                   </div>
-                  <Field label="Đề bài" value={selectedReport.prompt} mono />
+                  <Field label="Đề bài" value={selectedReport.prompt} mono copyable />
                   <Field label="Thông báo lỗi" value={selectedReport.error_message} mono />
                   {selectedReport.ai_json != null && (
                     <div>
-                      <p className="mb-1 text-xs font-medium text-muted-foreground">JSON của AI</p>
+                      <div className="mb-1 flex items-center justify-between">
+                        <p className="text-xs font-medium text-muted-foreground">JSON của AI</p>
+                        <CopyBtn text={JSON.stringify(selectedReport.ai_json, null, 2)} />
+                      </div>
                       <pre className="max-h-64 overflow-auto rounded-md bg-muted p-3 text-xs">
                         {JSON.stringify(selectedReport.ai_json, null, 2)}
                       </pre>
@@ -425,8 +494,8 @@ const Admin = () => {
                     <StatusSelect value={selectedFeedback.status} onChange={(s) => updateStatus('user_feedback', selectedFeedback.id, s)} />
                     {selectedFeedback.page_path && <Badge variant="outline">{selectedFeedback.page_path}</Badge>}
                   </div>
-                  <Field label="Nội dung" value={selectedFeedback.message} />
-                  <Field label="Đề bài liên quan" value={selectedFeedback.prompt} mono />
+                  <Field label="Nội dung" value={selectedFeedback.message} copyable />
+                  <Field label="Đề bài liên quan" value={selectedFeedback.prompt} mono copyable />
                   {selectedFeedback.saved_geometry_id && (
                     <Field label="Bản vẽ đã lưu (id)" value={selectedFeedback.saved_geometry_id} mono />
                   )}
@@ -448,12 +517,15 @@ const Admin = () => {
   );
 };
 
-// Ô hiển thị 1 trường (nhãn + giá trị), ẩn nếu rỗng.
-function Field({ label, value, mono }: { label: string; value: string | null | undefined; mono?: boolean }) {
+// Ô hiển thị 1 trường (nhãn + giá trị), ẩn nếu rỗng. copyable → hiện nút Copy.
+function Field({ label, value, mono, copyable }: { label: string; value: string | null | undefined; mono?: boolean; copyable?: boolean }) {
   if (!value) return null;
   return (
     <div>
-      <p className="mb-1 text-xs font-medium text-muted-foreground">{label}</p>
+      <div className="mb-1 flex items-center justify-between gap-2">
+        <p className="text-xs font-medium text-muted-foreground">{label}</p>
+        {copyable && <CopyBtn text={value} />}
+      </div>
       <p className={`whitespace-pre-wrap break-words rounded-md bg-muted p-3 ${mono ? 'font-mono text-xs' : 'text-sm'}`}>{value}</p>
     </div>
   );

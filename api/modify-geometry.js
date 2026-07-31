@@ -198,7 +198,7 @@ CHỈ trả về JSON thuần, KHÔNG markdown.`;
       if (content.toLowerCase().includes('clarif') || content.includes('?')) {
         return res.json(withQuota({ needsClarification: true, message: content, geometry: currentGeometry }, access));
       }
-      logBrokenProblem({
+      await logBrokenProblem({
         endpoint: 'modify-geometry', userId, mode: 'modify', prompt: trimmedPrompt,
         errorMessage: `Không đọc được JSON sửa hình: ${(content || '').slice(0, 300)}`,
         errorStage: 'parse', durationMs: Date.now() - startedAt,
@@ -226,7 +226,7 @@ CHỈ trả về JSON thuần, KHÔNG markdown.`;
     await refundAiUsage(access);
     if (creditCharge && userId) { try { await refund(userId, creditCharge.cost, creditCharge.reqId); } catch (e) { console.warn('refund lỗi:', e?.message); } }
     const isAbort = error?.name === 'AbortError' || (error?.message || '').includes('aborted');
-    logBrokenProblem({
+    await logBrokenProblem({
       endpoint: 'modify-geometry', userId, mode: 'modify', prompt: dbgPrompt,
       errorMessage: error?.message || String(error),
       errorStage: isAbort ? 'timeout' : 'exception', durationMs: Date.now() - startedAt,

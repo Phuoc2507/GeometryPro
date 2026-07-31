@@ -86,7 +86,7 @@ export function OrdersTab() {
                     <TableCell className="text-xs font-mono">{o.order_code}</TableCell>
                     <TableCell className="text-sm">{o.display_name || o.user_id || '—'}</TableCell>
                     <TableCell className="text-xs">{o.plan_code || '—'}</TableCell>
-                    <TableCell className="text-right text-sm">{o.amount.toLocaleString('vi-VN')}₫</TableCell>
+                    <TableCell className="text-right text-sm">{(o.amount ?? 0).toLocaleString('vi-VN')}₫</TableCell>
                     <TableCell className="text-right text-sm">{o.credit_amount != null ? o.credit_amount.toLocaleString('vi-VN') : '—'}</TableCell>
                     <TableCell>
                       <Badge className={orderStatusClass(o.status)} variant="secondary">{o.status || '—'}</Badge>

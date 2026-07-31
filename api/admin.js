@@ -125,8 +125,12 @@ async function grantCredit(gate, req, res) {
     }
   }
 
-  // Ref DUY NHẤT: grant_credits idempotent theo ref → ref cố định sẽ bị coi là trùng và bỏ qua.
-  const ref = `admin-grant:${crypto.randomUUID()}`;
+  // IDEMPOTENT: dùng key do client sinh (ổn định trong 1 lần mở hộp thoại) làm ref.
+  // grant_credits dedup theo ref → nếu response mất mạng và admin bấm lại, KHÔNG cộng
+  // credit lần 2. Không có key hợp lệ → sinh ngẫu nhiên (giữ hành vi cũ).
+  const rawKey = req.body?.idempotencyKey;
+  const key = (typeof rawKey === 'string' && /^[\w:-]{8,80}$/.test(rawKey)) ? rawKey : crypto.randomUUID();
+  const ref = `admin-grant:${key}`;
   const result = await grant(userId, amount, `admin:${reason}`, ref, true);
   if (!result || result.ok === false) {
     return res.status(500).json({ error: 'Không cấp/trừ được credit (kiểm tra user tồn tại).' });
@@ -145,6 +149,17 @@ async function setRole(gate, req, res) {
   // Chặn tự gỡ quyền của chính mình (tránh tự khoá mình ra ngoài trang admin).
   if (userId === gate.userId && role !== 'admin') {
     return res.status(400).json({ error: 'Không thể tự gỡ quyền quản trị của chính bạn' });
+  }
+  // Chặn gỡ admin CUỐI CÙNG (tránh cả hệ thống không còn ai quản trị).
+  if (role === 'user') {
+    const { count, error: cErr } = await gate.admin
+      .from('profiles')
+      .select('user_id', { count: 'exact', head: true })
+      .eq('role', 'admin');
+    if (cErr) return res.status(500).json({ error: cErr.message });
+    if ((count ?? 0) <= 1) {
+      return res.status(400).json({ error: 'Không thể gỡ quản trị viên cuối cùng' });
+    }
   }
   const { error } = await gate.admin
     .from('profiles')

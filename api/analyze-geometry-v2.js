@@ -50,7 +50,7 @@ async function handler(req, res) {
     if (creditCharge && access.userId) {
       await refund(access.userId, creditCharge.cost, creditCharge.reqId);
     }
-    logBrokenProblem({
+    await logBrokenProblem({
       endpoint: 'analyze-geometry-v2', userId: access.userId, mode: 'kernel',
       prompt: (problem || '').trim() || null,
       errorMessage: error instanceof Error ? error.message : 'kernel-mode failed',

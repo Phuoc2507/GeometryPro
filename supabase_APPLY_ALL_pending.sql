@@ -420,6 +420,22 @@ $$;
 revoke all on function public.is_admin(uuid) from public;
 grant execute on function public.is_admin(uuid) to authenticated, service_role;
 
+-- 3) KHOÁ cột `role` trong policy tự-sửa-hồ-sơ (chống user tự lên admin qua RLS).
+--    Tạo lại "Users can update non-plan fields" giữ nguyên ràng buộc cũ + thêm role.
+drop policy if exists "Users can update non-plan fields" on public.profiles;
+create policy "Users can update non-plan fields" on public.profiles
+for update using (auth.uid() = user_id)
+with check (
+  auth.uid() = user_id
+  and role              is not distinct from (select p.role              from public.profiles p where p.user_id = auth.uid())
+  and plan_type         is not distinct from (select p.plan_type         from public.profiles p where p.user_id = auth.uid())
+  and plan_tier         is not distinct from (select p.plan_tier         from public.profiles p where p.user_id = auth.uid())
+  and plan_code         is not distinct from (select p.plan_code         from public.profiles p where p.user_id = auth.uid())
+  and plan_expires_at   is not distinct from (select p.plan_expires_at   from public.profiles p where p.user_id = auth.uid())
+  and plan_credits      is not distinct from (select p.plan_credits      from public.profiles p where p.user_id = auth.uid())
+  and purchased_credits is not distinct from (select p.purchased_credits from public.profiles p where p.user_id = auth.uid())
+);
+
 commit;
 
 -- ► CẤP QUYỀN ADMIN cho tài khoản đầu tiên: BỎ CHÚ THÍCH 2 dòng dưới, thay email,

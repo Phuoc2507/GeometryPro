@@ -282,7 +282,7 @@ async function handler(req, res) {
     // Soft-failure Advance (trả 200 kèm error) — máy KHÔNG dựng được cảnh; ghi cho admin.
     // KHÔNG log nhánh `degraded` thuần (vẫn vẽ được bài đơn) — chỉ log khi thực sự hỏng.
     if (result && (result.ok === false || result.revUnsupported || result.imageReadFailed || result.abstained)) {
-      logBrokenProblem({
+      await logBrokenProblem({
         endpoint: 'analyze-advance', userId, mode: 'advance', prompt: problemSeed || null,
         imageProvided: !!imageBase64, aiJson: result.scene || null,
         errorMessage: result.error || 'advance không dựng được cảnh',
@@ -305,7 +305,7 @@ async function handler(req, res) {
     }
     const isAbort = error?.name === 'AbortError' || (error?.message || '').includes('aborted');
     // Ghi bài lỗi (ngoại lệ/timeout) cho trang admin — không chặn phản hồi.
-    logBrokenProblem({
+    await logBrokenProblem({
       endpoint: 'analyze-advance', userId, mode: 'advance', prompt: dbgPrompt,
       imageProvided: dbgImage, errorMessage: error?.message || String(error),
       errorStage: isAbort ? 'timeout' : 'exception', durationMs: Date.now() - startedAt,

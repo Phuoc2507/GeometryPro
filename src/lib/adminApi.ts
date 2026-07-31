@@ -56,8 +56,8 @@ export const listUsers = (page = 1, perPage = 30) =>
 export const listOrders = (page = 1, perPage = 30) =>
   adminApi<ListOrdersResult>('list-orders', { page, perPage });
 
-export const grantCredit = (userId: string, amount: number, reason?: string) =>
-  adminApi<{ ok: boolean; remaining: number | null }>('grant-credit', { userId, amount, reason });
+export const grantCredit = (userId: string, amount: number, reason?: string, idempotencyKey?: string) =>
+  adminApi<{ ok: boolean; remaining: number | null }>('grant-credit', { userId, amount, reason, idempotencyKey });
 
 export const setRole = (userId: string, role: 'admin' | 'user') =>
   adminApi<{ ok: boolean }>('set-role', { userId, role });

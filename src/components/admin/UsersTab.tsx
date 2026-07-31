@@ -174,8 +174,10 @@ function GrantCreditDialog({ user, onClose, onGranted }: {
   const [amount, setAmount] = useState('');
   const [reason, setReason] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  // Key idempotent ổn định trong 1 lần mở hộp thoại: bấm lại (mạng lỗi) KHÔNG cộng 2 lần.
+  const [idemKey, setIdemKey] = useState('');
 
-  useEffect(() => { if (user) { setAmount(''); setReason(''); } }, [user]);
+  useEffect(() => { if (user) { setAmount(''); setReason(''); setIdemKey(crypto.randomUUID()); } }, [user]);
 
   const submit = async () => {
     if (!user) return;
@@ -183,7 +185,7 @@ function GrantCreditDialog({ user, onClose, onGranted }: {
     if (!Number.isFinite(n) || n === 0) { toast.error('Nhập số credit (khác 0). Dùng số âm để trừ.'); return; }
     setSubmitting(true);
     try {
-      const res = await grantCredit(user.id, n, reason.trim() || undefined);
+      const res = await grantCredit(user.id, n, reason.trim() || undefined, idemKey);
       toast.success(`Đã ${n > 0 ? 'cấp' : 'trừ'} ${Math.abs(n)} credit`);
       onGranted(user.id, res.remaining);
       onClose();

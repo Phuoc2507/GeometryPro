@@ -478,7 +478,7 @@ KẾT QUẢ TRƯỚC BỊ PHẲNG (mọi điểm có z≈0). Hãy dựng lại h
             const violMsg = kv.violations.map((v) => v.message || JSON.stringify(v)).join('; ').slice(0, 300);
             console.warn(`[kernelVerify] ${kv.violations.length}/${kv.checked} vi phạm:`, violMsg);
             // Máy vẽ SAI (vi phạm ràng buộc) — route vẫn trả 200 nên catch KHÔNG thấy; ghi cho admin.
-            logBrokenProblem({
+            await logBrokenProblem({
               endpoint: 'analyze-geometry', userId, mode: drawMode, model: aiModel || null,
               prompt: trimmedPrompt, imageProvided: !!imageBase64, aiJson: normalizedGeometry,
               errorMessage: violMsg, errorStage: 'verify', durationMs: Date.now() - startedAt,
@@ -565,7 +565,7 @@ KẾT QUẢ TRƯỚC BỊ PHẲNG (mọi điểm có z≈0). Hãy dựng lại h
     }
     const isAbort = error?.name === 'AbortError' || (error?.message || '').includes('aborted');
     // Ghi bài lỗi (ngoại lệ/timeout) cho trang admin — không chặn phản hồi.
-    logBrokenProblem({
+    await logBrokenProblem({
       endpoint: 'analyze-geometry', userId, mode: dbgMode, model: dbgModel,
       prompt: dbgPrompt, imageProvided: dbgImage,
       errorMessage: error?.message || String(error),

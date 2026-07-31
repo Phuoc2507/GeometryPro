@@ -79,7 +79,7 @@ async function handler(req, res) {
   } catch (err) {
     console.error('[solve] Vilao API error:', err.message);
     await refundIfCharged();
-    logBrokenProblem({
+    await logBrokenProblem({
       endpoint: 'solve', userId: access.userId, prompt: problem,
       errorMessage: `LLM call failed: ${err.message}`, errorStage: 'llm_failed',
       durationMs: Date.now() - startedAt,
@@ -91,7 +91,7 @@ async function handler(req, res) {
   if (!parsed) {
     console.error('[solve] Failed to parse LLM response:n', raw.slice(0, 500));
     await refundIfCharged();
-    logBrokenProblem({
+    await logBrokenProblem({
       endpoint: 'solve', userId: access.userId, prompt: problem,
       errorMessage: `LLM returned invalid JSON: ${raw.slice(0, 300)}`, errorStage: 'parse',
       durationMs: Date.now() - startedAt,

@@ -11,6 +11,7 @@ import { createClient } from '@supabase/supabase-js';
 
 const PROMPT_STORE_MAX = 5000;   // cắt bớt đề khi lưu (đủ để chẩn lỗi, tránh phình DB)
 const AI_JSON_STORE_MAX = 200000; // chặn JSON quá khổ (ký tự) — bỏ qua nếu vượt
+const LOG_TIMEOUT_MS = 3000;      // trần thời gian chờ ghi log (không để treo response)
 
 let cachedClient = null;
 let cachedKey = '';
@@ -42,7 +43,11 @@ function safeJson(value) {
 }
 
 /**
- * Ghi một bản ghi bài lỗi. Gọi rồi quên — không cần await.
+ * Ghi một bản ghi bài lỗi.
+ * PHẢI await ở call site: trên serverless (Vercel), instance bị đóng băng ngay sau
+ * khi trả response → promise chưa await bị bỏ, bài lỗi KHÔNG kịp lưu. Vì mọi call
+ * site đều nằm ở nhánh LỖI (sắp trả về), await thêm vài chục ms là chấp nhận được.
+ * Hàm không bao giờ throw; có timeout để không treo response quá lâu.
  * @param {object} p
  * @param {string} p.endpoint       route phát hiện lỗi (bắt buộc)
  * @param {string|null} [p.userId]  auth uid (null nếu khách)
@@ -55,7 +60,7 @@ function safeJson(value) {
  * @param {string|null} [p.errorStage] 'exception'|'parse'|'verify'|'timeout'|'unsupported'…
  * @param {number|null} [p.durationMs]
  */
-export function logBrokenProblem(p = {}) {
+export async function logBrokenProblem(p = {}) {
   try {
     const client = getClient();
     if (!client || !p.endpoint) return;
@@ -75,12 +80,14 @@ export function logBrokenProblem(p = {}) {
       duration_ms: Number.isFinite(p.durationMs) ? Math.round(p.durationMs) : null,
     };
 
-    // Fire-and-forget: nuốt lỗi, không await, không throw.
-    client.from('problem_reports').insert([row]).then(({ error }) => {
+    // AWAIT (kèm timeout): chắc chắn insert bay đi & hoàn tất trước khi handler trả
+    // response, nhưng không bao giờ để việc ghi log giữ response quá LOG_TIMEOUT_MS.
+    const insert = client.from('problem_reports').insert([row]).then(({ error }) => {
       if (error) console.warn('[broken-problem] insert failed:', error.message);
     }, (err) => {
       console.warn('[broken-problem] insert threw:', err?.message || err);
     });
+    await Promise.race([insert, new Promise((resolve) => setTimeout(resolve, LOG_TIMEOUT_MS))]);
   } catch (err) {
     // Không bao giờ để việc ghi log làm hỏng request chính.
     try { console.warn('[broken-problem] log error:', err?.message || err); } catch { /* im lặng */ }
