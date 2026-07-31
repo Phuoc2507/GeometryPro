@@ -32,12 +32,17 @@ const baseGeom = (solid: unknown): GeometryData => ({
   name: 'test', points: [], lines: [], revolutionSolids: [solid],
 } as unknown as GeometryData);
 
+// Lối vẽ chuẩn SGK: THÂN tô nhạt + TRỤC nét đứt + ELIP nắp (nửa gần liền / nửa xa đứt) + 2 ĐƯỜNG SINH.
 describe('generateProjectedLatex · khối tròn xoay Advance (revolutionSolids)', () => {
-  it('quanh Ox SINH lệnh vẽ (vĩ tuyến kín + hai đường bao)', () => {
+  it('quanh Ox: thân tô + trục nét đứt + 2 đường sinh', () => {
     const latex = generateProjectedLatex(baseGeom(revOx), CAM, TARGET);
     expect(latex).toContain('Vẽ khối tròn xoay (Advance)');
-    expect(latex).toMatch(/purple!55, thick\].*-- cycle/);
-    expect((latex.match(/purple!70, thick\]/g) || []).length).toBeGreaterThanOrEqual(2);
+    // Thân khối tô nhạt (đa giác kẹp giữa 2 đường sinh).
+    expect(latex).toMatch(/\\fill\[purple!14, opacity=0\.45\].*-- cycle/);
+    // Trục quay nét đứt mảnh.
+    expect(latex).toMatch(/\\draw\[gray!55, dashed, thin\]/);
+    // Đúng HAI đường sinh (silhouette trên & dưới).
+    expect((latex.match(/purple!75, thick\]/g) || []).length).toBe(2);
   });
 
   it('vành lớn B(2,4,0) tại x=2 nằm trong đường vẽ (toạ độ đã chiếu khớp mesh)', () => {
@@ -47,10 +52,16 @@ describe('generateProjectedLatex · khối tròn xoay Advance (revolutionSolids)
     expect(latex).toContain(`(${fmt(b2d.x)}, ${fmt(b2d.y)})`);
   });
 
+  it('nắp vành lớn: có cung nét liền (nửa gần) VÀ cung nét đứt (nửa xa)', () => {
+    const latex = generateProjectedLatex(baseGeom(revOx), CAM, TARGET);
+    expect(latex).toMatch(/\\draw\[purple!70, thick\]/);   // nửa nắp gần camera
+    expect(latex).toMatch(/\\draw\[purple!45, dashed\]/);  // nửa nắp xa camera
+  });
+
   it('thiếu samples nhưng có outer poly ⇒ vẫn tự lấy mẫu và vẽ', () => {
     const noSamples: RevolutionSolid = { ...revOx, samples: undefined };
     const latex = generateProjectedLatex(baseGeom(noSamples), CAM, TARGET);
-    expect(latex).toMatch(/purple!(55|70), thick\]/);
+    expect(latex).toMatch(/purple!75, thick/);
   });
 
   it('quanh Oy (vỏ trụ) SINH lệnh vẽ', () => {
@@ -60,7 +71,7 @@ describe('generateProjectedLatex · khối tròn xoay Advance (revolutionSolids)
       samples: [{ x: 0.5, r: 0.5 }, { x: 1.5, r: 1.5 }, { x: 3, r: 3 }],
     };
     const latex = generateProjectedLatex(baseGeom(revOyShell), CAM, TARGET);
-    expect(latex).toMatch(/purple!(55|70), thick\]/);
+    expect(latex).toMatch(/purple!75, thick/);
   });
 
   it('quanh Oy (đĩa theo y) SINH lệnh vẽ', () => {
@@ -70,20 +81,20 @@ describe('generateProjectedLatex · khối tròn xoay Advance (revolutionSolids)
       samples: [{ x: 0, r: 2 }, { x: 2, r: 2 }, { x: 4, r: 2 }],
     };
     const latex = generateProjectedLatex(baseGeom(revOyDisk), CAM, TARGET);
-    expect(latex).toMatch(/purple!(55|70), thick\]/);
+    expect(latex).toMatch(/purple!75, thick/);
   });
 
   it('trục dời y=k: bán kính vòng = |r−k| (khối vẫn vẽ, không rỗng)', () => {
     const shifted: RevolutionSolid = { ...revOx, axisY: 1 };
     const latex = generateProjectedLatex(baseGeom(shifted), CAM, TARGET);
-    expect(latex).toMatch(/purple!(55|70), thick\]/);
+    expect(latex).toMatch(/purple!75, thick/);
   });
 
   it('CHỐNG CRASH: solid.hidden ⇒ bỏ qua, không vẽ', () => {
     const hidden: RevolutionSolid = { ...revOx, hidden: true } as RevolutionSolid;
     const latex = generateProjectedLatex(baseGeom(hidden), CAM, TARGET);
-    // Header vẫn thêm nhưng không có lệnh purple cho khối ẩn này.
-    expect(latex).not.toMatch(/purple!(55|70), thick\]/);
+    // Header vẫn thêm nhưng không có lệnh vẽ nào cho khối ẩn này.
+    expect(latex).not.toMatch(/purple/);
   });
 
   it('CHỐNG CRASH: samples rỗng + outer expr (không parser) ⇒ không throw, không vẽ', () => {
@@ -99,14 +110,14 @@ describe('generateProjectedLatex · khối tròn xoay Advance (revolutionSolids)
       name: 't', points: [], lines: [], revolutionSolids: [null, undefined, 'bad', revOx],
     } as unknown as GeometryData;
     expect(() => generateProjectedLatex(geom, CAM, TARGET)).not.toThrow();
-    expect(generateProjectedLatex(geom, CAM, TARGET)).toMatch(/purple!(55|70), thick\]/);
+    expect(generateProjectedLatex(geom, CAM, TARGET)).toMatch(/purple!75, thick/);
   });
 });
 
 // HỢP ĐỒNG END-TO-END (khoá lỗi "vẫn chưa được"): scene Advance lưu solid ở base với
 // hidden:true (mặc định). RightPanel PHẢI chiếu qua projectScene trước khi sinh LaTeX,
-// nếu không generator bỏ qua solid ẩn ⇒ không có vòng tròn. Test này khoá đúng chuỗi đó.
-describe('HỢP ĐỒNG: base ẩn → projectScene lộ → LaTeX vẽ vòng (khoá RightPanel)', () => {
+// nếu không generator bỏ qua solid ẩn ⇒ không có khối. Test này khoá đúng chuỗi đó.
+describe('HỢP ĐỒNG: base ẩn → projectScene lộ → LaTeX vẽ khối (khoá RightPanel)', () => {
   const sceneBase = {
     name: 'khối tròn xoay', points: [{ id: 'A', label: 'A', x: 0, y: 0, z: 0 }], lines: [],
     revolutionSolids: [{ ...revOx, hidden: true }],
@@ -116,23 +127,23 @@ describe('HỢP ĐỒNG: base ẩn → projectScene lộ → LaTeX vẽ vòng (k
     { id: 's1', label: 'Dựng khối tròn xoay', visibleIds: ['A', 'sol'] },
   ];
 
-  it('base thô (solid.hidden=true) ⇒ generator KHÔNG vẽ vòng nào', () => {
+  it('base thô (solid.hidden=true) ⇒ generator KHÔNG vẽ khối nào', () => {
     const latex = generateProjectedLatex(sceneBase, CAM, TARGET);
-    expect(latex).not.toMatch(/purple!(55|70), thick\]/);
+    expect(latex).not.toMatch(/purple/);
   });
 
   it('projectScene ở bước ẩn (step 0) ⇒ vẫn KHÔNG vẽ (solid chưa lộ)', () => {
     const g = projectScene(sceneBase, steps, 0);
     expect(g.revolutionSolids?.[0].hidden).toBe(true);
-    expect(generateProjectedLatex(g, CAM, TARGET)).not.toMatch(/purple!(55|70), thick\]/);
+    expect(generateProjectedLatex(g, CAM, TARGET)).not.toMatch(/purple/);
   });
 
-  it('projectScene ở bước lộ (step 1) ⇒ solid.hidden=false ⇒ generator VẼ vòng + đường bao', () => {
+  it('projectScene ở bước lộ (step 1) ⇒ solid.hidden=false ⇒ generator VẼ thân + đường sinh', () => {
     const g = projectScene(sceneBase, steps, 1);
     expect(g.revolutionSolids?.[0].hidden).toBe(false);
     const latex = generateProjectedLatex(g, CAM, TARGET);
     expect(latex).toContain('Vẽ khối tròn xoay (Advance)');
-    expect(latex).toMatch(/purple!55, thick\].*-- cycle/);
-    expect((latex.match(/purple!70, thick\]/g) || []).length).toBeGreaterThanOrEqual(2);
+    expect(latex).toMatch(/\\fill\[purple!14, opacity=0\.45\].*-- cycle/);
+    expect((latex.match(/purple!75, thick\]/g) || []).length).toBe(2);
   });
 });

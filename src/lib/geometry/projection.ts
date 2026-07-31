@@ -435,10 +435,15 @@ export const generateProjectedLatex = (
         });
     }
 
-    // Vẽ KHỐI TRÒN XOAY của chế độ Advance (revolutionSolids). Đây là field RIÊNG, KHÁC `surfaces`
-    // (renderer 3D dùng AnimatedRevolutionSolid với LatheGeometry), nên trước đây bản LaTeX bỏ trắng.
-    // Ta dựng lại đúng phép biến hình mesh để hình xuất khớp canvas: vài vĩ tuyến (vòng kín) + hai
-    // đường bao trái/phải (silhouette), cùng tông tím như surfaces. Xem [[verifying-frontend-geo3d]].
+    // Vẽ KHỐI TRÒN XOAY của chế độ Advance (revolutionSolids). Field RIÊNG, KHÁC `surfaces`
+    // (renderer 3D dùng AnimatedRevolutionSolid + LatheGeometry). TRƯỚC ĐÂY vẽ ~6 vĩ tuyến kín chồng
+    // chéo + 2 đường bao lấy theo cực-x màn hình → nhìn như mớ khung dây, KHÔNG đọc ra "khối đặc" và
+    // đường bao lệch khi trục nghiêng. NAY vẽ theo lối hình học giải tích chuẩn SGK cho khối tròn xoay:
+    //   1) THÂN tô nhạt (đa giác kẹp giữa 2 đường sinh),
+    //   2) TRỤC quay nét đứt mảnh,
+    //   3) ELIP nắp ở hai đầu bán kính > 0 — nửa gần camera nét liền, nửa xa nét đứt (quy ước 3D),
+    //   4) hai ĐƯỜNG SINH (silhouette) lấy theo phương ⊥ trục-đã-chiếu (đúng cho mọi góc nhìn).
+    // Vẫn khớp phép biến hình mesh (xem [[verifying-frontend-geo3d]]).
     if (Array.isArray(geometry.revolutionSolids) && geometry.revolutionSolids.length > 0) {
         latex += `\n  % Vẽ khối tròn xoay (Advance)\n`;
         geometry.revolutionSolids.forEach(solid => {
@@ -451,7 +456,7 @@ export const generateProjectedLatex = (
 
                 // Biên dạng: ưu tiên mẫu engine {x,r} (đúng cho MỌI kiểu kể cả 'expr'); nếu thiếu thì tự
                 // lấy mẫu outer poly/sqrt/const trên domain ('expr' không parser ở trình duyệt ⇒ bỏ qua).
-                let samples: { x: number; r: number }[] =
+                const samples: { x: number; r: number }[] =
                     Array.isArray(solid.samples) ? solid.samples.filter(s => s && Number.isFinite(s.x) && Number.isFinite(s.r)) : [];
                 if (!samples.length) {
                     const dom = Array.isArray(solid.domain) ? solid.domain : [0, 1];
@@ -471,56 +476,94 @@ export const generateProjectedLatex = (
                         if (Number.isFinite(r)) samples.push({ x, r: Math.max(0, r) });
                     }
                 }
-                if (!samples.length) return;   // không có gì để vẽ
+                if (samples.length < 2) return;   // cần ≥2 mẫu để có thân + đường sinh
 
-                // (x,r) → bán kính vòng ρ + điểm 3D (toạ độ TOÁN) theo góc quét, KHỚP mesh AnimatedRevolutionSolid:
-                //  • Ox: lathe quanh Y → xoay −90° quanh Z → tịnh tiến [0,axisY,0] ⇒ vòng bán kính |r−axisY|
-                //    trong mặt (y,z), tâm (x, 0, axisY).
-                //  • Oy vỏ trụ: lathe quanh Y (math-z là trục) ⇒ vòng bán kính x, ở độ cao z=r, trong mặt (x,y).
-                //  • Oy đĩa/vành: vòng bán kính r, ở độ cao z=x (x = toạ độ y của mẫu).
+                // (x,r) → tâm vòng + bán kính ρ + điểm 3D (toạ độ TOÁN) theo góc quét, KHỚP mesh:
+                //  • Ox: vòng bán kính |r−axisY| trong mặt (y,z), tâm (x, 0, axisY).
+                //  • Oy vỏ trụ: vòng bán kính x ở độ cao z=r, tâm (0,0,r).
+                //  • Oy đĩa/vành: vòng bán kính r ở độ cao z=x, tâm (0,0,x).
                 const ringOf = (s: { x: number; r: number }) => {
                     if (aroundOy) {
                         const rho = oyDisk ? Math.max(0, s.r) : Math.max(0, s.x);
                         const z = oyDisk ? s.x : Math.max(0, s.r);
-                        return { rho, pt: (a: number) => ({ x: rho * Math.cos(a), y: rho * Math.sin(a), z }) };
+                        return { rho, center: { x: 0, y: 0, z }, pt: (a: number) => ({ x: rho * Math.cos(a), y: rho * Math.sin(a), z }) };
                     }
                     const rho = Math.abs(s.r - axisY);
-                    return { rho, pt: (a: number) => ({ x: s.x, y: rho * Math.sin(a), z: axisY - rho * Math.cos(a) }) };
+                    return { rho, center: { x: s.x, y: 0, z: axisY }, pt: (a: number) => ({ x: s.x, y: rho * Math.sin(a), z: axisY - rho * Math.cos(a) }) };
                 };
 
-                const ANG = 32;      // điểm mỗi vòng
-                const EPS = 0.02;    // bỏ vòng bán kính ~0 (đỉnh/đáy)
-                const leftPath: string[] = [];
-                const rightPath: string[] = [];
-                const ringPaths: string[][] = [];
-                const N = samples.length;
-                const ringEvery = Math.max(1, Math.floor(N / 5));   // giữ ~6 vĩ tuyến gợi khối
-                samples.forEach((s, si) => {
-                    const { rho, pt } = ringOf(s);
-                    if (rho <= EPS) return;
-                    const ring2d: { x: number; y: number }[] = [];
+                type P2 = { x: number; y: number };
+                const ANG = 40;
+                // Chiếu từng vòng: điểm 2D + tâm 2D + độ sâu (khoảng cách tới camera) để tách nửa gần/xa.
+                const rings = samples.map((s) => {
+                    const { rho, center, pt } = ringOf(s);
+                    const ring2d: P2[] = [];
+                    const depth: number[] = [];
                     for (let ai = 0; ai < ANG; ai++) {
-                        const a = (ai / ANG) * Math.PI * 2;
-                        ring2d.push(project3DTo2D(pt(a), cameraPos, target));
+                        const p3 = pt((ai / ANG) * Math.PI * 2);
+                        ring2d.push(project3DTo2D(p3, cameraPos, target));
+                        depth.push(Math.hypot(p3.x - cameraPos[0], p3.y - cameraPos[1], p3.z - cameraPos[2]));
                     }
-                    // Đường bao: điểm cực-trái/phải (theo x màn hình) của vòng — giống cách vẽ nón/trụ.
-                    let minI = 0, maxI = 0;
-                    for (let ai = 1; ai < ANG; ai++) {
-                        if (ring2d[ai].x < ring2d[minI].x) minI = ai;
-                        if (ring2d[ai].x > ring2d[maxI].x) maxI = ai;
-                    }
-                    leftPath.push(`(${formatCoord(ring2d[minI].x)}, ${formatCoord(ring2d[minI].y)})`);
-                    rightPath.push(`(${formatCoord(ring2d[maxI].x)}, ${formatCoord(ring2d[maxI].y)})`);
-                    if (si === 0 || si === N - 1 || si % ringEvery === 0) {
-                        ringPaths.push(ring2d.map(p => `(${formatCoord(p.x)}, ${formatCoord(p.y)})`));
-                    }
+                    return { rho, center2d: project3DTo2D(center, cameraPos, target), ring2d, depth };
                 });
 
-                ringPaths.forEach(r => {
-                    latex += `  \\draw[purple!55, thick] ${r.join(' -- ')} -- cycle;\n`;
+                // Phương TRỤC trên màn hình (tâm vòng đầu → cuối) + pháp tuyến ⊥ để lấy 2 đường sinh.
+                const c0 = rings[0].center2d, c1 = rings[rings.length - 1].center2d;
+                let ax = c1.x - c0.x, ay = c1.y - c0.y;
+                const alen = Math.hypot(ax, ay) || 1; ax /= alen; ay /= alen;
+                const nx = -ay, ny = ax;   // pháp tuyến đơn vị (⊥ trục)
+
+                const upper: P2[] = [], lower: P2[] = [];
+                rings.forEach(r => {
+                    let hi = 0, lo = 0, hv = -Infinity, lv = Infinity;
+                    r.ring2d.forEach((p, i) => {
+                        const d = p.x * nx + p.y * ny;
+                        if (d > hv) { hv = d; hi = i; }
+                        if (d < lv) { lv = d; lo = i; }
+                    });
+                    upper.push(r.ring2d[hi]); lower.push(r.ring2d[lo]);
                 });
-                if (leftPath.length > 1) latex += `  \\draw[purple!70, thick] ${leftPath.join(' -- ')};\n`;
-                if (rightPath.length > 1) latex += `  \\draw[purple!70, thick] ${rightPath.join(' -- ')};\n`;
+                const P = (p: P2) => `(${formatCoord(p.x)}, ${formatCoord(p.y)})`;
+
+                // 1) THÂN: tô nhạt vùng kẹp giữa đường sinh trên và dưới.
+                const bodyPoly = [...upper, ...lower.slice().reverse()];
+                latex += `  \\fill[purple!14, opacity=0.45] ${bodyPoly.map(P).join(' -- ')} -- cycle;\n`;
+
+                // 2) TRỤC quay: nét đứt mảnh, kéo dài nhẹ hai đầu cho rõ.
+                const ext = 0.12;
+                const axStart = { x: c0.x - (c1.x - c0.x) * ext, y: c0.y - (c1.y - c0.y) * ext };
+                const axEnd = { x: c1.x + (c1.x - c0.x) * ext, y: c1.y + (c1.y - c0.y) * ext };
+                latex += `  \\draw[gray!55, dashed, thin] ${P(axStart)} -- ${P(axEnd)};\n`;
+
+                // 3) ELIP nắp hai đầu (bán kính > 0): tách cung theo độ sâu → nửa gần nét liền, nửa xa nét đứt.
+                const drawCap = (r: { rho: number; ring2d: P2[]; depth: number[] }) => {
+                    if (r.rho <= 0.03) return;   // đầu nhọn (đỉnh chóp/parabol) không có nắp
+                    const n = r.ring2d.length;
+                    const mean = r.depth.reduce((a, b) => a + b, 0) / n;
+                    const near = r.depth.map(d => d < mean);
+                    // Độ sâu biến thiên hình sin quanh vòng ⇒ đúng 2 lần đổi gần/xa; bắt đầu tại một điểm đổi.
+                    let start = 0;
+                    for (let i = 0; i < n; i++) { if (near[i] !== near[(i - 1 + n) % n]) { start = i; break; } }
+                    const arcs: { near: boolean; pts: P2[] }[] = [];
+                    let cur: { near: boolean; pts: P2[] } = { near: near[start], pts: [r.ring2d[start]] };
+                    for (let k = 1; k <= n; k++) {
+                        const i = (start + k) % n;
+                        cur.pts.push(r.ring2d[i]);            // nối tới điểm biên để 2 cung khép kín
+                        if (k < n && near[i] !== cur.near) { arcs.push(cur); cur = { near: near[i], pts: [r.ring2d[i]] }; }
+                    }
+                    arcs.push(cur);
+                    arcs.forEach(arc => {
+                        if (arc.pts.length < 2) return;
+                        const style = arc.near ? 'purple!70, thick' : 'purple!45, dashed';
+                        latex += `  \\draw[${style}] ${arc.pts.map(P).join(' -- ')};\n`;
+                    });
+                };
+                drawCap(rings[0]);
+                drawCap(rings[rings.length - 1]);
+
+                // 4) Hai ĐƯỜNG SINH nét liền — vẽ SAU cùng để nổi trên thân.
+                if (upper.length > 1) latex += `  \\draw[purple!75, thick] ${upper.map(P).join(' -- ')};\n`;
+                if (lower.length > 1) latex += `  \\draw[purple!75, thick] ${lower.map(P).join(' -- ')};\n`;
             } catch (err) {
                 // Một khối lỗi KHÔNG được kéo sập cả bản vẽ; bỏ qua khối đó.
                 console.warn('[TikZ] bỏ qua khối tròn xoay lỗi:', err);
