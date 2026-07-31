@@ -1,0 +1,23 @@
+{
+  "id": "vsgeo-0037",
+  "source": {
+    "type": "exam",
+    "ref": "Tốt nghiệp THPT 2025 - mã đề 0101 - phần III câu 4 (trả lời ngắn, đã chuẩn hoá lời văn)"
+  },
+  "statement_vi": "Cho hình chóp S.ABCD có đáy ABCD là hình thoi với góc ABC = 60 độ và AB = 2. Biết hình chiếu vuông góc của S trên mặt phẳng (ABCD) là trọng tâm H của tam giác ABC và SH = sqrt(3). Tính khoảng cách giữa hai đường thẳng AC và SD.",
+  "figure": { "coords_given": false },
+  "answer": {
+    "canonical": "3*sqrt(3)/5",
+    "type": "surd",
+    "human_note": "khoảng cách AC-SD; giá trị chính xác 3*sqrt(3)/5 ~ 1.04 (đề yêu cầu làm tròn phần trăm)"
+  },
+  "tags": {
+    "topic": ["khoang_cach", "the_tich"],
+    "answer_form": "surd",
+    "difficulty": 3,
+    "requires_auxiliary_construction": true
+  },
+  "solution_ref_vi": "Hình thoi cạnh 2, góc ABC=60 nên AC=2, BD=2*sqrt(3). Đặt tâm O(0,0,0): A(-1,0,0), C(1,0,0), B(0,-sqrt(3),0), D(0,sqrt(3),0). H=trọng tâm ABC=(0,-sqrt(3)/3,0), S=(0,-sqrt(3)/3,sqrt(3)). AC có VTCP (1,0,0); SD có VTCP D-S=(0,4*sqrt(3)/3,-sqrt(3)); [u,v]=(0,sqrt(3),4*sqrt(3)/3), |[u,v]|=5/sqrt(3). Với AD=(1,sqrt(3),0): d=|AD.[u,v]|/|[u,v]|=3/(5/sqrt(3))=3*sqrt(3)/5 ~ 1.04.",
+  "verified_by_engine": false,
+  "scale_degree": 0
+}
