@@ -379,11 +379,13 @@ function Scene({ geometry, isBuilding, autoRotate = false, is2D = false, focus =
       <CameraViewOffset />
       <CameraFlyer controlsRef={controlsRef} focus={focus} />
 
-      {/* Lighting with shadows */}
-      <ambientLight intensity={0.4} />
+      {/* Lighting — dịu & thân thiện: fill sáng hơn + hemisphere mềm, key light nhẹ, rim nhạt.
+          Nét đường (Line) là unlit nên phần này chỉ làm MỀM các khối đặc (Advance/tròn xoay/thiết diện). */}
+      <ambientLight intensity={0.7} />
+      <hemisphereLight intensity={0.5} color="#ffffff" groundColor="#94a3b8" />
       <directionalLight
         position={[10, 10, 5]}
-        intensity={0.8}
+        intensity={0.45}
         castShadow
         shadow-mapSize-width={1024}
         shadow-mapSize-height={1024}
@@ -393,10 +395,10 @@ function Scene({ geometry, isBuilding, autoRotate = false, is2D = false, focus =
         shadow-camera-top={10}
         shadow-camera-bottom={-10}
       />
-      <pointLight position={[-10, -10, -10]} intensity={0.3} color="#8b5cf6" />
+      <pointLight position={[-10, -10, -10]} intensity={0.25} color="#a5b4fc" />
 
-      {/* Environment for subtle reflections */}
-      <Environment preset="night" />
+      {/* Environment mềm trong nhà cho phản chiếu dịu (chỉ IBL, không nền) */}
+      <Environment preset="apartment" />
 
       {/* Grid */}
       <Grid

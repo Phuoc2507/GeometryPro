@@ -67,9 +67,9 @@ export function DynamicUnfolding({ points }: DynamicUnfoldingProps) {
             <meshStandardMaterial 
               color="#3b82f6" 
               transparent 
-              opacity={0.6} 
-              roughness={0.2}
-              metalness={0.1}
+              opacity={0.6}
+              roughness={0.65}
+              metalness={0}
               side={THREE.DoubleSide}
               depthWrite={false}
             />

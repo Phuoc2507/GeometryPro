@@ -184,10 +184,10 @@ export default function AnimatedRevolutionSolid({ solid }: { solid: RevolutionSo
       <mesh geometry={geometry} castShadow receiveShadow>
         <meshPhysicalMaterial
           color={baseColor}
-          roughness={0.25}
+          roughness={0.6}
           metalness={0.0}
-          clearcoat={1}
-          clearcoatRoughness={0.2}
+          clearcoat={0.15}
+          clearcoatRoughness={0.6}
           side={THREE.DoubleSide}
           transparent={mat.transparent}
           opacity={mat.opacity}

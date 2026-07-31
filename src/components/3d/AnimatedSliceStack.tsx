@@ -99,7 +99,7 @@ export default function AnimatedSliceStack({ solid }: { solid: SliceStack }) {
       {slices.filter((sl) => sl.pos <= cut + 1e-9).map((sl, i) => (
         <mesh key={i} geometry={sl.geo} position={sl.position} rotation={sl.rotation} castShadow receiveShadow>
           <meshPhysicalMaterial
-            color={color} roughness={0.25} metalness={0.0} clearcoat={1} clearcoatRoughness={0.2}
+            color={color} roughness={0.6} metalness={0.0} clearcoat={0.15} clearcoatRoughness={0.6}
             side={THREE.DoubleSide} transparent={solid.dim} opacity={opacity}
             emissive={solid.highlight ? new THREE.Color(color) : new THREE.Color('#000000')}
             emissiveIntensity={solid.highlight ? 0.2 : 0}

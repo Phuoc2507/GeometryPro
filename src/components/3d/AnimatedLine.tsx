@@ -32,7 +32,9 @@ function AnimatedLineComponent({
   const [visible, setVisible] = useState(true);
   const [progress, setProgress] = useState(1);
   const [hovered, setHovered] = useState(false);
-  const defaultColor = useMemo(() => getCssHslVar('--foreground'), []);
+  // Nét cạnh dịu & thân thiện: dùng --muted-foreground (xám nhạt) thay vì --foreground (gần trắng, gắt).
+  // Theme-aware qua CSS var nên tự hợp cả nền tối/sáng; vẫn đủ rõ để định hình khối nhưng bớt "sắc".
+  const defaultColor = useMemo(() => getCssHslVar('--muted-foreground'), []);
   const fromPoint = points.find((point) => point.id === line.from);
   const toPoint = points.find((point) => point.id === line.to);
   const animCtx = useAnimationOptional();
@@ -108,7 +110,7 @@ function AnimatedLineComponent({
       <Line
         points={shape.linePoints}
         color={lineColor}
-        lineWidth={isHighlighted ? 5 : (isDashed ? 1.5 : (emphasize ? 4 : 3))}
+        lineWidth={isHighlighted ? 4 : (isDashed ? 1.25 : (emphasize ? 3.25 : 2.5))}
         // Keep USE_DASH compiled for both states. A huge dash with no gap is
         // visually solid and avoids a shader recompile/remount at face changes.
         dashed
