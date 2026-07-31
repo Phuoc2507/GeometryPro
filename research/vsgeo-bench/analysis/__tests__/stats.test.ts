@@ -28,3 +28,52 @@ describe("bootstrapCI — khoảng tin cậy 95% cho tỉ lệ nhị phân", () 
     expect(hi).toBeGreaterThanOrEqual(0.6);
   });
 });
+
+import { accuracyBy } from "../stats";
+import type { EvalRecord, Verdict } from "../types";
+
+// Hàm tạo bản ghi gọn cho test.
+function rec(seedId: string, modelId: string, verdict: Verdict, raw = ""): EvalRecord {
+  return {
+    seedId, modelId, run: 1, promptStyle: "zero_shot",
+    rawOutput: raw, extractedAnswer: null, verdict, latencyMs: 0,
+  };
+}
+
+describe("accuracyBy — gom nhóm & tính accuracy", () => {
+  const records: EvalRecord[] = [
+    rec("s1", "gpt", "correct"),
+    rec("s1", "gpt", "incorrect"),
+    rec("s2", "gemini", "correct"),
+    rec("s2", "gemini", "correct"),
+  ];
+
+  it("gom theo model, đếm đúng/tổng và accuracy", () => {
+    const rows = accuracyBy(records, (r) => r.modelId);
+    const gpt = rows.find((r) => r.key === "gpt")!;
+    expect(gpt.correct).toBe(1);
+    expect(gpt.total).toBe(2);
+    expect(gpt.accuracy).toBe(0.5);
+    const gem = rows.find((r) => r.key === "gemini")!;
+    expect(gem.accuracy).toBe(1);
+  });
+
+  it("mỗi dòng có khoảng tin cậy 95%", () => {
+    const rows = accuracyBy(records, (r) => r.modelId, { ciIters: 500, seed: 1 });
+    for (const row of rows) {
+      expect(row.ci95[0]).toBeLessThanOrEqual(row.accuracy);
+      expect(row.ci95[1]).toBeGreaterThanOrEqual(row.accuracy);
+    }
+  });
+
+  it("keyFn trả MẢNG -> tính vào nhiều nhóm", () => {
+    const rows = accuracyBy(records, () => ["A", "B"]);
+    expect(rows.find((r) => r.key === "A")!.total).toBe(4);
+    expect(rows.find((r) => r.key === "B")!.total).toBe(4);
+  });
+
+  it("sắp xếp các dòng theo key cho ổn định", () => {
+    const rows = accuracyBy(records, (r) => r.modelId);
+    expect(rows.map((r) => r.key)).toEqual(["gemini", "gpt"]);
+  });
+});
