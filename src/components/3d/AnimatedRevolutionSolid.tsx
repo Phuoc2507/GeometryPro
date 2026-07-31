@@ -6,6 +6,7 @@ import type { ProfileFn, RevolutionSolid } from '@/types/geometry';
 import { revolutionPhase, sweepIndexCount, buildBladeRegion } from '@/lib/geometry/revolutionAnim';
 
 // Quyết định vật liệu khối: dim (Advance) ưu tiên; translucent (Vẽ nhanh/Vẽ kỹ) bán trong suốt; else đục.
+// eslint-disable-next-line react-refresh/only-export-components
 export function solidMaterialForTest(solid: { dim?: boolean; translucent?: boolean }): { transparent: boolean; opacity: number } {
   if (solid.dim) return { transparent: true, opacity: 0.25 };
   if (solid.translucent) return { transparent: true, opacity: 0.55 };
@@ -26,6 +27,7 @@ function evalProfile(f: ProfileFn, x: number): number {
 }
 
 // Export riêng để test thuần (không dựng canvas).
+// eslint-disable-next-line react-refresh/only-export-components
 export function profileSamplesForTest(outer: ProfileFn, domain: [number, number], steps: number) {
   const [a, b] = domain;
   const out: { radius: number; axial: number }[] = [];

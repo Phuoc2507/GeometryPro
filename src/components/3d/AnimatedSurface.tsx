@@ -11,6 +11,7 @@ import { profileOf, surfaceIsHorizontalAxis } from '@/lib/geometry/surfaceProfil
 
 // Re-export để các test/consumer cũ vẫn import từ đây; logic thuần sống ở surfaceProfile.ts (dùng
 // chung cho cả trình xuất TikZ). Xem [[verifying-frontend-geo3d]].
+// eslint-disable-next-line react-refresh/only-export-components
 export { profileOf, surfaceIsHorizontalAxis };
 
 interface Props {
@@ -22,6 +23,7 @@ interface Props {
 /** Độ mờ của ĐƯỜNG viền mặt tròn xoay. Mặt chỉ vẽ bằng kinh/vĩ tuyến (không tô mesh), nên opacity
  *  thấp từ LLM (vd 0.15) làm đường gần như vô hình trên nền tối. Nâng sàn để luôn đủ rõ mà vẫn nhạt
  *  hơn nét khối đặc (opacity=1). */
+// eslint-disable-next-line react-refresh/only-export-components
 export function surfaceLineOpacity(surface: Surface3D): number {
   return Math.max(0.6, surface.opacity ?? 1);
 }

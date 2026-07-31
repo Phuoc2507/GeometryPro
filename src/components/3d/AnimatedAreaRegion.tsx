@@ -5,6 +5,7 @@ import { useGeometry } from '@/context/GeometryContext';
 import type { AreaRegion } from '@/types/geometry';
 
 // Viền miền kín: biên trên (a→b) rồi biên dưới (b→a). Export riêng để test thuần.
+// eslint-disable-next-line react-refresh/only-export-components
 export function areaLoopForTest(samples: { x: number; top: number; bot: number }[]) {
   const top = samples.map((s) => ({ x: s.x, y: s.top }));
   const bot = samples.slice().reverse().map((s) => ({ x: s.x, y: s.bot }));
@@ -19,7 +20,7 @@ export default function AnimatedAreaRegion({ region }: { region: AreaRegion }) {
 
   const [a, b] = region.domain;
   const depth = region.slabDepth ?? 0.15;
-  const samples = region.samples || [];
+  const samples = useMemo(() => region.samples || [], [region.samples]);
 
   const geometry = useMemo(() => {
     if (samples.length < 2) return null;
