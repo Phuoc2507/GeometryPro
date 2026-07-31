@@ -13,7 +13,7 @@ import { recognizeConstant } from './recognize';
 import { fitPoly, evalPoly, derivPoly, extremumOfPoly } from './polyfit';
 import { intersectionVolume, type Solid } from './solids';
 import { entityTableToGeometryData } from '../entityToGeometry';
-import { buildAnalysisFigure, type FigureInput } from './analysisFigure';
+import { buildAnalysisFigure, functionCurves, type FigureInput } from './analysisFigure';
 
 const NumOrExpr = z.union([z.number(), z.string()]);
 
@@ -215,6 +215,21 @@ export function runAnalysis(raw: unknown): AnalysisResult {
     return { polys, polyDomains, points, solids: buildSolids(env) };
   };
 
+  // Ghép ĐỒ THỊ hàm số vào figure. Hình dựng từ entityTable (finalize/solve_multi) CHỈ có điểm/cạnh —
+  // KHÔNG có 'curves' → bài "vẽ đồ thị" (đống rơm, đèn lồng…) ra vài chấm trần, user "không thấy gì cả".
+  // geo có sẵn → nối thêm curve; geo rỗng (bài expr thuần, không op dựng điểm) → dựng figure hàm đầy đủ.
+  const withFunctionCurves = (geo: unknown, env: Env): unknown => {
+    if (plan.functions.length === 0) return geo;
+    if (!geo) {
+      const fig = buildAnalysisFigure(plan.solidName || 'figure', buildFigureInput(env));
+      return fig.curves && fig.curves.length > 0 ? fig : geo;
+    }
+    const curves = functionCurves(buildFigureInput(env));
+    if (curves.length === 0) return geo;
+    const g = geo as { curves?: unknown[] };
+    return { ...g, curves: [...(g.curves ?? []), ...curves] };
+  };
+
   const isExprSrc = (s: unknown): s is { kind: 'expr'; expr: string } =>
     !!s && typeof s === 'object' && (s as { kind?: string }).kind === 'expr';
   const isSolidVolSrc = (s: unknown): s is { kind: 'solid_volume'; of: [string, string]; mode: 'intersection' } =>
@@ -404,7 +419,9 @@ export function runAnalysis(raw: unknown): AnalysisResult {
         ok: violations.length === 0 && errors.length === 0 && Number.isFinite(val),
         parameter: { name: az.parameters.join(','), value: NaN },
         answer: mkAnswer(val), violations, errors,
-        geometry: geometry ?? buildAnalysisFigure(az.parameters.join(','), buildFigureInput(envBest)),
+        geometry: geometry
+          ? withFunctionCurves(geometry, envBest)
+          : buildAnalysisFigure(az.parameters.join(','), buildFigureInput(envBest)),
       };
     } catch (e) { return fail(az.parameters.join(','), (e as Error).message); }
   }
@@ -452,7 +469,7 @@ export function runAnalysis(raw: unknown): AnalysisResult {
       ok: violations.length === 0 && errors.length === 0 && Number.isFinite(val),
       parameter: { name: pname, value },
       answer: mkAnswer(val),
-      violations, errors, geometry,
+      violations, errors, geometry: withFunctionCurves(geometry, env),
     };
   };
 

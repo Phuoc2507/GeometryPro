@@ -24,5 +24,22 @@ describe('Câu 1 (đống rơm) qua runAnalysis', () => {
     expect(r.parameter.value).toBeCloseTo(-1 / 3, 5);  // a = -1/3
     expect(r.answer.approx).toBeCloseTo(16 / 3, 4);    // 5,3333 m
     expect(Math.round(r.answer.approx * 100)).toBe(533); // → 533 cm
+
+    // HÌNH: xưa chỉ có điểm B,C,V trần (entityTable không có 'curves') → user "không thấy gì cả".
+    // Nay figure phải KÈM đồ thị parabol f để lộ mặt cắt đống rơm.
+    const geo = r.geometry as {
+      points: { id: string }[];
+      curves?: { type: string; params: Record<string, number> }[];
+    } | null;
+    expect(geo).toBeTruthy();
+    expect(geo!.points.find((p) => p.id === 'B')).toBeDefined();
+    expect(geo!.points.find((p) => p.id === 'C')).toBeDefined();
+    expect(geo!.points.find((p) => p.id === 'V')).toBeDefined();
+    const para = geo!.curves?.find((c) => c.type === 'parabola');
+    expect(para).toBeDefined();
+    expect(para!.params.a).toBeCloseTo(-1 / 3, 5); // f(x) = -1/3 x² + 8/3 x
+    expect(para!.params.b).toBeCloseTo(8 / 3, 5);
+    expect(para!.params.xMin).toBeCloseTo(0, 6);
+    expect(para!.params.xMax).toBeCloseTo(8, 6);
   });
 });

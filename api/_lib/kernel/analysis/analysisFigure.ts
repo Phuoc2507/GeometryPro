@@ -37,20 +37,30 @@ function polyCurve(id: string, coeffs: number[], xMin: number, xMax: number): Cu
   return { id, type: 'poly' as Curve3D['type'], params: { coeffs: [...coeffs], xMin, xMax } };
 }
 
+// Chỉ các ĐƯỜNG CONG của hàm số khai báo (parabola/cubic/poly) — KHÔNG kèm điểm mẫu/khối.
+// Tách riêng để lớp giải tích ghép đồ thị vào figure dựng-từ-entityTable (vốn chỉ có điểm/cạnh).
+export function functionCurves(inp: FigureInput): Curve3D[] {
+  const curves: Curve3D[] = [];
+  for (const [fnName, coeffs] of Object.entries(inp.polys)) {
+    const [xMin, xMax] = inp.polyDomains[fnName] ?? [0, 10];
+    curves.push(polyCurve(`curve_${fnName}`, coeffs, xMin, xMax));
+  }
+  return curves;
+}
+
 export function buildAnalysisFigure(name: string, inp: FigureInput): GeometryData {
   const points: Point3D[] = [];
   const lines: Line3D[] = [];
-  const curves: Curve3D[] = [];
+  const curves: Curve3D[] = functionCurves(inp);
 
   // ── Điểm tường minh ──────────────────────────────────────────────
   for (const p of inp.points) {
     points.push({ id: p.id, label: p.id, x: p.x, y: p.y, z: p.z });
   }
 
-  // ── Hàm số → curve + điểm mẫu ────────────────────────────────────
+  // ── Hàm số → điểm mẫu dọc curve (curve đã dựng ở functionCurves) ──
   for (const [fnName, coeffs] of Object.entries(inp.polys)) {
     const [xMin, xMax] = inp.polyDomains[fnName] ?? [0, 10];
-    curves.push(polyCurve(`curve_${fnName}`, coeffs, xMin, xMax));
     for (let k = 0; k <= CURVE_SAMPLES; k++) {
       const x = xMin + ((xMax - xMin) * k) / CURVE_SAMPLES;
       const y = evalPoly(coeffs, x);
