@@ -42,6 +42,16 @@ export function sweepIndexCount(totalIndices: number, sweepFrac: number): number
   return raw - (raw % 6);
 }
 
+// Clip-planes cho "lưỡi phẳng" sinh khối: CHỈ GĐ1 mới clip (hiệu ứng "vẽ dần" a→b);
+// GĐ2 (đang quay) KHÔNG clip lưỡi. PHẢI trả null — KHÔNG undefined: canvas bật
+// localClippingEnabled ⇒ three.js WebGLClipping.setState đọc material.clippingPlanes.length
+// cho MỌI material; undefined ⇒ "Cannot read properties of undefined (reading 'length')"
+// lặp mỗi frame suốt lúc lưỡi mờ dần ở GĐ2 (null thì short-circuit vô hại). Generic để
+// không kéo three vào file thuần này.
+export function bladeClipPlanesFor<T>(phase: 1 | 2, planes: T[]): T[] | null {
+  return phase === 1 ? planes : null;
+}
+
 export interface V2 { x: number; y: number }
 
 interface BladeRegionParams {

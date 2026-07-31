@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import { useThree } from '@react-three/fiber';
 import { useGeometry } from '@/context/GeometryContext';
 import type { ProfileFn, RevolutionSolid } from '@/types/geometry';
-import { revolutionPhase, sweepIndexCount, buildBladeRegion } from '@/lib/geometry/revolutionAnim';
+import { revolutionPhase, sweepIndexCount, buildBladeRegion, bladeClipPlanesFor } from '@/lib/geometry/revolutionAnim';
 
 // Quyết định vật liệu khối: dim (Advance) ưu tiên; translucent (Vẽ nhanh/Vẽ kỹ) bán trong suốt; else đục.
 export function solidMaterialForTest(solid: { dim?: boolean; translucent?: boolean }): { transparent: boolean; opacity: number } {
@@ -169,7 +169,9 @@ export default function AnimatedRevolutionSolid({ solid }: { solid: RevolutionSo
       bladeClip.constant = a + (b - a) * ph.drawFrac;  // Ox: lộ trái→phải theo trục
     }
   }
-  const bladeClipPlanes = ph.phase === 1 ? [bladeClip] : undefined;
+  // GĐ2 PHẢI là null (không undefined): lưỡi vẫn render lúc mờ dần, mà canvas bật
+  // localClippingEnabled ⇒ three đọc material.clippingPlanes.length; undefined ⇒ crash mỗi frame.
+  const bladeClipPlanes = bladeClipPlanesFor(ph.phase, [bladeClip]);
 
   const baseColor = solid.color ?? '#6366f1';
   const mat = solidMaterialForTest(solid);

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { revolutionPhase, sweepIndexCount, buildBladeRegion, REVOLVE_PHASE1_END } from '../revolutionAnim';
+import { revolutionPhase, sweepIndexCount, buildBladeRegion, bladeClipPlanesFor, REVOLVE_PHASE1_END } from '../revolutionAnim';
 
 describe('revolutionPhase — 2 giai đoạn: vẽ phẳng rồi quay', () => {
   it('t=0 → giai đoạn 1, chưa quay', () => {
@@ -100,5 +100,27 @@ describe('buildBladeRegion — vòng kín miền kinh tuyến (hệ đầu-vào 
     expect(loop[0]).toEqual({ x: 0, y: 0 });   // (a,0)
     expect(loop[loop.length - 1]).toEqual({ x: 4, y: 0 }); // (b,0)
     expect(loop).toContainEqual({ x: 4, y: 2 }); // đỉnh: axial=4 → x, radius=2 → y
+  });
+});
+
+describe('bladeClipPlanesFor — clip lưỡi phẳng, KHÔNG được trả undefined (chống crash three)', () => {
+  // BUG: GĐ2 cũ trả `undefined` ⇒ r3f gán material.clippingPlanes = undefined; canvas bật
+  // localClippingEnabled ⇒ WebGLClipping.setState đọc undefined.length ⇒
+  // "Cannot read properties of undefined (reading 'length')" lặp mỗi frame suốt lúc lưỡi mờ dần.
+  it('GĐ1 ⇒ trả NGUYÊN mảng planes (bật clip vẽ-dần)', () => {
+    const planes = [{ id: 'plane' }];
+    expect(bladeClipPlanesFor(1, planes)).toBe(planes);
+  });
+
+  it('GĐ2 ⇒ null (KHÔNG undefined) để three short-circuit an toàn', () => {
+    const r = bladeClipPlanesFor(2, [{ id: 'plane' }]);
+    expect(r).toBeNull();
+    expect(r).not.toBeUndefined();
+  });
+
+  it('bất biến: mọi giai đoạn đều KHÔNG bao giờ undefined', () => {
+    for (const phase of [1, 2] as const) {
+      expect(bladeClipPlanesFor(phase, [1, 2, 3])).not.toBeUndefined();
+    }
   });
 });
