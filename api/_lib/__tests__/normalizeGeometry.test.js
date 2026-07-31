@@ -102,6 +102,62 @@ describe('normalizeGeometryData plane references', () => {
   });
 });
 
+describe('normalizeGeometryData center — chuỗi toạ độ + mảng (BUG Câu 7: cầu nội tiếp trụ)', () => {
+  // LLM (Vẽ nhanh/Vẽ kỹ) xuất center của sphere/circle dạng CHUỖI "x,y,z" và center1/center2 của
+  // cylinder dạng MẢNG [x,y,z]. resolveCenter cũ coi chuỗi là ID điểm ⇒ không thấy ⇒ sphere/circle
+  // bị VỨT; cylinder qua fallback thành mảng thô ⇒ renderer đọc .x = undefined ⇒ NaN ⇒ không vẽ.
+  it('sphere center CHUỖI "0,0,0" ⇒ resolve {x,y,z} (KHÔNG bị vứt)', () => {
+    const n = normalizeGeometryData({
+      name: 's', points: [], lines: [],
+      spheres: [{ id: 'sph', center: '0,0,0', radius: 2 }],
+    });
+    expect(n.spheres).toHaveLength(1);
+    expect(n.spheres[0].center).toEqual({ x: 0, y: 0, z: 0 });
+    expect(n.spheres[0].radius).toBe(2);
+  });
+
+  it('circle center CHUỖI "0,0,-2" ⇒ resolve {x,y,z}', () => {
+    const n = normalizeGeometryData({
+      name: 'c', points: [], lines: [],
+      circles: [{ id: 'c1', center: '0,0,-2', radius: 2 }],
+    });
+    expect(n.circles).toHaveLength(1);
+    expect(n.circles[0].center).toEqual({ x: 0, y: 0, z: -2 });
+  });
+
+  it('cylinder center1/center2 dạng MẢNG [x,y,z] ⇒ resolve {x,y,z} (khớp Cylinder3D type)', () => {
+    const n = normalizeGeometryData({
+      name: 'cyl', points: [], lines: [],
+      cylinders: [{ id: 'cyl1', center1: [0, 0, -2], center2: [0, 0, 2], radius: 2 }],
+    });
+    expect(n.cylinders).toHaveLength(1);
+    expect(n.cylinders[0].center1).toEqual({ x: 0, y: 0, z: -2 });
+    expect(n.cylinders[0].center2).toEqual({ x: 0, y: 0, z: 2 });
+  });
+
+  it('center = ID điểm vẫn resolve như cũ (không hồi quy)', () => {
+    const n = normalizeGeometryData({
+      name: 's', points: [{ id: 'O', x: 1, y: 2, z: 3 }], lines: [],
+      spheres: [{ id: 'sph', center: 'O', radius: 1 }],
+    });
+    expect(n.spheres[0].center).toEqual({ x: 1, y: 2, z: 3 });
+  });
+
+  it('toàn cảnh Câu 7: sphere(chuỗi) + cylinder(mảng) + circles(chuỗi) đều sống', () => {
+    const n = normalizeGeometryData({
+      name: 'cau7', lines: [],
+      points: [{ id: 'O', x: 0, y: 0, z: 0 }],
+      spheres: [{ id: 's1', center: '0,0,0', radius: 2 }],
+      cylinders: [{ id: 'cyl1', center1: [0, 0, -2], center2: [0, 0, 2], radius: 2 }],
+      circles: [{ id: 'c1', center: '0,0,-2', radius: 2 }, { id: 'c2', center: '0,0,2', radius: 2 }],
+    });
+    expect(n.spheres).toHaveLength(1);
+    expect(n.cylinders).toHaveLength(1);
+    expect(n.circles).toHaveLength(2);
+    expect(n.cylinders[0].center1).toEqual({ x: 0, y: 0, z: -2 });
+  });
+});
+
 describe('normalizeGeometryData surfaces — center BẮT BUỘC (chống crash canvas)', () => {
   it('surface THIẾU center ⇒ mặc định gốc toạ độ (không để undefined lọt tới renderer)', () => {
     const n = normalizeGeometryData({

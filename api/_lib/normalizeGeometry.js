@@ -49,8 +49,22 @@ export function normalizeGeometryData(data) {
   }
 
   function resolveCenter(center) {
-    if (!center) return null;
+    if (center == null) return null;
+    // Mảng [x,y,z]: LLM hay xuất center1/center2 của cylinder (và đôi khi center của sphere) dạng này.
+    // Trước đây rơi hết xuống null ⇒ cylinder giữ mảng thô ⇒ renderer đọc .x = undefined ⇒ NaN ⇒ không vẽ.
+    if (Array.isArray(center)) {
+      if (center.length >= 3 && center.slice(0, 3).every((n) => Number.isFinite(Number(n)))) {
+        return { x: Number(center[0]), y: Number(center[1]), z: Number(center[2]) };
+      }
+      return null;
+    }
     if (typeof center === 'string') {
+      // Chuỗi toạ độ "x,y,z" (LLM hay xuất cho center của sphere/circle). Phải parse TRƯỚC khi coi là
+      // id điểm — nếu không sphere/circle bị vứt vì "0,0,0" không phải id nào (BUG Câu 7: cầu nội tiếp trụ).
+      const parts = center.split(',').map((t) => t.trim());
+      if (parts.length === 3 && parts.every((t) => t !== '' && Number.isFinite(Number(t)))) {
+        return { x: Number(parts[0]), y: Number(parts[1]), z: Number(parts[2]) };
+      }
       const nid = normalizeId(center);
       return pointMap[nid] || pointMap[center] || null;
     }
