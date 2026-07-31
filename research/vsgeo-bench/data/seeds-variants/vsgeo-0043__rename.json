@@ -1,0 +1,32 @@
+{
+  "id": "vsgeo-0043__rename",
+  "source": {
+    "type": "exam",
+    "ref": "Tốt nghiệp THPT 2023 - mã đề 101 - câu 45 (đã chuẩn hoá lời văn: hỏi a^2)"
+  },
+  "statement_vi": "Trong không gian Oxyz, cho mặt cầu (M): (x-1)^2 + (y+2)^2 + (z+1)^2 = 4 và đường thẳng d đi qua điểm N(1;0;-2), nhận u=(1;a;1-a) (với a là tham số thực) làm vectơ chỉ phương. Biết d cắt (M) tại hai điểm phân biệt sao cho các tiếp diện của (M) tại hai điểm đó vuông góc với nhau. Tính a^2.",
+  "figure": {
+    "coords_given": false
+  },
+  "answer": {
+    "canonical": "5/3",
+    "type": "rational",
+    "human_note": "hai tiếp diện tại hai giao điểm vuông góc với nhau khi và chỉ khi hai bán kính tại đó vuông góc, tức khoảng cách từ tâm I tới d bằng R/sqrt(2) = sqrt(2); giải ra a^2 = 5/3"
+  },
+  "tags": {
+    "topic": [
+      "toa_do_oxyz",
+      "mat_cau_non_tru"
+    ],
+    "answer_form": "rational",
+    "difficulty": 4,
+    "requires_auxiliary_construction": true
+  },
+  "solution_ref_vi": "Tâm I(1;-2;-1), bán kính R=2. Hai tiếp diện tại hai giao điểm vuông góc <=> hai bán kính IM, IN vuông góc <=> tam giác IMN vuông cân tại I <=> khoảng cách d(I,d) = R/sqrt(2) = sqrt(2). Với A(1;0;-2), AI=(0;-2;1); u=(1;a;1-a). [AI,u] và |u|^2 = 2a^2-2a+2. Đặt d(I,d)^2 = |[AI,u]|^2/|u|^2 = 2, giải phương trình theo a thu được a^2 = 5/3.",
+  "verified_by_engine": false,
+  "scale_degree": 0,
+  "variant": {
+    "kind": "rename",
+    "parentSeedId": "vsgeo-0043"
+  }
+}

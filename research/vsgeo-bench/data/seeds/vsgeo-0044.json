@@ -1,0 +1,23 @@
+{
+  "id": "vsgeo-0044",
+  "source": {
+    "type": "exam",
+    "ref": "Tốt nghiệp THPT 2023 - mã đề 101 - câu 38"
+  },
+  "statement_vi": "Cho hình chóp đều S.ABCD có cạnh đáy bằng a và chiều cao bằng a*sqrt(3)/6. Tính số đo góc giữa mặt phẳng (SCD) và mặt phẳng đáy (ABCD).",
+  "figure": { "coords_given": false },
+  "answer": {
+    "canonical": "30",
+    "type": "rational",
+    "human_note": "số đo góc tính bằng độ; gọi M là trung điểm CD, tam giác SOM vuông tại O với SO = a*sqrt(3)/6, OM = a/2 nên tan(SMO) = sqrt(3)/3 => góc = 30 độ"
+  },
+  "tags": {
+    "topic": ["goc", "vuong_goc"],
+    "answer_form": "rational",
+    "difficulty": 3,
+    "requires_auxiliary_construction": true
+  },
+  "solution_ref_vi": "Gọi O là tâm đáy ABCD, M là trung điểm CD. Do đáy là hình vuông cạnh a nên OM vuông góc CD và OM = a/2; SO vuông góc đáy nên góc giữa (SCD) và (ABCD) là góc SMO. tan(SMO) = SO/OM = (a*sqrt(3)/6)/(a/2) = sqrt(3)/3 => góc SMO = 30 độ.",
+  "verified_by_engine": false,
+  "scale_degree": 0
+}
