@@ -105,3 +105,36 @@ describe("mcnemar — kiểm định ghép cặp cho 2 model", () => {
     expect(r.pValue).toBeLessThan(0.001);
   });
 });
+
+import { isConfident, calibrationRate } from "../stats";
+
+describe("isConfident — heuristic 'quả quyết'", () => {
+  it("có kết luận + không rào đón -> quả quyết", () => {
+    expect(isConfident("... Vậy đáp án là \\boxed{3}.")).toBe(true);
+  });
+  it("có từ rào đón -> KHÔNG quả quyết", () => {
+    expect(isConfident("Tôi nghĩ có thể là \\boxed{3} nhưng không chắc.")).toBe(false);
+  });
+  it("không có kết luận nào -> KHÔNG quả quyết", () => {
+    expect(isConfident("Bài này cần tính khoảng cách...")).toBe(false);
+  });
+});
+
+describe("calibrationRate — tỉ lệ 'tự tin nhưng sai'", () => {
+  it("chỉ tính trên câu SAI; đếm câu sai quả quyết", () => {
+    const records: EvalRecord[] = [
+      rec("s1", "gpt", "incorrect", "Vậy đáp án \\boxed{2}."),      // sai + quả quyết
+      rec("s2", "gpt", "incorrect", "Có lẽ là 2, mình không chắc."), // sai + rào đón
+      rec("s3", "gpt", "correct", "Vậy \\boxed{1}."),               // đúng -> bỏ qua
+    ];
+    const r = calibrationRate(records);
+    expect(r.totalWrong).toBe(2);
+    expect(r.confidentWrong).toBe(1);
+    expect(r.rate).toBe(0.5);
+  });
+
+  it("không có câu sai -> rate = 0", () => {
+    const r = calibrationRate([rec("s1", "gpt", "correct", "\\boxed{1}")]);
+    expect(r.rate).toBe(0);
+  });
+});

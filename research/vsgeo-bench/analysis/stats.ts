@@ -96,3 +96,33 @@ function erfc(x: number): number {
     );
   return x >= 0 ? ans : 2 - ans;
 }
+
+// Từ ngữ "rào đón" (hedging): dấu hiệu model KHÔNG chắc chắn.
+const HEDGE_WORDS = [
+  "có thể", "có lẽ", "không chắc", "chưa chắc", "tôi nghĩ", "mình nghĩ",
+  "khoảng chừng", "ước chừng", "không chắc chắn", "hình như", "dường như",
+  "maybe", "perhaps", "possibly", "i think", "not sure", "uncertain",
+];
+
+// Dấu hiệu có "kết luận": trình bày một đáp án cuối một cách dứt khoát.
+const CONCLUDE_MARKERS = ["\\boxed", "vậy", "kết luận", "đáp án", "suy ra", "do đó"];
+
+// "Quả quyết" = CÓ kết luận VÀ KHÔNG có từ rào đón. Heuristic đơn giản (hạn chế: xem §7 kế hoạch).
+export function isConfident(rawOutput: string): boolean {
+  const text = rawOutput.toLowerCase();
+  const hedged = HEDGE_WORDS.some((w) => text.includes(w));
+  const concluded = CONCLUDE_MARKERS.some((w) => text.includes(w.toLowerCase()));
+  return concluded && !hedged;
+}
+
+// Tỉ lệ "tự tin nhưng sai" = (số câu SAI trình bày quả quyết) / (số câu SAI).
+export function calibrationRate(records: EvalRecord[]): {
+  confidentWrong: number;
+  totalWrong: number;
+  rate: number;
+} {
+  const wrong = records.filter((r) => r.verdict === "incorrect");
+  const confidentWrong = wrong.filter((r) => isConfident(r.rawOutput)).length;
+  const rate = wrong.length === 0 ? 0 : confidentWrong / wrong.length;
+  return { confidentWrong, totalWrong: wrong.length, rate };
+}
