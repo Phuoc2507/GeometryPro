@@ -6441,6 +6441,27 @@ function run(rawPlan) {
 }
 
 // api/_lib/kernel/entityToGeometry.ts
+function segmentForLine(le, points) {
+  const p0 = { x: le.p.x.approx, y: le.p.y.approx, z: le.p.z.approx };
+  const d = { x: le.dir.x.approx, y: le.dir.y.approx, z: le.dir.z.approx };
+  const dd = d.x * d.x + d.y * d.y + d.z * d.z;
+  if (!(dd > 0)) return null;
+  const onLine = [];
+  for (const [label, pe] of points) {
+    const v = { x: pe.p.x.approx - p0.x, y: pe.p.y.approx - p0.y, z: pe.p.z.approx - p0.z };
+    const vv = v.x * v.x + v.y * v.y + v.z * v.z;
+    const vd = v.x * d.x + v.y * d.y + v.z * d.z;
+    const perp2 = vv - vd * vd / dd;
+    const scale3 = Math.max(1, Math.abs(p0.x), Math.abs(p0.y), Math.abs(p0.z), Math.sqrt(vv));
+    const tol2 = (1e-6 * scale3) ** 2;
+    if (perp2 <= tol2) onLine.push({ label, t: vd / dd });
+  }
+  if (onLine.length < 2) return null;
+  onLine.sort((a, b) => a.t - b.t);
+  const from = onLine[0].label;
+  const to = onLine[onLine.length - 1].label;
+  return from === to ? null : { from, to };
+}
 function entityTableToGeometryData(et, name) {
   const points = Array.from(et.points.entries()).map(([label, pe]) => ({
     id: label,
@@ -6453,6 +6474,17 @@ function entityTableToGeometryData(et, name) {
     const [from, to] = key.split("|");
     return { id: `${from}${to}`, from, to, style: "solid" };
   });
+  const seenPairs = new Set(
+    lines.map((l) => l.from < l.to ? `${l.from}|${l.to}` : `${l.to}|${l.from}`)
+  );
+  for (const le of et.lines.values()) {
+    const seg = segmentForLine(le, et.points);
+    if (!seg) continue;
+    const key = seg.from < seg.to ? `${seg.from}|${seg.to}` : `${seg.to}|${seg.from}`;
+    if (seenPairs.has(key)) continue;
+    seenPairs.add(key);
+    lines.push({ id: `${seg.from}${seg.to}`, from: seg.from, to: seg.to, style: "solid" });
+  }
   const spheres = Array.from(et.spheres.entries()).map(([label, s]) => ({
     id: label,
     label,
@@ -7105,16 +7137,23 @@ function polyCurve(id, coeffs, xMin, xMax) {
   }
   return { id, type: "poly", params: { coeffs: [...coeffs], xMin, xMax } };
 }
+function functionCurves(inp) {
+  const curves = [];
+  for (const [fnName, coeffs] of Object.entries(inp.polys)) {
+    const [xMin, xMax] = inp.polyDomains[fnName] ?? [0, 10];
+    curves.push(polyCurve(`curve_${fnName}`, coeffs, xMin, xMax));
+  }
+  return curves;
+}
 function buildAnalysisFigure(name, inp) {
   const points = [];
   const lines = [];
-  const curves = [];
+  const curves = functionCurves(inp);
   for (const p of inp.points) {
     points.push({ id: p.id, label: p.id, x: p.x, y: p.y, z: p.z });
   }
   for (const [fnName, coeffs] of Object.entries(inp.polys)) {
     const [xMin, xMax] = inp.polyDomains[fnName] ?? [0, 10];
-    curves.push(polyCurve(`curve_${fnName}`, coeffs, xMin, xMax));
     for (let k = 0; k <= CURVE_SAMPLES; k++) {
       const x = xMin + (xMax - xMin) * k / CURVE_SAMPLES;
       const y = evalPoly(coeffs, x);
@@ -7316,6 +7355,17 @@ function runAnalysis(raw) {
       }
     }
     return { polys, polyDomains, points, solids: buildSolids(env) };
+  };
+  const withFunctionCurves = (geo, env) => {
+    if (plan.functions.length === 0) return geo;
+    if (!geo) {
+      const fig = buildAnalysisFigure(plan.solidName || "figure", buildFigureInput(env));
+      return fig.curves && fig.curves.length > 0 ? fig : geo;
+    }
+    const curves = functionCurves(buildFigureInput(env));
+    if (curves.length === 0) return geo;
+    const g2 = geo;
+    return { ...g2, curves: [...g2.curves ?? [], ...curves] };
   };
   const isExprSrc = (s) => !!s && typeof s === "object" && s.kind === "expr";
   const isSolidVolSrc = (s) => !!s && typeof s === "object" && s.kind === "solid_volume";
@@ -7570,7 +7620,7 @@ function runAnalysis(raw) {
         answer: mkAnswer(val),
         violations,
         errors,
-        geometry: geometry ?? buildAnalysisFigure(az.parameters.join(","), buildFigureInput(envBest))
+        geometry: geometry ? withFunctionCurves(geometry, envBest) : buildAnalysisFigure(az.parameters.join(","), buildFigureInput(envBest))
       };
     } catch (e) {
       return fail2(az.parameters.join(","), e.message);
@@ -7628,7 +7678,7 @@ function runAnalysis(raw) {
       answer: mkAnswer(val),
       violations,
       errors,
-      geometry
+      geometry: withFunctionCurves(geometry, env)
     };
   };
   if (plan.analyze.kind === "optimize") {
