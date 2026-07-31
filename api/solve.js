@@ -8,12 +8,14 @@ import { refund } from './_lib/credits.js';
 import { accessError, resolveAiAccess, withQuota, refundAiUsage } from './_lib/aiAccess.js';
 import crypto from 'crypto';
 import { withSentry } from './_lib/sentry.js';
+import { logBrokenProblem } from './_lib/brokenProblemLog.js';
 
 async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method Not Allowed' });
   }
 
+  const startedAt = Date.now();  // đo thời gian (log bài lỗi)
   const { problem, geometry, tags } = req.body || {};
 
   // Validate đầu vào TRƯỚC khi trừ credit (không trừ cho request hỏng).
@@ -77,6 +79,11 @@ async function handler(req, res) {
   } catch (err) {
     console.error('[solve] Vilao API error:', err.message);
     await refundIfCharged();
+    logBrokenProblem({
+      endpoint: 'solve', userId: access.userId, prompt: problem,
+      errorMessage: `LLM call failed: ${err.message}`, errorStage: 'llm_failed',
+      durationMs: Date.now() - startedAt,
+    });
     return res.status(502).json({ error: `LLM call failed: ${err.message}` });
   }
 
@@ -84,6 +91,11 @@ async function handler(req, res) {
   if (!parsed) {
     console.error('[solve] Failed to parse LLM response:n', raw.slice(0, 500));
     await refundIfCharged();
+    logBrokenProblem({
+      endpoint: 'solve', userId: access.userId, prompt: problem,
+      errorMessage: `LLM returned invalid JSON: ${raw.slice(0, 300)}`, errorStage: 'parse',
+      durationMs: Date.now() - startedAt,
+    });
     return res.status(422).json({
       error: 'LLM returned invalid JSON',
       raw_preview: raw.slice(0, 300),

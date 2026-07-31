@@ -175,6 +175,110 @@ export type Database = {
           }
         ]
       }
+      problem_reports: {
+        Row: {
+          ai_json: Json | null
+          created_at: string
+          duration_ms: number | null
+          endpoint: string
+          error_message: string | null
+          error_stage: string | null
+          id: string
+          image_provided: boolean
+          mode: string | null
+          model: string | null
+          prompt: string | null
+          prompt_len: number | null
+          status: string
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          ai_json?: Json | null
+          created_at?: string
+          duration_ms?: number | null
+          endpoint: string
+          error_message?: string | null
+          error_stage?: string | null
+          id?: string
+          image_provided?: boolean
+          mode?: string | null
+          model?: string | null
+          prompt?: string | null
+          prompt_len?: number | null
+          status?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          ai_json?: Json | null
+          created_at?: string
+          duration_ms?: number | null
+          endpoint?: string
+          error_message?: string | null
+          error_stage?: string | null
+          id?: string
+          image_provided?: boolean
+          mode?: string | null
+          model?: string | null
+          prompt?: string | null
+          prompt_len?: number | null
+          status?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      user_feedback: {
+        Row: {
+          created_at: string
+          geometry_snapshot: Json | null
+          id: string
+          kind: string
+          message: string
+          page_path: string | null
+          prompt: string | null
+          saved_geometry_id: string | null
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          geometry_snapshot?: Json | null
+          id?: string
+          kind?: string
+          message: string
+          page_path?: string | null
+          prompt?: string | null
+          saved_geometry_id?: string | null
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          geometry_snapshot?: Json | null
+          id?: string
+          kind?: string
+          message?: string
+          page_path?: string | null
+          prompt?: string | null
+          saved_geometry_id?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_feedback_saved_geometry_id_fkey"
+            columns: ["saved_geometry_id"]
+            isOneToOne: false
+            referencedRelation: "saved_geometries"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
     }
     Views: {
       [_ in never]: never

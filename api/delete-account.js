@@ -42,7 +42,10 @@ async function handler(req, res) {
   //    ON DELETE SET NULL khi xoá profiles/auth user (xem supabase_account_deletion_migration.sql).
   //    Nếu migration đó CHƯA áp, khoá ngoại vẫn ON DELETE CASCADE → chúng bị xoá như cũ
   //    (fallback an toàn, không lỗi). Nếu bước nào lỗi → DỪNG, chưa xoá auth user.
-  const tables = ['saved_geometries', 'usage_counters', 'profiles'];
+  //    `problem_reports` & `user_feedback` lưu NỘI DUNG đề của user → XOÁ hẳn (không ẩn danh),
+  //    đúng nguyên tắc riêng tư. (Chúng cũng có ON DELETE CASCADE nên bước xoá auth user là
+  //    lưới an toàn; xoá tường minh ở đây cho chắc & không phụ thuộc thứ tự cascade.)
+  const tables = ['saved_geometries', 'usage_counters', 'problem_reports', 'user_feedback', 'profiles'];
   for (const table of tables) {
     const { error } = await admin.from(table).delete().eq('user_id', userId);
     if (error) {

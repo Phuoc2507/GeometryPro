@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 // Bảng dữ liệu cá nhân bị xoá (orders + credit_ledger CỐ Ý giữ lại, ẩn danh qua FK SET NULL).
-const EXPECTED_ORDER = ['saved_geometries', 'usage_counters', 'profiles'];
+const EXPECTED_ORDER = ['saved_geometries', 'usage_counters', 'problem_reports', 'user_feedback', 'profiles'];
 
 const mocks = vi.hoisted(() => ({
   getUser: vi.fn(),

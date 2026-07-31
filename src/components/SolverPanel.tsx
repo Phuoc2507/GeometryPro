@@ -30,6 +30,7 @@ import { useSolveJobs } from '@/context/SolveJobsContext';
 import { useGeometryHistory } from '@/hooks/useGeometryHistory';
 import { useResizableWidth } from '@/hooks/useResizableWidth';
 import { buildSolveReveal, type SolveReveal } from '@/lib/solveReveal';
+import { FeedbackDialog } from '@/components/FeedbackDialog';
 import { cn }          from '@/lib/utils';
 import { safetyTierMeta, verifiedToLevel, exactnessLabel } from '@/lib/safetyTier';
 import { InlineMath, BlockMath } from 'react-katex';
@@ -789,9 +790,12 @@ export function SolverContent({ creditNote, compact }: { creditNote?: string; co
       <div className="h-full flex flex-col items-center justify-center gap-3 px-6 text-center">
         <AlertTriangle className="w-8 h-8 text-destructive/60" />
         <p className="text-sm text-destructive">{error}</p>
-        <Button variant="outline" size="sm" onClick={handleReset} className="gap-1.5">
-          <RotateCcw className="w-3.5 h-3.5" /> Thử lại
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={handleReset} className="gap-1.5">
+            <RotateCcw className="w-3.5 h-3.5" /> Thử lại
+          </Button>
+          <FeedbackDialog prompt={problem || lastProblem} geometry={geometry} />
+        </div>
       </div>
     );
   }
@@ -857,6 +861,9 @@ export function SolverContent({ creditNote, compact }: { creditNote?: string; co
             {creditNote}
           </p>
         )}
+        <div className="mt-2 flex justify-center">
+          <FeedbackDialog prompt={problem || lastProblem} geometry={geometry} />
+        </div>
       </div>
     </div>
   );

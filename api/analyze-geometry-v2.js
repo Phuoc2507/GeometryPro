@@ -3,12 +3,14 @@ import { solveProblem, solvePlan } from './_lib/kernel-bridge/solveWithKernel.js
 import { accessError, resolveAiAccess, withQuota, refundAiUsage } from './_lib/aiAccess.js';
 import { refund } from './_lib/credits.js';
 import { withSentry, reportServerError } from './_lib/sentry.js';
+import { logBrokenProblem } from './_lib/brokenProblemLog.js';
 
 async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method Not Allowed' });
   }
 
+  const startedAt = Date.now();  // đo thời gian (log bài lỗi)
   const { problem, plan } = req.body || {};
   if (plan) {
     // Raw plans are a deterministic developer/test entrypoint, not a public
@@ -48,6 +50,12 @@ async function handler(req, res) {
     if (creditCharge && access.userId) {
       await refund(access.userId, creditCharge.cost, creditCharge.reqId);
     }
+    logBrokenProblem({
+      endpoint: 'analyze-geometry-v2', userId: access.userId, mode: 'kernel',
+      prompt: (problem || '').trim() || null,
+      errorMessage: error instanceof Error ? error.message : 'kernel-mode failed',
+      errorStage: 'exception', durationMs: Date.now() - startedAt,
+    });
     return res.status(500).json({
       error: error instanceof Error ? error.message : 'kernel-mode failed',
     });

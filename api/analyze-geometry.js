@@ -22,6 +22,7 @@ import crypto from 'crypto';
 import { refund } from './_lib/credits.js';
 import { accessError, resolveAiAccess, withQuota, refundAiUsage } from './_lib/aiAccess.js';
 import { withSentry, reportServerError } from './_lib/sentry.js';
+import { logBrokenProblem } from './_lib/brokenProblemLog.js';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -38,6 +39,9 @@ async function handler(req, res) {
   let userId = null;        // ví credit: cần ở scope hàm để catch ngoài cùng hoàn được
   let creditCharge = null;  // { cost, reqId } nếu đã TRỪ credit (paid tier) -> hoàn khi lỗi
   let access = null;
+  const startedAt = Date.now();  // đo thời gian xử lý (log bài lỗi)
+  // Ngữ cảnh cho log "bài lỗi" ở catch ngoài cùng (biến trong try KHÔNG tới được catch).
+  let dbgPrompt = null, dbgMode = null, dbgModel = null, dbgImage = false;
   try {
     const isStream = req.query.stream === 'true';
 
@@ -81,6 +85,7 @@ async function handler(req, res) {
     const trimmedPrompt = prompt.trim();
     const validModes = ['quick', 'detailed'];
     const drawMode = validModes.includes(mode) ? mode : 'quick';
+    dbgPrompt = trimmedPrompt; dbgMode = drawMode; dbgModel = aiModel || null; dbgImage = !!imageBase64;
 
     const drawAction = drawMode === 'detailed' ? 'draw_detailed' : 'draw_quick';
     access = await resolveAiAccess(req, res, {
@@ -470,8 +475,14 @@ KẾT QUẢ TRƯỚC BỊ PHẲNG (mọi điểm có z≈0). Hãy dựng lại h
           verification = { ok: kv.ok, confidence: kv.confidence, violations: kv.violations };
           normalizedGeometry.confidence = kv.confidence;
           if (!kv.ok) {
-            console.warn(`[kernelVerify] ${kv.violations.length}/${kv.checked} vi phạm:`,
-              kv.violations.map((v) => v.message || JSON.stringify(v)).join('; ').slice(0, 300));
+            const violMsg = kv.violations.map((v) => v.message || JSON.stringify(v)).join('; ').slice(0, 300);
+            console.warn(`[kernelVerify] ${kv.violations.length}/${kv.checked} vi phạm:`, violMsg);
+            // Máy vẽ SAI (vi phạm ràng buộc) — route vẫn trả 200 nên catch KHÔNG thấy; ghi cho admin.
+            logBrokenProblem({
+              endpoint: 'analyze-geometry', userId, mode: drawMode, model: aiModel || null,
+              prompt: trimmedPrompt, imageProvided: !!imageBase64, aiJson: normalizedGeometry,
+              errorMessage: violMsg, errorStage: 'verify', durationMs: Date.now() - startedAt,
+            });
           } else {
             console.log(`[kernelVerify] ✓ ${kv.checked} ràng buộc đạt` + (kv.skipped ? ` (bỏ qua ${kv.skipped} cái không kiểm được)` : ''));
           }
@@ -553,6 +564,13 @@ KẾT QUẢ TRƯỚC BỊ PHẲNG (mọi điểm có z≈0). Hãy dựng lại h
       catch (e) { console.warn('refund credit lỗi:', e?.message); }
     }
     const isAbort = error?.name === 'AbortError' || (error?.message || '').includes('aborted');
+    // Ghi bài lỗi (ngoại lệ/timeout) cho trang admin — không chặn phản hồi.
+    logBrokenProblem({
+      endpoint: 'analyze-geometry', userId, mode: dbgMode, model: dbgModel,
+      prompt: dbgPrompt, imageProvided: dbgImage,
+      errorMessage: error?.message || String(error),
+      errorStage: isAbort ? 'timeout' : 'exception', durationMs: Date.now() - startedAt,
+    });
     const status = isAbort ? 504 : (error?.status || 500);
     const message = isAbort
       ? 'Yêu cầu quá lâu, vui lòng thử lại với chế độ Nhanh hoặc đề bài ngắn hơn'
