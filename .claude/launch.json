@@ -12,6 +12,12 @@
       "runtimeExecutable": "node",
       "runtimeArgs": ["server.js"],
       "port": 3000
+    },
+    {
+      "name": "vsgeo-dashboard",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["vite", "--config", "research/vsgeo-bench/dashboard/vite.preview.config.ts", "--port", "5199"],
+      "port": 5199
     }
   ]
 }
