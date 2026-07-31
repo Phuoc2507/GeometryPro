@@ -12,6 +12,7 @@ import solveHandler from './api/solve.js';
 import checkoutHandler from './api/checkout.js';
 import webhookHandler from './api/webhook.js';
 import analyzeAdvanceHandler from './api/analyze-advance.js';
+import adminHandler from './api/admin.js';
 
 export function createApp() {
 const app = express();
@@ -94,6 +95,17 @@ app.post('/api/webhook', async (req, res) => {
     await webhookHandler(req, res);
   } catch (error) {
     console.error('Error in /api/webhook:', error);
+    if (!res.headersSent) {
+      res.status(500).json({ error: error.message || 'Internal Server Error' });
+    }
+  }
+});
+
+app.post('/api/admin', async (req, res) => {
+  try {
+    await adminHandler(req, res);
+  } catch (error) {
+    console.error('Error in /api/admin:', error);
     if (!res.headersSent) {
       res.status(500).json({ error: error.message || 'Internal Server Error' });
     }

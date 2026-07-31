@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   ArrowLeft, ShieldCheck, AlertTriangle, MessageSquare, BarChart3,
-  Loader2, Inbox, RefreshCw,
+  Loader2, Inbox, RefreshCw, Users, Receipt,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -22,6 +22,8 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import type { Tables } from '@/integrations/supabase/types';
+import { UsersTab } from '@/components/admin/UsersTab';
+import { OrdersTab } from '@/components/admin/OrdersTab';
 
 type ProblemReport = Tables<'problem_reports'>;
 type UserFeedback = Tables<'user_feedback'>;
@@ -186,7 +188,7 @@ const Admin = () => {
         </div>
 
         <Tabs defaultValue="failures" className="w-full">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid h-auto w-full grid-cols-3 sm:grid-cols-5">
             <TabsTrigger value="failures" className="gap-1.5">
               <AlertTriangle className="h-4 w-4" /> Bài lỗi
               {reports.length > 0 && <Badge variant="secondary" className="ml-1">{reports.length}</Badge>}
@@ -194,6 +196,12 @@ const Admin = () => {
             <TabsTrigger value="feedback" className="gap-1.5">
               <MessageSquare className="h-4 w-4" /> Feedback
               {feedback.length > 0 && <Badge variant="secondary" className="ml-1">{feedback.length}</Badge>}
+            </TabsTrigger>
+            <TabsTrigger value="users" className="gap-1.5">
+              <Users className="h-4 w-4" /> Người dùng
+            </TabsTrigger>
+            <TabsTrigger value="orders" className="gap-1.5">
+              <Receipt className="h-4 w-4" /> Đơn hàng
             </TabsTrigger>
             <TabsTrigger value="stats" className="gap-1.5">
               <BarChart3 className="h-4 w-4" /> Thống kê
@@ -298,7 +306,17 @@ const Admin = () => {
             </Card>
           </TabsContent>
 
-          {/* ── Tab 3 — Thống kê ─────────────────────────────────────────── */}
+          {/* ── Tab — Người dùng ─────────────────────────────────────────── */}
+          <TabsContent value="users">
+            <UsersTab />
+          </TabsContent>
+
+          {/* ── Tab — Đơn hàng ───────────────────────────────────────────── */}
+          <TabsContent value="orders">
+            <OrdersTab />
+          </TabsContent>
+
+          {/* ── Tab — Thống kê ───────────────────────────────────────────── */}
           <TabsContent value="stats">
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
               <Card className="border-border/50 bg-background/50 backdrop-blur-sm">
