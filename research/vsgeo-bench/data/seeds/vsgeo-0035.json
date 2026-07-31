@@ -1,0 +1,23 @@
+{
+  "id": "vsgeo-0035",
+  "source": {
+    "type": "exam",
+    "ref": "Tốt nghiệp THPT 2023 - mã đề 101 - câu 44 (đã chuẩn hoá lời văn)"
+  },
+  "statement_vi": "Cho hình chóp S.ABCD có đáy ABCD là hình bình hành và SA = SB = SC = AC = a. Biết đường thẳng SB tạo với mặt phẳng (SAC) một góc 30 độ. Tính thể tích khối chóp S.ABCD.",
+  "figure": { "coords_given": false },
+  "answer": {
+    "canonical": "a^3*sqrt(3)/12",
+    "type": "surd",
+    "human_note": "thể tích khối chóp S.ABCD"
+  },
+  "tags": {
+    "topic": ["the_tich", "goc"],
+    "answer_form": "surd",
+    "difficulty": 4,
+    "requires_auxiliary_construction": true
+  },
+  "solution_ref_vi": "Tam giác SAC có SA=SC=AC=a nên đều, diện tích = sqrt(3)/4*a^2. Góc giữa SB và (SAC) bằng 30 độ nên khoảng cách từ B đến (SAC) = SB*sin(30) = a/2. V(S.ABC) = 1/3 * (sqrt(3)/4*a^2) * (a/2) = sqrt(3)*a^3/24. Vì ABCD là hình bình hành nên V(S.ABCD) = 2*V(S.ABC) = sqrt(3)*a^3/12.",
+  "verified_by_engine": false,
+  "scale_degree": 1
+}
