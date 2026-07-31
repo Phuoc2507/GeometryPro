@@ -41,3 +41,6 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
+
+# VSGeo raw exam PDFs (re-download via SOURCES.md)
+research/vsgeo-bench/data/raw-pdfs/*.pdf

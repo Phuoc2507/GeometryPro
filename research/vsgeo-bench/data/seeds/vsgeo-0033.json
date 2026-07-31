@@ -1,0 +1,30 @@
+{
+  "id": "vsgeo-0033",
+  "source": {
+    "type": "exam",
+    "ref": "Tốt nghiệp THPT 2024 - mã đề 101 - câu 49 (đã chuẩn hoá lời văn)"
+  },
+  "statement_vi": "Trong không gian Oxyz, cho hai điểm A(1;6;-1), B(2;-4;-1) và mặt cầu (S) tâm I(1;2;-1) đi qua A. Xét điểm M(a;b;c) với c>0 nằm trên (S) sao cho tam giác IAM là tam giác tù và có diện tích bằng 2*sqrt(7). Khi khoảng cách giữa hai đường thẳng BM và IA lớn nhất, tính giá trị a+b+c.",
+  "figure": {
+    "points": [
+      { "id": "A", "x": 1, "y": 6, "z": -1 },
+      { "id": "B", "x": 2, "y": -4, "z": -1 },
+      { "id": "I", "x": 1, "y": 2, "z": -1 }
+    ],
+    "coords_given": true
+  },
+  "answer": {
+    "canonical": "sqrt(6)",
+    "type": "surd",
+    "human_note": "M=(2;-1;-1+sqrt(6)) nên a+b+c = 2-1-1+sqrt(6) = sqrt(6) ~ 2.449"
+  },
+  "tags": {
+    "topic": ["toa_do_oxyz", "khoang_cach"],
+    "answer_form": "surd",
+    "difficulty": 4,
+    "requires_auxiliary_construction": true
+  },
+  "solution_ref_vi": "Bán kính (S) = IA = 4. Diện tích IAM = 2*sqrt(7) và IA=IM=4 cho sin(AIM), điều kiện tam giác tù chọn nhánh phù hợp; tối ưu khoảng cách BM–IA (lời giải chính thức của đề) cho M=(2;-1;-1+sqrt(6)). Do đó a+b+c = sqrt(6).",
+  "verified_by_engine": false,
+  "scale_degree": 0
+}
