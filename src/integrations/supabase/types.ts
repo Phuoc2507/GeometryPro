@@ -51,6 +51,7 @@ export type Database = {
           plan_type: string | null
           purchased_credits: number
           credits_reset_at: string
+          role: string
           updated_at: string
           user_id: string
         }
@@ -66,6 +67,7 @@ export type Database = {
           plan_type?: string | null
           purchased_credits?: number
           credits_reset_at?: string
+          role?: string
           updated_at?: string
           user_id: string
         }
@@ -81,6 +83,7 @@ export type Database = {
           plan_type?: string | null
           purchased_credits?: number
           credits_reset_at?: string
+          role?: string
           updated_at?: string
           user_id?: string
         }

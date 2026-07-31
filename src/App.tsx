@@ -20,6 +20,7 @@ const TeacherMode = React.lazy(() => import('./pages/TeacherMode'));
 const Auth = React.lazy(() => import('./pages/Auth'));
 const SavedGeometries = React.lazy(() => import('./pages/SavedGeometries'));
 const Settings = React.lazy(() => import('./pages/Settings'));
+const Admin = React.lazy(() => import('./pages/Admin'));
 const ProblemTypeCatalog = React.lazy(() => import('./pages/ProblemTypeCatalog'));
 const Terms = React.lazy(() => import('./pages/Terms'));
 const Privacy = React.lazy(() => import('./pages/Privacy'));
@@ -80,6 +81,7 @@ function App() {
                     <Route path="/auth" element={<Auth />} />
                     <Route path="/saved" element={<SavedGeometries />} />
                     <Route path="/settings" element={<Settings />} />
+                    <Route path="/admin" element={<Admin />} />
                     <Route path="/teacher/dang-bai" element={<ProblemTypeCatalog />} />
                     <Route path="/dieu-khoan" element={<Terms />} />
                     <Route path="/quyen-rieng-tu" element={<Privacy />} />

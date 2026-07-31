@@ -1,7 +1,7 @@
 
 import { useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { User, LogOut, Save, Settings, Sparkles, Crown, ListChecks, GraduationCap, Presentation } from 'lucide-react';
+import { User, LogOut, Save, Settings, Sparkles, Crown, ListChecks, GraduationCap, Presentation, ShieldCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -22,7 +22,7 @@ const RENEW_THRESHOLD_DAYS = 7;
 export function UserMenu() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user, profile, isPro, tier, credits, signOut, openUpgradeModal } = useAuth();
+  const { user, profile, isPro, isAdmin, tier, credits, signOut, openUpgradeModal } = useAuth();
 
   // Người dùng có gói trả phí còn hiệu lực (tier hạ về 'free' khi hết hạn).
   const hasPlan = tier !== 'free';
@@ -166,6 +166,16 @@ export function UserMenu() {
           <Settings className="w-4 h-4 mr-2" />
           Cài đặt
         </DropdownMenuItem>
+        {/* Chỉ quản trị viên mới thấy — mở trang /admin (route cũng tự chặn nếu không phải admin). */}
+        {isAdmin && (
+          <DropdownMenuItem
+            onClick={() => navigate('/admin')}
+            className="text-primary font-medium focus:text-primary focus:bg-primary/10"
+          >
+            <ShieldCheck className="w-4 h-4 mr-2" />
+            Quản trị
+          </DropdownMenuItem>
+        )}
         {/* Mở theo "có gói trả phí" (dùng chung cho cả 2 mode) chứ không khoá theo vai trò tier. */}
         {hasPlan && (
           <DropdownMenuItem onClick={() => navigate('/teacher/dang-bai')}>
