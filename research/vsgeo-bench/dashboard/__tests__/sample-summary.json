@@ -1,0 +1,38 @@
+{
+  "generatedAt": "2026-11-01T09:00:00.000Z",
+  "seedCount": 300,
+  "models": [
+    {
+      "modelId": "gpt-flagship",
+      "overall": { "total": 300, "correct": 246, "incorrect": 48, "unsure": 6, "accuracy": 0.82 },
+      "byTopic": [
+        { "topic": "the_tich", "total": 60, "correct": 54, "accuracy": 0.9 },
+        { "topic": "khoang_cach", "total": 80, "correct": 56, "accuracy": 0.7 },
+        { "topic": "goc", "total": 60, "correct": 45, "accuracy": 0.75 }
+      ],
+      "byDifficulty": [
+        { "difficulty": 1, "total": 90, "correct": 86, "accuracy": 0.955 },
+        { "difficulty": 4, "total": 40, "correct": 20, "accuracy": 0.5 }
+      ],
+      "robustness": { "baseAccuracy": 0.82, "perturbedAccuracy": 0.71, "gap": 0.11 },
+      "costUsd": 4.2,
+      "avgLatencyMs": 5300
+    },
+    {
+      "modelId": "open-model-7b",
+      "overall": { "total": 300, "correct": 150, "incorrect": 140, "unsure": 10, "accuracy": 0.5 },
+      "byTopic": [
+        { "topic": "the_tich", "total": 60, "correct": 39, "accuracy": 0.65 },
+        { "topic": "khoang_cach", "total": 80, "correct": 32, "accuracy": 0.4 },
+        { "topic": "goc", "total": 60, "correct": 27, "accuracy": 0.45 }
+      ],
+      "byDifficulty": [
+        { "difficulty": 1, "total": 90, "correct": 72, "accuracy": 0.8 },
+        { "difficulty": 4, "total": 40, "correct": 6, "accuracy": 0.15 }
+      ],
+      "robustness": { "baseAccuracy": 0.5, "perturbedAccuracy": 0.29, "gap": 0.21 },
+      "costUsd": 0.0,
+      "avgLatencyMs": 2100
+    }
+  ]
+}
