@@ -5,6 +5,7 @@ import crypto from 'crypto';
 import { refund } from './_lib/credits.js';
 import { accessError, resolveAiAccess, withQuota, refundAiUsage } from './_lib/aiAccess.js';
 import { withSentry, reportServerError } from './_lib/sentry.js';
+import { logBrokenProblem } from './_lib/brokenProblemLog.js';
 
 const MODIFY_SYSTEM_PROMPT = `Bạn là chuyên gia chỉnh sửa hình học 3D cho học sinh Việt Nam (lớp 11-12). Nhận hình học hiện tại + yêu cầu chỉnh sửa → trả về hình học đã cập nhật.
 
@@ -108,6 +109,8 @@ async function handler(req, res) {
   let userId = null;         // cần ở scope hàm để catch/parse-fail hoàn được credit
   let creditCharge = null;   // { cost, reqId } nếu đã TRỪ credit -> hoàn khi không sửa được
   let access = null;
+  const startedAt = Date.now();  // đo thời gian (log bài lỗi)
+  let dbgPrompt = null;          // ngữ cảnh cho log lỗi ở catch
   try {
     const { prompt, currentGeometry } = req.body;
 
@@ -116,6 +119,7 @@ async function handler(req, res) {
     }
 
     const trimmedPrompt = prompt.trim();
+    dbgPrompt = trimmedPrompt;
     if (trimmedPrompt.length < 1) return res.status(400).json({ error: 'Yêu cầu không được để trống' });
     if (trimmedPrompt.length > 2000) return res.status(400).json({ error: 'Yêu cầu quá dài (tối đa 2000 ký tự)' });
 
@@ -194,6 +198,11 @@ CHỈ trả về JSON thuần, KHÔNG markdown.`;
       if (content.toLowerCase().includes('clarif') || content.includes('?')) {
         return res.json(withQuota({ needsClarification: true, message: content, geometry: currentGeometry }, access));
       }
+      await logBrokenProblem({
+        endpoint: 'modify-geometry', userId, mode: 'modify', prompt: trimmedPrompt,
+        errorMessage: `Không đọc được JSON sửa hình: ${(content || '').slice(0, 300)}`,
+        errorStage: 'parse', durationMs: Date.now() - startedAt,
+      });
       return res.status(400).json({ error: 'Could not parse AI response', geometry: currentGeometry });
     }
 
@@ -217,6 +226,11 @@ CHỈ trả về JSON thuần, KHÔNG markdown.`;
     await refundAiUsage(access);
     if (creditCharge && userId) { try { await refund(userId, creditCharge.cost, creditCharge.reqId); } catch (e) { console.warn('refund lỗi:', e?.message); } }
     const isAbort = error?.name === 'AbortError' || (error?.message || '').includes('aborted');
+    await logBrokenProblem({
+      endpoint: 'modify-geometry', userId, mode: 'modify', prompt: dbgPrompt,
+      errorMessage: error?.message || String(error),
+      errorStage: isAbort ? 'timeout' : 'exception', durationMs: Date.now() - startedAt,
+    });
     const status = isAbort ? 504 : (error?.status || 500);
     const message = isAbort
       ? 'Yêu cầu quá lâu, vui lòng thử lại'

@@ -8,6 +8,7 @@ const SLICE_DEPTH = 0.9;     // bề dày mỗi lát tương đối (× bước)
 
 // Dựng THREE.Shape tiết diện, TÂM ở gốc, "cạnh đáy" = side theo phương ngang (x).
 // square/rect: chữ nhật; equilateral: tam giác đều đáy dưới; semicircle: nửa tròn phần trên.
+// eslint-disable-next-line react-refresh/only-export-components
 export function sectionShape(section: SliceStack['section'], side: number, ratio = 1): THREE.Shape {
   const s = Math.max(1e-4, side);
   const shp = new THREE.Shape();
@@ -25,6 +26,7 @@ export function sectionShape(section: SliceStack['section'], side: number, ratio
 }
 
 // Lọc lát hiện theo tiến trình t∈[0,1] (Cách A). Export riêng để test thuần.
+// eslint-disable-next-line react-refresh/only-export-components
 export function sliceSamplesForTest(
   samples: { t: number; side: number }[], domain: [number, number], advanceT: number,
 ) {
@@ -54,7 +56,7 @@ export default function AnimatedSliceStack({ solid }: { solid: SliceStack }) {
   const [a, b] = solid.domain;
   const oy = solid.axis === 'Oy';
   const ratio = solid.ratio ?? 1;
-  const samples = solid.samples || [];
+  const samples = useMemo(() => solid.samples || [], [solid.samples]);
   const depth = (Math.abs(b - a) / SLICE_COUNT) * SLICE_DEPTH;
 
   // Dựng SẴN 48 lát một lần (geometry + vị trí + xoay). advanceT chỉ lọc lát nào hiện,
@@ -83,7 +85,6 @@ export default function AnimatedSliceStack({ solid }: { solid: SliceStack }) {
       });
     }
     return arr;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [samples, a, b, solid.section, ratio, depth, oy]);
 
   // Giải phóng geometry khi bộ lát đổi hoặc component unmount.

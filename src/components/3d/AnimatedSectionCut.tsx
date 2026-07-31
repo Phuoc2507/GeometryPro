@@ -12,6 +12,7 @@ const vlen = (a: V3): number => Math.hypot(a[0], a[1], a[2]);
 const unit = (a: V3): V3 => { const l = vlen(a) || 1; return [a[0] / l, a[1] / l, a[2] / l]; };
 
 // Cơ sở trực chuẩn (u,v) TRONG mặt phẳng thiết diện + gốc = đỉnh 0. Export để test thuần.
+// eslint-disable-next-line react-refresh/only-export-components
 export function sectionBasis(polygon: V3[], normal: V3): { origin: V3; u: V3; v: V3; n: V3 } {
   const n = unit(normal);
   const origin = polygon[0];
@@ -23,6 +24,7 @@ export function sectionBasis(polygon: V3[], normal: V3): { origin: V3; u: V3; v:
   return { origin, u, v, n };
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function projectTo2D(polygon: V3[], basis: { origin: V3; u: V3; v: V3 }): [number, number][] {
   return polygon.map((p) => { const r = sub(p, basis.origin); return [dot(r, basis.u), dot(r, basis.v)] as [number, number]; });
 }

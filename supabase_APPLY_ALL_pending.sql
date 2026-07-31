@@ -4,10 +4,13 @@
 -- một phần trước đó thì chạy nguyên file này vẫn cho ra trạng thái đúng.
 -- Yêu cầu: đã áp các migration 23/07 (credits) trước — nếu app đang chạy
 -- được đăng nhập + hiện credit thì tức là đã có.
--- Thứ tự: hardening → quota_refund → account_deletion → plan_rename.
+-- Thứ tự: hardening → quota_refund → account_deletion → plan_rename →
+--         admin_role → problem_reports_feedback  (khu QUẢN TRỊ, thêm mới).
+-- LƯU Ý: sau khi chạy xong, mở phần 5/6 và BỎ CHÚ THÍCH câu CẤP QUYỀN ADMIN
+--        (thay email của bạn) để tài khoản bạn trở thành quản trị viên.
 -- ═══════════════════════════════════════════════════════════════════════════
 
--- ┌─── 1/4 · supabase_hardening_migration.sql ───────────────────────────────
+-- ┌─── 1/6 · supabase_hardening_migration.sql ───────────────────────────────
 -- GeometryPro hardening migration.
 -- Apply after supabase_credits_fractional_migration.sql.
 begin;
@@ -257,7 +260,7 @@ grant execute on function public.fulfill_paid_order(integer)
 
 commit;
 
--- ┌─── 2/4 · supabase_quota_refund_migration.sql ────────────────────────────
+-- ┌─── 2/6 · supabase_quota_refund_migration.sql ────────────────────────────
 -- ═══════════════════════════════════════════════════════════════════════════
 -- MIGRATION: Hoàn 1 lượt QUOTA (free / khách) khi AI lỗi phía server
 -- Áp SAU supabase_hardening_migration.sql. Idempotent, chỉ service_role gọi được.
@@ -298,7 +301,7 @@ grant execute on function public.refund_guest_quota(text,text,text) to service_r
 
 commit;
 
--- ┌─── 3/4 · supabase_account_deletion_migration.sql ────────────────────────
+-- ┌─── 3/6 · supabase_account_deletion_migration.sql ────────────────────────
 -- ═══════════════════════════════════════════════════════════════════════════
 -- MIGRATION: Ẩn danh hoá hồ sơ tài chính khi xoá tài khoản (thay vì xoá cứng)
 -- Áp SAU supabase_hardening_migration.sql. An toàn chạy lại nhiều lần (idempotent).
@@ -368,7 +371,7 @@ alter table public.credit_ledger
 
 commit;
 
--- ┌─── 4/4 · supabase_plan_rename_migration.sql ─────────────────────────────
+-- ┌─── 4/6 · supabase_plan_rename_migration.sql ─────────────────────────────
 -- ════════════════════════════════════════════════════════════════════════════
 -- Đổi TÊN gói sang trung tính (theo dung lượng credit), bỏ tên theo vai trò.
 -- Mục tiêu: một ví credit dùng chung cho cả Học sinh & Giáo viên — đổi mode
@@ -385,3 +388,181 @@ update public.plans set name = 'Trường học · 1 năm'      where code = 'sc
 
 -- Kiểm tra lại:
 -- select code, tier, name, price_vnd, credits_per_cycle from public.plans order by price_vnd;
+
+-- ┌─── 5/6 · supabase_admin_role_migration.sql ──────────────────────────────
+-- Phân quyền QUẢN TRỊ VIÊN: cột `role` trên profiles + hàm is_admin() cho RLS.
+-- (Các bảng "bài lỗi"/"feedback" ở phần 6/6 sẽ chỉ cho admin đọc bằng hàm này.)
+begin;
+
+-- 1) Cột vai trò: 'user' (mặc định) hoặc 'admin'.
+alter table public.profiles
+  add column if not exists role text not null default 'user';
+
+alter table public.profiles
+  drop constraint if exists profiles_role_check;
+alter table public.profiles
+  add constraint profiles_role_check check (role in ('user', 'admin'));
+
+-- 2) Hàm kiểm tra admin — dùng trong RLS của các bảng quản trị.
+create or replace function public.is_admin(uid uuid default auth.uid())
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select exists (
+    select 1 from public.profiles
+    where user_id = uid and role = 'admin'
+  );
+$$;
+
+revoke all on function public.is_admin(uuid) from public;
+grant execute on function public.is_admin(uuid) to authenticated, service_role;
+
+-- 3) KHOÁ cột `role` trong policy tự-sửa-hồ-sơ (chống user tự lên admin qua RLS).
+--    Tạo lại "Users can update non-plan fields" giữ nguyên ràng buộc cũ + thêm role.
+drop policy if exists "Users can update non-plan fields" on public.profiles;
+create policy "Users can update non-plan fields" on public.profiles
+for update using (auth.uid() = user_id)
+with check (
+  auth.uid() = user_id
+  and role              is not distinct from (select p.role              from public.profiles p where p.user_id = auth.uid())
+  and plan_type         is not distinct from (select p.plan_type         from public.profiles p where p.user_id = auth.uid())
+  and plan_tier         is not distinct from (select p.plan_tier         from public.profiles p where p.user_id = auth.uid())
+  and plan_code         is not distinct from (select p.plan_code         from public.profiles p where p.user_id = auth.uid())
+  and plan_expires_at   is not distinct from (select p.plan_expires_at   from public.profiles p where p.user_id = auth.uid())
+  and plan_credits      is not distinct from (select p.plan_credits      from public.profiles p where p.user_id = auth.uid())
+  and purchased_credits is not distinct from (select p.purchased_credits from public.profiles p where p.user_id = auth.uid())
+);
+
+commit;
+
+-- ► CẤP QUYỀN ADMIN cho tài khoản đầu tiên: BỎ CHÚ THÍCH 2 dòng dưới, thay email,
+--   rồi Run riêng câu này (chạy SAU khi bạn đã đăng nhập ít nhất 1 lần).
+-- update public.profiles set role = 'admin'
+--   where user_id = (select id from auth.users where email = 'phuocphuoc2507@gmail.com');
+--
+-- Kiểm tra: select p.role, u.email from public.profiles p
+--   join auth.users u on u.id = p.user_id where p.role = 'admin';
+
+-- ┌─── 6/6 · supabase_problem_reports_feedback_migration.sql ─────────────────
+-- Bảng "bài lỗi" (problem_reports) & "feedback người dùng" (user_feedback).
+-- CẦN phần 5/6 (hàm is_admin) đứng trước. Chỉ ADMIN đọc/sửa; server ghi bài lỗi
+-- bằng service_role; người dùng đăng nhập tự gửi feedback (owner-check).
+begin;
+
+-- ── problem_reports — máy vẽ SAI / KHÔNG vẽ được (server tự bắt) ──────────────
+create table if not exists public.problem_reports (
+  id             uuid        primary key default gen_random_uuid(),
+  user_id        uuid        references auth.users(id) on delete cascade,
+  endpoint       text        not null,
+  mode           text,
+  prompt         text,
+  prompt_len     integer,
+  image_provided boolean     not null default false,
+  ai_json        jsonb,
+  error_message  text,
+  error_stage    text,
+  model          text,
+  duration_ms    integer,
+  status         text        not null default 'mới'
+                   check (status in ('mới', 'đang xem', 'đã sửa', 'bỏ qua')),
+  created_at     timestamptz not null default now(),
+  updated_at     timestamptz not null default now()
+);
+
+alter table public.problem_reports enable row level security;
+
+revoke all on table public.problem_reports from public, anon, authenticated;
+grant  select, update on table public.problem_reports to authenticated;
+grant  select, insert, update, delete on table public.problem_reports to service_role;
+
+drop policy if exists "problem_reports admin read"   on public.problem_reports;
+drop policy if exists "problem_reports admin update" on public.problem_reports;
+create policy "problem_reports admin read"   on public.problem_reports
+  for select using (public.is_admin());
+create policy "problem_reports admin update" on public.problem_reports
+  for update using (public.is_admin()) with check (public.is_admin());
+
+create index if not exists problem_reports_status_created_idx
+  on public.problem_reports (status, created_at desc);
+create index if not exists problem_reports_endpoint_idx
+  on public.problem_reports (endpoint);
+create index if not exists problem_reports_user_idx
+  on public.problem_reports (user_id) where user_id is not null;
+
+-- ── user_feedback — người dùng CHỦ ĐỘNG gửi góp ý / báo lỗi ───────────────────
+create table if not exists public.user_feedback (
+  id                uuid        primary key default gen_random_uuid(),
+  user_id           uuid        not null references auth.users(id) on delete cascade,
+  kind              text        not null default 'góp ý'
+                      check (kind in ('lỗi', 'góp ý', 'khác')),
+  message           text        not null,
+  saved_geometry_id uuid        references public.saved_geometries(id) on delete set null,
+  geometry_snapshot jsonb,
+  prompt            text,
+  page_path         text,
+  status            text        not null default 'mới'
+                      check (status in ('mới', 'đang xem', 'đã sửa', 'bỏ qua')),
+  created_at        timestamptz not null default now(),
+  updated_at        timestamptz not null default now()
+);
+
+alter table public.user_feedback enable row level security;
+
+revoke all on table public.user_feedback from public, anon, authenticated;
+grant  select, insert, update on table public.user_feedback to authenticated;
+grant  select, insert, update, delete on table public.user_feedback to service_role;
+
+drop policy if exists "user_feedback insert own"  on public.user_feedback;
+drop policy if exists "user_feedback admin read"   on public.user_feedback;
+drop policy if exists "user_feedback admin update" on public.user_feedback;
+create policy "user_feedback insert own" on public.user_feedback
+  for insert with check (auth.uid() = user_id);
+create policy "user_feedback admin read" on public.user_feedback
+  for select using (public.is_admin());
+create policy "user_feedback admin update" on public.user_feedback
+  for update using (public.is_admin()) with check (public.is_admin());
+
+create index if not exists user_feedback_status_created_idx
+  on public.user_feedback (status, created_at desc);
+create index if not exists user_feedback_kind_idx
+  on public.user_feedback (kind);
+create index if not exists user_feedback_user_idx
+  on public.user_feedback (user_id);
+
+-- ── draw_stats — đếm lượt vẽ theo NGÀY để tính TỈ LỆ thành công ───────────────
+create table if not exists public.draw_stats (
+  day       date    not null,
+  endpoint  text    not null,
+  attempts  integer not null default 0,
+  fails     integer not null default 0,
+  primary key (day, endpoint)
+);
+
+alter table public.draw_stats enable row level security;
+revoke all on table public.draw_stats from public, anon, authenticated;
+grant  select on table public.draw_stats to authenticated;
+grant  select, insert, update on table public.draw_stats to service_role;
+
+drop policy if exists "draw_stats admin read" on public.draw_stats;
+create policy "draw_stats admin read" on public.draw_stats
+  for select using (public.is_admin());
+
+create or replace function public.bump_draw_stat(p_endpoint text, p_kind text)
+returns void language plpgsql security definer set search_path = public as $$
+begin
+  insert into public.draw_stats(day, endpoint, attempts, fails)
+  values (current_date, p_endpoint,
+          case when p_kind = 'attempt' then 1 else 0 end,
+          case when p_kind = 'fail'    then 1 else 0 end)
+  on conflict (day, endpoint) do update
+     set attempts = public.draw_stats.attempts + (case when p_kind = 'attempt' then 1 else 0 end),
+         fails    = public.draw_stats.fails    + (case when p_kind = 'fail'    then 1 else 0 end);
+end $$;
+
+revoke all on function public.bump_draw_stat(text, text) from public, anon, authenticated;
+grant execute on function public.bump_draw_stat(text, text) to service_role;
+
+commit;

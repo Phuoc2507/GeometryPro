@@ -1,13 +1,14 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 // Bảng dữ liệu cá nhân bị xoá (orders + credit_ledger CỐ Ý giữ lại, ẩn danh qua FK SET NULL).
-const EXPECTED_ORDER = ['saved_geometries', 'usage_counters', 'profiles'];
+const EXPECTED_ORDER = ['saved_geometries', 'usage_counters', 'problem_reports', 'user_feedback', 'profiles'];
 
 const mocks = vi.hoisted(() => ({
   getUser: vi.fn(),
   deleteUser: vi.fn(),
   deleted: [],            // ghi lại (table, col, val) mỗi lần del(...).eq(...)
-  failOnTable: null,      // đặt tên bảng để mô phỏng lỗi xoá dữ liệu
+  failOnTable: null,      // đặt tên bảng để mô phỏng lỗi xoá dữ liệu (lỗi chung 'boom')
+  missingTable: null,     // đặt tên bảng để mô phỏng "bảng chưa tồn tại" (42P01)
 }));
 
 vi.mock('@supabase/supabase-js', () => ({
@@ -20,6 +21,9 @@ vi.mock('@supabase/supabase-js', () => ({
       delete: () => ({
         eq: (col, val) => {
           mocks.deleted.push({ table, col, val });
+          if (mocks.missingTable === table) {
+            return { error: { code: '42P01', message: `relation "public.${table}" does not exist` } };
+          }
           return { error: mocks.failOnTable === table ? { message: 'boom' } : null };
         },
       }),
@@ -56,6 +60,7 @@ describe('delete-account endpoint', () => {
     mocks.deleteUser.mockReset().mockResolvedValue({ error: null });
     mocks.deleted.length = 0;
     mocks.failOnTable = null;
+    mocks.missingTable = null;
   });
 
   it('rejects non-POST', async () => {
@@ -109,6 +114,17 @@ describe('delete-account endpoint', () => {
     await handler(OK_REQ, res);
     expect(res.statusCode).toBe(200);
     expect(res.body).toEqual({ success: true });
+    expect(mocks.deleted.map((d) => d.table)).toEqual(EXPECTED_ORDER);
+    expect(mocks.deleteUser).toHaveBeenCalledWith('u1');
+  });
+
+  it('bỏ qua bảng admin CHƯA migrate (42P01) và vẫn xoá tài khoản', async () => {
+    mocks.missingTable = 'problem_reports';
+    const handler = await loadHandler();
+    const res = response();
+    await handler(OK_REQ, res);
+    expect(res.statusCode).toBe(200);
+    // Vẫn thử tới tất cả bảng (kể cả bảng thiếu) rồi xoá được auth user.
     expect(mocks.deleted.map((d) => d.table)).toEqual(EXPECTED_ORDER);
     expect(mocks.deleteUser).toHaveBeenCalledWith('u1');
   });

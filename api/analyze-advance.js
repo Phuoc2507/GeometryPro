@@ -14,6 +14,7 @@ import crypto from 'crypto';
 import { refund, creditCostFor } from './_lib/credits.js';
 import { accessError, resolveAiAccess, withQuota, refundAiUsage } from './_lib/aiAccess.js';
 import { withSentry, reportServerError } from './_lib/sentry.js';
+import { logBrokenProblem } from './_lib/brokenProblemLog.js';
 
 // Nhắn TRUNG THỰC khi đề rõ là tròn xoay nhưng KHÔNG dựng được mẫu rev-ox (ảnh mờ, kiểu quay chưa
 // hỗ trợ…): thà báo thẳng còn hơn vẽ bừa một hình 3D không liên quan.
@@ -202,9 +203,12 @@ async function handler(req, res) {
   let userId = null;        // ví credit: cần ở scope hàm để catch ngoài cùng hoàn được
   let creditCharge = null;  // { cost, reqId } nếu đã TRỪ credit (paid tier) → hoàn khi lỗi
   let access = null;        // cần ở scope hàm để catch hoàn được quota free/khách
+  const startedAt = Date.now();          // đo thời gian (log bài lỗi)
+  let dbgPrompt = null, dbgImage = false; // ngữ cảnh cho log lỗi ở catch
   try {
     // ---- Đề bài ---- (Advance nhận CHỮ hoặc ẢNH: có ảnh thì Pass -1 CHÉP đề ảnh ra chữ trong lõi)
     const { prompt, imageBase64 } = req.body || {};
+    dbgImage = !!imageBase64;
     const hasText = typeof prompt === 'string' && prompt.trim().length >= 1;
     if (!hasText && !imageBase64) {
       return res.status(400).json({ error: 'Thiếu dữ liệu: cần prompt hoặc ảnh' });
@@ -214,6 +218,7 @@ async function handler(req, res) {
     }
     // Seed CHỮ: có chữ thì dùng chữ; chỉ-ảnh → '' (splitProblem sẽ đọc ảnh & điền đề vào split.setup).
     const problemSeed = hasText ? prompt.trim() : '';
+    dbgPrompt = problemSeed || null;
 
     access = await resolveAiAccess(req, res, {
       feature: 'draw',
@@ -274,6 +279,20 @@ async function handler(req, res) {
       }
     }
 
+    // Soft-failure Advance (trả 200 kèm error) — máy KHÔNG dựng được cảnh; ghi cho admin.
+    // KHÔNG log nhánh `degraded` thuần (vẫn vẽ được bài đơn) — chỉ log khi thực sự hỏng.
+    if (result && (result.ok === false || result.revUnsupported || result.imageReadFailed || result.abstained)) {
+      await logBrokenProblem({
+        endpoint: 'analyze-advance', userId, mode: 'advance', prompt: problemSeed || null,
+        imageProvided: !!imageBase64, aiJson: result.scene || null,
+        errorMessage: result.error || 'advance không dựng được cảnh',
+        errorStage: result.revUnsupported ? 'unsupported'
+          : result.imageReadFailed ? 'image_read'
+          : result.abstained ? 'abstain' : 'degraded',
+        durationMs: Date.now() - startedAt,
+      });
+    }
+
     return res.json(withQuota(result, access));
   } catch (error) {
     await reportServerError(error, { route: 'analyze-advance' });
@@ -285,6 +304,12 @@ async function handler(req, res) {
       catch (e) { console.warn('refund credit lỗi:', e?.message); }
     }
     const isAbort = error?.name === 'AbortError' || (error?.message || '').includes('aborted');
+    // Ghi bài lỗi (ngoại lệ/timeout) cho trang admin — không chặn phản hồi.
+    await logBrokenProblem({
+      endpoint: 'analyze-advance', userId, mode: 'advance', prompt: dbgPrompt,
+      imageProvided: dbgImage, errorMessage: error?.message || String(error),
+      errorStage: isAbort ? 'timeout' : 'exception', durationMs: Date.now() - startedAt,
+    });
     const status = isAbort ? 504 : (error?.status || 500);
     const message = isAbort
       ? 'Yêu cầu quá lâu, vui lòng thử lại với đề bài ngắn hơn'

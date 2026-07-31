@@ -42,10 +42,25 @@ async function handler(req, res) {
   //    ON DELETE SET NULL khi xoá profiles/auth user (xem supabase_account_deletion_migration.sql).
   //    Nếu migration đó CHƯA áp, khoá ngoại vẫn ON DELETE CASCADE → chúng bị xoá như cũ
   //    (fallback an toàn, không lỗi). Nếu bước nào lỗi → DỪNG, chưa xoá auth user.
-  const tables = ['saved_geometries', 'usage_counters', 'profiles'];
+  //    `problem_reports` & `user_feedback` lưu NỘI DUNG đề của user → XOÁ hẳn (không ẩn danh),
+  //    đúng nguyên tắc riêng tư. (Chúng cũng có ON DELETE CASCADE nên bước xoá auth user là
+  //    lưới an toàn; xoá tường minh ở đây cho chắc & không phụ thuộc thứ tự cascade.)
+  // problem_reports/user_feedback có thể CHƯA migrate (deploy code trước khi chạy SQL).
+  // Với 2 bảng này, bỏ qua lỗi "bảng không tồn tại" để việc xoá tài khoản không bị chặn;
+  // các bảng còn lại vẫn bắt buộc thành công.
+  const softTables = new Set(['problem_reports', 'user_feedback']);
+  const isMissingRelation = (err) =>
+    err?.code === '42P01' || err?.code === 'PGRST205' ||
+    /does not exist|schema cache|could not find the table/i.test(err?.message || '');
+
+  const tables = ['saved_geometries', 'usage_counters', 'problem_reports', 'user_feedback', 'profiles'];
   for (const table of tables) {
     const { error } = await admin.from(table).delete().eq('user_id', userId);
     if (error) {
+      if (softTables.has(table) && isMissingRelation(error)) {
+        console.warn(`[delete-account] bỏ qua ${table} (bảng chưa tồn tại):`, error.message);
+        continue;
+      }
       console.error(`[delete-account] xoá ${table} lỗi:`, error.message);
       await reportServerError(error, { route: 'delete-account', table });
       return res.status(500).json({ error: `Không xoá được dữ liệu (${table}). Vui lòng thử lại.` });

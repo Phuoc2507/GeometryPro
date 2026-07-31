@@ -17,6 +17,8 @@ interface Profile {
   plan_code?: string | null;
   plan_credits?: number | null;
   purchased_credits?: number | null;
+  // Vai trò: 'user' (mặc định) hoặc 'admin'. Có thể undefined nếu chưa áp migration role.
+  role?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -26,6 +28,7 @@ interface AuthContextType {
   session: Session | null;
   profile: Profile | null;
   isPro: boolean;
+  isAdmin: boolean;             // tài khoản quản trị viên (profile.role === 'admin')
   // Ví credit
   tier: string;                 // tier hiệu lực ('free' nếu hết hạn)
   credits: number;              // tổng còn lại = plan + purchased
@@ -355,6 +358,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     ? new Date(profile.plan_expires_at) > new Date()
     : false;
 
+  // Quyền admin không phụ thuộc gói/credit — chỉ dựa trên cột role trong hồ sơ.
+  const isAdmin = profile?.role === 'admin';
+
   // Ví credit — tier hiệu lực hạ về 'free' khi gói hết hạn (mirror effective_tier ở SQL).
   const planActive = profile?.plan_expires_at
     ? new Date(profile.plan_expires_at).getTime() > Date.now()
@@ -373,6 +379,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       session,
       profile,
       isPro,
+      isAdmin,
       tier,
       credits,
       planCredits,
