@@ -3,7 +3,7 @@ import { User, Session } from '@supabase/supabase-js';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { setSentryUser } from '@/lib/sentry';
-import type { Json } from '@/integrations/supabase/types';
+import { buildMigrationRows } from '@/lib/history/anonMigration';
 
 interface Profile {
   id: string;
@@ -153,22 +153,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     migrationInFlight.current = true;
     try {
-      const rows = parsed
-        .filter((it): it is Record<string, unknown> =>
-          typeof it === 'object' && it !== null && 'geometry_data' in it && typeof (it as Record<string, unknown>).geometry_data === 'object')
-        .map((it) => ({
-          // Tái dùng id vô danh (UUID từ crypto.randomUUID) làm khoá chính hàng lưu:
-          // nếu INSERT đã commit nhưng client mất response → lần chạy sau upsert cùng id
-          // sẽ trùng khoá và bị bỏ qua → KHÔNG nhân đôi lịch sử.
-          id: typeof it.id === 'string' && it.id ? it.id : crypto.randomUUID(),
-          user_id: userId,
-          name: typeof it.name === 'string' && it.name ? it.name : 'Bản vẽ',
-          prompt: typeof it.prompt === 'string' ? it.prompt : null,
-          geometry_data: it.geometry_data as Json,
-          is_history: true,
-          // Giữ đúng thứ tự thời gian; project_id local không tồn tại server → bỏ (để null).
-          created_at: typeof it.created_at === 'string' ? it.created_at : new Date().toISOString(),
-        }));
+      // Chỉ tái dùng id local khi là UUID hợp lệ (bản mới); id cũ "Local_..." → cấp uuid mới,
+      // tránh 22P02 làm 400 cả mẻ upsert. Chi tiết ở buildMigrationRows.
+      const rows = buildMigrationRows(parsed, userId);
 
       if (rows.length === 0) {
         localStorage.removeItem('geo3d_anonymous_history');

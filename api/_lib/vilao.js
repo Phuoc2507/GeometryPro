@@ -56,6 +56,17 @@ async function sleepMs(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+// Response Vilao KHÔNG có content dùng được? (thiếu choices, thiếu message, hoặc content rỗng/khoảng-trắng).
+// gemini-flash thỉnh thoảng trả content="" dù finish_reason=stop và KHÔNG lỗi mạng → đây là lỗi
+// TẠM (retry thường ra ngay ở lượt sau), nên callVilao coi nó như 5xx: thử lại trong vòng lặp thay vì
+// fail thẳng (trước đây 1 lượt rỗng = toast "Lỗi vẽ hình / Vilao returned empty content"). Tách hàm
+// thuần để test không cần mạng.
+export function isEmptyVilaoContent(data) {
+  if (!data || !Array.isArray(data.choices) || data.choices.length === 0) return true;
+  const content = data.choices[0]?.message?.content;
+  return typeof content !== 'string' || content.trim() === '';
+}
+
 export function resolveApiKey(options = {}, envKey = process.env.VILAO_API_KEY) {
   const key = options.apiKey || envKey;
   if (!key) throw new Error('Vilao API key is not set (opts.apiKey or VILAO_API_KEY)');
@@ -174,15 +185,18 @@ export async function callVilao(systemPrompt, userPrompt, options = {}) {
         throw new Error("Failed to parse Vilao response: " + dataText.substring(0, 100));
       }
 
-      if (data.choices && data.choices.length > 0) {
-        const content = data.choices[0].message?.content || '';
-        if (content.trim() === '') {
-          throw new Error('Vilao returned empty content');
+      if (isEmptyVilaoContent(data)) {
+        // Content rỗng/thiếu = lỗi TẠM ⇒ retry giống 5xx (đừng fail thẳng thành "Lỗi vẽ hình").
+        // maxAttempts=1 (caller đã hedge) ⇒ 0<0 sai ⇒ ném ngay, để hedge/caller lo — không chồng retry.
+        if (attempt < maxAttempts - 1) {
+          console.warn("Vilao empty content, retry attempt " + attempt);
+          await sleepMs(500 * attempt);
+          attempt++;
+          continue;
         }
-        return content;
-      } else {
-        throw new Error('Invalid response structure from Vilao');
+        throw new Error('Vilao returned empty content');
       }
+      return data.choices[0].message.content;
 
     } catch (err) {
       if (isNetworkError(err) && attempt < maxAttempts - 1) {

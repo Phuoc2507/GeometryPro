@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { isNetworkError } from '../vilao.js';
+import { isNetworkError, isEmptyVilaoContent } from '../vilao.js';
 
 describe('isNetworkError — nhận diện lỗi tạm để RETRY', () => {
   // Bug đã sửa: đồng hồ CỨNG ném Error('Request timed out'). Chuỗi 'timed out' (có dấu cách)
@@ -34,5 +34,33 @@ describe('isNetworkError — nhận diện lỗi tạm để RETRY', () => {
     expect(isNetworkError(new Error('Vilao API error: 403 FORBIDDEN'))).toBe(false);
     expect(isNetworkError(new Error('Failed to parse Vilao response'))).toBe(false);
     expect(isNetworkError(null)).toBe(false);
+  });
+});
+
+describe('isEmptyVilaoContent — content rỗng là lỗi TẠM để RETRY (chống "Lỗi vẽ hình")', () => {
+  // BUG thực tế (Câu 7): gemini-flash trả message.content="" ⇒ callVilao ném thẳng
+  // "Vilao returned empty content", KHÔNG retry ⇒ toast "Lỗi vẽ hình". Coi rỗng như 5xx để thử lại.
+  it('content hợp lệ ⇒ KHÔNG rỗng', () => {
+    expect(isEmptyVilaoContent({ choices: [{ message: { content: '{"ok":1}' } }] })).toBe(false);
+  });
+
+  it('content="" ⇒ rỗng (đây chính là ca lỗi thật)', () => {
+    expect(isEmptyVilaoContent({ choices: [{ message: { content: '' } }] })).toBe(true);
+  });
+
+  it('content chỉ khoảng trắng ⇒ rỗng', () => {
+    expect(isEmptyVilaoContent({ choices: [{ message: { content: '   \n\t ' } }] })).toBe(true);
+  });
+
+  it('thiếu choices / choices rỗng / thiếu message ⇒ rỗng', () => {
+    expect(isEmptyVilaoContent({})).toBe(true);
+    expect(isEmptyVilaoContent({ choices: [] })).toBe(true);
+    expect(isEmptyVilaoContent({ choices: [{}] })).toBe(true);
+    expect(isEmptyVilaoContent(null)).toBe(true);
+  });
+
+  it('content không phải chuỗi (null/số) ⇒ rỗng', () => {
+    expect(isEmptyVilaoContent({ choices: [{ message: { content: null } }] })).toBe(true);
+    expect(isEmptyVilaoContent({ choices: [{ message: { content: 42 } }] })).toBe(true);
   });
 });
