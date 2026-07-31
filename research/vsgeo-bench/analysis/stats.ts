@@ -58,3 +58,41 @@ export function accuracyBy(
   rows.sort((a, b) => a.key.localeCompare(b.key)); // thứ tự ổn định để bảng nhất quán
   return rows;
 }
+
+// Kiểm định McNemar cho dữ liệu ghép cặp (2 model trên cùng tập bài).
+// b = số bài A đúng & B sai; c = số bài A sai & B đúng.
+// χ² = (|b - c| - 1)^2 / (b + c)  (có hiệu chỉnh liên tục).
+export function mcnemar(b: number, c: number): McNemarResult {
+  const n = b + c;
+  if (n === 0) return { b, c, statistic: 0, pValue: 1 };
+  const statistic = Math.pow(Math.abs(b - c) - 1, 2) / n;
+  const pValue = chiSquarePValue1df(statistic);
+  return { b, c, statistic, pValue };
+}
+
+// p-value cho χ² với 1 bậc tự do = erfc( sqrt(x / 2) ).
+function chiSquarePValue1df(x: number): number {
+  if (x <= 0) return 1;
+  return erfc(Math.sqrt(x / 2));
+}
+
+// Xấp xỉ hàm bù sai số erfc(x) (sai số < 1.2e-7). Nguồn: Numerical Recipes (công thức công khai).
+// Ta CHỈ dùng lại công thức chuẩn này để tránh phụ thuộc thư viện thống kê ngoài.
+function erfc(x: number): number {
+  const z = Math.abs(x);
+  const t = 1 / (1 + 0.5 * z);
+  const ans =
+    t *
+    Math.exp(
+      -z * z - 1.26551223 +
+        t * (1.00002368 +
+          t * (0.37409196 +
+            t * (0.09678418 +
+              t * (-0.18628806 +
+                t * (0.27886807 +
+                  t * (-1.13520398 +
+                    t * (1.48851587 +
+                      t * (-0.82215223 + t * 0.17087277))))))))
+    );
+  return x >= 0 ? ans : 2 - ans;
+}

@@ -77,3 +77,31 @@ describe("accuracyBy — gom nhóm & tính accuracy", () => {
     expect(rows.map((r) => r.key)).toEqual(["gemini", "gpt"]);
   });
 });
+
+import { mcnemar } from "../stats";
+
+describe("mcnemar — kiểm định ghép cặp cho 2 model", () => {
+  it("b = c: gần như không khác biệt (p lớn)", () => {
+    const r = mcnemar(10, 10);
+    expect(r.statistic).toBeCloseTo(0.05, 3); // (|0|-1)^2 / 20 = 0.05
+    expect(r.pValue).toBeGreaterThan(0.5);
+  });
+
+  it("b + c = 0: không có bài bất đồng -> p = 1", () => {
+    const r = mcnemar(0, 0);
+    expect(r.statistic).toBe(0);
+    expect(r.pValue).toBe(1);
+  });
+
+  it("khác biệt vừa: b=25, c=15 -> χ² = 2.025", () => {
+    const r = mcnemar(25, 15);
+    expect(r.statistic).toBeCloseTo(2.025, 3);
+    expect(r.pValue).toBeCloseTo(0.155, 2); // tra bảng χ² 1 bậc tự do
+  });
+
+  it("khác biệt mạnh: b=30, c=5 -> p rất nhỏ", () => {
+    const r = mcnemar(30, 5);
+    expect(r.statistic).toBeCloseTo(16.457, 2); // (24-1)^2 / 35
+    expect(r.pValue).toBeLessThan(0.001);
+  });
+});
