@@ -113,9 +113,13 @@ describe('buildRevolutionScene', () => {
     expect(sc.base.revolutionSolids[0].method).toBe('washer');
     expect(sc.steps[1].answer.verified).toBe(true);
     expect(sc.steps[1].answer.approx).toBeCloseTo(30.6 * Math.PI, 4);
-    // Đường x=g(y) ⇒ KHÔNG dùng cơ chế poly-curve (vốn plot y=f(x) → sai hướng); base dựa điểm mẫu (hoán xy).
-    expect(sc.base.curves.length).toBe(0);
+    // Đường x=g(y): KHÔNG dùng poly-curve (plot y=f(x) → sai hướng) — thay vào đó dựng đường sinh
+    // polyline 'expr' từ mẫu engine (HOÁN xy để đúng hướng x=g(y)) làm khung nhìn; điểm mẫu ẩn.
+    expect(sc.base.curves.length).toBe(1);
+    expect(sc.base.curves[0].samples.length).toBeGreaterThanOrEqual(2);
     expect(sc.base.points.length).toBeGreaterThan(0);   // vẫn qua gate points>0
+    const oyPointIds = new Set(sc.base.points.map((p) => p.id));
+    expect(sc.steps[0].visibleIds.filter((id) => oyPointIds.has(id))).toHaveLength(0); // điểm mẫu ẩn
   });
 
   it('biên dạng poly ⇒ khung nhìn HIỆN đường cong biên dạng, KHÔNG rải điểm mẫu (tránh "vẽ hình khác")', () => {
@@ -132,11 +136,35 @@ describe('buildRevolutionScene', () => {
     expect(sc.steps[0].visibleIds.filter((id) => pointIds.has(id))).toHaveLength(0);
   });
 
-  it('biên dạng KHÔNG-poly (sqrt) ⇒ không có curve nên GIỮ điểm mẫu làm khung nhìn duy nhất', () => {
+  it('biên dạng KHÔNG-poly (sqrt) ⇒ dựng đường sinh polyline từ mẫu engine, ẨN điểm mẫu (không rải chấm)', () => {
+    // Regression cho báo lỗi "lâu lâu bị nhiều điểm": biên dạng phi-poly (sqrt/ln/exp/expr) trước đây
+    // KHÔNG có curve nên rơi về hiện ~9 điểm mẫu (dãy chấm r0..r8). Nay dựng curve 'expr' từ solid.samples
+    // ⇒ hiện MỘT đường sinh; điểm mẫu vẫn ở base (qua gate points>0) nhưng bị ẩn.
     const sc = buildRevolutionScene({ outer: { kind: 'sqrt', a: 1, b: 0 }, domain: [0, 4] });
-    expect(sc.base.curves.length).toBe(0);
+    const exprCurve = sc.base.curves.find((c) => Array.isArray(c.samples) && c.samples.length >= 2);
+    expect(exprCurve).toBeTruthy();
+    const curveIds = sc.base.curves.map((c) => c.id);
+    for (const cid of curveIds) {
+      expect(sc.steps[0].visibleIds).toContain(cid);
+      expect(sc.steps[1].visibleIds).toContain(cid);
+    }
     const pointIds = new Set(sc.base.points.map((p) => p.id));
-    expect(sc.steps[0].visibleIds.filter((id) => pointIds.has(id)).length).toBeGreaterThan(0);
+    expect(sc.steps[0].visibleIds.filter((id) => pointIds.has(id))).toHaveLength(0);
+  });
+
+  it('biên dạng expr x·√(ln(x+1)) trên [0,1] ⇒ đường sinh curve, KHÔNG hiện điểm r0..r8 (bug báo cáo)', () => {
+    // Đúng bài người dùng gửi: biên dạng expr ⇒ trước đây r0..r8 hiện thành dãy cầu xanh + nhãn "r".
+    const sc = buildRevolutionScene({
+      outer: { kind: 'expr', expr: 'x*sqrt(ln(x+1))' },
+      domain: [0, 1],
+      fnLabel: 'y=x\\sqrt{\\ln(x+1)}',
+      parts: [{ label: 'Câu 1', hoi: 'Tính thể tích quanh Ox' }],
+    });
+    const exprCurve = sc.base.curves.find((c) => Array.isArray(c.samples) && c.samples.length >= 2);
+    expect(exprCurve).toBeTruthy();
+    const rDots = sc.base.points.filter((p) => /^r\d+$/.test(p.id)).map((p) => p.id);
+    expect(rDots.length).toBeGreaterThan(0);                          // vẫn tồn tại (qua gate points>0)
+    for (const id of rDots) expect(sc.steps[0].visibleIds).not.toContain(id); // nhưng bị ẩn khỏi khung nhìn
   });
 
   it('TRỤC DỜI y=k: miền dưới y=x quay quanh đường y=1 → 2π/3, solid.axisY=1, có đường trục', () => {

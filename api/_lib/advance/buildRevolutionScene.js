@@ -52,8 +52,8 @@ export function buildRevolutionScene(params) {
   // nên KHÔNG dùng poly-curve (sẽ vẽ nhầm hướng) — dựa vào điểm mẫu đã hoán xy làm khung nhìn.
   const usePolyCurve = !oyDisk && outer.kind === 'poly';
   // Trục quay dời y=k: khi đang vẽ curve poly thì thêm đường thẳng NGANG y=k (poly hằng [k]) để học
-  // sinh THẤY trục quay. Chỉ thêm khi có curve (usePolyCurve) — nếu không, thêm curve axisK sẽ lật
-  // outlineIds từ điểm-mẫu sang curve và ẩn mất biên dạng sqrt/expr (đã có test canh giữ điểm mẫu).
+  // sinh THẤY trục quay. CHỈ thêm ở nhánh poly — với phi-poly, đường trục dời y=k chưa hỗ trợ (đường
+  // sinh dựng riêng bên dưới từ mẫu engine, không qua cơ chế polys của buildAnalysisFigure).
   const showAxisLine = usePolyCurve && axisY !== 0;
   const base = buildAnalysisFigure(aroundOy ? 'Tròn xoay quanh Oy' : 'Tròn xoay quanh Ox', {
     // Vẽ curve mượt bằng poly khi biên dạng LÀ poly (theo x); kiểu khác dựa vào điểm mẫu + khối tròn xoay.
@@ -64,11 +64,22 @@ export function buildRevolutionScene(params) {
   });
   base.revolutionSolids = [solid];
 
-  // Khung nhìn NỀN cho bài tròn xoay: nếu có đường cong biên dạng r(x) (trường hợp biên dạng LÀ
-  // poly ⇒ buildAnalysisFigure sinh curve) thì HIỂN THỊ đúng đường sinh đó — thay vì rải ~30 điểm
-  // mẫu không nhãn (trước đây gây rối, người dùng thấy "một đám chấm" tưởng vẽ hình khác). Khi biên
-  // dạng KHÔNG phải poly (sqrt/const/expr) thì không có curve ⇒ giữ điểm mẫu làm khung nhìn duy nhất.
-  // (Điểm mẫu vẫn nằm trong base để qua gate points>0; chỉ KHÔNG đưa vào visibleIds nên bị ẩn.)
+  // Biên dạng KHÔNG có poly-curve (sqrt/const/expr, hoặc Oy-đĩa x=g(y)): buildAnalysisFigure không sinh
+  // đường cong ⇒ TRƯỚC ĐÂY rơi về hiện ~9 điểm mẫu (dãy chấm r0..r8 có nhãn "r", gây rối, người dùng
+  // tưởng vẽ hình khác). NAY dựng MỘT đường sinh 'expr' từ TOÀN BỘ mẫu engine (đường {x,y} tính sẵn ⇒
+  // frontend vẽ Line mượt, KHÔNG cần parser) để mọi biên dạng đều hiện một đường cong thống nhất. Điểm
+  // mẫu vẫn ở base (qua gate points>0) nhưng bị ẩn vì outlineIds trỏ vào curve. Oy-đĩa HOÁN xy giống
+  // điểm mẫu để polyline vẽ đúng hướng x=g(y). Chỉ dựng khi có ≥2 mẫu; nếu không, giữ fallback điểm mẫu.
+  if (!usePolyCurve && src.length >= 2) {
+    const curveSamples = src.map((s) => (oyDisk ? { x: s.r, y: s.x } : { x: s.x, y: s.r }));
+    base.curves = [...(base.curves || []), {
+      id: 'curve_r', type: 'expr', params: { xMin: dom[0], xMax: dom[1] }, samples: curveSamples,
+    }];
+  }
+
+  // Khung nhìn NỀN: có curve biên dạng (poly ⇒ buildAnalysisFigure sinh curve; phi-poly ⇒ curve 'expr'
+  // dựng ngay trên) thì HIỂN THỊ đường sinh đó thay vì rải điểm mẫu. Điểm mẫu vẫn nằm trong base để qua
+  // gate points>0 nhưng KHÔNG vào visibleIds nên bị ẩn. (Fallback điểm mẫu chỉ còn khi <2 mẫu — hiếm.)
   const curveIds = (base.curves || []).map((c) => c.id);
   const outlineIds = curveIds.length ? curveIds : base.points.map((p) => p.id);
   // Bài tròn xoay 1 câu ("tính thể tích") ⇒ chỉ có 1 part. Khi đó gán nhãn 2 bước cố định, dễ hiểu
