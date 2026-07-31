@@ -279,6 +279,12 @@ export type Database = {
           }
         ]
       }
+      draw_stats: {
+        Row: { day: string; endpoint: string; attempts: number; fails: number }
+        Insert: { day: string; endpoint: string; attempts?: number; fails?: number }
+        Update: { day?: string; endpoint?: string; attempts?: number; fails?: number }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

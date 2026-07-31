@@ -532,4 +532,37 @@ create index if not exists user_feedback_kind_idx
 create index if not exists user_feedback_user_idx
   on public.user_feedback (user_id);
 
+-- ── draw_stats — đếm lượt vẽ theo NGÀY để tính TỈ LỆ thành công ───────────────
+create table if not exists public.draw_stats (
+  day       date    not null,
+  endpoint  text    not null,
+  attempts  integer not null default 0,
+  fails     integer not null default 0,
+  primary key (day, endpoint)
+);
+
+alter table public.draw_stats enable row level security;
+revoke all on table public.draw_stats from public, anon, authenticated;
+grant  select on table public.draw_stats to authenticated;
+grant  select, insert, update on table public.draw_stats to service_role;
+
+drop policy if exists "draw_stats admin read" on public.draw_stats;
+create policy "draw_stats admin read" on public.draw_stats
+  for select using (public.is_admin());
+
+create or replace function public.bump_draw_stat(p_endpoint text, p_kind text)
+returns void language plpgsql security definer set search_path = public as $$
+begin
+  insert into public.draw_stats(day, endpoint, attempts, fails)
+  values (current_date, p_endpoint,
+          case when p_kind = 'attempt' then 1 else 0 end,
+          case when p_kind = 'fail'    then 1 else 0 end)
+  on conflict (day, endpoint) do update
+     set attempts = public.draw_stats.attempts + (case when p_kind = 'attempt' then 1 else 0 end),
+         fails    = public.draw_stats.fails    + (case when p_kind = 'fail'    then 1 else 0 end);
+end $$;
+
+revoke all on function public.bump_draw_stat(text, text) from public, anon, authenticated;
+grant execute on function public.bump_draw_stat(text, text) to service_role;
+
 commit;

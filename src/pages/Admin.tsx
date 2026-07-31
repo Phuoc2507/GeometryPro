@@ -52,6 +52,48 @@ function truncate(text: string | null | undefined, n = 80): string {
   return text.length > n ? text.slice(0, n) + '…' : text;
 }
 
+// Thời gian tương đối ("2 giờ trước") cho danh sách; tooltip giữ mốc đầy đủ.
+function fmtRelative(iso: string): string {
+  try {
+    const min = Math.floor((Date.now() - new Date(iso).getTime()) / 60000);
+    if (min < 1) return 'vừa xong';
+    if (min < 60) return `${min} phút trước`;
+    const h = Math.floor(min / 60);
+    if (h < 24) return `${h} giờ trước`;
+    const d = Math.floor(h / 24);
+    if (d < 30) return `${d} ngày trước`;
+    return new Date(iso).toLocaleDateString('vi-VN');
+  } catch { return iso; }
+}
+
+// Màu badge theo giai đoạn lỗi (để quét nhanh loại lỗi).
+function stageBadgeClass(stage: string | null): string {
+  switch (stage) {
+    case 'exception': case 'kernel_failed': return 'bg-destructive/15 text-destructive';
+    case 'timeout':      return 'bg-orange-500/15 text-orange-600 dark:text-orange-400';
+    case 'parse':        return 'bg-purple-500/15 text-purple-600 dark:text-purple-400';
+    case 'verify':       return 'bg-amber-500/15 text-amber-600 dark:text-amber-400';
+    case 'llm_failed':   return 'bg-rose-500/15 text-rose-600 dark:text-rose-400';
+    default:              return 'bg-slate-500/15 text-slate-600 dark:text-slate-400';
+  }
+}
+
+// Gom nhóm + đếm (chuẩn hoá nhẹ), chỉ giữ mục lặp ≥2 lần, lấy top N.
+function groupCount(values: (string | null | undefined)[], topN: number): { key: string; count: number }[] {
+  const m = new Map<string, number>();
+  for (const v of values) {
+    const key = (v || '').trim();
+    if (!key) continue;
+    const norm = key.length > 140 ? key.slice(0, 140) : key;
+    m.set(norm, (m.get(norm) || 0) + 1);
+  }
+  return [...m.entries()]
+    .map(([key, count]) => ({ key, count }))
+    .filter((x) => x.count >= 2)
+    .sort((a, b) => b.count - a.count)
+    .slice(0, topN);
+}
+
 async function copyText(text: string) {
   try { await navigator.clipboard.writeText(text); toast.success('Đã copy'); }
   catch { toast.error('Không copy được'); }
@@ -76,6 +118,20 @@ function StatusFilter({ value, onChange }: { value: 'all' | Status; onChange: (v
         {STATUSES.map((s) => <SelectItem key={s} value={s} className="text-xs">{s}</SelectItem>)}
       </SelectContent>
     </Select>
+  );
+}
+
+// Thẻ số liệu tổng quan đầu trang.
+function OverviewCard({ label, value, tone, hint }: { label: string; value: string | number; tone: 'amber' | 'blue' | 'green' | 'muted'; hint?: string }) {
+  const toneClass = { amber: 'text-amber-500', blue: 'text-blue-500', green: 'text-emerald-500', muted: 'text-foreground' }[tone];
+  return (
+    <Card className="border-border/50 bg-background/50 backdrop-blur-sm">
+      <CardContent className="p-4">
+        <p className="text-xs text-muted-foreground">{label}</p>
+        <p className={`mt-1 text-2xl font-bold ${toneClass}`}>{value}</p>
+        {hint && <p className="mt-0.5 text-[11px] text-muted-foreground">{hint}</p>}
+      </CardContent>
+    </Card>
   );
 }
 
@@ -136,6 +192,7 @@ const Admin = () => {
   const [feedbackError, setFeedbackError] = useState<string | null>(null);
   const [reportFilter, setReportFilter] = useState<'all' | Status>('all');
   const [feedbackFilter, setFeedbackFilter] = useState<'all' | Status>('all');
+  const [drawStats, setDrawStats] = useState<{ endpoint: string; attempts: number; fails: number }[]>([]);
 
   // Chặn truy cập: chưa đăng nhập hoặc không phải admin → về trang chủ.
   // Bảo mật thật nằm ở RLS phía Supabase; đây chỉ là lớp điều hướng cho UI.
@@ -168,12 +225,28 @@ const Admin = () => {
     setLoadingFeedback(false);
   }, []);
 
+  const fetchDrawStats = useCallback(async () => {
+    const { data } = await supabase
+      .from('draw_stats')
+      .select('endpoint, attempts, fails')
+      .order('day', { ascending: false })
+      .limit(365);
+    if (!data) return;
+    const agg: Record<string, { attempts: number; fails: number }> = {};
+    for (const r of data) {
+      const a = (agg[r.endpoint] ||= { attempts: 0, fails: 0 });
+      a.attempts += r.attempts; a.fails += r.fails;
+    }
+    setDrawStats(Object.entries(agg).map(([endpoint, v]) => ({ endpoint, ...v })));
+  }, []);
+
   useEffect(() => {
     if (!authLoading && user && isAdmin) {
       fetchReports();
       fetchFeedback();
+      fetchDrawStats();
     }
-  }, [authLoading, user, isAdmin, fetchReports, fetchFeedback]);
+  }, [authLoading, user, isAdmin, fetchReports, fetchFeedback, fetchDrawStats]);
 
   const updateStatus = useCallback(async (
     table: 'problem_reports' | 'user_feedback', id: string, status: Status,
@@ -214,6 +287,16 @@ const Admin = () => {
     () => (feedbackFilter === 'all' ? feedback : feedback.filter((f) => f.status === feedbackFilter)),
     [feedback, feedbackFilter]);
 
+  // Tỉ lệ vẽ được (từ draw_stats) + gom nhóm lỗi lặp (từ problem_reports đã tải).
+  const drawRate = useMemo(() => {
+    const attempts = drawStats.reduce((s, d) => s + d.attempts, 0);
+    const fails = drawStats.reduce((s, d) => s + d.fails, 0);
+    if (attempts === 0) return null;
+    return { attempts, fails, pct: Math.round((1 - fails / attempts) * 100) };
+  }, [drawStats]);
+  const topPrompts = useMemo(() => groupCount(reports.map((r) => r.prompt), 8), [reports]);
+  const topErrors = useMemo(() => groupCount(reports.map((r) => r.error_message), 8), [reports]);
+
   if (authLoading || !user || !isAdmin) {
     return (
       <div className="min-h-screen radial-gradient-bg flex items-center justify-center">
@@ -237,6 +320,19 @@ const Admin = () => {
               <p className="text-muted-foreground">Theo dõi bài lỗi, feedback và chất lượng hệ thống</p>
             </div>
           </div>
+        </div>
+
+        {/* Tổng quan — nhìn phát biết ngay việc cần làm */}
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <OverviewCard label="Bài lỗi chưa xử lý" value={stats.unresolved} tone="amber" />
+          <OverviewCard label="Feedback mới" value={stats.newFeedback} tone="blue" />
+          <OverviewCard
+            label="Tỉ lệ vẽ được"
+            value={drawRate ? `${drawRate.pct}%` : '—'}
+            tone="green"
+            hint={drawRate ? `${drawRate.attempts - drawRate.fails}/${drawRate.attempts} lượt` : 'chưa có dữ liệu'}
+          />
+          <OverviewCard label="Bài lỗi (đã tải)" value={reports.length} tone="muted" />
         </div>
 
         <Tabs defaultValue="failures" className="w-full">
@@ -300,14 +396,20 @@ const Admin = () => {
                       </TableHeader>
                       <TableBody>
                         {shownReports.map((r) => (
-                          <TableRow key={r.id} className="cursor-pointer" onClick={() => setSelectedReport(r)}>
-                            <TableCell className="text-xs text-muted-foreground whitespace-nowrap">{fmtDate(r.created_at)}</TableCell>
+                          <TableRow
+                            key={r.id}
+                            className={`cursor-pointer ${r.status === 'mới' ? 'bg-blue-500/[0.04]' : ''}`}
+                            onClick={() => setSelectedReport(r)}
+                          >
+                            <TableCell className="whitespace-nowrap text-xs text-muted-foreground" title={fmtDate(r.created_at)}>{fmtRelative(r.created_at)}</TableCell>
                             <TableCell className="text-sm">{truncate(r.prompt, 70)}</TableCell>
-                            <TableCell className="text-xs">{r.endpoint}</TableCell>
-                            <TableCell className="text-xs">{r.error_stage || '—'}</TableCell>
+                            <TableCell><Badge variant="outline" className="text-[10px] font-normal">{r.endpoint}</Badge></TableCell>
                             <TableCell>
-                              <Badge className={statusBadgeClass(r.status)} variant="secondary">{r.status}</Badge>
+                              {r.error_stage
+                                ? <Badge variant="secondary" className={`${stageBadgeClass(r.error_stage)} text-[10px]`}>{r.error_stage}</Badge>
+                                : <span className="text-xs text-muted-foreground">—</span>}
                             </TableCell>
+                            <TableCell><Badge className={statusBadgeClass(r.status)} variant="secondary">{r.status}</Badge></TableCell>
                           </TableRow>
                         ))}
                       </TableBody>
@@ -355,13 +457,15 @@ const Admin = () => {
                       </TableHeader>
                       <TableBody>
                         {shownFeedback.map((f) => (
-                          <TableRow key={f.id} className="cursor-pointer" onClick={() => setSelectedFeedback(f)}>
-                            <TableCell className="text-xs text-muted-foreground whitespace-nowrap">{fmtDate(f.created_at)}</TableCell>
-                            <TableCell className="text-xs">{f.kind}</TableCell>
+                          <TableRow
+                            key={f.id}
+                            className={`cursor-pointer ${f.status === 'mới' ? 'bg-blue-500/[0.04]' : ''}`}
+                            onClick={() => setSelectedFeedback(f)}
+                          >
+                            <TableCell className="whitespace-nowrap text-xs text-muted-foreground" title={fmtDate(f.created_at)}>{fmtRelative(f.created_at)}</TableCell>
+                            <TableCell><Badge variant="outline" className="text-[10px] font-normal">{f.kind}</Badge></TableCell>
                             <TableCell className="text-sm">{truncate(f.message, 80)}</TableCell>
-                            <TableCell>
-                              <Badge className={statusBadgeClass(f.status)} variant="secondary">{f.status}</Badge>
-                            </TableCell>
+                            <TableCell><Badge className={statusBadgeClass(f.status)} variant="secondary">{f.status}</Badge></TableCell>
                           </TableRow>
                         ))}
                       </TableBody>
@@ -431,8 +535,67 @@ const Admin = () => {
                 </CardContent>
               </Card>
             </div>
+            {/* Tỉ lệ vẽ được theo route (từ bộ đếm draw_stats) */}
+            <Card className="mt-4 border-border/50 bg-background/50 backdrop-blur-sm">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base">Tỉ lệ vẽ được theo route</CardTitle>
+                <CardDescription>Đếm lượt thử vs lỗi cứng (hiện đo route vẽ chính analyze-geometry).</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-1.5">
+                {drawStats.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">Chưa có dữ liệu — cần vài lượt vẽ sau khi chạy migration.</p>
+                ) : [...drawStats].sort((a, b) => b.attempts - a.attempts).map((d) => {
+                  const pct = d.attempts ? Math.round((1 - d.fails / d.attempts) * 100) : 0;
+                  return (
+                    <div key={d.endpoint} className="flex items-center justify-between text-sm">
+                      <span className="text-muted-foreground">{d.endpoint}</span>
+                      <span className="font-semibold text-emerald-500">
+                        {pct}% <span className="text-xs font-normal text-muted-foreground">({d.attempts - d.fails}/{d.attempts})</span>
+                      </span>
+                    </div>
+                  );
+                })}
+              </CardContent>
+            </Card>
+
+            {/* Gộp đếm lỗi lặp — biết nên sửa gì trước */}
+            <div className="mt-4 grid gap-4 md:grid-cols-2">
+              <Card className="border-border/50 bg-background/50 backdrop-blur-sm">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-base">Đề hay hỏng nhất</CardTitle>
+                  <CardDescription>Cùng một đề bị lỗi nhiều lần (≥2).</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-2">
+                  {topPrompts.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">Chưa có đề nào lặp lại.</p>
+                  ) : topPrompts.map((p, i) => (
+                    <div key={i} className="flex items-start justify-between gap-2 text-sm">
+                      <span className="text-muted-foreground">{truncate(p.key, 90)}</span>
+                      <Badge variant="secondary" className="shrink-0">{p.count}×</Badge>
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
+              <Card className="border-border/50 bg-background/50 backdrop-blur-sm">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-base">Lỗi hay gặp</CardTitle>
+                  <CardDescription>Thông báo lỗi lặp nhiều nhất (≥2).</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-2">
+                  {topErrors.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">Chưa có lỗi nào lặp lại.</p>
+                  ) : topErrors.map((p, i) => (
+                    <div key={i} className="flex items-start justify-between gap-2 text-sm">
+                      <span className="text-muted-foreground">{truncate(p.key, 90)}</span>
+                      <Badge variant="secondary" className="shrink-0">{p.count}×</Badge>
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
+            </div>
+
             <p className="mt-3 text-xs text-muted-foreground">
-              * Thống kê tính trên tối đa {FETCH_LIMIT} bản ghi mới nhất đã tải.
+              * Bài lỗi/nhóm lỗi tính trên tối đa {FETCH_LIMIT} bản ghi mới nhất đã tải; tỉ lệ vẽ được đếm toàn bộ theo ngày.
             </p>
           </TabsContent>
         </Tabs>

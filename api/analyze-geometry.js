@@ -23,6 +23,7 @@ import { refund } from './_lib/credits.js';
 import { accessError, resolveAiAccess, withQuota, refundAiUsage } from './_lib/aiAccess.js';
 import { withSentry, reportServerError } from './_lib/sentry.js';
 import { logBrokenProblem } from './_lib/brokenProblemLog.js';
+import { recordDrawStat } from './_lib/drawStats.js';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -100,6 +101,8 @@ async function handler(req, res) {
     if (access.actorType === 'account' && access.gate.mode === 'credit') {
       creditCharge = { cost: access.gate.cost, reqId: crypto.randomUUID() };
     }
+    // Đếm 1 lượt THỬ vẽ (để tính tỉ lệ vẽ được ở trang admin) — không chặn nếu lỗi.
+    await recordDrawStat('analyze-geometry', 'attempt');
 
     if (isStream) {
       res.setHeader('Content-Type', 'text/event-stream');
@@ -571,6 +574,7 @@ KẾT QUẢ TRƯỚC BỊ PHẲNG (mọi điểm có z≈0). Hãy dựng lại h
       errorMessage: error?.message || String(error),
       errorStage: isAbort ? 'timeout' : 'exception', durationMs: Date.now() - startedAt,
     });
+    await recordDrawStat('analyze-geometry', 'fail');  // đếm 1 lượt lỗi cứng
     const status = isAbort ? 504 : (error?.status || 500);
     const message = isAbort
       ? 'Yêu cầu quá lâu, vui lòng thử lại với chế độ Nhanh hoặc đề bài ngắn hơn'
