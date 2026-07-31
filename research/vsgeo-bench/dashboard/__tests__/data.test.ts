@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url";
 import path from "node:path";
 import { buildLeaderboard, type BenchmarkSummary } from "../data";
 import { buildTopicMatrix, modelIds } from "../data";
+import { buildRobustnessGap } from "../data";
 
 // __dirname không tồn tại sẵn trong ESM, nên ta tự dựng đường dẫn thư mục hiện tại
 // từ import.meta.url (URL của chính file test này) rồi đọc file JSON cạnh nó.
@@ -72,5 +73,21 @@ describe("buildTopicMatrix — accuracy theo chủ đề cho biểu đồ cột 
 
   it("modelIds trả đúng danh sách model theo thứ tự trong summary", () => {
     expect(modelIds(sample)).toEqual(["gpt-flagship", "open-model-7b"]);
+  });
+});
+
+describe("buildRobustnessGap — khoảng rớt độ bền (H2)", () => {
+  it("tính đúng phần trăm gốc, sau biến đổi và khoảng rớt", () => {
+    const rows = buildRobustnessGap(sample);
+    const gpt = rows.find((r) => r.modelId === "gpt-flagship")!;
+    expect(gpt.basePct).toBe(82); // 0.82
+    expect(gpt.perturbedPct).toBe(71); // 0.71
+    expect(gpt.gapPct).toBe(11); // 0.11
+  });
+
+  it("sắp model theo khoảng rớt giảm dần (giòn nhất lên đầu)", () => {
+    const rows = buildRobustnessGap(sample);
+    // open-model-7b rớt 0.21 > gpt-flagship rớt 0.11
+    expect(rows.map((r) => r.modelId)).toEqual(["open-model-7b", "gpt-flagship"]);
   });
 });

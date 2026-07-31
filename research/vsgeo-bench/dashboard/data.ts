@@ -86,3 +86,24 @@ export function buildTopicMatrix(summary: BenchmarkSummary): TopicChartRow[] {
     return row;
   });
 }
+
+// ---- 3) Khoảng rớt độ bền (robustness gap) ----
+export type RobustnessRow = {
+  modelId: string;
+  basePct: number; // accuracy bài gốc (%)
+  perturbedPct: number; // accuracy bài biến đổi (%)
+  gapPct: number; // khoảng rớt (%)
+};
+
+export function buildRobustnessGap(summary: BenchmarkSummary): RobustnessRow[] {
+  return summary.models
+    .map((m) => ({
+      modelId: m.modelId,
+      basePct: toPct(m.robustness.baseAccuracy),
+      perturbedPct: toPct(m.robustness.perturbedAccuracy),
+      gapPct: toPct(m.robustness.gap),
+    }))
+    .sort(
+      (a, b) => b.gapPct - a.gapPct || a.modelId.localeCompare(b.modelId), // rớt nhiều lên trước
+    );
+}
