@@ -58,3 +58,31 @@ export function buildLeaderboard(summary: BenchmarkSummary): LeaderboardRow[] {
     avgLatencyMs: m.avgLatencyMs,
   }));
 }
+
+// ---- 2) Ma trận accuracy theo chủ đề ----
+// Danh sách modelId theo đúng thứ tự xuất hiện trong summary (dùng để vẽ số cột).
+export function modelIds(summary: BenchmarkSummary): string[] {
+  return summary.models.map((m) => m.modelId);
+}
+
+// Kiểu một hàng cho recharts: bắt buộc có 'topic', còn lại là accuracyPct theo từng modelId.
+export type TopicChartRow = { topic: string } & Record<string, number | string>;
+
+export function buildTopicMatrix(summary: BenchmarkSummary): TopicChartRow[] {
+  // Gom TẤT CẢ chủ đề mà bất kỳ model nào có, rồi sắp theo chữ cái cho ổn định.
+  const topicSet = new Set<string>();
+  for (const m of summary.models) {
+    for (const t of m.byTopic) topicSet.add(t.topic);
+  }
+  const topics = [...topicSet].sort();
+
+  return topics.map((topic) => {
+    const row: TopicChartRow = { topic };
+    for (const m of summary.models) {
+      const stat = m.byTopic.find((t) => t.topic === topic);
+      // Model không có chủ đề này -> điền 0 để cột hiện ra (không để undefined gây khoảng trống).
+      row[m.modelId] = stat ? toPct(stat.accuracy) : 0;
+    }
+    return row;
+  });
+}
