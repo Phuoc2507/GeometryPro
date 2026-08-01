@@ -314,6 +314,37 @@ Hãy:
       result._userMsgUsed = userMsg;
 
     } else if (drawMode === 'detailed') {
+      // ===== VẼ KỸ ⊇ VẼ NÂNG CAO: định tuyến bài VẬT THẬT tròn xoay / thiết diện / thể tích sang engine
+      // Nâng cao. CHỈ áp cho 'detailed' (Vẽ nhanh KHÔNG đụng — giữ nhẹ). Regex-gated (rẻ) nên chỉ tốn 1
+      // lượt Nâng cao khi đề đúng dạng; hỏng/không dựng được ⇒ rơi êm về luồng Vẽ kỹ thường bên dưới.
+      // Trả THẲNG scene advance (frontend queueAnalyzeText nhận diện mode:'advance'). Ảnh → bỏ qua (regex text).
+      if (!imageBase64 && trimmedPrompt && process.env.KERNEL_MODE !== 'off') {
+        try {
+          const advMod = await import('./analyze-advance.js');
+          const isAdvance = advMod.looksLikeVessel(trimmedPrompt) || advMod.looksLikeRevolution(trimmedPrompt)
+            || advMod.looksLikeCrossSection(trimmedPrompt) || advMod.looksLikeArea(trimmedPrompt)
+            || advMod.looksLikeSection(trimmedPrompt);
+          if (isAdvance) {
+            sendEvent('Đang thử engine nâng cao...', 30);
+            const { runAdvance } = await import('./_lib/advance/runAdvance.js');
+            const adv = await runAdvance(trimmedPrompt, {});
+            if (adv && adv.mode === 'advance' && adv.scene && adv.scene.base
+                && Array.isArray(adv.scene.base.points)) {
+              console.log('[detailed→advance] phục vụ:', trimmedPrompt.substring(0, 60));
+              logEngineDecision({ mode: 'detailed', served: true, reason: 'advance-from-detailed', ms: 0, promptLen: trimmedPrompt.length });
+              sendEvent('Hoàn tất (nâng cao)!', 100);
+              const advPayload = withQuota({ mode: 'advance', scene: adv.scene, engine: 'advance' }, access);
+              if (isStream) { res.write(`data: ${JSON.stringify({ status: 'done', data: advPayload })}\n\n`); return res.end(); }
+              return res.json(advPayload);
+            }
+            // adv.revUnsupported / degraded ⇒ engine Nâng cao chưa dựng được ⇒ rơi về Vẽ kỹ thường (thử vẽ hình).
+            console.log('[detailed→advance] không dùng được → Vẽ kỹ thường');
+          }
+        } catch (e) {
+          console.warn('[detailed→advance] lỗi → Vẽ kỹ thường:', e?.message);
+        }
+      }
+      // ===== Hết định tuyến Nâng cao — dưới đây là luồng Vẽ kỹ cũ, KHÔNG đổi =====
       console.log('Running Pass 1: Classification...');
       sendEvent('Đang đọc hiểu đề bài...', 20);
       let step1Data = null;
