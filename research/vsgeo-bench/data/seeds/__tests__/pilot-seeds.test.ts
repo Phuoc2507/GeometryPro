@@ -18,8 +18,8 @@ describe("3 bài pilot mẫu — phải luôn hợp lệ và đúng đa dạng d
     if (res.ok) expect(res.seed.answer.type).toBe("surd");
   });
 
-  it("vsgeo-0002 hợp lệ và là dạng rational", () => {
-    const res = validateSeed(docBai("vsgeo-0002"));
+  it("vsgeo-0005 hợp lệ và là dạng rational", () => {
+    const res = validateSeed(docBai("vsgeo-0005"));
     expect(res.ok).toBe(true);
     if (res.ok) expect(res.seed.answer.type).toBe("rational");
   });
