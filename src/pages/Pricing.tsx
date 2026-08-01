@@ -90,14 +90,24 @@ export default function Pricing() {
     startCheckout({ planCode: code }, code);
   };
 
+  // Số tiền LUÔN một dòng (nowrap); kỳ hạn + ghi chú xuống dòng phụ → mọi thẻ cao bằng nhau.
   const priceBlock = (c: CardDef) => {
-    if (c.contact) return (<><div className="text-[34px] font-extrabold leading-none tracking-tight">Liên hệ</div><div className="text-[#6B7E99] text-[13px] mt-1.5 min-h-[18px]">Báo giá theo quy mô trường</div></>);
-    if (priceOf(c) === 0) return (<><div className="text-[34px] font-extrabold leading-none tracking-tight">0đ</div><div className="text-[#6B7E99] text-[13px] mt-1.5 min-h-[18px]">Miễn phí mãi mãi</div></>);
-    const p = byCode.get(codeFor(c) ?? '');
-    if (c.yearOnly) return (<><div className="text-[34px] font-extrabold leading-none tracking-tight">{fmtVnd(p?.price_vnd ?? 0)} <small className="text-[15px] text-[#9FB2CC] font-semibold">/năm học</small></div><div className="text-[#6B7E99] text-[13px] mt-1.5 min-h-[18px]">Chỉ bán theo năm học</div></>);
-    if (bill === 'month') return (<><div className="text-[34px] font-extrabold leading-none tracking-tight">{fmtVnd(p?.price_vnd ?? 0)} <small className="text-[15px] text-[#9FB2CC] font-semibold">/tháng</small></div><div className="text-[#6B7E99] text-[13px] mt-1.5 min-h-[18px]">Gia hạn hằng tháng</div></>);
-    const perM = Math.round((p?.price_vnd ?? 0) / 12 / 1000) * 1000;
-    return (<><div className="text-[34px] font-extrabold leading-none tracking-tight">{fmtVnd(p?.price_vnd ?? 0)} <small className="text-[15px] text-[#9FB2CC] font-semibold">/năm</small></div><div className="text-[#6B7E99] text-[13px] mt-1.5 min-h-[18px]">≈ {fmtVnd(perM)}/tháng · tiết kiệm</div></>);
+    let amount = '', sub = '';
+    if (c.contact) { amount = 'Liên hệ'; sub = 'Báo giá theo quy mô trường'; }
+    else if (priceOf(c) === 0) { amount = '0đ'; sub = 'Miễn phí mãi mãi'; }
+    else {
+      const v = byCode.get(codeFor(c) ?? '')?.price_vnd ?? 0;
+      amount = fmtVnd(v);
+      if (c.yearOnly) sub = '/năm học · trọn năm';
+      else if (bill === 'month') sub = '/tháng · gia hạn hằng tháng';
+      else sub = `/năm · ≈ ${fmtVnd(Math.round(v / 12 / 1000) * 1000)}/tháng`;
+    }
+    return (
+      <div className="min-h-[60px]">
+        <div className="text-[30px] font-extrabold leading-none tracking-tight whitespace-nowrap">{amount}</div>
+        <div className="text-[#6B7E99] text-[12.5px] mt-2">{sub}</div>
+      </div>
+    );
   };
 
   const cards = CARDS[aud];
@@ -158,8 +168,8 @@ export default function Pricing() {
           </div>
         )}
 
-        {/* Cards */}
-        <div className="grid gap-[18px] items-stretch" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))' }}>
+        {/* Cards — thẻ rộng đều, căn giữa; hợp cả 2 thẻ (Học sinh) lẫn 4 thẻ (Giáo viên) */}
+        <div className="flex flex-wrap justify-center items-stretch gap-[18px]">
           {cards.map((c) => {
             const isCurrent = !!c.tier && tier === c.tier;
             const key = codeFor(c) ?? c.name;
@@ -168,7 +178,7 @@ export default function Pricing() {
               <div
                 key={c.name}
                 className={cn(
-                  'relative rounded-[18px] p-6 flex flex-col border transition-colors',
+                  'relative w-[264px] max-w-full rounded-[18px] p-6 flex flex-col border transition-colors',
                   c.popular
                     ? 'border-[#4C8DFF] bg-[#122341] shadow-[0_0_0_1px_#4C8DFF,0_20px_50px_-20px_rgba(76,141,255,.5)]'
                     : 'border-[#1E3357] bg-[#0F1B30]',
