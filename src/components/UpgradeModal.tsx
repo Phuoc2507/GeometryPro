@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/context/AuthContext";
@@ -18,6 +18,7 @@ const HIGHLIGHT: Record<string, boolean> = { pro_1m: true, student_1m: true };
 export function UpgradeModal({ open, onOpenChange }: UpgradeModalProps) {
   const { user, tier: currentTier, lockedRole } = useAuth();
   const location = useLocation();
+  const navigate = useNavigate();
   const { toast } = useToast();
   const [plans, setPlans] = useState<Plan[]>(FALLBACK_PLANS);
   const [buying, setBuying] = useState<string | null>(null);
@@ -187,6 +188,12 @@ export function UpgradeModal({ open, onOpenChange }: UpgradeModalProps) {
             ))}
           </div>
         </div>
+        <button
+          onClick={() => { onOpenChange(false); navigate('/bang-gia'); }}
+          className="text-xs font-medium text-primary hover:underline text-center w-full"
+        >
+          Xem tất cả gói &amp; so sánh chi tiết →
+        </button>
         <p className="text-[11px] text-muted-foreground text-center">Credit gói reset mỗi chu kỳ; credit nạp lẻ không hết hạn.</p>
       </DialogContent>
     </Dialog>

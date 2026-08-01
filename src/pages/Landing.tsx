@@ -139,6 +139,7 @@ const Landing = () => {
             <a href="#giao-vien" className="hover:text-foreground transition-colors">Cho giáo viên</a>
             <a href="#quy-trinh" className="hover:text-foreground transition-colors">Quy trình</a>
             <a href="#vi-du" className="hover:text-foreground transition-colors">Ví dụ</a>
+            <button onClick={() => navigate('/bang-gia')} className="hover:text-foreground transition-colors">Bảng giá</button>
             <a href="#faq" className="hover:text-foreground transition-colors">FAQ</a>
           </div>
           <div className="flex items-center gap-2">
@@ -398,6 +399,7 @@ const Landing = () => {
             <button onClick={() => goTo('teacher')} className="hover:text-foreground transition-colors">Giáo viên</button>
             <button onClick={() => goTo('student')} className="hover:text-foreground transition-colors">Học sinh</button>
             {!isLoading && !user && <button onClick={() => navigate('/auth')} className="hover:text-foreground transition-colors">Đăng nhập</button>}
+            <button onClick={() => navigate('/bang-gia')} className="hover:text-foreground transition-colors">Bảng giá</button>
             <button onClick={() => navigate('/dieu-khoan')} className="hover:text-foreground transition-colors">Điều khoản</button>
             <button onClick={() => navigate('/quyen-rieng-tu')} className="hover:text-foreground transition-colors">Bảo mật</button>
           </div>
