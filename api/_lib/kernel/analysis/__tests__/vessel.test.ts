@@ -5,6 +5,7 @@ import {
   vesselVolume,
   buildVesselSolid,
   sampleVesselProfile,
+  vesselSegmentsFromMeasures,
 } from '../vessel';
 import type { VesselSegment } from '../../../../../src/types/geometry';
 
@@ -106,6 +107,39 @@ describe('buildVesselSolid — RevolutionSolid tái dùng renderer', () => {
     expect(s.length).toBeGreaterThan(20); // khúc cầu ~24 điểm ⇒ tổng phải nhiều
     for (let i = 1; i < s.length; i++) expect(s[i].x).toBeGreaterThanOrEqual(s[i - 1].x - 1e-9);
     for (const p of s) expect(p.r).toBeGreaterThanOrEqual(0);
+  });
+});
+
+describe('vesselSegmentsFromMeasures — số đo (bán kính mép + cao) → khúc nội bộ', () => {
+  it('tự suy R & tâm cầu cho đới cầu: rB=rT=8, h=12 ⇒ R=10, c ở giữa', () => {
+    const segs = vesselSegmentsFromMeasures([
+      { type: 'sphereZone', rBottom: 8, rTop: 8, h: 12 },
+    ]);
+    expect(segs).toHaveLength(1);
+    const s = segs[0] as Extract<VesselSegment, { type: 'sphereZone' }>;
+    expect(s.R).toBeCloseTo(10, 9);
+    expect(s.c).toBeCloseTo(6, 9); // x0=0 ⇒ tâm ở giữa cao 12
+    // bán kính ở 2 mép đúng bằng số đo cho
+    expect(Math.sqrt(s.R ** 2 - (s.x0 - s.c) ** 2)).toBeCloseTo(8, 9);
+    expect(Math.sqrt(s.R ** 2 - (s.x1 - s.c) ** 2)).toBeCloseTo(8, 9);
+  });
+
+  it('h≤0 hoặc loại lạ → [] (builder sẽ trả null)', () => {
+    expect(vesselSegmentsFromMeasures([{ type: 'cylinder', r: 2, h: 0 }])).toEqual([]);
+    // @ts-expect-error loại không hỗ trợ
+    expect(vesselSegmentsFromMeasures([{ type: 'weird', h: 2 }])).toEqual([]);
+  });
+
+  it('BÀI BÌNH RƯỢU (Câu 2): nón cụt + đới cầu ⇒ thể tích = 5146π (đã tự kiểm)', () => {
+    // EF=30 ⇒ rBottom=15; CD=16 ⇒ rTop=8; h'=30 (nón cụt). AB=CD=16 ⇒ 2 mép r=8; h=12 (đới cầu).
+    const segs = vesselSegmentsFromMeasures([
+      { type: 'frustum', rBottom: 15, rTop: 8, h: 30 },
+      { type: 'sphereZone', rBottom: 8, rTop: 8, h: 12 },
+    ]);
+    const solid = buildVesselSolid('bottle', segs);
+    expect(solid.volume?.verified).toBe(true);
+    // 4090π (nón cụt) + 1056π (đới cầu) = 5146π
+    expect(solid.volume?.value).toBeCloseTo(5146 * PI, 4);
   });
 });
 

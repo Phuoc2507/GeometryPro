@@ -7,10 +7,15 @@
 // CHỐNG BỊA: nếu mô hình khúc KHÔNG hợp lệ (hở/chồng/vượt cầu) hoặc hai cách tính thể tích lệch nhau
 // ⇒ solid.volume.verified=false ⇒ TRẢ NULL (không phục vụ). Route sẽ rơi về guard "chưa dựng được"
 // (hoàn credit + nhắn người dùng), y như các mẫu tròn xoay/thiết diện khác.
-import { buildAnalysisFigure, buildVesselSolid } from '../kernel-dist/index.mjs';
+import { buildAnalysisFigure, buildVesselSolid, vesselSegmentsFromMeasures } from '../kernel-dist/index.mjs';
 
 export function buildVesselScene(params) {
-  const { segments, parts, color } = params || {};
+  const { measures, segments: rawSegments, parts, color } = params || {};
+  // ƯU TIÊN định dạng SỐ ĐO (bán kính mép + chiều cao) — dễ cho AI trích, engine tự suy R & tâm cầu.
+  // Vẫn nhận `segments` nội bộ (x0/x1/R/c) để dùng trực tiếp/test.
+  const segments = Array.isArray(measures) && measures.length
+    ? vesselSegmentsFromMeasures(measures)
+    : rawSegments;
   if (!Array.isArray(segments) || segments.length === 0) return null;
 
   const revId = 'vessel1';

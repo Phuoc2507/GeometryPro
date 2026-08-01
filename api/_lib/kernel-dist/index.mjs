@@ -7991,6 +7991,34 @@ function validateVesselSegments(segs) {
 function vesselProfile(segs) {
   return { kind: "piecewise", segments: segs };
 }
+function vesselSegmentsFromMeasures(measures) {
+  if (!Array.isArray(measures) || measures.length === 0) return [];
+  const segs = [];
+  let x = 0;
+  for (const m of measures) {
+    const h = Number(m?.h);
+    if (!Number.isFinite(h) || h <= 0) return [];
+    const x0 = x;
+    const x1 = x + h;
+    if (m.type === "cylinder") {
+      segs.push({ type: "cylinder", x0, x1, r: Number(m.r) });
+    } else if (m.type === "frustum") {
+      segs.push({ type: "frustum", x0, x1, r0: Number(m.rBottom), r1: Number(m.rTop) });
+    } else if (m.type === "sphereZone") {
+      const rB = Number(m.rBottom);
+      const rT = Number(m.rTop);
+      if (!Number.isFinite(rB) || !Number.isFinite(rT)) return [];
+      const a = (rB * rB - rT * rT - h * h) / (2 * h);
+      const R = Math.sqrt(rB * rB + a * a);
+      const c = x0 - a;
+      segs.push({ type: "sphereZone", x0, x1, R, c });
+    } else {
+      return [];
+    }
+    x = x1;
+  }
+  return segs;
+}
 function sampleVesselProfile(segs) {
   const out = [];
   for (const s of segs) {
@@ -8312,5 +8340,6 @@ export {
   verifyPlan,
   vesselProfile,
   vesselSegmentVolume,
+  vesselSegmentsFromMeasures,
   vesselVolume
 };

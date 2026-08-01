@@ -43,7 +43,7 @@ export { buildAnalysisFigure } from './analysis/analysisFigure';
 export { evalProfile, compileProfile, sampleProfile, revolutionVolumeDisk, buildRevolutionSolidOx, revolutionVolumeShellOy, buildRevolutionSolidOy, buildRevolutionSolidOyDisk } from './analysis/revolution';
 export { sectionK, sliceStackVolume, buildSliceStack, planarArea, buildAreaRegion } from './analysis/sliceVolume';
 // Vật thể tròn xoay GHÉP khúc (Advance – vessel: bình/lu/chậu). Thể tích đóng + đối chiếu tích phân số.
-export { buildVesselSolid, vesselVolume, vesselSegmentVolume, validateVesselSegments, vesselProfile, sampleVesselProfile } from './analysis/vessel';
+export { buildVesselSolid, vesselVolume, vesselSegmentVolume, validateVesselSegments, vesselProfile, sampleVesselProfile, vesselSegmentsFromMeasures } from './analysis/vessel';
 export { buildPolyhedron, resolveSectionPoint, planeFrom3, sliceConvexPolyhedron, polygonArea3D, buildSectionCut } from './analysis/sectionCut';
 // Parser biểu thức 1 biến — dùng bởi api/_lib/exprExpand.js (nở đường cong 'expr' của Vẽ nhanh/Vẽ kỹ).
 export { parseExpr, evalExpr } from './analysis/expr';

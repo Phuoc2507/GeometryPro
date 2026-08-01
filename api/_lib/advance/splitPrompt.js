@@ -127,31 +127,32 @@ QUY TẮC MẪU GIẢI TÍCH (optional — chỉ thêm khi CHẮC CHẮN khớp)
   CHÓP — vị trí đỉnh S RẤT QUAN TRỌNG (sai vị trí ⇒ thiết diện sai): nếu đề nói "SA⊥đáy" (hay SB/SC/SD⊥đáy)
   thì S nằm NGAY TRÊN đỉnh đó ⇒ đặt dims.apexOver = "A" (hoặc "B"/"C"/"D"), và h = độ dài cạnh bên đó (SA=…).
   Nếu là "chóp đều" / "SO⊥đáy tại tâm O" thì BỎ apexOver (mặc định đỉnh trên tâm đáy).
-- 'rev-vessel' (VẬT THỂ tròn xoay GHÉP KHÚC — vật thật: bình/lu/chậu/phễu/cốc/vại/bồn). Đề cho một vật
-  ĐỐI XỨNG TRỤC (thường kèm "thiết diện qua trục") gồm NHIỀU phần xếp chồng (trụ / nón cụt / chỏm–đới cầu),
-  hỏi THỂ TÍCH / DUNG TÍCH. Đặt "template":"rev-vessel", "templateParams": { "segments":[...], "parts":[..] }.
-  QUY ƯỚC TRỤC: x = ĐỘ CAO tính từ ĐÁY vật (x=0) đi LÊN. Các khúc XẾP CHỒNG, LIỀN MẠCH: x1 (mép trên) của
-  khúc dưới = x0 (mép dưới) của khúc trên. Bán kính = NỬA đường kính (nếu đề cho đường kính d thì r = d/2).
-  Mỗi khúc trong "segments" (liệt kê từ ĐÁY lên) là MỘT trong:
-    { "type":"cylinder", "x0":.., "x1":.., "r":.. }             // trụ: bán kính r không đổi
-    { "type":"frustum",  "x0":.., "x1":.., "r0":.., "r1":.. }   // nón cụt: r0 ở dưới (x0), r1 ở trên (x1); nón đặc ⇒ r0 hoặc r1 = 0
-    { "type":"sphereZone","x0":.., "x1":.., "R":.., "c":.. }    // chỏm/đới cầu: mặt cầu bán kính R, TÂM nằm trên
-        // trục ở độ cao c ⇒ bán kính r(x)=√(R²−(x−c)²). "Cầu bị cắt bỏ 2 chỏm" = MỘT sphereZone với [x0,x1]
-        // nằm TRONG (c−R, c+R). Chọn R và c sao cho bán kính ở MÉP khớp với khúc tiếp giáp (liền mạch, không nhảy bậc vô lý).
-  KHÔNG chắc cách ghép / tâm cầu / số đo → BỎ QUA "template" (đừng đoán bừa — engine sẽ tự báo "chưa dựng được").
+- 'rev-vessel' (VẬT THỂ tròn xoay GHÉP KHÚC — vật thật: bình/lu/chậu/phễu/cốc/vại/bồn). Đề cho vật ĐỐI
+  XỨNG TRỤC (thường kèm "thiết diện qua trục") gồm NHIỀU phần xếp chồng, hỏi THỂ TÍCH / DUNG TÍCH.
+  Đặt "template":"rev-vessel", "templateParams": { "measures":[...], "parts":[..] }.
+  CHỈ cần ĐỌC SỐ ĐO trên hình — TUYỆT ĐỐI KHÔNG tự tính bán kính mặt cầu (engine tự lo, đừng giải căn
+  trong đầu). Mỗi phần trong "measures" (liệt kê TỪ ĐÁY LÊN) có "type", chiều cao "h", và BÁN KÍNH ở mép:
+    { "type":"cylinder",   "r":<bán kính>,                     "h":<cao> }
+    { "type":"frustum",    "rBottom":<bk đáy dưới>, "rTop":<bk đáy trên>, "h":<cao> }   // nón cụt (nón đặc ⇒ 1 bán kính = 0)
+    { "type":"sphereZone", "rBottom":<bk mép dưới>, "rTop":<bk mép trên>, "h":<cao> }   // chỏm / đới cầu
+        // "cầu bị cắt bỏ 2 chỏm" = MỘT sphereZone: rBottom, rTop là bán kính HAI đường tròn cắt, h là
+        // khoảng cách giữa hai mặt cắt. (Nếu hai mép bằng nhau, phần cầu phình ra ở giữa.)
+  BÁN KÍNH ở mép của phần TRÊN phải BẰNG bán kính mép của phần DƯỚI nơi tiếp giáp (liền mạch).
+  QUAN TRỌNG: số đo trên hình (AB, CD, EF…) thường là ĐƯỜNG KÍNH (đoạn NGANG hết bề rộng) ⇒ bán kính = số đo / 2.
+  KHÔNG chắc cấu tạo / số đo → BỎ QUA "template" (engine sẽ tự báo "chưa dựng được").
 
-[Ví dụ rev-vessel — bình = trụ + chỏm cầu]
-Đề: "Một chiếc bình: thân dưới là hình trụ bán kính đáy 4 cm cao 10 cm, phía trên là một chỏm cầu (nửa trên của mặt cầu bán kính 4 cm) úp khít lên miệng trụ. Tính thể tích bình."
+[Ví dụ rev-vessel — bình rượu: nón cụt (dưới) + đới cầu (trên)]
+Đề: "Bình đựng rượu: phần dưới hình nón cụt, phần trên hình cầu bị cắt bỏ 2 đầu chỏm. Thiết diện qua trục: AB=CD=16cm, EF=30cm, h=12cm (phần cầu), h'=30cm (phần nón cụt). Tính thể tích bình."
 JSON:
 {
   "type": "single",
-  "setup": "Bình: thân dưới hình trụ bán kính đáy 4cm cao 10cm; phía trên chỏm cầu (nửa trên mặt cầu bán kính 4cm) úp khít miệng trụ",
-  "parts": [ { "label": "Câu 1", "hoi": "Tính thể tích bình", "phan_tu_moi": [] } ],
+  "setup": "Bình rượu: dưới nón cụt (đáy dưới EF=30cm, đáy trên CD=16cm, cao h'=30cm); trên cầu cắt 2 chỏm (2 mép AB=CD=16cm, cao h=12cm)",
+  "parts": [ { "label": "Câu 1", "hoi": "Tính thể tích bình rượu (rồi ra số tiền đổ đầy)", "phan_tu_moi": [] } ],
   "template": "rev-vessel",
   "templateParams": {
-    "segments": [
-      { "type": "cylinder", "x0": 0, "x1": 10, "r": 4 },
-      { "type": "sphereZone", "x0": 10, "x1": 14, "R": 4, "c": 10 }
+    "measures": [
+      { "type": "frustum",    "rBottom": 15, "rTop": 8, "h": 30 },
+      { "type": "sphereZone", "rBottom": 8,  "rTop": 8, "h": 12 }
     ]
   }
 }

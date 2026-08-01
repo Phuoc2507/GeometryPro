@@ -72,6 +72,53 @@ export function vesselProfile(segs: VesselSegment[]): ProfileFn {
   return { kind: 'piecewise', segments: segs };
 }
 
+// "Số đo dễ đọc từ hình": mỗi phần cho bằng BÁN KÍNH ở 2 mép + CHIỀU CAO (xếp từ ĐÁY lên).
+// Với chỏm/đới cầu, KHÔNG bắt người/AI tự tính bán kính mặt cầu — chỉ cần 2 bán kính mép + chiều cao.
+export interface VesselMeasure {
+  type: 'cylinder' | 'frustum' | 'sphereZone';
+  h: number;         // chiều cao phần này
+  r?: number;        // cylinder: bán kính
+  rBottom?: number;  // frustum/sphereZone: bán kính mép DƯỚI
+  rTop?: number;     // frustum/sphereZone: bán kính mép TRÊN
+}
+
+/**
+ * Chuyển danh sách "số đo" (bán kính mép + chiều cao, từ ĐÁY lên) thành khúc nội bộ:
+ *  - x0/x1 cộng dồn theo chiều cao (các phần xếp chồng liền mạch).
+ *  - sphereZone: TỰ SUY bán kính mặt cầu R và tâm c từ (rBottom, rTop, h) — bỏ gánh nặng hình học khỏi AI.
+ *      Đặt a = khoảng cách CÓ DẤU từ tâm cầu tới mặt đáy khúc: a = (rB² − rT² − h²) / (2h).
+ *      ⇒ R = √(rB² + a²), c = x0 − a.  (Kiểm: rB=rT=8, h=12 ⇒ a=−6, R=10 — đúng bài bình rượu.)
+ * Số đo không hợp lệ (h≤0, loại lạ) ⇒ trả [] (builder sẽ trả null → route báo "chưa dựng được").
+ */
+export function vesselSegmentsFromMeasures(measures: VesselMeasure[]): VesselSegment[] {
+  if (!Array.isArray(measures) || measures.length === 0) return [];
+  const segs: VesselSegment[] = [];
+  let x = 0;
+  for (const m of measures) {
+    const h = Number(m?.h);
+    if (!Number.isFinite(h) || h <= 0) return [];
+    const x0 = x;
+    const x1 = x + h;
+    if (m.type === 'cylinder') {
+      segs.push({ type: 'cylinder', x0, x1, r: Number(m.r) });
+    } else if (m.type === 'frustum') {
+      segs.push({ type: 'frustum', x0, x1, r0: Number(m.rBottom), r1: Number(m.rTop) });
+    } else if (m.type === 'sphereZone') {
+      const rB = Number(m.rBottom);
+      const rT = Number(m.rTop);
+      if (!Number.isFinite(rB) || !Number.isFinite(rT)) return [];
+      const a = (rB * rB - rT * rT - h * h) / (2 * h);
+      const R = Math.sqrt(rB * rB + a * a);
+      const c = x0 - a;
+      segs.push({ type: 'sphereZone', x0, x1, R, c });
+    } else {
+      return [];
+    }
+    x = x1;
+  }
+  return segs;
+}
+
 // Mẫu đường sinh cho LatheGeometry: khúc thẳng (trụ/nón cụt) chỉ cần 2 đầu; khúc cầu lấy dày để cong mượt.
 // Bao gồm cả điểm biên ⇒ bậc bán kính (vai phẳng) hiện đúng thành mặt vành khăn khi lathe.
 export function sampleVesselProfile(segs: VesselSegment[]): { x: number; r: number }[] {

@@ -42,4 +42,17 @@ describe('buildVesselScene', () => {
     expect(buildVesselScene({ segments: [] })).toBeNull();
     expect(buildVesselScene({})).toBeNull();
   });
+
+  it('nhận định dạng SỐ ĐO (measures) — bài bình rượu ⇒ thể tích 5146π verified', () => {
+    const scene = buildVesselScene({
+      measures: [
+        { type: 'frustum', rBottom: 15, rTop: 8, h: 30 },
+        { type: 'sphereZone', rBottom: 8, rTop: 8, h: 12 },
+      ],
+    });
+    expect(scene).not.toBeNull();
+    const ans = scene.steps[1].answer;
+    expect(ans.verified).toBe(true);
+    expect(ans.approx).toBeCloseTo(5146 * Math.PI, 3);
+  });
 });
