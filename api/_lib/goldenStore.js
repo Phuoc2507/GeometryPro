@@ -35,9 +35,14 @@ export async function findGolden(client, prompt) {
     }
     if (!data || !data.response) return null;
 
-    // Chỉ phục vụ khi payload có hình vẽ được (frontend cần step2.geometry.points > 0).
-    const points = data.response?.step2?.geometry?.points;
-    if (!Array.isArray(points) || points.length === 0) return null;
+    // Chỉ phục vụ khi payload có hình vẽ được. Hai dạng: TĨNH (step2.geometry.points) hoặc NÂNG CAO
+    // (scene.base.points — golden của bình/lu/chậu, khối tròn xoay… lưu nguyên scene advance).
+    const r = data.response;
+    const staticPts = r?.step2?.geometry?.points;
+    const advPts = r?.scene?.base?.points;
+    const drawable = (Array.isArray(staticPts) && staticPts.length > 0)
+      || (Array.isArray(advPts) && advPts.length > 0);
+    if (!drawable) return null;
 
     return { response: data.response, id: data.id };
   } catch (err) {
@@ -47,13 +52,17 @@ export async function findGolden(client, prompt) {
 }
 
 /**
- * Dựng payload phục vụ (cùng SHAPE với finalPayload của analyze-geometry) từ một
- * hình do admin cung cấp. confidence = 1 và constraint_violations = [] vì đây là
- * hình do NGƯỜI duyệt, coi như chuẩn.
- * @param {{prompt: string, geometry: any, mode?: string, calculationLog?: string}} p
+ * Dựng payload phục vụ từ hình admin cung cấp.
+ *  - Có `advanceScene` ⇒ golden dạng NÂNG CAO: trả thẳng { mode:'advance', scene } (giữ nguyên bước +
+ *    đáp số verified). Cả analyze-geometry (Vẽ kỹ) lẫn analyze-advance đều phục vụ được dạng này.
+ *  - Không ⇒ golden TĨNH: { step1, step2:{ geometry } } như cũ. confidence=1, không vi phạm (người đã duyệt).
+ * @param {{prompt: string, geometry: any, advanceScene?: any, mode?: string, calculationLog?: string}} p
  * @returns {any}
  */
-export function buildGoldenResponse({ prompt, geometry, mode, calculationLog }) {
+export function buildGoldenResponse({ prompt, geometry, advanceScene, mode, calculationLog }) {
+  if (advanceScene && advanceScene.base && Array.isArray(advanceScene.base.points)) {
+    return { mode: 'advance', scene: advanceScene, engine: 'golden' };
+  }
   const points = Array.isArray(geometry?.points) ? geometry.points : [];
   const tags = Array.isArray(geometry?.tags) ? geometry.tags : [];
   return {

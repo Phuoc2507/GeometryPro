@@ -30,6 +30,7 @@ async function handler(req, res) {
       ok: true,
       candidate: {
         geometry: candidate.geometry,
+        advanceScene: candidate.advanceScene || null, // có khi dựng bằng engine Nâng cao ⇒ lưu golden dạng advance
         prompt,
         verdict: {
           verified: candidate.verified,

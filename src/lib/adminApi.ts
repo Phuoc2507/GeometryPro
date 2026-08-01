@@ -79,6 +79,7 @@ export const setRole = (userId: string, role: 'admin' | 'user') =>
 export interface SaveGoldenParams {
   prompt: string;
   geometry: unknown;
+  advanceScene?: unknown | null;   // nếu có ⇒ lưu golden dạng Nâng cao (giữ nguyên bước + đáp số)
   mode?: string | null;
   note?: string | null;
   sourceReportId?: string | null;
@@ -88,6 +89,7 @@ export const saveGolden = (params: SaveGoldenParams) =>
   adminApi<{ ok: boolean; id: string | null }>('save-golden', {
     prompt: params.prompt,
     geometry: params.geometry,
+    advanceScene: params.advanceScene ?? null,
     mode: params.mode ?? null,
     note: params.note ?? null,
     sourceReportId: params.sourceReportId ?? null,
@@ -105,13 +107,14 @@ export interface RedrawVerdict {
   ok: boolean;
   confidence: number | null;
   violations: Array<Record<string, unknown>>;
-  source: 'kernel' | 'llm' | 'none';
+  source: 'kernel' | 'llm' | 'advance' | 'none';
   attempts: number;
   checkedConstraints: number;        // >0: số ràng buộc đã kiểm; -1: kernel kiểm toàn bộ; 0: chưa tự chấm được
   note: string;
 }
 export interface RedrawCandidate {
   geometry: unknown | null;
+  advanceScene?: unknown | null;   // có khi dựng bằng engine Nâng cao (vessel/tròn xoay/thiết diện)
   prompt: string;
   verdict: RedrawVerdict;
 }

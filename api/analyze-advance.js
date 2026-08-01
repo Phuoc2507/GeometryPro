@@ -15,6 +15,13 @@ import { refund, creditCostFor } from './_lib/credits.js';
 import { accessError, resolveAiAccess, withQuota, refundAiUsage } from './_lib/aiAccess.js';
 import { withSentry, reportServerError } from './_lib/sentry.js';
 import { logBrokenProblem } from './_lib/brokenProblemLog.js';
+import { createClient } from '@supabase/supabase-js';
+import { findGolden } from './_lib/goldenStore.js';
+
+// Client service-role để tra "hình chuẩn" (golden). Thiếu env ⇒ null ⇒ bỏ qua golden (luồng cũ chạy y nguyên).
+const _supaUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const _supaKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+const supabase = _supaUrl && _supaKey ? createClient(_supaUrl, _supaKey) : null;
 
 // Nhắn TRUNG THỰC khi đề rõ là tròn xoay nhưng KHÔNG dựng được mẫu rev-ox (ảnh mờ, kiểu quay chưa
 // hỗ trợ…): thà báo thẳng còn hơn vẽ bừa một hình 3D không liên quan.
@@ -261,6 +268,23 @@ async function handler(req, res) {
     userId = access.userId;
     if (access.gate.mode === 'credit') {
       creditCharge = { cost: access.gate.cost, reqId: crypto.randomUUID() };
+    }
+
+    // ---- HÌNH CHUẨN (GOLDEN) — phục vụ THẲNG nếu đề này đã có hình admin duyệt (chỉ CHỮ) ----
+    // Bình/lu/chậu (hoặc bài Nâng cao khác) từng vẽ sai, admin đã "Nhờ AI vẽ lại" + duyệt ⇒ lần sau ra
+    // ngay, không tốn engine. Không gọi pipeline ⇒ HOÀN credit như nhánh cache. Fail-safe: findGolden nuốt
+    // mọi lỗi/DB thiếu và trả null ⇒ rơi êm về luồng Nâng cao bình thường.
+    if (problemSeed && supabase) {
+      const golden = await findGolden(supabase, problemSeed);
+      if (golden) {
+        if (creditCharge && userId) {
+          try { await refund(userId, creditCharge.cost, creditCharge.reqId); }
+          catch (e) { console.warn('Hoàn credit golden-hit (advance) lỗi:', e?.message); }
+          creditCharge = null;
+        }
+        console.log('[golden] phục vụ (advance):', problemSeed.substring(0, 60));
+        return res.json(withQuota(golden.response, access));
+      }
     }
 
     // ---- Nạp ĐỘNG các mảnh pipeline (lỗi import ⇒ rơi vào catch, hoàn credit) ----

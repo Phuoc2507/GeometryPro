@@ -49,6 +49,36 @@ export async function redrawProblem(prompt, opts = {}) {
     return { geometry: null, verified: false, ok: false, confidence: null, violations: [], source: 'none', attempts: 0, checkedConstraints: 0, note: 'đề rỗng' };
   }
 
+  // ── 0) ENGINE NÂNG CAO trước (đúng engine cho lớp bài vật thật/tròn xoay/thiết diện/thể tích) ─────
+  // Nút "Nhờ AI vẽ lại" trước đây bỏ qua luồng Nâng cao ⇒ không vẽ lại được bình/lu/chậu. Nay thử engine
+  // Nâng cao TRƯỚC (regex-gated) — nếu dựng được scene thì trả candidate kèm advanceScene để admin duyệt
+  // thành golden (Giai đoạn 3). Fail-safe: lỗi/không phải dạng Nâng cao ⇒ rơi xuống kernel + LLM như cũ.
+  try {
+    const advMod = await import('../analyze-advance.js');
+    const isAdvance = advMod.looksLikeVessel(trimmed) || advMod.looksLikeRevolution(trimmed)
+      || advMod.looksLikeCrossSection(trimmed) || advMod.looksLikeArea(trimmed) || advMod.looksLikeSection(trimmed);
+    if (isAdvance) {
+      const { runAdvance } = await import('./advance/runAdvance.js');
+      const adv = await runAdvance(trimmed, {});
+      if (adv && adv.mode === 'advance' && adv.scene && adv.scene.base
+          && Array.isArray(adv.scene.base.points) && adv.scene.base.points.length > 0) {
+        const answerStep = (adv.scene.steps || []).find((s) => s && s.answer);
+        const verified = !!(answerStep && answerStep.answer && answerStep.answer.verified);
+        return {
+          geometry: adv.scene.base,
+          advanceScene: adv.scene,   // để admin duyệt lưu golden dạng Nâng cao (giữ nguyên bước + đáp số)
+          verified, ok: true, confidence: verified ? 1 : null, violations: [],
+          source: 'advance', attempts: 0, checkedConstraints: verified ? 1 : 0,
+          note: verified
+            ? 'Dựng bằng engine Nâng cao — thể tích/diện tích đã tự kiểm.'
+            : 'Dựng bằng engine Nâng cao (đáp số chưa tự kiểm — hãy nhìn kỹ).',
+        };
+      }
+    }
+  } catch (e) {
+    console.warn('[redraw] advance bỏ qua:', e?.message || e);
+  }
+
   // ── 1) ENGINE tất định trước ────────────────────────────────────────────────
   try {
     const { solveProblem } = await import('./kernel-bridge/solveWithKernel.js');
