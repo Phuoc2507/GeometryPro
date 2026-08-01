@@ -7730,6 +7730,24 @@ function compileProfile(f) {
       const g = parseExpr(f.expr);
       return (x) => g({ x, y: x });
     }
+    case "piecewise": {
+      const segs = f.segments;
+      return (x) => {
+        for (let i = 0; i < segs.length; i++) {
+          const s = segs[i];
+          if (x < s.x0 || x > s.x1) continue;
+          if (s.type === "cylinder") return s.r;
+          if (s.type === "frustum") {
+            const w = s.x1 - s.x0;
+            const t = w === 0 ? 0 : (x - s.x0) / w;
+            return s.r0 + (s.r1 - s.r0) * t;
+          }
+          const d = s.R * s.R - (x - s.c) * (x - s.c);
+          return d > 0 ? Math.sqrt(d) : 0;
+        }
+        return 0;
+      };
+    }
   }
 }
 function evalProfile(f, x) {
@@ -7920,6 +7938,101 @@ function buildAreaRegion(id, outer, domain, inner, color, slabDepth = 0.15) {
   const latex = `S=\\int_{${fmtBound(dom[0])}}^{${fmtBound(dom[1])}} |f(x)-g(x)|\\,dx`;
   const area = { value, latex, verified, estimatedError };
   return { id, outer, inner: inr, domain: dom, area, color, slabDepth, samples: sampleArea(outer, inr, dom) };
+}
+
+// api/_lib/kernel/analysis/vessel.ts
+function vesselSegmentVolume(s) {
+  const h = s.x1 - s.x0;
+  switch (s.type) {
+    case "cylinder":
+      return Math.PI * s.r * s.r * h;
+    case "frustum":
+      return Math.PI * h / 3 * (s.r0 * s.r0 + s.r0 * s.r1 + s.r1 * s.r1);
+    case "sphereZone": {
+      const u1 = s.x1 - s.c;
+      const u0 = s.x0 - s.c;
+      return Math.PI * (s.R * s.R * h - (u1 * u1 * u1 - u0 * u0 * u0) / 3);
+    }
+  }
+}
+function vesselSegmentRadius(s, x) {
+  if (s.type === "cylinder") return Math.max(0, s.r);
+  if (s.type === "frustum") {
+    const w = s.x1 - s.x0;
+    const t = w === 0 ? 0 : (x - s.x0) / w;
+    return Math.max(0, s.r0 + (s.r1 - s.r0) * t);
+  }
+  const d = s.R * s.R - (x - s.c) * (x - s.c);
+  return d > 0 ? Math.sqrt(d) : 0;
+}
+function validateVesselSegments(segs) {
+  if (!Array.isArray(segs) || segs.length === 0) return { ok: false, reason: "kh\xF4ng c\xF3 kh\xFAc n\xE0o" };
+  const EPS6 = 1e-6;
+  for (let i = 0; i < segs.length; i++) {
+    const s = segs[i];
+    if (!Number.isFinite(s.x0) || !Number.isFinite(s.x1)) return { ok: false, reason: `kh\xFAc ${i}: to\u1EA1 \u0111\u1ED9 tr\u1EE5c kh\xF4ng h\u1EE3p l\u1EC7` };
+    if (s.x1 - s.x0 <= EPS6) return { ok: false, reason: `kh\xFAc ${i}: x1 ph\u1EA3i l\u1EDBn h\u01A1n x0` };
+    if (s.type === "cylinder") {
+      if (!(s.r >= 0)) return { ok: false, reason: `kh\xFAc ${i}: b\xE1n k\xEDnh \xE2m` };
+    } else if (s.type === "frustum") {
+      if (!(s.r0 >= 0) || !(s.r1 >= 0)) return { ok: false, reason: `kh\xFAc ${i}: b\xE1n k\xEDnh \xE2m` };
+    } else {
+      if (!(s.R > 0)) return { ok: false, reason: `kh\xFAc ${i}: b\xE1n k\xEDnh c\u1EA7u R ph\u1EA3i > 0` };
+      if (Math.abs(s.x0 - s.c) > s.R + EPS6 || Math.abs(s.x1 - s.c) > s.R + EPS6) {
+        return { ok: false, reason: `kh\xFAc ${i}: \u0111o\u1EA1n [x0,x1] v\u01B0\u1EE3t ra ngo\xE0i m\u1EB7t c\u1EA7u` };
+      }
+    }
+    if (i > 0 && Math.abs(segs[i - 1].x1 - s.x0) > 1e-4) {
+      return { ok: false, reason: `kh\xFAc ${i}: kh\xF4ng ti\u1EBFp gi\xE1p kh\xFAc tr\u01B0\u1EDBc (h\u1EDF/ch\u1ED3ng d\u1ECDc tr\u1EE5c)` };
+    }
+  }
+  return { ok: true };
+}
+function vesselProfile(segs) {
+  return { kind: "piecewise", segments: segs };
+}
+function sampleVesselProfile(segs) {
+  const out = [];
+  for (const s of segs) {
+    const n = s.type === "sphereZone" ? 24 : 1;
+    for (let i = 0; i <= n; i++) {
+      const x = s.x0 + (s.x1 - s.x0) * i / n;
+      const pt2 = { x, r: vesselSegmentRadius(s, x) };
+      const prev = out[out.length - 1];
+      if (prev && Math.abs(prev.x - x) < 1e-9 && Math.abs(prev.r - pt2.r) < 1e-9) continue;
+      out.push(pt2);
+    }
+  }
+  return out;
+}
+function fmtNum3(v) {
+  const r = Math.round(v * 1e6) / 1e6;
+  return String(r);
+}
+function vesselVolume(segs) {
+  const valid = validateVesselSegments(segs);
+  const closed = segs.reduce((acc, s) => acc + vesselSegmentVolume(s), 0);
+  const domain = [segs[0]?.x0 ?? 0, segs[segs.length - 1]?.x1 ?? 0];
+  const num2 = revolutionVolumeDisk(vesselProfile(segs), domain);
+  const gap = Math.abs(closed - num2.value);
+  const agree = gap <= 1e-5 * Math.max(1, Math.abs(closed));
+  return { value: closed, numeric: num2.value, gap, verified: valid.ok && agree, reason: valid.ok ? void 0 : valid.reason };
+}
+function buildVesselSolid(id, segs, opts = {}) {
+  const { value, gap, verified } = vesselVolume(segs);
+  const domain = [segs[0]?.x0 ?? 0, segs[segs.length - 1]?.x1 ?? 0];
+  const latex = `V=${fmtNum3(value)}`;
+  const volume = { value, latex, verified, estimatedError: gap };
+  return {
+    id,
+    outer: vesselProfile(segs),
+    axis: opts.axis ?? "Oy",
+    domain,
+    method: "disk",
+    color: opts.color,
+    volume,
+    samples: sampleVesselProfile(segs)
+  };
 }
 
 // api/_lib/kernel/analysis/sectionCut.ts
@@ -8166,6 +8279,7 @@ export {
   buildRevolutionSolidOyDisk,
   buildSectionCut,
   buildSliceStack,
+  buildVesselSolid,
   checkDegeneracy,
   compileProfile,
   createEmptySymbolTable,
@@ -8187,11 +8301,16 @@ export {
   runAny,
   runPlan,
   sampleProfile,
+  sampleVesselProfile,
   sectionK,
   sliceConvexPolyhedron,
   sliceStackVolume,
   toExactForm,
   toGeometryData,
+  validateVesselSegments,
   verifyAssert,
-  verifyPlan
+  verifyPlan,
+  vesselProfile,
+  vesselSegmentVolume,
+  vesselVolume
 };

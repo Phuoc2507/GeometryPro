@@ -263,7 +263,19 @@ export type ProfileFn =
   | { kind: 'poly'; coeffs: number[] }   // c0 + c1·x + c2·x² + …
   | { kind: 'sqrt'; a: number; b: number } // a·√x + b
   | { kind: 'const'; c: number }
-  | { kind: 'expr'; expr: string };      // biểu thức 1 biến x tổng quát: e^x, sin(x), ln(x), 1/x, sqrt(4-x^2)…
+  | { kind: 'expr'; expr: string }       // biểu thức 1 biến x tổng quát: e^x, sin(x), ln(x), 1/x, sqrt(4-x^2)…
+  | { kind: 'piecewise'; segments: VesselSegment[] }; // biên dạng GHÉP khúc — vật thật (bình/lu/chậu/phễu)
+
+// Một KHÚC của biên dạng ghép (vessel = vật thể tròn xoay quanh trục đứng, cho bằng SỐ ĐO).
+// [x0,x1] là đoạn dọc trục (tăng dần, các khúc tiếp giáp nhau, có thể có bậc bán kính giữa 2 khúc).
+//  - cylinder : bán kính không đổi r  → r(x)=r.
+//  - frustum  : bán kính đi thẳng r0→r1 (nón cụt; nón đặc khi r0=0 hoặc r1=0) → r(x) tuyến tính.
+//  - sphereZone: cung mặt cầu bán kính R, tâm nằm trên trục tại toạ độ c → r(x)=√(R²−(x−c)²)
+//                (chỏm cầu / đới cầu; cầu bị cắt 2 chỏm = 1 sphereZone với [x0,x1] nằm trong (c−R,c+R)).
+export type VesselSegment =
+  | { type: 'cylinder'; x0: number; x1: number; r: number }
+  | { type: 'frustum'; x0: number; x1: number; r0: number; r1: number }
+  | { type: 'sphereZone'; x0: number; x1: number; R: number; c: number };
 
 // Kết quả đã (hoặc chưa) tự-kiểm bằng lõi tất định.
 export interface Verified<T> {
