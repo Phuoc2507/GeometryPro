@@ -98,3 +98,35 @@ export const listGolden = (page = 1, perPage = 30) =>
 
 export const deleteGolden = (id: string) =>
   adminApi<{ ok: boolean }>('delete-golden', { id });
+
+// ── Nhờ AI vẽ lại (endpoint riêng /api/admin-redraw vì chạy lâu) ──────────────
+export interface RedrawVerdict {
+  verified: boolean;                 // máy TỰ CHẤM được và ĐẠT (tự tin đúng)
+  ok: boolean;
+  confidence: number | null;
+  violations: Array<Record<string, unknown>>;
+  source: 'kernel' | 'llm' | 'none';
+  attempts: number;
+  checkedConstraints: number;        // >0: số ràng buộc đã kiểm; -1: kernel kiểm toàn bộ; 0: chưa tự chấm được
+  note: string;
+}
+export interface RedrawCandidate {
+  geometry: unknown | null;
+  prompt: string;
+  verdict: RedrawVerdict;
+}
+
+export const redrawProblem = async (prompt: string, maxAttempts = 1): Promise<RedrawCandidate> => {
+  const { data } = await supabase.auth.getSession();
+  const token = data.session?.access_token;
+  if (!token) throw new Error('Bạn cần đăng nhập lại');
+
+  const res = await fetch('/api/admin-redraw', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ prompt, maxAttempts }),
+  });
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(body?.error || 'Lỗi máy chủ khi vẽ lại');
+  return body.candidate as RedrawCandidate;
+};

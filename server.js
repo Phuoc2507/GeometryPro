@@ -13,6 +13,7 @@ import checkoutHandler from './api/checkout.js';
 import webhookHandler from './api/webhook.js';
 import analyzeAdvanceHandler from './api/analyze-advance.js';
 import adminHandler from './api/admin.js';
+import adminRedrawHandler from './api/admin-redraw.js';
 
 export function createApp() {
 const app = express();
@@ -106,6 +107,17 @@ app.post('/api/admin', async (req, res) => {
     await adminHandler(req, res);
   } catch (error) {
     console.error('Error in /api/admin:', error);
+    if (!res.headersSent) {
+      res.status(500).json({ error: error.message || 'Internal Server Error' });
+    }
+  }
+});
+
+app.post('/api/admin-redraw', async (req, res) => {
+  try {
+    await adminRedrawHandler(req, res);
+  } catch (error) {
+    console.error('Error in /api/admin-redraw:', error);
     if (!res.headersSent) {
       res.status(500).json({ error: error.message || 'Internal Server Error' });
     }

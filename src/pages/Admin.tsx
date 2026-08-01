@@ -25,6 +25,7 @@ import type { Tables } from '@/integrations/supabase/types';
 import { UsersTab } from '@/components/admin/UsersTab';
 import { OrdersTab } from '@/components/admin/OrdersTab';
 import { GoldenTab } from '@/components/admin/GoldenTab';
+import { RedrawGoldenButton } from '@/components/admin/RedrawGoldenButton';
 
 type ProblemReport = Tables<'problem_reports'>;
 type UserFeedback = Tables<'user_feedback'>;
@@ -630,6 +631,18 @@ const Admin = () => {
                     {selectedReport.image_provided && <Badge variant="outline">có ảnh</Badge>}
                   </div>
                   <Field label="Đề bài" value={selectedReport.prompt} mono copyable />
+                  {selectedReport.prompt && (
+                    <div className="flex items-center gap-2 rounded-md border border-primary/20 bg-primary/[0.03] px-3 py-2">
+                      <div className="flex-1 text-xs text-muted-foreground">
+                        Để AI tự vẽ lại bài này (kỹ hơn) rồi bạn duyệt — thay vì dựng tay:
+                      </div>
+                      <RedrawGoldenButton
+                        prompt={selectedReport.prompt}
+                        reportId={selectedReport.id}
+                        onSaved={() => { fetchReports(); setSelectedReport(null); }}
+                      />
+                    </div>
+                  )}
                   <Field label="Thông báo lỗi" value={selectedReport.error_message} mono />
                   {selectedReport.ai_json != null && (
                     <div>
