@@ -40,6 +40,12 @@ export const SECTION_UNSUPPORTED_MSG =
   'Mình nhận ra đây là bài thiết diện của khối đa diện nhưng chưa dựng được. ' +
   'Bạn thử ghi rõ khối (chóp/lăng trụ/hộp/lập phương) và 3 điểm xác định mặt phẳng cắt giúp mình nhé.';
 
+// Vật thể tròn xoay GHÉP KHÚC (bình/lu/chậu/phễu): đề RÕ là vật thật tròn xoay nhưng KHÔNG dựng được
+// mẫu rev-vessel (chưa trích được các khúc, số đo không khớp, hoặc mô hình không tự kiểm) ⇒ báo thẳng.
+export const VESSEL_UNSUPPORTED_MSG =
+  'Mình nhận ra đây là vật thể tròn xoay (bình/lu/chậu…) nhưng chưa dựng được. ' +
+  'Bạn thử ghi rõ từng phần theo thiết diện qua trục (trụ / nón cụt / chỏm–đới cầu) kèm số đo giúp mình nhé.';
+
 // Đọc ẢNH hỏng (vision timeout / ảnh mờ) ⇒ không chép được đề. Báo THẲNG, KHÔNG chạy fallback bài đơn
 // trên text rỗng (translator sẽ tự retry → chồng thời gian → 504). Xem fail-fast trong assembleAdvance.
 export const IMAGE_READ_FAILED_MSG =
@@ -59,6 +65,16 @@ export function looksLikeRevolution(text) {
   const hasSpin = /\b(quay|xoay)\b/.test(s);
   const hasAxis = /quanh/.test(s) && /(trục|\box\b|\boy\b|hoành|tung)/.test(s);
   return hasSpin && hasAxis;
+}
+
+// Nhận diện VẬT THỂ tròn xoay GHÉP KHÚC (vật thật: bình/lu/chậu/phễu/cốc/vại/bồn/thùng…) một cách TẤT
+// ĐỊNH — dùng ở nhánh guard để báo thẳng khi chưa dựng được mẫu rev-vessel, thay vì rơi về vẽ-bừa.
+// Cần TÊN VẬT + ngữ cảnh tròn-xoay/thiết-diện-qua-trục (để khỏi bắt nhầm mấy đề chỉ nhắc "cái bình" chơi).
+export function looksLikeVessel(text) {
+  const s = (text || '').toLowerCase();
+  const hasVessel = /(b[iì]nh|c[aá]i lu|\blu\b|ch[aậ]u|ph[eễ]u|c[oố]c|\bly\b|v[aạ]i|b[oồ]n|th[uù]ng|chai|\bvò\b)/.test(s);
+  const hasCtx = /(thi[eế]t di[eệ]n|tr[oò]n xoay|quay quanh|dung t[ií]ch)/.test(s);
+  return hasVessel && hasCtx;
 }
 
 // Nhận diện đề THỂ TÍCH THEO THIẾT DIỆN đã biết một cách TẤT ĐỊNH (không LLM) — dùng ở nhánh guard để
@@ -102,6 +118,15 @@ export async function assembleAdvance(problem, deps, opts = {}) {
       const scene = deps.buildRevolutionScene(split.templateParams);
       if (scene) return { mode: 'advance', scene };
     } catch { /* dựng mẫu hỏng → rơi xuống fallback bài đơn */ }
+  }
+
+  // Vật thể tròn xoay GHÉP KHÚC (bình/lu/chậu/phễu). Engine dựng khối ghép + tự kiểm thể tích (công thức
+  // đóng đối chiếu tích phân số). buildVesselScene trả null khi mô hình không tự-kiểm ⇒ rơi xuống guard.
+  if (split.template === 'rev-vessel' && split.templateParams && deps.buildVesselScene) {
+    try {
+      const scene = deps.buildVesselScene(split.templateParams);
+      if (scene) return { mode: 'advance', scene };
+    } catch { /* dựng mẫu hỏng → rơi xuống guard vessel/fallback */ }
   }
 
   // Đợt 2: khối thiết diện đã biết. Engine dựng & tự-kiểm thể tích.
@@ -173,6 +198,13 @@ export async function assembleAdvance(problem, deps, opts = {}) {
     return { mode: 'kernel', degraded: true, ok: false, revUnsupported: true, error: AREA_UNSUPPORTED_MSG };
   }
 
+  // Vật thật tròn xoay (bình/lu/chậu) chưa dựng nổi mẫu rev-vessel ⇒ báo thẳng (tái dùng cờ revUnsupported
+  // để hoàn credit). Đặt TRƯỚC looksLikeRevolution: vật thật có chứa "tròn xoay" nên cần bắt riêng để cho
+  // thông điệp cụ thể hơn (ghi rõ trụ/nón cụt/chỏm cầu) thay vì thông điệp tròn-xoay-giải-tích chung chung.
+  if (looksLikeVessel(effectiveText)) {
+    return { mode: 'kernel', degraded: true, ok: false, revUnsupported: true, error: VESSEL_UNSUPPORTED_MSG };
+  }
+
   if (looksLikeRevolution(effectiveText)) {
     return { mode: 'kernel', degraded: true, ok: false, revUnsupported: true, error: REV_UNSUPPORTED_MSG };
   }
@@ -232,7 +264,7 @@ async function handler(req, res) {
     }
 
     // ---- Nạp ĐỘNG các mảnh pipeline (lỗi import ⇒ rơi vào catch, hoàn credit) ----
-    const [{ splitProblem }, { buildAdvanceScene }, { solveProblem }, { buildRevolutionScene }, { buildSliceScene }, { buildAreaScene }, { buildSectionScene }] = await Promise.all([
+    const [{ splitProblem }, { buildAdvanceScene }, { solveProblem }, { buildRevolutionScene }, { buildSliceScene }, { buildAreaScene }, { buildSectionScene }, { buildVesselScene }] = await Promise.all([
       import('./_lib/advance/splitProblem.js'),
       import('./_lib/advance/buildAdvanceScene.js'),
       import('./_lib/kernel-bridge/solveWithKernel.js'),
@@ -240,6 +272,7 @@ async function handler(req, res) {
       import('./_lib/advance/buildSliceScene.js'),
       import('./_lib/advance/buildAreaScene.js'),
       import('./_lib/advance/buildSectionScene.js'),
+      import('./_lib/advance/buildVesselScene.js'),
     ]);
 
     // Có ảnh → splitProblem GỘP đọc-ảnh + tách-đề trong 1 lượt vision (chép đề vào split.setup rồi phân
@@ -252,7 +285,7 @@ async function handler(req, res) {
     let deadlineTimer;
     const deadline = new Promise((resolve) => { deadlineTimer = setTimeout(() => resolve({ __deadline: true }), DEADLINE_MS); });
     let result = await Promise.race([
-      assembleAdvance(problemSeed, { splitProblem, buildAdvanceScene, solveProblem, buildRevolutionScene, buildSliceScene, buildAreaScene, buildSectionScene }, { imageBase64 }),
+      assembleAdvance(problemSeed, { splitProblem, buildAdvanceScene, solveProblem, buildRevolutionScene, buildSliceScene, buildAreaScene, buildSectionScene, buildVesselScene }, { imageBase64 }),
       deadline,
     ]);
     clearTimeout(deadlineTimer);

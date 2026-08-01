@@ -127,6 +127,34 @@ QUY TẮC MẪU GIẢI TÍCH (optional — chỉ thêm khi CHẮC CHẮN khớp)
   CHÓP — vị trí đỉnh S RẤT QUAN TRỌNG (sai vị trí ⇒ thiết diện sai): nếu đề nói "SA⊥đáy" (hay SB/SC/SD⊥đáy)
   thì S nằm NGAY TRÊN đỉnh đó ⇒ đặt dims.apexOver = "A" (hoặc "B"/"C"/"D"), và h = độ dài cạnh bên đó (SA=…).
   Nếu là "chóp đều" / "SO⊥đáy tại tâm O" thì BỎ apexOver (mặc định đỉnh trên tâm đáy).
+- 'rev-vessel' (VẬT THỂ tròn xoay GHÉP KHÚC — vật thật: bình/lu/chậu/phễu/cốc/vại/bồn). Đề cho một vật
+  ĐỐI XỨNG TRỤC (thường kèm "thiết diện qua trục") gồm NHIỀU phần xếp chồng (trụ / nón cụt / chỏm–đới cầu),
+  hỏi THỂ TÍCH / DUNG TÍCH. Đặt "template":"rev-vessel", "templateParams": { "segments":[...], "parts":[..] }.
+  QUY ƯỚC TRỤC: x = ĐỘ CAO tính từ ĐÁY vật (x=0) đi LÊN. Các khúc XẾP CHỒNG, LIỀN MẠCH: x1 (mép trên) của
+  khúc dưới = x0 (mép dưới) của khúc trên. Bán kính = NỬA đường kính (nếu đề cho đường kính d thì r = d/2).
+  Mỗi khúc trong "segments" (liệt kê từ ĐÁY lên) là MỘT trong:
+    { "type":"cylinder", "x0":.., "x1":.., "r":.. }             // trụ: bán kính r không đổi
+    { "type":"frustum",  "x0":.., "x1":.., "r0":.., "r1":.. }   // nón cụt: r0 ở dưới (x0), r1 ở trên (x1); nón đặc ⇒ r0 hoặc r1 = 0
+    { "type":"sphereZone","x0":.., "x1":.., "R":.., "c":.. }    // chỏm/đới cầu: mặt cầu bán kính R, TÂM nằm trên
+        // trục ở độ cao c ⇒ bán kính r(x)=√(R²−(x−c)²). "Cầu bị cắt bỏ 2 chỏm" = MỘT sphereZone với [x0,x1]
+        // nằm TRONG (c−R, c+R). Chọn R và c sao cho bán kính ở MÉP khớp với khúc tiếp giáp (liền mạch, không nhảy bậc vô lý).
+  KHÔNG chắc cách ghép / tâm cầu / số đo → BỎ QUA "template" (đừng đoán bừa — engine sẽ tự báo "chưa dựng được").
+
+[Ví dụ rev-vessel — bình = trụ + chỏm cầu]
+Đề: "Một chiếc bình: thân dưới là hình trụ bán kính đáy 4 cm cao 10 cm, phía trên là một chỏm cầu (nửa trên của mặt cầu bán kính 4 cm) úp khít lên miệng trụ. Tính thể tích bình."
+JSON:
+{
+  "type": "single",
+  "setup": "Bình: thân dưới hình trụ bán kính đáy 4cm cao 10cm; phía trên chỏm cầu (nửa trên mặt cầu bán kính 4cm) úp khít miệng trụ",
+  "parts": [ { "label": "Câu 1", "hoi": "Tính thể tích bình", "phan_tu_moi": [] } ],
+  "template": "rev-vessel",
+  "templateParams": {
+    "segments": [
+      { "type": "cylinder", "x0": 0, "x1": 10, "r": 4 },
+      { "type": "sphereZone", "x0": 10, "x1": 14, "R": 4, "c": 10 }
+    ]
+  }
+}
 
 [Ví dụ 4 — rev-ox, đĩa đặc]
 Đề: "Cho miền phẳng giới hạn bởi y = √x, trục Ox và x = 4. a) Vẽ khối tròn xoay khi quay miền quanh Ox. b) Tính thể tích khối đó."

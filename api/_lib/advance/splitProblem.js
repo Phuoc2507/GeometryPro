@@ -15,7 +15,7 @@ import { coverageCheck } from './coverage.js';
 // Nay có fallback tự-chữa: override hỏng → thử lại bằng khoá/model base (xem splitProblem).
 // Mọi mẫu calculus tất định mà analyze-advance có nhánh route (`split.template === ...`). PHẢI đồng bộ
 // với danh sách nhánh bên đó — thêm mẫu mới ở cả 2 nơi, nếu không template bị vứt ⇒ tính năng chết.
-const CALC_TEMPLATES = ['rev-ox', 'cross-known', 'area-plane', 'section-poly'];
+const CALC_TEMPLATES = ['rev-ox', 'cross-known', 'area-plane', 'section-poly', 'rev-vessel'];
 
 const DEFAULT_SPLIT_MODEL = 'ram/gemini-3.5-flash-low';
 const ADVANCE_MODEL = process.env.ADVANCE_MODEL || DEFAULT_SPLIT_MODEL;
