@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback } from 'react';
-import { ChevronRight, ChevronLeft, Copy, Check, Box, Download, Image as ImageIcon, Sparkles } from 'lucide-react';
+import { ChevronRight, ChevronLeft, Copy, Check, Box, Download, Image as ImageIcon, Sparkles, Share2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -14,6 +14,7 @@ import { cn } from '@/lib/utils';
 import { scaleGeometry } from '@/lib/geometry/scaleGeometry';
 import { projectScene } from '@/lib/advanceProject';
 import { CaptureModal } from '@/components/CaptureModal';
+import { ShareSheet } from '@/components/ShareSheet';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { SolverContent, ResizeHandle } from '@/components/SolverPanel';
 import { GeometryPropertiesTab } from './GeometryPropertiesTab';
@@ -30,6 +31,7 @@ function PanelContent() {
   const [tikzScale, setTikzScale] = useState(1.2);
   const [activeTab, setActiveTab] = useState('export');
   const [isCaptureOpen, setIsCaptureOpen] = useState(false);
+  const [isShareOpen, setIsShareOpen] = useState(false);
   const context = useGeometryOptional();
   const camera = useCameraOptional();
   const cameraStateContext = useCameraStateOptional();
@@ -753,6 +755,12 @@ function PanelContent() {
               </Button>
             </div>
 
+            {/* Chia sẻ bài — bottom sheet (copy/lưu ảnh/lưu tệp) */}
+            <Button variant="outline" size="sm" className="h-9 gap-1.5 text-primary border-primary/40 hover:bg-primary/10" onClick={() => setIsShareOpen(true)}>
+              <Share2 className="w-3.5 h-3.5" />
+              <span className="text-xs">Chia sẻ bài</span>
+            </Button>
+
             <div className="flex flex-col">
               <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1.5 ml-1">TikZ Source</span>
               <div className="bg-secondary/20 rounded-md border border-border/30">
@@ -776,6 +784,12 @@ function PanelContent() {
           hiddenLines={camera.hiddenLines}
         />
       )}
+      <ShareSheet
+        open={isShareOpen}
+        onOpenChange={setIsShareOpen}
+        geometry={state.geometry}
+        onSaveImage={() => setIsCaptureOpen(true)}
+      />
     </div>
   );
 }

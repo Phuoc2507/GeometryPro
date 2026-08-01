@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Globe, Lock, Trash2, Clock, MoreHorizontal, FolderPlus, Folder } from 'lucide-react';
+import { ArrowLeft, Globe, Lock, Trash2, Clock, MoreHorizontal, FolderPlus, Folder, Download } from 'lucide-react';
 import { Mark } from '@/components/Brand';
 import { authUrlWithRedirect } from '@/lib/authRedirect';
 import { Button } from '@/components/ui/button';
@@ -14,6 +14,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/context/AuthContext';
 import { useSavedGeometries, SavedGeometry } from '@/hooks/useSavedGeometries';
 import { useProjects } from '@/hooks/useProjects';
+import { OpenFileButton } from '@/components/OpenFileButton';
+import { exportProblemFile } from '@/lib/shareFile';
 import { formatDistanceToNow } from 'date-fns';
 import { vi } from 'date-fns/locale';
 
@@ -66,12 +68,14 @@ const SavedGeometries = () => {
           <Button variant="ghost" size="icon" aria-label="Quay lại" onClick={() => navigate('/')}>
             <ArrowLeft className="w-5 h-5" />
           </Button>
-          <div>
+          <div className="flex-1">
             <h1 className="text-2xl font-bold">Hình đã lưu</h1>
             <p className="text-muted-foreground">
               {savedGeometries.length} hình đã lưu
             </p>
           </div>
+          {/* Mở tệp bài (.json) người khác gửi qua Zalo/Messenger */}
+          <OpenFileButton variant="button" />
         </div>
 
         {/* Content */}
@@ -185,6 +189,11 @@ const SavedGeometries = () => {
                               </DropdownMenuSubContent>
                             </DropdownMenuPortal>
                           </DropdownMenuSub>
+                          <DropdownMenuItem
+                            onClick={(e) => { e.stopPropagation(); exportProblemFile(geometry.geometry_data); }}
+                          >
+                            <Download className="w-4 h-4 mr-2" /> Tải tệp bài (.json)
+                          </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
 
