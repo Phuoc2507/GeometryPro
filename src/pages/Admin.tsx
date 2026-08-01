@@ -680,6 +680,21 @@ const Admin = () => {
                   </div>
                   <Field label="Nội dung" value={selectedFeedback.message} copyable />
                   <Field label="Đề bài liên quan" value={selectedFeedback.prompt} mono copyable />
+                  {selectedFeedback.prompt && (
+                    <div className="flex items-center gap-2 rounded-md border border-primary/20 bg-primary/[0.03] px-3 py-2">
+                      <div className="flex-1 text-xs text-muted-foreground">
+                        Khách báo sai — để AI tự vẽ lại bài này rồi bạn duyệt thành hình chuẩn:
+                      </div>
+                      <RedrawGoldenButton
+                        prompt={selectedFeedback.prompt}
+                        onSaved={() => {
+                          const id = selectedFeedback?.id;
+                          if (id) updateStatus('user_feedback', id, 'đã sửa');
+                          setSelectedFeedback(null);
+                        }}
+                      />
+                    </div>
+                  )}
                   {selectedFeedback.saved_geometry_id && (
                     <Field label="Bản vẽ đã lưu (id)" value={selectedFeedback.saved_geometry_id} mono />
                   )}
