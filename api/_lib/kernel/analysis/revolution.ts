@@ -15,6 +15,27 @@ export function compileProfile(f: ProfileFn): (x: number) => number {
     // ProfileFn là biên dạng 1 BIẾN theo toạ độ trục. Gán giá trị cho CẢ x lẫn y để biểu thức viết
     // theo y (đường x=g(y) khi quay quanh Oy — vd 'sqrt(y)', '3-y') không văng "Biến chưa gán: y".
     case 'expr': { const g = parseExpr(f.expr); return (x) => g({ x, y: x }); }
+    // Biên dạng GHÉP khúc (vessel): tìm khúc chứa x rồi trả bán kính theo loại khúc. Ngoài miền ⇒ 0.
+    // Tại biên chung x1==x0 (bậc bán kính) khúc ĐỨNG TRƯỚC thắng — điểm biên có độ đo 0, không đổi tích phân.
+    case 'piecewise': {
+      const segs = f.segments;
+      return (x) => {
+        for (let i = 0; i < segs.length; i++) {
+          const s = segs[i];
+          if (x < s.x0 || x > s.x1) continue;
+          if (s.type === 'cylinder') return s.r;
+          if (s.type === 'frustum') {
+            const w = s.x1 - s.x0;
+            const t = w === 0 ? 0 : (x - s.x0) / w;
+            return s.r0 + (s.r1 - s.r0) * t;
+          }
+          // sphereZone: r = √(R² − (x−c)²) (kẹp ≥ 0 để chống sai số làm âm nhẹ dưới căn).
+          const d = s.R * s.R - (x - s.c) * (x - s.c);
+          return d > 0 ? Math.sqrt(d) : 0;
+        }
+        return 0;
+      };
+    }
   }
 }
 

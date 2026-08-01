@@ -942,6 +942,36 @@ export function GeometryProvider({ children }: { children: React.ReactNode }) {
           return;
         }
 
+        // Vẽ kỹ định tuyến sang Nâng cao (vật thật tròn xoay/thiết diện/thể tích): server trả scene advance.
+        // Xử như analyzeAdvance — nhúng scene vào geometry lịch sử (mở lại khôi phục stepper), SET_ADVANCE_SCENE.
+        if (data?.mode === 'advance' && data.scene) {
+          const label = (prompt && prompt.trim()) || data.scene.base?.name || 'Vật thể nâng cao';
+          const geometryForHistory: GeometryData = {
+            name: data.scene.base?.name || label,
+            points: [], lines: [],
+            advanceScene: data.scene,
+            drawMode: 'advance',
+          };
+          dispatch({
+            type: 'QUEUE_UPDATE', id,
+            updates: { status: 'done', progress: 100, statusText: 'Hoàn thành!', geometry: geometryForHistory, completedAt: Date.now() },
+          });
+          const historyId = await addToHistory(geometryForHistory, label);
+          if (historyId) {
+            const url = new URL(window.location.href);
+            url.searchParams.set('id', historyId);
+            window.history.replaceState({}, '', url.toString());
+          }
+          refreshProfile();
+          toast({ title: '✅ Vẽ xong!', description: `${geometryForHistory.name} — Nhấn để xem`, duration: 8000 });
+          const st = stateRef.current;
+          if (!st.geometry && !st.isScanning) {
+            dispatch({ type: 'SET_ADVANCE_SCENE', scene: data.scene });
+            dispatch({ type: 'QUEUE_SET_ACTIVE', id });
+          }
+          return;
+        }
+
         const step2 = data?.step2;
         let geometry: GeometryData;
 

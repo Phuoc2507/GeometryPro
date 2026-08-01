@@ -186,6 +186,7 @@ async function saveGolden(gate, req, res) {
   const { admin, userId } = gate;
   const prompt = typeof req.body?.prompt === 'string' ? req.body.prompt.trim() : '';
   const geometry = req.body?.geometry;
+  const advanceScene = req.body?.advanceScene || null; // có ⇒ lưu golden dạng Nâng cao (giữ bước + đáp số)
   const mode = req.body?.mode ? String(req.body.mode).slice(0, 32) : null;
   const calculationLog = typeof req.body?.calculationLog === 'string' ? req.body.calculationLog.slice(0, 2000) : null;
   const note = typeof req.body?.note === 'string' ? req.body.note.slice(0, GOLDEN_NOTE_MAX) : null;
@@ -199,7 +200,7 @@ async function saveGolden(gate, req, res) {
   const promptNorm = normalizePrompt(prompt);
   if (!promptNorm) return res.status(400).json({ error: 'Đề bài rỗng sau chuẩn hoá' });
 
-  const response = buildGoldenResponse({ prompt, geometry, mode, calculationLog });
+  const response = buildGoldenResponse({ prompt, geometry, advanceScene, mode, calculationLog });
   // Chặn payload khổng lồ (tránh phình DB / vượt giới hạn jsonb hợp lý).
   let responseSize = 0;
   try { responseSize = JSON.stringify(response).length; } catch { responseSize = Infinity; }

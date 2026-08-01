@@ -80,7 +80,8 @@ export function RedrawGoldenButton({ prompt, reportId = null, onSaved }: RedrawG
       await saveGolden({
         prompt: cleanPrompt,
         geometry: candidate.geometry,
-        mode: 'detailed',
+        advanceScene: candidate.advanceScene ?? null,
+        mode: candidate.verdict.source === 'advance' ? 'advance' : 'detailed',
         note: candidate.verdict.note,
         sourceReportId: reportId,
       });

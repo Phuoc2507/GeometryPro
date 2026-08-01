@@ -23,6 +23,15 @@ describe('buildGoldenResponse', () => {
     expect(r.step1.tags).toEqual(['golden']);
     expect(r.mode).toBe('detailed');
   });
+
+  it('có advanceScene → golden dạng NÂNG CAO { mode:"advance", scene }', () => {
+    const scene = { base: { points: [{ id: 'r0' }] }, steps: [{ id: 's0' }, { id: 's1' }] };
+    const r = buildGoldenResponse({ prompt: 'Bình', geometry: scene.base, advanceScene: scene });
+    expect(r.mode).toBe('advance');
+    expect(r.scene).toBe(scene);
+    expect(r.engine).toBe('golden');
+    expect(r.step1).toBeUndefined(); // không phải payload tĩnh
+  });
 });
 
 function clientReturning(result) {
@@ -60,6 +69,15 @@ describe('findGolden', () => {
   it('response không có điểm → null (frontend không vẽ được)', async () => {
     const client = clientReturning({ data: { id: 'g1', response: { step2: { geometry: { points: [] } } } }, error: null });
     expect(await findGolden(client, 'p')).toBeNull();
+  });
+
+  it('phục vụ golden dạng NÂNG CAO (scene.base.points)', async () => {
+    const advResponse = { mode: 'advance', scene: { base: { points: [{ id: 'r0' }] } } };
+    const client = clientReturning({ data: { id: 'g2', response: advResponse }, error: null });
+    const hit = await findGolden(client, 'Bình rượu');
+    expect(hit).not.toBeNull();
+    expect(hit.id).toBe('g2');
+    expect(hit.response).toBe(advResponse);
   });
 
   it('DB lỗi → null, KHÔNG throw', async () => {
