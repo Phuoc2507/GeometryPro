@@ -31,6 +31,10 @@ interface AuthContextType {
   isAdmin: boolean;             // tài khoản quản trị viên (profile.role === 'admin')
   // Ví credit
   tier: string;                 // tier hiệu lực ('free' nếu hết hạn)
+  // Vai trò bị KHOÁ theo gói đang hiệu lực: 'student' | 'teacher' | null (null = tự do đổi).
+  // Hết hạn → tier về 'free' → tự mở khoá lại.
+  lockedRole: 'student' | 'teacher' | null;
+  isRoleLocked: boolean;
   credits: number;              // tổng còn lại = plan + purchased
   planCredits: number;          // credit theo gói (reset mỗi kỳ)
   purchasedCredits: number;     // credit mua lẻ (không hết hạn)
@@ -373,6 +377,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const purchasedCredits = Number(profile?.purchased_credits ?? 0);  // không hết hạn
   const credits = planCredits + purchasedCredits;
 
+  // Vai trò bị khoá theo gói: tier 'student' → học sinh; tier trả phí khác → giáo viên; free → mở khoá.
+  const lockedRole: 'student' | 'teacher' | null =
+    tier === 'free' ? null : (tier === 'student' ? 'student' : 'teacher');
+  const isRoleLocked = lockedRole !== null;
+
   return (
     <AuthContext.Provider value={{
       user,
@@ -381,6 +390,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       isPro,
       isAdmin,
       tier,
+      lockedRole,
+      isRoleLocked,
       credits,
       planCredits,
       purchasedCredits,

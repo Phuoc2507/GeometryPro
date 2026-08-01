@@ -2,7 +2,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, useSearchParams } from "react-router-dom";
+import { BrowserRouter, Routes, Route, useSearchParams, Navigate } from "react-router-dom";
 import { toast } from "sonner";
 import { AuthProvider } from "@/context/AuthContext";
 import { AnimationProvider } from "@/context/AnimationContext";
@@ -32,6 +32,16 @@ function PageLoader() {
       <Loader2 className="w-8 h-8 animate-spin text-primary" />
     </div>
   );
+}
+
+// Khoá vai trò (Pha 2): người đang có gói chỉ vào đúng vai trò của gói.
+// Free/hết hạn (lockedRole=null) → vào cả hai bình thường. Khoá vai trò khác → chuyển hướng.
+function RoleGuard({ role, children }: { role: 'student' | 'teacher'; children: React.ReactNode }) {
+  const { isRoleLocked, lockedRole } = useAuth();
+  if (isRoleLocked && lockedRole && lockedRole !== role) {
+    return <Navigate to={`/${lockedRole}`} replace />;
+  }
+  return <>{children}</>;
 }
 
 // Modal nâng cấp toàn cục — mở từ bất kỳ đâu qua openUpgradeModal() (hết credit, nút Nâng cấp...).
@@ -76,13 +86,13 @@ function App() {
                 <Suspense fallback={<PageLoader />}>
                   <Routes>
                     <Route path="/" element={<Landing />} />
-                    <Route path="/student" element={<StudentMode />} />
-                    <Route path="/teacher" element={<TeacherMode />} />
+                    <Route path="/student" element={<RoleGuard role="student"><StudentMode /></RoleGuard>} />
+                    <Route path="/teacher" element={<RoleGuard role="teacher"><TeacherMode /></RoleGuard>} />
                     <Route path="/auth" element={<Auth />} />
                     <Route path="/saved" element={<SavedGeometries />} />
                     <Route path="/settings" element={<Settings />} />
                     <Route path="/admin" element={<Admin />} />
-                    <Route path="/teacher/dang-bai" element={<ProblemTypeCatalog />} />
+                    <Route path="/teacher/dang-bai" element={<RoleGuard role="teacher"><ProblemTypeCatalog /></RoleGuard>} />
                     <Route path="/dieu-khoan" element={<Terms />} />
                     <Route path="/quyen-rieng-tu" element={<Privacy />} />
                     {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
