@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   ArrowLeft, ShieldCheck, AlertTriangle, MessageSquare, BarChart3,
-  Loader2, Inbox, RefreshCw, Users, Receipt, Copy,
+  Loader2, Inbox, RefreshCw, Users, Receipt, Copy, BadgeCheck,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -24,6 +24,7 @@ import { supabase } from '@/integrations/supabase/client';
 import type { Tables } from '@/integrations/supabase/types';
 import { UsersTab } from '@/components/admin/UsersTab';
 import { OrdersTab } from '@/components/admin/OrdersTab';
+import { GoldenTab } from '@/components/admin/GoldenTab';
 
 type ProblemReport = Tables<'problem_reports'>;
 type UserFeedback = Tables<'user_feedback'>;
@@ -336,7 +337,7 @@ const Admin = () => {
         </div>
 
         <Tabs defaultValue="failures" className="w-full">
-          <TabsList className="flex h-auto w-full justify-start gap-1 overflow-x-auto sm:grid sm:grid-cols-5">
+          <TabsList className="flex h-auto w-full justify-start gap-1 overflow-x-auto sm:grid sm:grid-cols-6">
             <TabsTrigger value="failures" className="shrink-0 gap-1.5">
               <AlertTriangle className="h-4 w-4" /> Bài lỗi
               {reports.length > 0 && <Badge variant="secondary" className="ml-1">{reports.length}</Badge>}
@@ -344,6 +345,9 @@ const Admin = () => {
             <TabsTrigger value="feedback" className="shrink-0 gap-1.5">
               <MessageSquare className="h-4 w-4" /> Feedback
               {feedback.length > 0 && <Badge variant="secondary" className="ml-1">{feedback.length}</Badge>}
+            </TabsTrigger>
+            <TabsTrigger value="golden" className="shrink-0 gap-1.5">
+              <BadgeCheck className="h-4 w-4" /> Hình chuẩn
             </TabsTrigger>
             <TabsTrigger value="users" className="shrink-0 gap-1.5">
               <Users className="h-4 w-4" /> Người dùng
@@ -477,6 +481,10 @@ const Admin = () => {
           </TabsContent>
 
           {/* ── Tab — Người dùng ─────────────────────────────────────────── */}
+          <TabsContent value="golden">
+            <GoldenTab />
+          </TabsContent>
+
           <TabsContent value="users">
             <UsersTab />
           </TabsContent>

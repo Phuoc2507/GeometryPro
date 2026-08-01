@@ -31,6 +31,7 @@ import { useGeometryHistory } from '@/hooks/useGeometryHistory';
 import { useResizableWidth } from '@/hooks/useResizableWidth';
 import { buildSolveReveal, type SolveReveal } from '@/lib/solveReveal';
 import { FeedbackDialog } from '@/components/FeedbackDialog';
+import { SaveGoldenButton } from '@/components/SaveGoldenButton';
 import { cn }          from '@/lib/utils';
 import { safetyTierMeta, verifiedToLevel, exactnessLabel } from '@/lib/safetyTier';
 import { InlineMath, BlockMath } from 'react-katex';
@@ -795,6 +796,7 @@ export function SolverContent({ creditNote, compact }: { creditNote?: string; co
             <RotateCcw className="w-3.5 h-3.5" /> Thử lại
           </Button>
           <FeedbackDialog prompt={problem || lastProblem} geometry={geometry} />
+          <SaveGoldenButton prompt={problem || lastProblem} geometry={geometry} />
         </div>
       </div>
     );
@@ -861,8 +863,9 @@ export function SolverContent({ creditNote, compact }: { creditNote?: string; co
             {creditNote}
           </p>
         )}
-        <div className="mt-2 flex justify-center">
+        <div className="mt-2 flex flex-wrap justify-center gap-2">
           <FeedbackDialog prompt={problem || lastProblem} geometry={geometry} />
+          <SaveGoldenButton prompt={problem || lastProblem} geometry={geometry} />
         </div>
       </div>
     </div>

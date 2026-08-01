@@ -7,6 +7,8 @@ import crypto from 'crypto';
 import { withSentry, reportServerError } from './_lib/sentry.js';
 import { requireAdmin } from './_lib/adminAuth.js';
 import { grant, getAccount } from './_lib/credits.js';
+import { normalizePrompt } from './_lib/promptNormalize.js';
+import { buildGoldenResponse } from './_lib/goldenStore.js';
 
 async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -24,6 +26,9 @@ async function handler(req, res) {
       case 'list-orders':  return await listOrders(admin, req, res);
       case 'grant-credit': return await grantCredit(gate, req, res);
       case 'set-role':     return await setRole(gate, req, res);
+      case 'save-golden':   return await saveGolden(gate, req, res);
+      case 'list-golden':   return await listGolden(admin, req, res);
+      case 'delete-golden': return await deleteGolden(admin, req, res);
       default:             return res.status(400).json({ error: 'Hành động không hợp lệ' });
     }
   } catch (error) {
@@ -165,6 +170,96 @@ async function setRole(gate, req, res) {
     .from('profiles')
     .update({ role, updated_at: new Date().toISOString() })
     .eq('user_id', userId);
+  if (error) return res.status(500).json({ error: error.message });
+  return res.json({ ok: true });
+}
+
+// ── save-golden: LƯU "hình chuẩn" (hình đúng do admin duyệt) cho một đề ───────
+// Đóng vòng lặp học: bài máy vẽ SAI → admin dựng lại hình đúng → lưu golden →
+// lần sau gặp lại đúng đề đó, route phục vụ THẲNG hình này (bỏ qua engine/LLM).
+// Upsert theo prompt_norm ⇒ duyệt lại cùng đề = GHI ĐÈ.
+const GOLDEN_PROMPT_MAX = 5000;
+const GOLDEN_NOTE_MAX = 1000;
+const GOLDEN_RESPONSE_MAX = 500000; // chặn JSON quá khổ (ký tự)
+
+async function saveGolden(gate, req, res) {
+  const { admin, userId } = gate;
+  const prompt = typeof req.body?.prompt === 'string' ? req.body.prompt.trim() : '';
+  const geometry = req.body?.geometry;
+  const mode = req.body?.mode ? String(req.body.mode).slice(0, 32) : null;
+  const calculationLog = typeof req.body?.calculationLog === 'string' ? req.body.calculationLog.slice(0, 2000) : null;
+  const note = typeof req.body?.note === 'string' ? req.body.note.slice(0, GOLDEN_NOTE_MAX) : null;
+  const sourceReportId = req.body?.sourceReportId ? String(req.body.sourceReportId) : null;
+
+  if (!prompt) return res.status(400).json({ error: 'Thiếu đề bài' });
+  const points = geometry?.points;
+  if (!Array.isArray(points) || points.length === 0) {
+    return res.status(400).json({ error: 'Hình không hợp lệ (cần ít nhất 1 điểm)' });
+  }
+  const promptNorm = normalizePrompt(prompt);
+  if (!promptNorm) return res.status(400).json({ error: 'Đề bài rỗng sau chuẩn hoá' });
+
+  const response = buildGoldenResponse({ prompt, geometry, mode, calculationLog });
+  // Chặn payload khổng lồ (tránh phình DB / vượt giới hạn jsonb hợp lý).
+  let responseSize = 0;
+  try { responseSize = JSON.stringify(response).length; } catch { responseSize = Infinity; }
+  if (!Number.isFinite(responseSize) || responseSize > GOLDEN_RESPONSE_MAX) {
+    return res.status(400).json({ error: 'Hình quá lớn để lưu làm hình chuẩn' });
+  }
+
+  const row = {
+    prompt_norm: promptNorm,
+    prompt: prompt.slice(0, GOLDEN_PROMPT_MAX),
+    mode,
+    response,
+    source: 'admin',
+    note,
+    source_report_id: sourceReportId,
+    created_by: userId || null,
+    updated_at: new Date().toISOString(),
+  };
+
+  const { data, error } = await admin
+    .from('golden_figures')
+    .upsert(row, { onConflict: 'prompt_norm' })
+    .select('id')
+    .single();
+  if (error) return res.status(500).json({ error: error.message });
+
+  // Nếu duyệt từ một bài lỗi cụ thể → đánh dấu bài đó "đã sửa".
+  if (sourceReportId) {
+    const { error: upErr } = await admin
+      .from('problem_reports')
+      .update({ status: 'đã sửa', updated_at: new Date().toISOString() })
+      .eq('id', sourceReportId);
+    if (upErr) console.warn('[admin] không cập nhật được trạng thái bài lỗi:', upErr.message);
+  }
+
+  return res.json({ ok: true, id: data?.id ?? null });
+}
+
+// ── list-golden: liệt kê hình chuẩn (KHÔNG kèm response để nhẹ) ───────────────
+async function listGolden(admin, req, res) {
+  const page = clampPage(req.body?.page);
+  const perPage = clampPerPage(req.body?.perPage);
+  const from = (page - 1) * perPage;
+  const to = from + perPage - 1;
+
+  const { data, error } = await admin
+    .from('golden_figures')
+    .select('id, prompt, prompt_norm, mode, source, note, source_report_id, created_at, updated_at')
+    .order('created_at', { ascending: false })
+    .range(from, to);
+  if (error) return res.status(500).json({ error: error.message });
+
+  return res.json({ golden: data || [], page, hasMore: (data || []).length === perPage });
+}
+
+// ── delete-golden: xoá một hình chuẩn theo id ────────────────────────────────
+async function deleteGolden(admin, req, res) {
+  const id = String(req.body?.id || '');
+  if (!id) return res.status(400).json({ error: 'Thiếu id' });
+  const { error } = await admin.from('golden_figures').delete().eq('id', id);
   if (error) return res.status(500).json({ error: error.message });
   return res.json({ ok: true });
 }
