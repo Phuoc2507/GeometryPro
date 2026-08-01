@@ -357,6 +357,22 @@ export function rescale(seed: Seed, k: number): Variant {
       `rescale: đáp án co giãn ×${factor} nhưng lời văn KHÔNG đổi (scaler không nắm được độ dài: ký hiệu ≠'a', đơn vị dính số, hay căn trần) — câu sẽ mâu thuẫn đáp án (bỏ qua §4.3) — seed ${seed.id}`
     );
   }
+  // RS-10 CHỐT ĐỐI XỨNG F22 — GỐC RỄ bug 0039, ĐỘC LẬP TỪ KHOÁ. F22 (ngay trên) bắt chiều
+  // "đáp án co giãn (factor≠1) mà lời văn KHÔNG đổi". Chốt này bắt chiều NGƯỢC LẠI: lời văn CÓ
+  // đổi (scaleLengthsInText đã nhân một độ dài THẬT ⇒ v.statement_vi ≠ gốc) NHƯNG đáp án KHÔNG
+  // (factor===1 ⇔ scale_degree=0). Với đáp án THỨ NGUYÊN (rational/surd), độ dài đổi thì trị số
+  // BẮT BUỘC đổi — giữ nguyên là tự mâu thuẫn (đúng ca 0039: khoảng cách gắn nhầm bậc 0, cạnh
+  // 6→12 mà đáp án vẫn 3√6). KHÁC RS-9/RS-2 (dò chữ "khoảng cách/thể tích/diện tích" — luôn
+  // THIẾU ca), chốt này KHÔNG đọc ngữ nghĩa: chặn MỌI đại lượng bậc-1 gắn nhầm bậc 0 dù diễn đạt
+  // thế nào (độ dài đoạn, bán kính, trung đoạn, đường chéo, chu vi…). MIỄN type=ratio: tỉ số
+  // KHÔNG THỨ NGUYÊN (bậc 0) — lời văn co giãn mà tỉ số bất biến là ĐÚNG (đã ép degree=0 ở trên).
+  // Đáp án rational/surd thật-sự vô hướng (cos góc…) đã bị guard góc/tỉ số chặn từ assertScalable;
+  // lọt tới đây gần như chắc là gắn nhầm bậc ⇒ thà bỏ (skip variant) còn hơn phục vụ sai (§4.3).
+  if (factor === 1 && seed.answer.type !== "ratio" && v.statement_vi !== seed.statement_vi) {
+    throw new Error(
+      `rescale: lời văn CÓ co giãn độ dài (×${k}) nhưng đáp án THỨ NGUYÊN (${seed.answer.type}) giữ nguyên vì factor=1 ⇔ scale_degree=0 — độ dài đổi thì trị số phải đổi, câu mâu thuẫn đáp án (scale_degree gắn nhầm bậc 0?) (bỏ qua §4.3) — seed ${seed.id}`
+    );
+  }
   if (v.figure?.points) {
     v.figure.points = v.figure.points.map((p) => ({ ...p, x: p.x * k, y: p.y * k, z: p.z * k }));
   }

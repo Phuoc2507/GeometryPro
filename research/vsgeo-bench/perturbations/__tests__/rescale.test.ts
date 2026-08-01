@@ -83,4 +83,39 @@ describe("rescale — đổi tỉ lệ, đáp án co giãn theo bậc", () => {
     };
     expect(() => rescale(badDist, 2)).toThrow(/LỆCH bậc/);
   });
+
+  // RS-10 GỐC RỄ — chốt đối xứng F22, ĐỘC LẬP TỪ KHOÁ. Chứng minh nó bắt được đại lượng bậc-1
+  // gắn nhầm bậc 0 mà RS-9 (chỉ dò chữ "khoảng cách") KHÔNG liệt kê: đây đề hỏi "đường cao" hình
+  // nón (một độ dài, bậc 1). Lời văn co giãn (bán kính 3→6, đường sinh 5→10) nhưng đáp án số 4 giữ
+  // nguyên vì factor=k^0=1 ⇒ mâu thuẫn im lặng. Không có chữ "khoảng cách/thể tích/diện tích" nào
+  // ⇒ RS-9/RS-2 câm; chỉ RS-10 (độ-dài-đổi-thì-trị-số-phải-đổi) chặn.
+  it("RS-10: bắt đại lượng bậc-1 gắn nhầm bậc 0 mà RS-9 KHÔNG có từ khoá (đường cao hình nón)", () => {
+    const badHeight = {
+      ...seedNumeric,
+      id: "vsgeo-0009",
+      figure: { coords_given: false },
+      statement_vi:
+        "Cho hình nón có bán kính đáy bằng 3 và đường sinh bằng 5. Tính đường cao của hình nón.",
+      answer: { canonical: "4", type: "rational" as const },
+      scale_degree: 0,
+    };
+    expect(() => rescale(badHeight, 2)).toThrow(/độ dài đổi thì trị số phải đổi/);
+  });
+
+  // RS-10 MIỄN ĐÚNG: đáp án type=ratio KHÔNG THỨ NGUYÊN (bậc 0) — lời văn co giãn (cạnh 6→12) mà
+  // tỉ số bất biến là HỢP LỆ, KHÔNG được ném. (Đề không chứa chữ "tỉ số"/"góc" nên qua assertScalable.)
+  it("RS-10: KHÔNG ném ca tỉ số hợp lệ (ratio bậc 0, lời văn co giãn, đáp án bất biến)", () => {
+    const ratioSeed = {
+      ...seedNumeric,
+      id: "vsgeo-ratio",
+      figure: { coords_given: false },
+      statement_vi:
+        "Cho hình lập phương ABCD.A'B'C'D' có cạnh 6. Mặt phẳng (P) chia khối thành hai phần V1, V2 với V1 nhỏ hơn V2. Tính V1 chia V2.",
+      answer: { canonical: "1/2", type: "ratio" as const },
+      scale_degree: 0,
+    };
+    const v = rescale(ratioSeed, 2);
+    expect(v.statement_vi).toContain("cạnh 12");
+    expect(v.answer.canonical).toBe("1/2"); // tỉ số bất biến co giãn
+  });
 });
