@@ -99,9 +99,9 @@ export type Database = {
         ]
       }
       plans: {
-        Row: { active: boolean; code: string; credits_per_cycle: number; cycle_days: number; duration_days: number; name: string; price_vnd: number; tier: string }
-        Insert: { active?: boolean; code: string; credits_per_cycle: number; cycle_days: number; duration_days: number; name: string; price_vnd: number; tier: string }
-        Update: { active?: boolean; code?: string; credits_per_cycle?: number; cycle_days?: number; duration_days?: number; name?: string; price_vnd?: number; tier?: string }
+        Row: { active: boolean; code: string; credits_per_cycle: number; cycle_days: number; duration_days: number; name: string; price_vnd: number; role: string; tier: string }
+        Insert: { active?: boolean; code: string; credits_per_cycle: number; cycle_days: number; duration_days: number; name: string; price_vnd: number; role?: string; tier: string }
+        Update: { active?: boolean; code?: string; credits_per_cycle?: number; cycle_days?: number; duration_days?: number; name?: string; price_vnd?: number; role?: string; tier?: string }
         Relationships: []
       }
       pricing_config: {

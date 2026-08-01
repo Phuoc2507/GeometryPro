@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
+import { useLocation } from "react-router-dom";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2, Crown, CheckCircle2, Sparkles } from "lucide-react";
+import { Loader2, Crown, CheckCircle2, Sparkles, GraduationCap, Presentation } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 interface UpgradeModalProps {
@@ -14,6 +15,7 @@ interface UpgradeModalProps {
 interface Plan {
   code: string;
   tier: string;
+  role: string;          // 'student' | 'teacher' | 'any' — lọc gói theo vai trò đang chọn
   name: string;
   price_vnd: number;
   credits_per_cycle: number;
@@ -21,26 +23,35 @@ interface Plan {
   duration_days: number;
 }
 
-// Dùng khi bảng `plans` chưa được tạo (chưa áp migration) — để modal vẫn hiển thị.
-// Tên gói đặt theo DUNG LƯỢNG (số credit), KHÔNG theo vai trò — một ví credit dùng chung cho
-// cả Học sinh & Giáo viên, đổi mode không mất phí. (Đổi tên trong DB bằng SQL kèm theo.)
+// Dùng khi bảng `plans` chưa áp migration v2 — để modal vẫn hiển thị đúng gói theo vai trò.
+// (Số liệu khớp supabase_pricing_v2_migration.sql; credit đã ×10.)
 const FALLBACK_PLANS: Plan[] = [
-  { code: "teacher_1m", tier: "teacher", name: "Cơ bản · 1 tháng",       price_vnd: 79000,  credits_per_cycle: 200,  cycle_days: 30,  duration_days: 30 },
-  { code: "teacher_3m", tier: "teacher", name: "Cơ bản · 3 tháng",       price_vnd: 199000, credits_per_cycle: 200,  cycle_days: 30,  duration_days: 90 },
-  { code: "pro_1m",     tier: "pro",     name: "Chuyên nghiệp · 1 tháng", price_vnd: 149000, credits_per_cycle: 600,  cycle_days: 30,  duration_days: 30 },
-  { code: "school_1y",  tier: "school",  name: "Trường học · 1 năm",     price_vnd: 999000, credits_per_cycle: 5000, cycle_days: 365, duration_days: 365 },
+  { code: "student_1m", tier: "student", role: "student", name: "Học sinh · 1 tháng",      price_vnd: 29000,   credits_per_cycle: 700,  cycle_days: 30, duration_days: 30 },
+  { code: "student_1y", tier: "student", role: "student", name: "Học sinh · 1 năm học",    price_vnd: 199000,  credits_per_cycle: 700,  cycle_days: 30, duration_days: 365 },
+  { code: "teacher_1m", tier: "teacher", role: "teacher", name: "Giáo viên · 1 tháng",     price_vnd: 79000,   credits_per_cycle: 2000, cycle_days: 30, duration_days: 30 },
+  { code: "teacher_1y", tier: "teacher", role: "teacher", name: "Giáo viên · 1 năm học",   price_vnd: 549000,  credits_per_cycle: 2000, cycle_days: 30, duration_days: 365 },
+  { code: "pro_1m",     tier: "pro",     role: "teacher", name: "Pro · 1 tháng",           price_vnd: 149000,  credits_per_cycle: 6000, cycle_days: 30, duration_days: 30 },
+  { code: "pro_1y",     tier: "pro",     role: "teacher", name: "Pro · 1 năm học",         price_vnd: 890000,  credits_per_cycle: 6000, cycle_days: 30, duration_days: 365 },
+  { code: "group_1y",   tier: "pro",     role: "teacher", name: "Tổ Toán · 1 năm (≤5 GV)", price_vnd: 1490000, credits_per_cycle: 2000, cycle_days: 30, duration_days: 365 },
 ];
 
 const fmtVnd = (v: number) => v.toLocaleString("vi-VN") + "đ";
 
-const HIGHLIGHT: Record<string, boolean> = { pro_1m: true };
+const HIGHLIGHT: Record<string, boolean> = { pro_1m: true, student_1m: true };
 
 export function UpgradeModal({ open, onOpenChange }: UpgradeModalProps) {
-  const { user, tier: currentTier } = useAuth();
+  const { user, tier: currentTier, lockedRole } = useAuth();
+  const location = useLocation();
   const { toast } = useToast();
   const [plans, setPlans] = useState<Plan[]>(FALLBACK_PLANS);
   const [buying, setBuying] = useState<string | null>(null);
   const [creditPrice, setCreditPrice] = useState(500);
+
+  // Vai trò đang chọn: nếu đã có gói thì theo gói; nếu free thì theo mode đang xem.
+  const mode: 'student' | 'teacher' =
+    lockedRole ?? (location.pathname.startsWith('/teacher') ? 'teacher' : 'student');
+  // Chỉ hiện gói đúng vai trò + có giá (bỏ gói "Liên hệ" như Trường).
+  const shownPlans = plans.filter((p) => p.role === mode && p.price_vnd > 0);
 
   // Đọc bảng giá trực tiếp từ Supabase (RLS cho phép SELECT). Lỗi -> giữ fallback.
   useEffect(() => {
@@ -48,7 +59,7 @@ export function UpgradeModal({ open, onOpenChange }: UpgradeModalProps) {
     (async () => {
       const { data, error } = await supabase
         .from("plans")
-        .select("code, tier, name, price_vnd, credits_per_cycle, cycle_days, duration_days")
+        .select("code, tier, role, name, price_vnd, credits_per_cycle, cycle_days, duration_days")
         .eq("active", true)
         .neq("code", "free")
         .order("price_vnd", { ascending: true });
@@ -87,7 +98,11 @@ export function UpgradeModal({ open, onOpenChange }: UpgradeModalProps) {
       setBuying(null);
     }
   };
-  const handleBuy = (planCode: string) => startCheckout({ planCode }, planCode);
+  const handleBuy = (planCode: string) => {
+    // Nhớ mode để khi từ trang thanh toán quay lại, vào đúng vai trò của gói vừa mua.
+    try { localStorage.setItem('geo3d:last-mode', mode); } catch { /* bỏ qua */ }
+    startCheckout({ planCode }, planCode);
+  };
   const handleBuyCredit = (n: number) => startCheckout({ creditPack: n }, `cr_${n}`);
 
   return (
@@ -100,14 +115,17 @@ export function UpgradeModal({ open, onOpenChange }: UpgradeModalProps) {
           </DialogTitle>
           <DialogDescription>
             Mua gói để nhận credit dùng cho vẽ hình &amp; giải bài bằng AI. Mua càng lớn, giá mỗi credit càng rẻ.
-            <span className="mt-1.5 block text-xs text-primary/90">
-              ✦ Credit dùng chung cho cả chế độ Học sinh &amp; Giáo viên — đổi qua lại không mất thêm phí.
+            <span className="mt-1.5 flex items-center gap-1.5 text-xs text-primary/90">
+              {mode === 'teacher'
+                ? <><Presentation className="w-3.5 h-3.5" /> Đang xem gói <strong>Giáo viên</strong></>
+                : <><GraduationCap className="w-3.5 h-3.5" /> Đang xem gói <strong>Học sinh</strong></>}
+              <span className="text-muted-foreground">· mua gói sẽ chốt vai trò tới khi hết hạn</span>
             </span>
           </DialogDescription>
         </DialogHeader>
 
         <div className="grid sm:grid-cols-2 gap-3 py-2">
-          {plans.map((p) => {
+          {shownPlans.map((p) => {
             // Đơn giá tính trên TỔNG credit cả thời hạn (gói nhiều kỳ được cấp mỗi kỳ),
             // không phải 1 kỳ — nếu không gói 3 tháng sẽ hiện đắt oan.
             const cycles = Math.max(1, Math.round(p.duration_days / Math.max(1, p.cycle_days)));
