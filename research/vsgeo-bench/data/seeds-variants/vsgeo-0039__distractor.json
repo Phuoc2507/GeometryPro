@@ -23,7 +23,7 @@
   },
   "solution_ref_vi": "Đặt A(0,0,0), B(6,0,0), C(6,6,0), D(0,6,0), M(0,0,6), N(6,0,6), P(6,6,6), Q(0,6,6). E=(3,0,0). Mặt phẳng (MED) qua M,E,D có VTPT [ME,MD]=(36,18,18)~(2,1,1), phương trình 2x+y+z-6=0. Khoảng cách từ P(6,6,6) = |12+6+6-6|/sqrt(6) = 18/sqrt(6) = 3*sqrt(6) ~ 7.35.",
   "verified_by_engine": false,
-  "scale_degree": 0,
+  "scale_degree": 1,
   "variant": {
     "kind": "distractor",
     "parentSeedId": "vsgeo-0039"
