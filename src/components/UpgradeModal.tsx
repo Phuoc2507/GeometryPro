@@ -6,36 +6,12 @@ import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Loader2, Crown, CheckCircle2, Sparkles, GraduationCap, Presentation } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { FALLBACK_PLANS, fmtVnd, type Plan } from "@/lib/plans";
 
 interface UpgradeModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
-
-interface Plan {
-  code: string;
-  tier: string;
-  role: string;          // 'student' | 'teacher' | 'any' — lọc gói theo vai trò đang chọn
-  name: string;
-  price_vnd: number;
-  credits_per_cycle: number;
-  cycle_days: number;
-  duration_days: number;
-}
-
-// Dùng khi bảng `plans` chưa áp migration v2 — để modal vẫn hiển thị đúng gói theo vai trò.
-// (Số liệu khớp supabase_pricing_v2_migration.sql; credit đã ×10.)
-const FALLBACK_PLANS: Plan[] = [
-  { code: "student_1m", tier: "student", role: "student", name: "Học sinh · 1 tháng",      price_vnd: 29000,   credits_per_cycle: 700,  cycle_days: 30, duration_days: 30 },
-  { code: "student_1y", tier: "student", role: "student", name: "Học sinh · 1 năm học",    price_vnd: 199000,  credits_per_cycle: 700,  cycle_days: 30, duration_days: 365 },
-  { code: "teacher_1m", tier: "teacher", role: "teacher", name: "Giáo viên · 1 tháng",     price_vnd: 79000,   credits_per_cycle: 2000, cycle_days: 30, duration_days: 30 },
-  { code: "teacher_1y", tier: "teacher", role: "teacher", name: "Giáo viên · 1 năm học",   price_vnd: 549000,  credits_per_cycle: 2000, cycle_days: 30, duration_days: 365 },
-  { code: "pro_1m",     tier: "pro",     role: "teacher", name: "Pro · 1 tháng",           price_vnd: 149000,  credits_per_cycle: 6000, cycle_days: 30, duration_days: 30 },
-  { code: "pro_1y",     tier: "pro",     role: "teacher", name: "Pro · 1 năm học",         price_vnd: 890000,  credits_per_cycle: 6000, cycle_days: 30, duration_days: 365 },
-  { code: "group_1y",   tier: "pro",     role: "teacher", name: "Tổ Toán · 1 năm (≤5 GV)", price_vnd: 1490000, credits_per_cycle: 2000, cycle_days: 30, duration_days: 365 },
-];
-
-const fmtVnd = (v: number) => v.toLocaleString("vi-VN") + "đ";
 
 const HIGHLIGHT: Record<string, boolean> = { pro_1m: true, student_1m: true };
 
