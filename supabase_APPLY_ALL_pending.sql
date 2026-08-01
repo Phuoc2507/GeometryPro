@@ -566,3 +566,48 @@ revoke all on function public.bump_draw_stat(text, text) from public, anon, auth
 grant execute on function public.bump_draw_stat(text, text) to service_role;
 
 commit;
+
+-- ┌─── 7/7 · supabase_golden_figures_migration.sql ──────────────────────────
+-- Bảng "hình chuẩn" (golden_figures) — hình ĐÚNG do admin duyệt cho một đề.
+-- Đóng vòng lặp "máy vẽ sai → admin sửa → lần sau vẽ đúng luôn".
+-- Cần: public.is_admin() (mục 5) + public.problem_reports (mục 6).
+-- └──────────────────────────────────────────────────────────────────────────
+begin;
+
+create table if not exists public.golden_figures (
+  id               uuid        primary key default gen_random_uuid(),
+  prompt_norm      text        not null unique,   -- đề đã chuẩn hoá (normalizePrompt) = KHOÁ so khớp
+  prompt           text        not null,          -- đề nguyên văn
+  mode             text,                           -- 'quick'|'detailed' (chỉ tham khảo, KHÔNG dùng khi khớp)
+  response         jsonb       not null,           -- payload phục vụ (shape = finalPayload)
+  source           text        not null default 'admin',
+  note             text,
+  source_report_id uuid        references public.problem_reports(id) on delete set null,
+  created_by       uuid        references auth.users(id) on delete set null,
+  created_at       timestamptz not null default now(),
+  updated_at       timestamptz not null default now()
+);
+
+alter table public.golden_figures enable row level security;
+
+revoke all on table public.golden_figures from public, anon, authenticated;
+grant  select, insert, update, delete on table public.golden_figures to authenticated; -- RLS is_admin() vẫn siết
+grant  select, insert, update, delete on table public.golden_figures to service_role;
+
+drop policy if exists "golden admin read"   on public.golden_figures;
+drop policy if exists "golden admin insert" on public.golden_figures;
+drop policy if exists "golden admin update" on public.golden_figures;
+drop policy if exists "golden admin delete" on public.golden_figures;
+create policy "golden admin read"   on public.golden_figures
+  for select using (public.is_admin());
+create policy "golden admin insert" on public.golden_figures
+  for insert with check (public.is_admin());
+create policy "golden admin update" on public.golden_figures
+  for update using (public.is_admin()) with check (public.is_admin());
+create policy "golden admin delete" on public.golden_figures
+  for delete using (public.is_admin());
+
+create index if not exists golden_figures_created_idx
+  on public.golden_figures (created_at desc);
+
+commit;

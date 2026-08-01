@@ -73,4 +73,24 @@ describe('admin endpoint — cổng bảo mật', () => {
     await handler({ method: 'POST', headers: { authorization: 'Bearer good' }, body: { action: 'khong-ton-tai' } }, res);
     expect(res.statusCode).toBe(400);
   });
+
+  it('save-golden: chặn khi thiếu đề bài (400, chưa chạm DB)', async () => {
+    mocks.profileResult = { data: { role: 'admin' }, error: null };
+    const handler = await loadHandler();
+    const res = response();
+    await handler({ method: 'POST', headers: { authorization: 'Bearer good' },
+      body: { action: 'save-golden', geometry: { points: [{ id: 'A' }] } } }, res);
+    expect(res.statusCode).toBe(400);
+    expect(res.body.error).toMatch(/đề bài/i);
+  });
+
+  it('save-golden: chặn khi hình không có điểm (400)', async () => {
+    mocks.profileResult = { data: { role: 'admin' }, error: null };
+    const handler = await loadHandler();
+    const res = response();
+    await handler({ method: 'POST', headers: { authorization: 'Bearer good' },
+      body: { action: 'save-golden', prompt: 'Cho hình chóp', geometry: { points: [] } } }, res);
+    expect(res.statusCode).toBe(400);
+    expect(res.body.error).toMatch(/hình không hợp lệ/i);
+  });
 });

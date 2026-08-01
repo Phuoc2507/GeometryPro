@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   ArrowLeft, ShieldCheck, AlertTriangle, MessageSquare, BarChart3,
-  Loader2, Inbox, RefreshCw, Users, Receipt, Copy,
+  Loader2, Inbox, RefreshCw, Users, Receipt, Copy, BadgeCheck,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -24,6 +24,8 @@ import { supabase } from '@/integrations/supabase/client';
 import type { Tables } from '@/integrations/supabase/types';
 import { UsersTab } from '@/components/admin/UsersTab';
 import { OrdersTab } from '@/components/admin/OrdersTab';
+import { GoldenTab } from '@/components/admin/GoldenTab';
+import { RedrawGoldenButton } from '@/components/admin/RedrawGoldenButton';
 
 type ProblemReport = Tables<'problem_reports'>;
 type UserFeedback = Tables<'user_feedback'>;
@@ -336,7 +338,7 @@ const Admin = () => {
         </div>
 
         <Tabs defaultValue="failures" className="w-full">
-          <TabsList className="flex h-auto w-full justify-start gap-1 overflow-x-auto sm:grid sm:grid-cols-5">
+          <TabsList className="flex h-auto w-full justify-start gap-1 overflow-x-auto sm:grid sm:grid-cols-6">
             <TabsTrigger value="failures" className="shrink-0 gap-1.5">
               <AlertTriangle className="h-4 w-4" /> Bài lỗi
               {reports.length > 0 && <Badge variant="secondary" className="ml-1">{reports.length}</Badge>}
@@ -344,6 +346,9 @@ const Admin = () => {
             <TabsTrigger value="feedback" className="shrink-0 gap-1.5">
               <MessageSquare className="h-4 w-4" /> Feedback
               {feedback.length > 0 && <Badge variant="secondary" className="ml-1">{feedback.length}</Badge>}
+            </TabsTrigger>
+            <TabsTrigger value="golden" className="shrink-0 gap-1.5">
+              <BadgeCheck className="h-4 w-4" /> Hình chuẩn
             </TabsTrigger>
             <TabsTrigger value="users" className="shrink-0 gap-1.5">
               <Users className="h-4 w-4" /> Người dùng
@@ -477,6 +482,10 @@ const Admin = () => {
           </TabsContent>
 
           {/* ── Tab — Người dùng ─────────────────────────────────────────── */}
+          <TabsContent value="golden">
+            <GoldenTab />
+          </TabsContent>
+
           <TabsContent value="users">
             <UsersTab />
           </TabsContent>
@@ -622,6 +631,18 @@ const Admin = () => {
                     {selectedReport.image_provided && <Badge variant="outline">có ảnh</Badge>}
                   </div>
                   <Field label="Đề bài" value={selectedReport.prompt} mono copyable />
+                  {selectedReport.prompt && (
+                    <div className="flex items-center gap-2 rounded-md border border-primary/20 bg-primary/[0.03] px-3 py-2">
+                      <div className="flex-1 text-xs text-muted-foreground">
+                        Để AI tự vẽ lại bài này (kỹ hơn) rồi bạn duyệt — thay vì dựng tay:
+                      </div>
+                      <RedrawGoldenButton
+                        prompt={selectedReport.prompt}
+                        reportId={selectedReport.id}
+                        onSaved={() => { fetchReports(); setSelectedReport(null); }}
+                      />
+                    </div>
+                  )}
                   <Field label="Thông báo lỗi" value={selectedReport.error_message} mono />
                   {selectedReport.ai_json != null && (
                     <div>
@@ -659,6 +680,21 @@ const Admin = () => {
                   </div>
                   <Field label="Nội dung" value={selectedFeedback.message} copyable />
                   <Field label="Đề bài liên quan" value={selectedFeedback.prompt} mono copyable />
+                  {selectedFeedback.prompt && (
+                    <div className="flex items-center gap-2 rounded-md border border-primary/20 bg-primary/[0.03] px-3 py-2">
+                      <div className="flex-1 text-xs text-muted-foreground">
+                        Khách báo sai — để AI tự vẽ lại bài này rồi bạn duyệt thành hình chuẩn:
+                      </div>
+                      <RedrawGoldenButton
+                        prompt={selectedFeedback.prompt}
+                        onSaved={() => {
+                          const id = selectedFeedback?.id;
+                          if (id) updateStatus('user_feedback', id, 'đã sửa');
+                          setSelectedFeedback(null);
+                        }}
+                      />
+                    </div>
+                  )}
                   {selectedFeedback.saved_geometry_id && (
                     <Field label="Bản vẽ đã lưu (id)" value={selectedFeedback.saved_geometry_id} mono />
                   )}

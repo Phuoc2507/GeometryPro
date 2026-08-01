@@ -25,6 +25,7 @@ import { accessError, resolveAiAccess, withQuota, refundAiUsage } from './_lib/a
 import { withSentry, reportServerError } from './_lib/sentry.js';
 import { logBrokenProblem } from './_lib/brokenProblemLog.js';
 import { recordDrawStat } from './_lib/drawStats.js';
+import { findGolden } from './_lib/goldenStore.js';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -160,6 +161,33 @@ async function handler(req, res) {
       }
     }
     // -- Kết thúc Caching --
+
+    // ===== HÌNH CHUẨN (GOLDEN) — thắng TẤT CẢ =====
+    // Hình ĐÚNG do admin duyệt cho đúng đề này. Tra TRƯỚC engine + LLM: nếu có thì
+    // phục vụ thẳng ⇒ bài từng vẽ sai nay vẽ đúng tức thì, không tốn model. Khớp
+    // theo prompt_norm (không phụ thuộc mode) nên áp dụng cho cả Vẽ nhanh lẫn Vẽ kỹ.
+    // Fail-safe: findGolden nuốt mọi lỗi/DB thiếu và trả null ⇒ rơi êm về luồng cũ.
+    if (!imageBase64 && trimmedPrompt && supabase) {
+      const golden = await findGolden(supabase, trimmedPrompt);
+      if (golden) {
+        // Không gọi LLM ⇒ tốn 0đ ⇒ HOÀN credit đã trừ (công bằng, như nhánh cache-hit).
+        if (creditCharge && userId) {
+          try { await refund(userId, creditCharge.cost, creditCharge.reqId); }
+          catch (e) { console.warn('Hoàn credit golden-hit lỗi:', e?.message); }
+          creditCharge = null;
+        }
+        console.log('[golden] phục vụ:', trimmedPrompt.substring(0, 60));
+        logEngineDecision({ mode: drawMode, served: true, reason: 'golden', ms: 0, promptLen: trimmedPrompt.length });
+        sendEvent('Hoàn tất (hình chuẩn)!', 100);
+        const goldenPayload = withQuota(golden.response, access);
+        if (isStream) {
+          res.write(`data: ${JSON.stringify({ status: 'done', data: goldenPayload })}\n\n`);
+          return res.end();
+        }
+        return res.status(200).json(goldenPayload);
+      }
+    }
+    // ===== Hết GOLDEN =====
 
     let detailLevel = 'static';
 
@@ -541,14 +569,19 @@ KẾT QUẢ TRƯỚC BỊ PHẲNG (mọi điểm có z≈0). Hãy dựng lại h
       mode: drawMode,
     };
 
-    // Lưu vào Cache
-    if (promptHash && supabase) {
+    // Lưu vào Cache — NHƯNG KHÔNG cache hình đã biết là SAI.
+    // verifyWithKernel bắt được vi phạm ⇒ hình này sai, đã ghi vào problem_reports.
+    // Nếu vẫn cache thì người kế tiếp nhập ĐÚNG đề đó sẽ nhận LẠI hình sai từ cache
+    // (AI "học điều sai"). Ta VẪN TRẢ hình cho người hiện tại (không có gì tốt hơn để
+    // đưa, và UI đã cờ constraint_violations), chỉ KHÔNG lưu để phục vụ lại.
+    const knownWrong = Array.isArray(verification.violations) && verification.violations.length > 0;
+    if (promptHash && supabase && !knownWrong) {
       // Xóa llmPrompt để tiết kiệm bộ nhớ khi cache
       const cachePayload = JSON.parse(JSON.stringify(finalPayload));
       if (cachePayload.step2 && cachePayload.step2.llmPrompt) {
         delete cachePayload.step2.llmPrompt;
       }
-      
+
       supabase.from('ai_cache').insert([{
         prompt_hash: promptHash,
         prompt_text: trimmedPrompt,
@@ -556,6 +589,8 @@ KẾT QUẢ TRƯỚC BỊ PHẲNG (mọi điểm có z≈0). Hãy dựng lại h
       }]).then(({error}) => {
         if (error) console.warn('Lỗi lưu cache:', error.message);
       });
+    } else if (knownWrong) {
+      console.log('[cache] BỎ QUA lưu (hình vi phạm ràng buộc):', trimmedPrompt.substring(0, 60));
     }
 
     const responsePayload = withQuota(finalPayload, access);

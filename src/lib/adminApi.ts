@@ -32,8 +32,21 @@ export interface AdminOrder {
   display_name: string | null;
 }
 
+export interface GoldenFigure {
+  id: string;
+  prompt: string;
+  prompt_norm: string;
+  mode: string | null;
+  source: string;
+  note: string | null;
+  source_report_id: string | null;
+  created_at: string | null;
+  updated_at: string | null;
+}
+
 export interface ListUsersResult { users: AdminUser[]; page: number; hasMore: boolean; total: number | null }
 export interface ListOrdersResult { orders: AdminOrder[]; page: number; hasMore: boolean }
+export interface ListGoldenResult { golden: GoldenFigure[]; page: number; hasMore: boolean }
 
 async function adminApi<T>(action: string, params: Record<string, unknown> = {}): Promise<T> {
   const { data } = await supabase.auth.getSession();
@@ -61,3 +74,59 @@ export const grantCredit = (userId: string, amount: number, reason?: string, ide
 
 export const setRole = (userId: string, role: 'admin' | 'user') =>
   adminApi<{ ok: boolean }>('set-role', { userId, role });
+
+// ── Hình chuẩn (golden) ──────────────────────────────────────────────────────
+export interface SaveGoldenParams {
+  prompt: string;
+  geometry: unknown;
+  mode?: string | null;
+  note?: string | null;
+  sourceReportId?: string | null;
+}
+
+export const saveGolden = (params: SaveGoldenParams) =>
+  adminApi<{ ok: boolean; id: string | null }>('save-golden', {
+    prompt: params.prompt,
+    geometry: params.geometry,
+    mode: params.mode ?? null,
+    note: params.note ?? null,
+    sourceReportId: params.sourceReportId ?? null,
+  });
+
+export const listGolden = (page = 1, perPage = 30) =>
+  adminApi<ListGoldenResult>('list-golden', { page, perPage });
+
+export const deleteGolden = (id: string) =>
+  adminApi<{ ok: boolean }>('delete-golden', { id });
+
+// ── Nhờ AI vẽ lại (endpoint riêng /api/admin-redraw vì chạy lâu) ──────────────
+export interface RedrawVerdict {
+  verified: boolean;                 // máy TỰ CHẤM được và ĐẠT (tự tin đúng)
+  ok: boolean;
+  confidence: number | null;
+  violations: Array<Record<string, unknown>>;
+  source: 'kernel' | 'llm' | 'none';
+  attempts: number;
+  checkedConstraints: number;        // >0: số ràng buộc đã kiểm; -1: kernel kiểm toàn bộ; 0: chưa tự chấm được
+  note: string;
+}
+export interface RedrawCandidate {
+  geometry: unknown | null;
+  prompt: string;
+  verdict: RedrawVerdict;
+}
+
+export const redrawProblem = async (prompt: string, maxAttempts = 1): Promise<RedrawCandidate> => {
+  const { data } = await supabase.auth.getSession();
+  const token = data.session?.access_token;
+  if (!token) throw new Error('Bạn cần đăng nhập lại');
+
+  const res = await fetch('/api/admin-redraw', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ prompt, maxAttempts }),
+  });
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(body?.error || 'Lỗi máy chủ khi vẽ lại');
+  return body.candidate as RedrawCandidate;
+};
