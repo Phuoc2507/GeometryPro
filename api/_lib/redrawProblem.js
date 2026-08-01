@@ -59,7 +59,10 @@ export async function redrawProblem(prompt, opts = {}) {
       || advMod.looksLikeCrossSection(trimmed) || advMod.looksLikeArea(trimmed) || advMod.looksLikeSection(trimmed);
     if (isAdvance) {
       const { runAdvance } = await import('./advance/runAdvance.js');
-      const adv = await runAdvance(trimmed, {});
+      // "Nhờ AI vẽ lại" = vũ khí nặng: khâu TRÍCH số đo (splitProblem) dùng model mạnh nếu có key riêng
+      // ⇒ đọc số đo bình/lu/chậu chính xác hơn model rẻ. Không có key ⇒ dùng model mặc định.
+      const advOpts = DETAILED_API_KEY ? { model: DETAILED_MODEL, apiKey: DETAILED_API_KEY } : {};
+      const adv = await runAdvance(trimmed, advOpts);
       if (adv && adv.mode === 'advance' && adv.scene && adv.scene.base
           && Array.isArray(adv.scene.base.points) && adv.scene.base.points.length > 0) {
         const answerStep = (adv.scene.steps || []).find((s) => s && s.answer);
