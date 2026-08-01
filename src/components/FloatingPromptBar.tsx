@@ -293,7 +293,7 @@ export function FloatingPromptBar() {
                   </button>
                 </TooltipTrigger>
                 <TooltipContent side="top" className="max-w-[240px] text-xs leading-relaxed">
-                  Sửa bằng AI, cứ chat mà không cần rõ cú pháp. Lưu ý tốn 0,2 credit cho 1 lần gửi.
+                  Sửa bằng AI, cứ chat mà không cần rõ cú pháp. Lưu ý tốn 2 credit cho 1 lần gửi.
                 </TooltipContent>
               </Tooltip>
             </div>
@@ -304,7 +304,7 @@ export function FloatingPromptBar() {
                 : 'text-emerald-600 dark:text-emerald-400 bg-emerald-500/8',
             )}>
               {aiMode
-                ? (tier === 'free' ? 'Cần gói trả phí' : `0,2 credit/lần · còn ${formatCredits(credits)}`)
+                ? (tier === 'free' ? 'Cần gói trả phí' : `2 credit/lần · còn ${formatCredits(credits)}`)
                 : 'Miễn phí · lệnh cú pháp'}
             </span>
           </div>

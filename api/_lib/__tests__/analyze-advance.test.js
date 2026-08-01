@@ -137,7 +137,7 @@ describe('credit draw_advance', () => {
   it('draw_advance cao hơn draw_detailed', () => {
     expect(CREDIT_COST.draw_advance).toBeGreaterThan(CREDIT_COST.draw_detailed ?? 2);
   });
-  it('draw_advance = 3', () => {
-    expect(CREDIT_COST.draw_advance).toBe(3);
+  it('draw_advance = 30 (đơn vị credit v2 ×10)', () => {
+    expect(CREDIT_COST.draw_advance).toBe(30);
   });
 });

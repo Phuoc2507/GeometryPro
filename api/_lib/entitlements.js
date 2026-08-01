@@ -10,13 +10,15 @@
 
 // Giá credit mỗi HÀNH ĐỘNG (chỉ áp cho mode 'credit').
 // Xuất ảnh/tikz/word/pdf = 0 (client sinh, chỉ khoá theo gói) nên không nằm ở đây.
+// ĐƠN VỊ credit v2 (×10): số to hơn cho "đã tay", và bỏ số lẻ (modify về 2, không còn 0,2).
+// Đi kèm migration ×10 credits_per_cycle ở bảng `plans` + ×10 số dư người dùng cũ.
 export const CREDIT_COST = {
-  draw_quick: 1,
-  draw_detailed: 2,
-  draw_advance: 3,    // mode "Advance": tách đề đa-câu + ráp cảnh bóc lớp (nặng hơn Vẽ kỹ)
-  modify: 0.2,        // sửa hình bằng AI (chat tự do) — rẻ vì thao tác nhỏ
-  solve: 2,
-  export_video: 5,
+  draw_quick: 10,
+  draw_detailed: 20,
+  draw_advance: 30,   // mode "Advance": tách đề đa-câu + ráp cảnh bóc lớp (nặng hơn Vẽ kỹ)
+  modify: 2,          // sửa hình bằng AI (chat tự do) — rẻ vì thao tác nhỏ
+  solve: 20,
+  export_video: 50,
 };
 
 export function creditCostFor(action) {
@@ -34,9 +36,21 @@ const FREE = {
   export_video: { mode: 'blocked' },
 };
 
+// HỌC SINH (vai trò student): Vẽ + Giải + Sửa AI theo credit; xuất ẢNH có giới hạn;
+// KHÔNG TikZ/Word/PDF/Video (đó là công cụ ra đề của giáo viên).
+const STUDENT = {
+  draw:         { mode: 'credit' },
+  modify:       { mode: 'credit' },
+  solve:        { mode: 'credit' },
+  export_image: { mode: 'quota', max: 30, periodDays: 30 }, // "xuất ảnh giới hạn" — chỉnh số ở đây
+  export_tikz:  { mode: 'blocked' },
+  export_doc:   { mode: 'blocked' },
+  export_video: { mode: 'blocked' },
+};
+
 const TEACHER = {
   draw:         { mode: 'credit' },
-  modify:       { mode: 'credit' },    // sửa bằng AI: trừ CREDIT_COST.modify (0,2)
+  modify:       { mode: 'credit' },    // sửa bằng AI: trừ CREDIT_COST.modify (2)
   solve:        { mode: 'credit' },
   export_image: { mode: 'unlimited' },
   export_tikz:  { mode: 'unlimited' },
@@ -51,6 +65,7 @@ const PRO = {
 
 export const POLICY = {
   free:    FREE,
+  student: STUDENT,
   teacher: TEACHER,
   pro:     PRO,
   school:  PRO,   // Trường = Pro (chỉ khác số credit ở bảng plans)
