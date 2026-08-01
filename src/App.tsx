@@ -24,6 +24,7 @@ const Admin = React.lazy(() => import('./pages/Admin'));
 const ProblemTypeCatalog = React.lazy(() => import('./pages/ProblemTypeCatalog'));
 const Terms = React.lazy(() => import('./pages/Terms'));
 const Privacy = React.lazy(() => import('./pages/Privacy'));
+const SharedView = React.lazy(() => import('./pages/SharedView'));
 const NotFound = React.lazy(() => import('./pages/NotFound'));
 
 function PageLoader() {
@@ -85,6 +86,7 @@ function App() {
                     <Route path="/teacher/dang-bai" element={<ProblemTypeCatalog />} />
                     <Route path="/dieu-khoan" element={<Terms />} />
                     <Route path="/quyen-rieng-tu" element={<Privacy />} />
+                    <Route path="/s/:id" element={<SharedView />} />
                     {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                     <Route path="*" element={<NotFound />} />
                   </Routes>

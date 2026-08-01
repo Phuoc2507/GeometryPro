@@ -7,6 +7,8 @@ import {
   Share2,
   Facebook,
   MoreHorizontal,
+  Link2,
+  Loader2,
 } from 'lucide-react';
 import {
   Drawer,
@@ -18,6 +20,8 @@ import {
 import { Button } from '@/components/ui/button';
 import { toast } from '@/hooks/use-toast';
 import { GeometryData } from '@/types/geometry';
+import { useAuth } from '@/context/AuthContext';
+import { useSavedGeometries } from '@/hooks/useSavedGeometries';
 import {
   exportProblemFile,
   serializeProblemFile,
@@ -32,7 +36,7 @@ interface ShareSheetProps {
   geometry: GeometryData | null;
   /** Mở bộ xuất ảnh đầy đủ (CaptureModal). */
   onSaveImage: () => void;
-  /** Link công khai (Giai đoạn 2). Chưa có ⇒ ẩn phần link + icon nền tảng. */
+  /** Link công khai có sẵn (vd mở từ trang Đã lưu của một bài is_public). */
   shareUrl?: string | null;
 }
 
@@ -67,18 +71,45 @@ function PlatformButton({
 
 export function ShareSheet({ open, onOpenChange, geometry, onSaveImage, shareUrl }: ShareSheetProps) {
   const [copied, setCopied] = useState(false);
+  const [createdUrl, setCreatedUrl] = useState<string | null>(null);
+  const [creating, setCreating] = useState(false);
+  const { user, openAuthModal } = useAuth();
+  const { saveGeometry } = useSavedGeometries();
 
+  // Link mới tạo chỉ hợp lệ cho đúng bài đang mở ⇒ reset khi đóng sheet.
   useEffect(() => {
-    if (!open) setCopied(false);
+    if (!open) {
+      setCopied(false);
+      setCreatedUrl(null);
+    }
   }, [open]);
 
+  const effectiveUrl = shareUrl || createdUrl;
   const title = geometry?.name || 'Bài hình học';
   const shareText = `${title} — GeometryPro`;
 
-  const handleCopy = async () => {
-    if (!shareUrl) return;
+  const handleCreateLink = async () => {
+    if (!geometry) return;
+    if (!user) {
+      onOpenChange(false);
+      openAuthModal('save');
+      return;
+    }
+    setCreating(true);
     try {
-      await navigator.clipboard.writeText(shareUrl);
+      const saved = await saveGeometry(title, geometry, true);
+      if (saved?.id) {
+        setCreatedUrl(`${window.location.origin}/s/${saved.id}`);
+      }
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  const handleCopy = async () => {
+    if (!effectiveUrl) return;
+    try {
+      await navigator.clipboard.writeText(effectiveUrl);
       setCopied(true);
       toast({ title: 'Đã sao chép link!' });
       setTimeout(() => setCopied(false), 2000);
@@ -92,13 +123,13 @@ export function ShareSheet({ open, onOpenChange, geometry, onSaveImage, shareUrl
   };
 
   const handleFacebook = () => {
-    if (!shareUrl) return;
-    openExternal(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`);
+    if (!effectiveUrl) return;
+    openExternal(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(effectiveUrl)}`);
   };
 
   const handleNativeShareLink = async () => {
-    if (!shareUrl) return;
-    const res = await shareViaNative({ title, text: shareText, url: shareUrl });
+    if (!effectiveUrl) return;
+    const res = await shareViaNative({ title, text: shareText, url: effectiveUrl });
     if (res === 'unsupported') {
       await handleCopy();
       toast({ title: 'Đã sao chép link', description: 'Máy không hỗ trợ chia sẻ nhanh — hãy dán link để gửi.' });
@@ -146,11 +177,19 @@ export function ShareSheet({ open, onOpenChange, geometry, onSaveImage, shareUrl
         </DrawerHeader>
 
         <div className="px-4 flex flex-col gap-5">
+          {/* Tạo link công khai (khi chưa có link) */}
+          {!effectiveUrl && (
+            <Button onClick={handleCreateLink} disabled={!geometry || creating} className="gap-2">
+              {creating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Link2 className="w-4 h-4" />}
+              {creating ? 'Đang tạo link…' : 'Tạo link công khai'}
+            </Button>
+          )}
+
           {/* Hàng 1: Link + Copy (chỉ khi đã có link công khai) */}
-          {shareUrl && (
+          {effectiveUrl && (
             <div className="flex items-center gap-2 rounded-xl border border-border/60 bg-secondary/40 p-2">
               <span className="flex-1 min-w-0 truncate text-sm px-2 font-mono text-muted-foreground">
-                {shareUrl}
+                {effectiveUrl}
               </span>
               <Button size="sm" onClick={handleCopy} className="gap-1.5 shrink-0">
                 {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
@@ -160,7 +199,7 @@ export function ShareSheet({ open, onOpenChange, geometry, onSaveImage, shareUrl
           )}
 
           {/* Hàng 2: Icon nền tảng (chỉ khi có link để gửi) */}
-          {shareUrl && (
+          {effectiveUrl && (
             <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide -mx-1 px-1">
               <PlatformButton label="Facebook" onClick={handleFacebook} className="bg-[#1877F2]">
                 <Facebook className="w-6 h-6" />
@@ -203,19 +242,18 @@ export function ShareSheet({ open, onOpenChange, geometry, onSaveImage, shareUrl
           </div>
 
           {/* Chia sẻ tệp qua ứng dụng khác (khi không có link) */}
-          {!shareUrl && nativeSupported && (
+          {!effectiveUrl && nativeSupported && (
             <Button variant="ghost" className="gap-2" onClick={handleShareFile} disabled={!geometry}>
               <Share2 className="w-4 h-4" />
               Chia sẻ tệp qua ứng dụng khác
             </Button>
           )}
 
-          {!shareUrl && (
-            <p className="text-[11px] text-muted-foreground text-center leading-relaxed">
-              Gửi tệp <span className="font-medium">.json</span> qua Zalo/Messenger; người nhận chọn{' '}
-              <span className="font-medium">Mở tệp</span> trong ứng dụng để xem lại hình.
-            </p>
-          )}
+          <p className="text-[11px] text-muted-foreground text-center leading-relaxed">
+            {effectiveUrl
+              ? 'Ai có link đều xem được bài này. Gỡ công khai trong trang "Hình đã lưu" để tắt link.'
+              : 'Hoặc gửi tệp .json qua Zalo/Messenger; người nhận chọn Mở tệp trong ứng dụng để xem lại hình.'}
+          </p>
         </div>
       </DrawerContent>
     </Drawer>
