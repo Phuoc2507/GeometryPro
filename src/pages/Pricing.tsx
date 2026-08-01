@@ -129,8 +129,8 @@ export default function Pricing() {
           <div className="text-[#9FB2CC] text-[17px]">Chọn gói phù hợp — huỷ bất cứ lúc nào.</div>
         </div>
 
-        {/* Controls */}
-        <div className="flex flex-col items-center gap-3.5 mt-6 mb-2.5">
+        {/* Controls — cả 2 toggle CĂN GIỮA độc lập; badge tiết kiệm là DÒNG RIÊNG (không đẩy lệch) */}
+        <div className="flex flex-col items-center gap-3 mt-6 mb-2.5">
           <div className={SEG}>
             {(['student', 'teacher'] as Aud[]).map((a) => (
               <button
@@ -143,18 +143,16 @@ export default function Pricing() {
               </button>
             ))}
           </div>
-          <div className="inline-flex items-center gap-2.5">
-            <div className={SEG}>
-              {(['month', 'year'] as Bill[]).map((b) => (
-                <button key={b} className={segBtn(bill === b)} onClick={() => setBill(b)}>
-                  {b === 'month' ? 'Tháng' : 'Năm học'}
-                </button>
-              ))}
-            </div>
-            <span className={cn('bg-[#5AD1A5]/15 text-[#5AD1A5] font-bold text-xs px-2.5 py-1 rounded-full border border-[#5AD1A5]/35 transition-opacity', bill === 'year' ? 'opacity-100' : 'opacity-0')}>
-              Tiết kiệm tới ~45%
-            </span>
+          <div className={SEG}>
+            {(['month', 'year'] as Bill[]).map((b) => (
+              <button key={b} className={segBtn(bill === b)} onClick={() => setBill(b)}>
+                {b === 'month' ? 'Tháng' : 'Năm học'}
+              </button>
+            ))}
           </div>
+          <span className={cn('text-[#5AD1A5] text-xs font-semibold transition-opacity', bill === 'year' ? 'opacity-100' : 'opacity-0')}>
+            🎉 Tiết kiệm tới ~45% khi trả theo năm học
+          </span>
         </div>
 
         {/* Trust */}
