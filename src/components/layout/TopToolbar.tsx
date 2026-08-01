@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { RotateCcw, Maximize2, Grid3X3, Camera, Download, Save, PenTool, Youtube, Box, Eye, EyeOff, Cpu, Navigation, Undo2, Redo2, MoreHorizontal } from 'lucide-react';
+import { RotateCcw, Maximize2, Grid3X3, Camera, Download, Save, PenTool, Youtube, Box, Eye, EyeOff, Cpu, Navigation, Undo2, Redo2, MoreHorizontal, Share2, FolderOpen } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Toggle } from '@/components/ui/toggle';
@@ -17,6 +17,8 @@ import { useGeometryOptional } from '@/context/GeometryContext';
 import { useCameraOptional } from '@/context/CameraContext';
 import { useToolMode } from '@/context/ToolModeContext';
 import { CaptureModal } from '@/components/CaptureModal';
+import { ShareSheet } from '@/components/ShareSheet';
+import { OpenFileButton } from '@/components/OpenFileButton';
 import { SaveGeometryDialog } from '@/components/SaveGeometryDialog';
 import { UserMenu } from '@/components/UserMenu';
 import { ManualDrawToolbar } from '@/components/ManualDrawToolbar';
@@ -25,6 +27,7 @@ import { UpgradeModal } from '@/components/UpgradeModal';
 
 export function TopToolbar() {
   const [isCaptureOpen, setIsCaptureOpen] = useState(false);
+  const [isShareOpen, setIsShareOpen] = useState(false);
   const [isUpgradeOpen, setIsUpgradeOpen] = useState(false);
   const context = useGeometryOptional();
   const cameraContext = useCameraOptional();
@@ -205,6 +208,36 @@ export function TopToolbar() {
                 </Tooltip>
               </span>
             )}
+
+            {/* Chia sẻ bài — mở bottom sheet (link/copy/lưu ảnh/lưu tệp). Ẩn trên mobile ⇒ vào menu "…". */}
+            {state.geometry && (
+              <span className="hidden sm:contents">
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      aria-label="Chia sẻ bài"
+                      className="h-9 w-9 text-primary hover:text-primary hover:bg-primary/10"
+                      onClick={() => setIsShareOpen(true)}
+                    >
+                      <Share2 className="w-4 h-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Chia sẻ bài</TooltipContent>
+                </Tooltip>
+              </span>
+            )}
+
+            {/* Mở tệp bài (.json) người khác gửi. Ẩn trên mobile ⇒ vào menu "…". */}
+            <span className="hidden sm:contents">
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <OpenFileButton variant="icon" />
+                </TooltipTrigger>
+                <TooltipContent>Mở tệp bài (.json)</TooltipContent>
+              </Tooltip>
+            </span>
           </>
         )}
 
@@ -227,6 +260,18 @@ export function TopToolbar() {
                 Xuất ảnh / LaTeX
               </DropdownMenuItem>
             )}
+            {state.geometry && (
+              <DropdownMenuItem onClick={() => setIsShareOpen(true)}>
+                <Share2 className="w-4 h-4 mr-2 text-muted-foreground" />
+                Chia sẻ bài
+              </DropdownMenuItem>
+            )}
+            <div className="px-1 py-0.5">
+              <OpenFileButton
+                variant="button"
+                className="w-full justify-start border-0 shadow-none bg-transparent hover:bg-accent h-8 px-2 font-normal text-sm"
+              />
+            </div>
           </DropdownMenuContent>
         </DropdownMenu>
 
@@ -242,6 +287,12 @@ export function TopToolbar() {
         onClose={() => setIsCaptureOpen(false)}
         geometry={state.geometry}
         hiddenLines={cameraContext?.hiddenLines}
+      />
+      <ShareSheet
+        open={isShareOpen}
+        onOpenChange={setIsShareOpen}
+        geometry={state.geometry}
+        onSaveImage={() => setIsCaptureOpen(true)}
       />
       <UpgradeModal open={isUpgradeOpen} onOpenChange={setIsUpgradeOpen} />
     </>
