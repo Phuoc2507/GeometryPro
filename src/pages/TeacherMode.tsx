@@ -10,6 +10,7 @@ import { TopToolbar } from '@/components/layout/TopToolbar';
 import { DropZone } from '@/components/DropZone';
 import { ScanningOverlay } from '@/components/ScanningOverlay';
 import { FloatingPromptBar } from '@/components/FloatingPromptBar';
+import { DrawQualityPrompt } from '@/components/DrawQualityPrompt';
 import { GeometryCanvas } from '@/components/3d/GeometryCanvas';
 import { TimelinePlayer } from '@/components/layout/TimelinePlayer';
 import { AdvanceStepper } from '@/components/layout/AdvanceStepper';
@@ -134,6 +135,9 @@ const TeacherModeContent = () => {
 
         {/* Floating Prompt Bar */}
         {!isVideoMode && <FloatingPromptBar />}
+
+        {/* Bảng nhỏ "AI vẽ đúng chưa?" sau khi vẽ xong */}
+        {!isVideoMode && <DrawQualityPrompt />}
       </main>
 
       {/* Right Panel — export (PNG, LaTeX) + properties */}
