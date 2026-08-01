@@ -1,7 +1,7 @@
 
 import { useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { User, LogOut, Save, Settings, Sparkles, Crown, ListChecks, GraduationCap, Presentation, ShieldCheck, Lock, Tag } from 'lucide-react';
+import { User, LogOut, Save, Settings, Sparkles, Crown, ListChecks, GraduationCap, Presentation, ShieldCheck, Lock, Tag, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -170,6 +170,12 @@ export function UserMenu() {
           <Save className="w-4 h-4 mr-2" />
           Hình đã lưu
         </DropdownMenuItem>
+        {profile?.plan_code === 'group_1y' && (
+          <DropdownMenuItem onClick={() => navigate('/quan-ly-to')}>
+            <Users className="w-4 h-4 mr-2" />
+            Quản lý tổ
+          </DropdownMenuItem>
+        )}
         <DropdownMenuItem onClick={() => navigate('/bang-gia')}>
           <Tag className="w-4 h-4 mr-2" />
           Bảng giá

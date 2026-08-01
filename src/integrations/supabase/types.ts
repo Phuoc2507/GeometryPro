@@ -290,6 +290,18 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      team_get: {
+        Args: Record<PropertyKey, never>
+        Returns: Json
+      }
+      team_add_member: {
+        Args: { p_email: string }
+        Returns: Json
+      }
+      team_remove_member: {
+        Args: { p_user_id: string }
+        Returns: Json
+      }
       consume_quota: {
         Args: { p_feature: string; p_max: number; p_period_days: number; p_user_id: string }
         Returns: Json

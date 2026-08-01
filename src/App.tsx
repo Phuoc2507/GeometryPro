@@ -23,6 +23,7 @@ const Settings = React.lazy(() => import('./pages/Settings'));
 const Admin = React.lazy(() => import('./pages/Admin'));
 const ProblemTypeCatalog = React.lazy(() => import('./pages/ProblemTypeCatalog'));
 const Pricing = React.lazy(() => import('./pages/Pricing'));
+const TeamManage = React.lazy(() => import('./pages/TeamManage'));
 const Terms = React.lazy(() => import('./pages/Terms'));
 const Privacy = React.lazy(() => import('./pages/Privacy'));
 const NotFound = React.lazy(() => import('./pages/NotFound'));
@@ -93,6 +94,7 @@ function App() {
                     <Route path="/saved" element={<SavedGeometries />} />
                     <Route path="/settings" element={<Settings />} />
                     <Route path="/bang-gia" element={<Pricing />} />
+                    <Route path="/quan-ly-to" element={<TeamManage />} />
                     <Route path="/admin" element={<Admin />} />
                     <Route path="/teacher/dang-bai" element={<RoleGuard role="teacher"><ProblemTypeCatalog /></RoleGuard>} />
                     <Route path="/dieu-khoan" element={<Terms />} />
