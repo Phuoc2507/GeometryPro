@@ -187,6 +187,11 @@ function assertScalable(orig: string, scaleDegree?: number): void {
   const asksArea = /Tính[^.]*\bdiện tích\b/iu.test(flat);
   const asksVol = /Tính[^.]*\bthể tích\b/iu.test(flat);
   const asksPerim = /Tính[^.]*\bchu vi\b/iu.test(flat);
+  // RS-9 KHOẢNG CÁCH là ĐỘ DÀI (bậc 1) — luôn co giãn tuyến tính theo cạnh. Bắt riêng để
+  // sanity bậc dưới đây phủ luôn dạng "Tính khoảng cách" (vd bug 0039: khoảng cách nhưng bị
+  // gán scale_degree=0 ⇒ factor=k^0=1 ⇒ lời văn đổi cạnh còn đáp án GIỮ NGUYÊN, mâu thuẫn im
+  // lặng mà F22/RS-2 cũ KHÔNG bắt vì factor=1 và bậc suy chỉ soi thể tích/diện tích).
+  const asksDist = /Tính[^.]*\bkhoảng cách\b/iu.test(flat);
   // RS-6 / RS-2(a) (Round-7) đáp án KHÔNG ĐỒNG BẬC: đề hỏi TỔNG hai đại lượng khác thứ nguyên
   // (chu vi bậc 1 / diện tích bậc 2 / thể tích bậc 3) — không một factor=k^d nào đúng mọi hạng tử.
   if ((asksArea && asksVol) || (asksPerim && asksArea) || (asksPerim && asksVol)) {
@@ -197,7 +202,7 @@ function assertScalable(orig: string, scaleDegree?: number): void {
   // (b) LỆCH BẬC (heuristic): bậc suy từ đại lượng hỏi (thể tích→3, diện tích→2) phải khớp
   //     scale_degree. Chỉ ném khi LỆCH nên seed soạn đúng (thể tích+3, diện tích+2) không hề hấn.
   if (scaleDegree != null) {
-    const expected = asksVol ? 3 : asksArea ? 2 : undefined;
+    const expected = asksVol ? 3 : asksArea ? 2 : asksDist ? 1 : undefined;
     if (expected !== undefined && scaleDegree !== expected) {
       throw new Error(
         `rescale: scale_degree=${scaleDegree} LỆCH bậc suy từ đại lượng đề hỏi (=${expected}) — factor=k^${scaleDegree} sai bậc (bỏ qua §4.3)`

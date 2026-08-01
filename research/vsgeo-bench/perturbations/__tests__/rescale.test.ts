@@ -54,4 +54,33 @@ describe("rescale — đổi tỉ lệ, đáp án co giãn theo bậc", () => {
     const pointAns = { ...seedNumeric, answer: { canonical: "(1;2;3)", type: "point" as const } };
     expect(() => rescale(pointAns, 2)).toThrow(/rational\|surd\|ratio/);
   });
+
+  // RS-9 regression bug 0039: đề hỏi KHOẢNG CÁCH (độ dài, bậc 1). Trước đây gán scale_degree=0
+  // ⇒ factor=k^0=1 ⇒ lời văn đổi cạnh 6→12 còn đáp án GIỮ NGUYÊN 3√6 (đúng phải 6√6) — mâu
+  // thuẫn im lặng. Nay bậc đúng =1 co giãn đáp án chuẩn; bậc sai bị guard bắt (bỏ qua §4.3).
+  const distStmt =
+    "Cho hình lập phương ABCD.MNPQ có cạnh bằng 6. Tính khoảng cách từ điểm P đến mặt phẳng (MED).";
+  it("RS-9: khoảng cách (bậc 1) — 3√6 --(k=2)--> 6√6 (đáp án co giãn ĐÚNG)", () => {
+    const distSeed = {
+      ...seedNumeric,
+      id: "vsgeo-0039",
+      figure: { coords_given: false },
+      statement_vi: distStmt,
+      answer: { canonical: "3*sqrt(6)", type: "surd" as const },
+      scale_degree: 1,
+    };
+    const v = rescale(distSeed, 2);
+    expect(v.statement_vi).toContain("cạnh bằng 12");
+    expect(canonicalToNumber(v.answer.canonical)).toBeCloseTo(6 * Math.sqrt(6), 6);
+  });
+  it("RS-9: từ chối khi đề hỏi khoảng cách nhưng scale_degree≠1 (chặn tái diễn 0039)", () => {
+    const badDist = {
+      ...seedNumeric,
+      figure: { coords_given: false },
+      statement_vi: distStmt,
+      answer: { canonical: "3*sqrt(6)", type: "surd" as const },
+      scale_degree: 0,
+    };
+    expect(() => rescale(badDist, 2)).toThrow(/LỆCH bậc/);
+  });
 });
