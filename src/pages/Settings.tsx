@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, User, Mail, Shield, LogOut, Save, Crown, Sparkles, SlidersHorizontal, Trash2, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, User, Mail, Shield, LogOut, Save, Crown, Sparkles, SlidersHorizontal, Trash2, AlertTriangle, History } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -14,6 +14,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { Switch } from '@/components/ui/switch';
 import { usePreferences } from '@/hooks/usePreferences';
+import { useGeometryHistory } from '@/hooks/useGeometryHistory';
 import { AppPreferences } from '@/lib/preferences';
 import { formatCredits } from '@/lib/utils';
 import { authUrlWithRedirect } from '@/lib/authRedirect';
@@ -39,12 +40,26 @@ const Settings = () => {
   const { user, profile, isPro, tier, credits, openUpgradeModal, updateProfile, signOut, deleteAccount, isLoading: authLoading } = useAuth();
   const { toast } = useToast();
   const { prefs, setPref } = usePreferences();
+  const { clearHistory } = useGeometryHistory();
 
   const [displayName, setDisplayName] = useState('');
   const [avatarUrl, setAvatarUrl] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState('');
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isClearing, setIsClearing] = useState(false);
+
+  const handleClearHistory = async () => {
+    setIsClearing(true);
+    try {
+      await clearHistory();
+      toast({ title: 'Đã xoá', description: 'Toàn bộ lịch sử bài đã được xoá.' });
+    } catch {
+      toast({ title: 'Lỗi', description: 'Không xoá được, thử lại.', variant: 'destructive' });
+    } finally {
+      setIsClearing(false);
+    }
+  };
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -296,6 +311,48 @@ const Settings = () => {
                   </div>
                 ))}
               </CardContent>
+            </Card>
+
+            {/* Xoá hết lịch sử bài (các đoạn chat ở "Gần đây") */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-lg">
+                  <History className="w-5 h-5 text-muted-foreground" />
+                  Lịch sử bài
+                </CardTitle>
+                <CardDescription>
+                  Xoá toàn bộ các bài trong mục <strong>“Gần đây”</strong>. Hình bạn đã bấm <strong>Lưu</strong> (trong “Hình đã lưu”) không bị ảnh hưởng.
+                </CardDescription>
+              </CardHeader>
+              <CardFooter className="border-t pt-6">
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="outline" className="gap-2 text-destructive border-destructive/40 hover:bg-destructive/10 hover:text-destructive">
+                      <Trash2 className="w-4 h-4" />
+                      Xoá hết lịch sử
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Xoá hết lịch sử bài?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Toàn bộ bài trong <strong>“Gần đây”</strong> sẽ bị xoá và <strong>không thể khôi phục</strong>.
+                        Hình đã bấm “Lưu” vào “Hình đã lưu” thì vẫn còn.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel disabled={isClearing}>Huỷ</AlertDialogCancel>
+                      <AlertDialogAction
+                        onClick={(e) => { e.preventDefault(); handleClearHistory(); }}
+                        disabled={isClearing}
+                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                      >
+                        {isClearing ? 'Đang xoá…' : 'Xoá hết'}
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </CardFooter>
             </Card>
 
             {/* Vùng nguy hiểm — xoá tài khoản */}
