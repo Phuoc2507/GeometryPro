@@ -4,14 +4,16 @@
  * mỗi panel tự bọc trong TabsContent của mình. Tách ra để hai vỏ panel sửa độc lập nhưng
  * phần xem/sửa hình (chip tổng quan, số đo, độ dài cạnh, sửa toạ độ, JSON) không bị nhân đôi.
  */
-import { useState, useMemo, useEffect, useRef } from 'react';
-import { Box, MapPin, Ruler, Cuboid, Code, ChevronDown, Info, Pencil, Undo2, Redo2, Check, Copy } from 'lucide-react';
+import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
+import { Box, MapPin, Ruler, Cuboid, Code, ChevronDown, Info, Pencil, Undo2, Redo2, Check, Copy, Globe } from 'lucide-react';
 import type { Point3D } from '@/types/geometry';
 import { Button } from '@/components/ui/button';
+import { Switch } from '@/components/ui/switch';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { useGeometryOptional } from '@/context/GeometryContext';
 import { computeProperties, fmt, isAnalysisFigure } from '@/lib/geometry/calculations';
+import { getPrimarySphereCenter, recenterGeometry } from '@/lib/geometry/recenterGeometry';
 import { projectScene } from '@/lib/advanceProject';
 import { DynamicPointControls } from '@/components/DynamicPointControls';
 import { cn } from '@/lib/utils';
@@ -114,12 +116,33 @@ export function GeometryPropertiesTab() {
   const properties = useMemo(() => (geometry ? computeProperties(geometry) : null), [geometry]);
   const analysisFig = useMemo(() => (geometry ? isAnalysisFigure(geometry) : false), [geometry]);
 
+  // ─── Chế độ xem: DỜI GỐC TOẠ ĐỘ VỀ TÂM MẶT CẦU (chỉ hiện với bài có mặt cầu) ───
+  // Bật ⇒ toạ độ mọi điểm được tính lại theo tâm cầu (tâm cầu thành O(0,0,0)); trục & lưới
+  // đi qua tâm nên dễ nhìn. Đây là đổi gốc (tịnh tiến) — không sai hình học.
+  const recenter = context?.state.recenterToSphere ?? false;
+  const sphereCenter = useMemo(() => getPrimarySphereCenter(geometry), [geometry]);
+  const hasSphere = !!sphereCenter;
+  const displayGeometry = useMemo(
+    () => (recenter && sphereCenter && geometry ? recenterGeometry(geometry, sphereCenter) : geometry),
+    [geometry, recenter, sphereCenter],
+  );
+  // Bảng hiển thị toạ độ theo gốc MỚI; khi ghi phải cộng lại tâm cầu để lưu về gốc GỐC
+  // (giữ khớp với lời giải/đề — vốn neo theo gốc gốc).
+  const handleUpdatePoint = useCallback((id: string, x: number, y: number, z: number) => {
+    if (!context) return;
+    if (recenter && sphereCenter) {
+      context.updatePoint(id, x + sphereCenter.x, y + sphereCenter.y, z + sphereCenter.z);
+    } else {
+      context.updatePoint(id, x, y, z);
+    }
+  }, [context, recenter, sphereCenter]);
+
   // Đỉnh/cạnh để ĐẾM & LIỆT KÊ: ở Advance chỉ lấy phần ĐANG HIỆN (bỏ điểm mẫu/khung dây ẩn);
   // bài thường giữ nguyên toàn bộ.
   const inAdvance = !!advanceScene;
   const listPoints = useMemo(
-    () => (geometry ? (inAdvance ? geometry.points.filter(p => !p.hidden) : geometry.points) : []),
-    [geometry, inAdvance],
+    () => (displayGeometry ? (inAdvance ? displayGeometry.points.filter(p => !p.hidden) : displayGeometry.points) : []),
+    [displayGeometry, inAdvance],
   );
   const listLines = useMemo(
     () => (geometry ? (inAdvance ? geometry.lines.filter(l => !l.hidden) : geometry.lines) : []),
@@ -262,12 +285,34 @@ export function GeometryPropertiesTab() {
           <p className="text-[11px] text-muted-foreground/70 mb-2 flex items-center gap-1">
             <Pencil className="w-2.5 h-2.5" /> Sửa số (x, y, z) rồi Enter — cạnh nối theo đỉnh tự đi theo, thay đổi được tự động lưu.
           </p>
+
+          {/* Công tắc: DỜI GỐC VỀ TÂM MẶT CẦU — chỉ hiện khi hình có mặt cầu. */}
+          {hasSphere && (
+            <div className="flex items-start gap-2 mb-2 p-2 rounded-lg bg-primary/5 border border-primary/15">
+              <Globe className="w-3.5 h-3.5 text-primary shrink-0 mt-0.5" />
+              <div className="flex-1 min-w-0">
+                <label className="flex items-center justify-between gap-2 cursor-pointer">
+                  <span className="text-[11.5px] font-medium text-foreground">Dời trục toạ độ về tâm hình cầu</span>
+                  <Switch
+                    checked={recenter}
+                    onCheckedChange={() => context.toggleRecenterToSphere()}
+                    aria-label="Dời trục toạ độ về tâm hình cầu"
+                  />
+                </label>
+                <p className="text-[10.5px] text-muted-foreground/80 mt-0.5 leading-snug">
+                  {recenter
+                    ? 'Đang lấy tâm cầu làm gốc O(0,0,0) — toạ độ bên dưới đã tính lại theo gốc mới.'
+                    : 'Đặt tâm mặt cầu về gốc O(0,0,0); toạ độ mọi điểm được tính lại theo gốc mới.'}
+                </p>
+              </div>
+            </div>
+          )}
           <div className="grid grid-cols-3 gap-1 px-1.5 mb-1 text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider ml-8">
             <span className="text-center">x</span><span className="text-center">y</span><span className="text-center">z</span>
           </div>
           <div className="space-y-1">
             {listPoints.map((point) => (
-              <VertexRow key={point.id} point={point} onUpdate={context.updatePoint} onUndo={context.undo} onRedo={context.redo} />
+              <VertexRow key={point.id} point={point} onUpdate={handleUpdatePoint} onUndo={context.undo} onRedo={context.redo} />
             ))}
           </div>
         </div>

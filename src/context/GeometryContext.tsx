@@ -182,6 +182,7 @@ export const initialGeometryState: GeometryState = {
   showPoints: true,
   autoColor: false,
   showCoordinateGrid: true,
+  recenterToSphere: false,
   aiModel: 'high',
   useReasoning: false,
   streamingText: '',
@@ -240,6 +241,8 @@ export function rawGeometryReducer(state: GeometryState, action: GeometryAction)
       return { ...state, autoColor: !state.autoColor };
     case 'TOGGLE_COORDINATE_GRID':
       return { ...state, showCoordinateGrid: !state.showCoordinateGrid };
+    case 'TOGGLE_RECENTER_TO_SPHERE':
+      return { ...state, recenterToSphere: !state.recenterToSphere };
     case 'UPDATE_SCAN_PROGRESS':
       return { ...state, scanProgress: action.progress, scanStatus: action.status };
     case 'SET_GEOMETRY':
@@ -254,10 +257,11 @@ export function rawGeometryReducer(state: GeometryState, action: GeometryAction)
         // Job vẫn chạy nền trong queue; luồng "vẽ xong" tự set lại activeQueueId ngay sau dispatch này.
         activeQueueId: null,
         advanceScene: null,
+        recenterToSphere: false, // hình mới → về gốc mặc định, tránh lệch trục lẫn sang bài khác
       };
     case 'SET_ADVANCE_SCENE':
       return { ...state, advanceScene: action.scene, currentStep: 0, advanceT: 0,
-               geometry: action.scene.base, undoStack: [], redoStack: [] };
+               geometry: action.scene.base, undoStack: [], redoStack: [], recenterToSphere: false };
     case 'SET_STEP': {
       const idx = Math.max(0, Math.min(action.index, (state.advanceScene?.steps.length ?? 1) - 1));
       // Bước có animation (thanh quét/autoplay) ⇒ bắt đầu từ 0 để lộ dần rồi kết đông.
@@ -273,7 +277,7 @@ export function rawGeometryReducer(state: GeometryState, action: GeometryAction)
     case 'FINISH_BUILDING':
       return { ...state, isBuilding: false };
     case 'CLEAR_GEOMETRY':
-      return { ...state, geometry: null, advanceScene: null, undoStack: [], redoStack: [], isScanning: false, isBuilding: false, scanProgress: 0, scanStatus: '', activeQueueId: null, manualMode: false, manualTool: null, videoMode: false, selectedIds: [] };
+      return { ...state, geometry: null, advanceScene: null, undoStack: [], redoStack: [], isScanning: false, isBuilding: false, scanProgress: 0, scanStatus: '', activeQueueId: null, manualMode: false, manualTool: null, videoMode: false, selectedIds: [], recenterToSphere: false };
     case 'QUEUE_ADD':
       return {
         ...state,
@@ -459,6 +463,7 @@ export interface GeometryContextType {
   togglePoints: () => void;
   toggleAutoColor: () => void;
   toggleCoordinateGrid: () => void;
+  toggleRecenterToSphere: () => void;
   setAiModel: (model: 'max' | 'high' | 'medium' | 'low') => void;
   setUseReasoning: (enabled: boolean) => void;
   toggleSelection: (id: string) => void;
@@ -1416,6 +1421,10 @@ export function GeometryProvider({ children }: { children: React.ReactNode }) {
     dispatch({ type: 'TOGGLE_COORDINATE_GRID' });
   }, []);
 
+  const toggleRecenterToSphere = useCallback(() => {
+    dispatch({ type: 'TOGGLE_RECENTER_TO_SPHERE' });
+  }, []);
+
   const setAiModel = useCallback((model: 'max' | 'high' | 'medium' | 'low') => {
     dispatch({ type: 'SET_AI_MODEL', model });
   }, []);
@@ -1434,7 +1443,7 @@ export function GeometryProvider({ children }: { children: React.ReactNode }) {
       state, startDemo, analyzeImage, analyzeText, analyzeAdvance, setStep, setAdvanceT, queueAnalyzeText, queueAnalyzeImage,
       modifyGeometry, loadGeometry, clearGeometry, stopScanning, viewQueueItem, removeQueueItem, clearActiveQueue,
       updateDynamicPoint, addPoint, addLine, addMidpoint, addPlane, addPlaneFromEquation, removeElement,
-      updatePoint, setManualMode, setManualTool, setVideoMode, toggleVideoMode, setSelectedIds, setAutoRotate, togglePoints, toggleAutoColor, toggleCoordinateGrid,
+      updatePoint, setManualMode, setManualTool, setVideoMode, toggleVideoMode, setSelectedIds, setAutoRotate, togglePoints, toggleAutoColor, toggleCoordinateGrid, toggleRecenterToSphere,
       setAiModel, setUseReasoning, toggleSelection, clearSelection, undo, redo, canUndo, canRedo
     }}>
       {children}
