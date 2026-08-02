@@ -21,7 +21,8 @@ import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { GeometryData } from '@/types/geometry';
 import { useAuth } from '@/context/AuthContext';
-import { useSavedGeometries } from '@/hooks/useSavedGeometries';
+import { saveSharedProblem } from '@/lib/saveSharedProblem';
+import { toast } from '@/hooks/use-toast';
 import type { SolveResult } from '@/hooks/useSolver';
 
 interface SharedRow {
@@ -90,12 +91,12 @@ function SharedViewInner({ row }: { row: SharedRow }) {
   const solve = geometry.solve?.result;
 
   const { user, openAuthModal } = useAuth();
-  const { saveGeometry } = useSavedGeometries();
   const navigate = useNavigate();
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
 
-  // Người được share lưu bài về tài khoản của mình (bản riêng tư) để xem lại sau.
+  // Người được share lưu bài về tài khoản: vào cả Lịch sử (left panel) lẫn kho
+  // /saved, chống trùng + đẩy lên đầu (xem saveSharedProblem).
   const handleSave = async () => {
     if (saved) {
       navigate('/saved');
@@ -107,8 +108,23 @@ function SharedViewInner({ row }: { row: SharedRow }) {
     }
     setSaving(true);
     try {
-      const result = await saveGeometry(row.name, geometry, false);
-      if (result) setSaved(true);
+      const result = await saveSharedProblem({
+        userId: user.id,
+        name: row.name,
+        prompt: row.prompt ?? null,
+        geometry,
+      });
+      if (result.ok) {
+        setSaved(true);
+        toast({
+          title: result.duplicated ? 'Bài đã có trong kho' : 'Đã lưu vào tài khoản!',
+          description: result.duplicated
+            ? 'Đã đưa bài lên đầu danh sách của bạn.'
+            : 'Xem lại trong "Hình đã lưu".',
+        });
+      } else {
+        toast({ title: 'Lỗi', description: 'Không lưu được bài. Thử lại nhé.', variant: 'destructive' });
+      }
     } finally {
       setSaving(false);
     }
