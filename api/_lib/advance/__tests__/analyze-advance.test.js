@@ -171,3 +171,57 @@ describe('assembleAdvance — Đợt 2: diện tích hình phẳng (area-plane)'
     expect(out.revUnsupported).toBe(true);
   });
 });
+
+// "NỘP CẢ BÀI" (Tầng 0): mọi nhánh Advance BÓ TAY phải đính kèm `split` (bản máy đã hiểu/tách đề) để
+// route ghi vào problem_reports. Trước đây các nhánh này trả về KHÔNG kèm gì ⇒ mất trắng "bài làm".
+describe('assembleAdvance — nộp cả bài: nhánh bó tay đính kèm split (+plan)', () => {
+  it('guard revUnsupported KÈM split (phân loại + bản chép đề)', async () => {
+    const split = { type: 'single', setup: 'Tính thể tích khối tròn xoay khi quay (H) quanh trục Ox' };
+    const deps = {
+      splitProblem: async () => split,
+      buildRevolutionScene: () => null,
+      solveProblem: async () => ({ ok: true, geometry: { name: 'lạ', points: [{ id: 'A' }] } }),
+    };
+    const out = await assembleAdvance('', deps, { imageBase64: 'x' });
+    expect(out.revUnsupported).toBe(true);
+    expect(out.split).toBe(split);            // "bài làm" của Advance được giữ nguyên để ghi log
+    expect(out.split.setup).toContain('tròn xoay');
+  });
+
+  it('nhánh abstain (solveProblem NÉM) KÈM split', async () => {
+    const split = { type: 'single', setup: 'Cho hình chóp S.ABCD, tính thể tích' };
+    const deps = {
+      splitProblem: async () => split,
+      solveProblem: async () => { throw new Error('translator abstained: thiếu số liệu'); },
+    };
+    const out = await assembleAdvance('Cho hình chóp S.ABCD, tính thể tích', deps, {});
+    expect(out.abstained).toBe(true);
+    expect(out.split).toBe(split);
+  });
+
+  it('fallback bài-đơn ok:false KÈM cả split VÀ plan (Plan translator)', async () => {
+    const split = { type: 'single', setup: 'Cho hình chóp S.ABCD' };
+    const plan = { solidName: 'tetra', ops: [], asserts: [], queries: [] };
+    const deps = {
+      splitProblem: async () => split,
+      solveProblem: async () => ({ ok: false, plan, violations: [{ message: 'x' }], errors: [] }),
+    };
+    const out = await assembleAdvance('Cho hình chóp S.ABCD', deps, {});
+    expect(out.degraded).toBe(true);
+    expect(out.ok).toBe(false);
+    expect(out.split).toBe(split);
+    expect(out.plan).toBe(plan);              // nhánh ...out giữ Plan translator để "nộp cả bài"
+  });
+
+  it('bài-đơn ok:true (vẽ được) KHÔNG bị ép ok:false (giveUp không nuốt nhánh này)', async () => {
+    const split = { type: 'single', setup: 'Cho hình chóp S.ABCD' };
+    const deps = {
+      splitProblem: async () => split,
+      solveProblem: async () => ({ ok: true, geometry: { points: [{ id: 'A' }] } }),
+    };
+    const out = await assembleAdvance('Cho hình chóp S.ABCD', deps, {});
+    expect(out.ok).toBe(true);                // KHÔNG bị giveUp ép về false
+    expect(out.degraded).toBe(true);
+    expect(out.split).toBe(split);
+  });
+});

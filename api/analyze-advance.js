@@ -119,6 +119,13 @@ export async function assembleAdvance(problem, deps, opts = {}) {
   // (chữ user gõ, hoặc bản chép từ ảnh) — dùng cho nhận-diện tròn-xoay, fallback bài đơn & nhãn lịch sử.
   const effectiveText = (problem && problem.trim()) ? problem : (split.setup || '');
 
+  // "Nộp cả bài" (Tầng 0): mọi nhánh engine BÓ TAY đính kèm `split` (bản máy đã HIỂU/TÁCH đề — phân loại
+  // type/template + templateParams + bản chép đề ở split.setup) để route ghi vào problem_reports làm
+  // nguyên liệu tự-cải-tiến. Trước đây các nhánh này trả về KHÔNG kèm gì ⇒ mất trắng "bài làm" của Advance
+  // (route chỉ ghi được result.scene vốn null ở mọi ca hỏng). giveUp mặc định ok:false (đúng mọi nhánh bó
+  // tay); nhánh fallback bài-đơn KHÔNG dùng giveUp vì `out` có thể ok:true (vẽ được) — xem chú thích ở đó.
+  const giveUp = (extra) => ({ mode: 'kernel', degraded: true, ok: false, split, ...extra });
+
   // Nhánh mẫu calculus (Đợt 1: rev-ox). Engine dựng khối tất định, tự kiểm thể tích.
   if (split.template === 'rev-ox' && split.templateParams && deps.buildRevolutionScene) {
     try {
@@ -191,29 +198,29 @@ export async function assembleAdvance(problem, deps, opts = {}) {
   // cờ revUnsupported để hoàn credit). Đặt TRƯỚC guard cross-known: đề chóp/hộp có thể chứa "vuông/tam
   // giác" ở đáy → phải cho looksLikeSection bắt trước, tránh cross-known nuốt nhầm.
   if (looksLikeSection(effectiveText)) {
-    return { mode: 'kernel', degraded: true, ok: false, revUnsupported: true, error: SECTION_UNSUPPORTED_MSG };
+    return giveUp({ revUnsupported: true, error: SECTION_UNSUPPORTED_MSG });
   }
 
   if (looksLikeCrossSection(effectiveText)) {
-    return { mode: 'kernel', degraded: true, ok: false, revUnsupported: true, error: CROSS_UNSUPPORTED_MSG };
+    return giveUp({ revUnsupported: true, error: CROSS_UNSUPPORTED_MSG });
   }
 
   // Đợt 2: đề RÕ là diện tích hình phẳng nhưng không dựng nổi mẫu area-plane ⇒ báo thẳng (tái dùng cờ
   // revUnsupported để hoàn credit). Đặt SAU guard thiết diện: đề thiết diện cũng chứa "diện tích" nên
   // phải cho looksLikeCrossSection bắt trước, tránh area nuốt nhầm.
   if (looksLikeArea(effectiveText)) {
-    return { mode: 'kernel', degraded: true, ok: false, revUnsupported: true, error: AREA_UNSUPPORTED_MSG };
+    return giveUp({ revUnsupported: true, error: AREA_UNSUPPORTED_MSG });
   }
 
   // Vật thật tròn xoay (bình/lu/chậu) chưa dựng nổi mẫu rev-vessel ⇒ báo thẳng (tái dùng cờ revUnsupported
   // để hoàn credit). Đặt TRƯỚC looksLikeRevolution: vật thật có chứa "tròn xoay" nên cần bắt riêng để cho
   // thông điệp cụ thể hơn (ghi rõ trụ/nón cụt/chỏm cầu) thay vì thông điệp tròn-xoay-giải-tích chung chung.
   if (looksLikeVessel(effectiveText)) {
-    return { mode: 'kernel', degraded: true, ok: false, revUnsupported: true, error: VESSEL_UNSUPPORTED_MSG };
+    return giveUp({ revUnsupported: true, error: VESSEL_UNSUPPORTED_MSG });
   }
 
   if (looksLikeRevolution(effectiveText)) {
-    return { mode: 'kernel', degraded: true, ok: false, revUnsupported: true, error: REV_UNSUPPORTED_MSG };
+    return giveUp({ revUnsupported: true, error: REV_UNSUPPORTED_MSG });
   }
 
   // FAIL-FAST (gốc bug 504): đề vào bằng ẢNH nhưng vision KHÔNG chép được đề (effectiveText rỗng) ⇒ đừng
@@ -221,16 +228,18 @@ export async function assembleAdvance(problem, deps, opts = {}) {
   // chồng thời gian > 60s → 504. Báo thẳng + đánh dấu revUnsupported để handler HOÀN TOÀN BỘ (vẽ được gì
   // đâu). `imageReadFailed` phân biệt "đọc ảnh hỏng" với "kiểu quay chưa hỗ trợ" (frontend nhắn cho hợp).
   if (opts.imageBase64 && !effectiveText.trim()) {
-    return { mode: 'kernel', degraded: true, ok: false, revUnsupported: true, imageReadFailed: true, error: IMAGE_READ_FAILED_MSG };
+    return giveUp({ revUnsupported: true, imageReadFailed: true, error: IMAGE_READ_FAILED_MSG });
   }
 
   // single / build-fail / animation-fail → FALLBACK: xử bài đơn, đánh dấu degraded để handler hoàn credit.
   // solveProblem NÉM khi translator abstain → trả degraded sạch (KHÔNG để 500 xuyên lên handler).
   try {
     const out = await deps.solveProblem(effectiveText, opts);
-    return { mode: 'kernel', degraded: true, ...out };
+    // KHÔNG dùng giveUp: `out` có thể ok:true (vẽ được bài đơn) — không được ép ok:false. Đính `split`
+    // TRƯỚC `...out` để `out` (nếu có plan riêng) vẫn đè lên; route ghi được cả split + plan khi ok:false.
+    return { mode: 'kernel', degraded: true, split, ...out };
   } catch (e) {
-    return { mode: 'kernel', degraded: true, ok: false, abstained: true, error: String(e?.message || e).slice(0, 120) };
+    return giveUp({ abstained: true, error: String(e?.message || e).slice(0, 120) });
   }
 }
 
@@ -341,7 +350,13 @@ async function handler(req, res) {
     if (result && (result.ok === false || result.revUnsupported || result.imageReadFailed || result.abstained)) {
       await logBrokenProblem({
         endpoint: 'analyze-advance', userId, mode: 'advance', prompt: problemSeed || null,
-        imageProvided: !!imageBase64, aiJson: result.scene || null,
+        imageProvided: !!imageBase64,
+        // "Nộp cả bài": scene (nếu dựng được rồi vẫn hỏng) → else BẢN MÁY HIỂU ĐỀ: split (phân loại +
+        // bản chép đề) + plan (Plan translator ở nhánh bài-đơn, nếu có). Trước đây luôn là null.
+        aiJson: result.scene
+          || (result.split || result.plan
+                ? { split: result.split ?? null, plan: result.plan ?? null }
+                : null),
         errorMessage: result.error || 'advance không dựng được cảnh',
         errorStage: result.revUnsupported ? 'unsupported'
           : result.imageReadFailed ? 'image_read'
