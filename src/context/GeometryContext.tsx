@@ -1188,13 +1188,13 @@ export function GeometryProvider({ children }: { children: React.ReactNode }) {
     if (!aiMode) {
       toast({
         title: "Chưa hiểu lệnh này",
-        description: 'Dùng gợi ý cú pháp, hoặc bật "Sửa bằng AI" để chat tự do (0,2 credit/lần).',
+        description: 'Dùng gợi ý cú pháp, hoặc bật "Sửa bằng AI" để chat tự do (2 credit/lần).',
         variant: "destructive",
       });
       return;
     }
 
-    // Chế độ AI (trừ 0,2 credit ở server, hoàn nếu sửa không thành).
+    // Chế độ AI (trừ 2 credit ở server, hoàn nếu sửa không thành).
     try {
       const { data, error } = await invokeLocalApi('/api/modify-geometry', { prompt, currentGeometry: state.geometry });
 

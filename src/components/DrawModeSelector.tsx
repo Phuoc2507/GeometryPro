@@ -18,7 +18,7 @@ const modes = [
     icon: Zap,
     time: '~5s',
     desc: '1 lần gọi AI',
-    credits: 1,
+    credits: 10, // khớp CREDIT_COST.draw_quick (api/_lib/entitlements.js)
   },
   {
     id: 'detailed' as DrawMode,
@@ -26,7 +26,7 @@ const modes = [
     icon: Layers,
     time: '~10s',
     desc: '2 lần gọi AI',
-    credits: 2,
+    credits: 20, // khớp CREDIT_COST.draw_detailed
   },
   {
     id: 'advance' as DrawMode,
@@ -34,7 +34,7 @@ const modes = [
     icon: Sparkles,
     time: '~30s',
     desc: 'đa-câu / động',
-    credits: 3,
+    credits: 30, // khớp CREDIT_COST.draw_advance
   },
 ];
 
