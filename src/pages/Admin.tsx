@@ -22,12 +22,10 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import type { Tables } from '@/integrations/supabase/types';
-import type { GeometryData } from '@/types/geometry';
 import { UsersTab } from '@/components/admin/UsersTab';
 import { OrdersTab } from '@/components/admin/OrdersTab';
 import { GoldenTab } from '@/components/admin/GoldenTab';
 import { RedrawGoldenButton } from '@/components/admin/RedrawGoldenButton';
-import { GeometryPreview } from '@/components/admin/GeometryPreview';
 
 type ProblemReport = Tables<'problem_reports'>;
 type UserFeedback = Tables<'user_feedback'>;
@@ -193,14 +191,11 @@ const Admin = () => {
   const [loadingReports, setLoadingReports] = useState(true);
   const [loadingFeedback, setLoadingFeedback] = useState(true);
   const [selectedReport, setSelectedReport] = useState<ProblemReport | null>(null);
-  const [selectedFeedback, setSelectedFeedback] = useState<UserFeedback | null>(null);
   const [reportsError, setReportsError] = useState<string | null>(null);
   const [feedbackError, setFeedbackError] = useState<string | null>(null);
   const [reportFilter, setReportFilter] = useState<'all' | Status>('all');
   const [feedbackFilter, setFeedbackFilter] = useState<'all' | Status>('all');
   const [drawStats, setDrawStats] = useState<{ endpoint: string; attempts: number; fails: number }[]>([]);
-  // Hình ĐÃ LƯU mà feedback trỏ tới (khi không kèm snapshot) — thử tải để render.
-  const [savedFig, setSavedFig] = useState<{ status: 'idle' | 'loading' | 'ok' | 'unavailable'; data: GeometryData | null }>({ status: 'idle', data: null });
 
   // Chặn truy cập: chưa đăng nhập hoặc không phải admin → về trang chủ.
   // Bảo mật thật nằm ở RLS phía Supabase; đây chỉ là lớp điều hướng cho UI.
@@ -256,28 +251,6 @@ const Admin = () => {
     }
   }, [authLoading, user, isAdmin, fetchReports, fetchFeedback, fetchDrawStats]);
 
-  // Khi mở feedback trỏ tới bản vẽ ĐÃ LƯU (không kèm snapshot), thử tải geometry_data
-  // để render hình. RLS chỉ cho admin đọc hình công khai / của chính mình → hình
-  // riêng tư của người khác trả về rỗng ⇒ 'unavailable' (không phải lỗi hệ thống).
-  useEffect(() => {
-    const id = selectedFeedback?.saved_geometry_id;
-    const hasSnapshot = selectedFeedback?.geometry_snapshot != null;
-    if (!id || hasSnapshot) { setSavedFig({ status: 'idle', data: null }); return; }
-    let cancelled = false;
-    setSavedFig({ status: 'loading', data: null });
-    (async () => {
-      const { data, error } = await supabase
-        .from('saved_geometries')
-        .select('geometry_data')
-        .eq('id', id)
-        .maybeSingle();
-      if (cancelled) return;
-      if (error || !data?.geometry_data) { setSavedFig({ status: 'unavailable', data: null }); return; }
-      setSavedFig({ status: 'ok', data: data.geometry_data as unknown as GeometryData });
-    })();
-    return () => { cancelled = true; };
-  }, [selectedFeedback]);
-
   const updateStatus = useCallback(async (
     table: 'problem_reports' | 'user_feedback', id: string, status: Status,
   ) => {
@@ -292,7 +265,6 @@ const Admin = () => {
       setSelectedReport((prev) => (prev && prev.id === id ? { ...prev, status } : prev));
     } else {
       setFeedback((prev) => prev.map((f) => (f.id === id ? { ...f, status } : f)));
-      setSelectedFeedback((prev) => (prev && prev.id === id ? { ...prev, status } : prev));
     }
   }, []);
 
@@ -493,7 +465,8 @@ const Admin = () => {
                           <TableRow
                             key={f.id}
                             className={`cursor-pointer ${f.status === 'mới' ? 'bg-blue-500/[0.04]' : ''}`}
-                            onClick={() => setSelectedFeedback(f)}
+                            title="Mở trong tab mới"
+                            onClick={() => window.open(`/admin/feedback/${f.id}`, '_blank', 'noopener')}
                           >
                             <TableCell className="whitespace-nowrap text-xs text-muted-foreground" title={fmtDate(f.created_at)}>{fmtRelative(f.created_at)}</TableCell>
                             <TableCell><Badge variant="outline" className="text-[10px] font-normal">{f.kind}</Badge></TableCell>
@@ -690,76 +663,6 @@ const Admin = () => {
         </DialogContent>
       </Dialog>
 
-      {/* ── Chi tiết feedback ─────────────────────────────────────────────── */}
-      <Dialog open={!!selectedFeedback} onOpenChange={(o) => { if (!o) setSelectedFeedback(null); }}>
-        <DialogContent className="max-w-2xl">
-          {selectedFeedback && (
-            <>
-              <DialogHeader>
-                <DialogTitle>Chi tiết feedback</DialogTitle>
-                <DialogDescription>{fmtDate(selectedFeedback.created_at)} · {selectedFeedback.kind}</DialogDescription>
-              </DialogHeader>
-              <ScrollArea className="max-h-[60vh] pr-3">
-                <div className="space-y-3 text-sm">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="text-muted-foreground">Trạng thái:</span>
-                    <StatusSelect value={selectedFeedback.status} onChange={(s) => updateStatus('user_feedback', selectedFeedback.id, s)} />
-                    {selectedFeedback.page_path && <Badge variant="outline">{selectedFeedback.page_path}</Badge>}
-                  </div>
-                  <Field label="Nội dung" value={selectedFeedback.message} copyable />
-                  <Field label="Đề bài liên quan" value={selectedFeedback.prompt} mono copyable />
-                  {selectedFeedback.prompt && (
-                    <div className="flex items-center gap-2 rounded-md border border-primary/20 bg-primary/[0.03] px-3 py-2">
-                      <div className="flex-1 text-xs text-muted-foreground">
-                        Khách báo sai — để AI tự vẽ lại bài này rồi bạn duyệt thành hình chuẩn:
-                      </div>
-                      <RedrawGoldenButton
-                        prompt={selectedFeedback.prompt}
-                        onSaved={() => {
-                          const id = selectedFeedback?.id;
-                          if (id) updateStatus('user_feedback', id, 'đã sửa');
-                          setSelectedFeedback(null);
-                        }}
-                      />
-                    </div>
-                  )}
-                  {/* ── Bản vẽ kèm feedback — render HÌNH 3D THẬT (JSON gấp ở dưới) ── */}
-                  {selectedFeedback.geometry_snapshot != null ? (
-                    <div>
-                      <p className="mb-1 text-xs font-medium text-muted-foreground">Hình người dùng đang xem</p>
-                      <FigureBlock
-                        geometry={selectedFeedback.geometry_snapshot as unknown as GeometryData}
-                        raw={selectedFeedback.geometry_snapshot}
-                      />
-                    </div>
-                  ) : selectedFeedback.saved_geometry_id ? (
-                    <div>
-                      <div className="mb-1 flex items-center justify-between">
-                        <p className="text-xs font-medium text-muted-foreground">Bản vẽ đã lưu</p>
-                        <CopyBtn text={selectedFeedback.saved_geometry_id} />
-                      </div>
-                      {savedFig.status === 'loading' && (
-                        <div className="flex h-40 items-center justify-center rounded-md border border-border/60 bg-background/40">
-                          <Loader2 className="h-5 w-5 animate-spin text-primary" />
-                        </div>
-                      )}
-                      {savedFig.status === 'ok' && savedFig.data && (
-                        <FigureBlock geometry={savedFig.data} raw={savedFig.data} />
-                      )}
-                      {savedFig.status === 'unavailable' && (
-                        <div className="rounded-md border border-border/60 bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
-                          Bản vẽ để chế độ riêng tư nên không tải được để hiển thị. Mã hình:{' '}
-                          <code className="font-mono text-[11px]">{selectedFeedback.saved_geometry_id}</code>
-                        </div>
-                      )}
-                    </div>
-                  ) : null}
-                </div>
-              </ScrollArea>
-            </>
-          )}
-        </DialogContent>
-      </Dialog>
     </div>
   );
 };
@@ -775,27 +678,6 @@ function Field({ label, value, mono, copyable }: { label: string; value: string 
       </div>
       <p className={`whitespace-pre-wrap break-words rounded-md bg-muted p-3 ${mono ? 'font-mono text-xs' : 'text-sm'}`}>{value}</p>
     </div>
-  );
-}
-
-// Khối bản vẽ: render HÌNH 3D THẬT (xoay/phóng được) + JSON gấp gọn để đối chiếu/copy.
-// Dữ liệu hỏng → GeometryPreview tự rơi về fallback JSON, không làm vỡ dialog.
-function FigureBlock({ geometry, raw }: { geometry: GeometryData; raw: unknown }) {
-  const json = JSON.stringify(raw, null, 2);
-  return (
-    <>
-      <GeometryPreview
-        geometry={geometry}
-        fallback={<pre className="max-h-64 overflow-auto rounded-md bg-muted p-3 text-xs">{json}</pre>}
-      />
-      <details className="mt-1.5">
-        <summary className="flex cursor-pointer items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground">
-          <Copy className="h-3 w-3" /> Xem JSON
-        </summary>
-        <div className="mt-1 flex justify-end"><CopyBtn text={json} /></div>
-        <pre className="max-h-64 overflow-auto rounded-md bg-muted p-3 text-xs">{json}</pre>
-      </details>
-    </>
   );
 }
 
