@@ -1,0 +1,164 @@
+{
+  "id": "cap-dist-A-SCD-canh3-SA3",
+  "source": "capture",
+  "text": "Cho hình chóp S.ABCD có đáy ABCD là hình vuông cạnh 3, SA vuông góc với mặt phẳng đáy và SA = 3. Tính khoảng cách từ A đến mặt phẳng (SCD).",
+  "plan": {
+    "solidName": "S.ABCD",
+    "ops": [
+      {
+        "op": "oxyz_point",
+        "name": "A",
+        "at": [
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "B",
+        "at": [
+          3,
+          0,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "C",
+        "at": [
+          3,
+          3,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "D",
+        "at": [
+          0,
+          3,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "S",
+        "at": [
+          0,
+          0,
+          3
+        ]
+      },
+      {
+        "op": "oxyz_plane",
+        "name": "ABCD",
+        "by": {
+          "form": "three_points",
+          "a": "A",
+          "b": "B",
+          "c": "C"
+        }
+      },
+      {
+        "op": "oxyz_plane",
+        "name": "SCD",
+        "by": {
+          "form": "three_points",
+          "a": "S",
+          "b": "C",
+          "c": "D"
+        }
+      },
+      {
+        "op": "edge",
+        "from": "A",
+        "to": "B"
+      },
+      {
+        "op": "edge",
+        "from": "B",
+        "to": "C"
+      },
+      {
+        "op": "edge",
+        "from": "C",
+        "to": "D"
+      },
+      {
+        "op": "edge",
+        "from": "D",
+        "to": "A"
+      },
+      {
+        "op": "edge",
+        "from": "S",
+        "to": "A"
+      },
+      {
+        "op": "edge",
+        "from": "S",
+        "to": "B"
+      },
+      {
+        "op": "edge",
+        "from": "S",
+        "to": "C"
+      },
+      {
+        "op": "edge",
+        "from": "S",
+        "to": "D"
+      }
+    ],
+    "asserts": [
+      {
+        "relation": "perp",
+        "args": [
+          "SA",
+          "ABCD"
+        ]
+      },
+      {
+        "relation": "dist",
+        "args": [
+          "S",
+          "A"
+        ],
+        "value": 3
+      },
+      {
+        "relation": "dist",
+        "args": [
+          "A",
+          "B"
+        ],
+        "value": 3
+      },
+      {
+        "relation": "dist",
+        "args": [
+          "A",
+          "D"
+        ],
+        "value": 3
+      }
+    ],
+    "queries": [
+      {
+        "kind": "distance",
+        "a": "A",
+        "b": "SCD"
+      }
+    ]
+  },
+  "expect": {
+    "ok": true,
+    "answers": [
+      {
+        "kind": "distance",
+        "text": "3√2/2"
+      }
+    ]
+  }
+}

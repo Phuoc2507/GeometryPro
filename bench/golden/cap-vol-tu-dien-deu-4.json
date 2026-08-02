@@ -1,0 +1,131 @@
+{
+  "id": "cap-vol-tu-dien-deu-4",
+  "source": "capture",
+  "text": "Cho tứ diện đều ABCD có cạnh bằng 4. Tính thể tích khối tứ diện ABCD.",
+  "plan": {
+    "solidName": "ABCD",
+    "ops": [
+      {
+        "op": "oxyz_point",
+        "name": "B",
+        "at": [
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "C",
+        "at": [
+          4,
+          0,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "D",
+        "at": [
+          2,
+          "2*sqrt(3)",
+          0
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "A",
+        "at": [
+          2,
+          "2*sqrt(3)/3",
+          "4*sqrt(6)/3"
+        ]
+      },
+      {
+        "op": "edge",
+        "from": "A",
+        "to": "B"
+      },
+      {
+        "op": "edge",
+        "from": "A",
+        "to": "C"
+      },
+      {
+        "op": "edge",
+        "from": "A",
+        "to": "D"
+      },
+      {
+        "op": "edge",
+        "from": "B",
+        "to": "C"
+      },
+      {
+        "op": "edge",
+        "from": "C",
+        "to": "D"
+      },
+      {
+        "op": "edge",
+        "from": "D",
+        "to": "B"
+      }
+    ],
+    "asserts": [
+      {
+        "relation": "dist",
+        "args": [
+          "A",
+          "B"
+        ],
+        "value": 4
+      },
+      {
+        "relation": "dist",
+        "args": [
+          "B",
+          "C"
+        ],
+        "value": 4
+      },
+      {
+        "relation": "dist",
+        "args": [
+          "C",
+          "D"
+        ],
+        "value": 4
+      },
+      {
+        "relation": "dist",
+        "args": [
+          "D",
+          "A"
+        ],
+        "value": 4
+      }
+    ],
+    "queries": [
+      {
+        "kind": "volume",
+        "solid": "tetrahedron",
+        "points": [
+          "A",
+          "B",
+          "C",
+          "D"
+        ]
+      }
+    ]
+  },
+  "expect": {
+    "ok": true,
+    "answers": [
+      {
+        "kind": "volume",
+        "text": "16√2/3"
+      }
+    ]
+  }
+}

@@ -1,0 +1,180 @@
+{
+  "id": "cap-vol-lang-tru-tamgiac-deu-2-5",
+  "source": "capture",
+  "text": "Cho lăng trụ đứng ABC.A'B'C' có đáy ABC là tam giác đều cạnh 2 và chiều cao lăng trụ bằng 5. Tính thể tích khối lăng trụ ABC.A'B'C'.",
+  "plan": {
+    "solidName": "ABC.A1B1C1",
+    "ops": [
+      {
+        "op": "oxyz_point",
+        "name": "A",
+        "at": [
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "B",
+        "at": [
+          2,
+          0,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "C",
+        "at": [
+          1,
+          "sqrt(3)",
+          0
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "A1",
+        "at": [
+          0,
+          0,
+          5
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "B1",
+        "at": [
+          2,
+          0,
+          5
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "C1",
+        "at": [
+          1,
+          "sqrt(3)",
+          5
+        ]
+      },
+      {
+        "op": "oxyz_plane",
+        "name": "ABC",
+        "by": {
+          "form": "three_points",
+          "a": "A",
+          "b": "B",
+          "c": "C"
+        }
+      },
+      {
+        "op": "edge",
+        "from": "A",
+        "to": "B"
+      },
+      {
+        "op": "edge",
+        "from": "B",
+        "to": "C"
+      },
+      {
+        "op": "edge",
+        "from": "C",
+        "to": "A"
+      },
+      {
+        "op": "edge",
+        "from": "A1",
+        "to": "B1"
+      },
+      {
+        "op": "edge",
+        "from": "B1",
+        "to": "C1"
+      },
+      {
+        "op": "edge",
+        "from": "C1",
+        "to": "A1"
+      },
+      {
+        "op": "edge",
+        "from": "A",
+        "to": "A1"
+      },
+      {
+        "op": "edge",
+        "from": "B",
+        "to": "B1"
+      },
+      {
+        "op": "edge",
+        "from": "C",
+        "to": "C1"
+      }
+    ],
+    "asserts": [
+      {
+        "relation": "perp",
+        "args": [
+          "A1A",
+          "ABC"
+        ]
+      },
+      {
+        "relation": "dist",
+        "args": [
+          "A",
+          "B"
+        ],
+        "value": 2
+      },
+      {
+        "relation": "dist",
+        "args": [
+          "B",
+          "C"
+        ],
+        "value": 2
+      },
+      {
+        "relation": "dist",
+        "args": [
+          "C",
+          "A"
+        ],
+        "value": 2
+      },
+      {
+        "relation": "dist",
+        "args": [
+          "A",
+          "A1"
+        ],
+        "value": 5
+      }
+    ],
+    "queries": [],
+    "parameters": [],
+    "functions": [],
+    "solids": [],
+    "analyze": {
+      "kind": "integrate",
+      "variable": "z",
+      "from": 0,
+      "to": 5,
+      "integrand": "sqrt(3)"
+    }
+  },
+  "expect": {
+    "ok": true,
+    "answers": [
+      {
+        "kind": "kết quả",
+        "text": "5√3"
+      }
+    ]
+  }
+}

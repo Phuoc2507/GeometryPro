@@ -1,0 +1,176 @@
+{
+  "id": "cap-vol-chop-vuong-5-6",
+  "source": "capture",
+  "text": "Cho hình chóp S.ABCD có đáy ABCD là hình vuông cạnh 5, SA vuông góc với mặt phẳng đáy và SA = 6. Tính thể tích khối chóp S.ABCD.",
+  "plan": {
+    "solidName": "S.ABCD",
+    "ops": [
+      {
+        "op": "oxyz_point",
+        "name": "A",
+        "at": [
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "B",
+        "at": [
+          5,
+          0,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "C",
+        "at": [
+          5,
+          5,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "D",
+        "at": [
+          0,
+          5,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "S",
+        "at": [
+          0,
+          0,
+          6
+        ]
+      },
+      {
+        "op": "oxyz_plane",
+        "name": "ABCD",
+        "by": {
+          "form": "three_points",
+          "a": "A",
+          "b": "B",
+          "c": "C"
+        }
+      },
+      {
+        "op": "edge",
+        "from": "A",
+        "to": "B"
+      },
+      {
+        "op": "edge",
+        "from": "B",
+        "to": "C"
+      },
+      {
+        "op": "edge",
+        "from": "C",
+        "to": "D"
+      },
+      {
+        "op": "edge",
+        "from": "D",
+        "to": "A"
+      },
+      {
+        "op": "edge",
+        "from": "S",
+        "to": "A"
+      },
+      {
+        "op": "edge",
+        "from": "S",
+        "to": "B"
+      },
+      {
+        "op": "edge",
+        "from": "S",
+        "to": "C"
+      },
+      {
+        "op": "edge",
+        "from": "S",
+        "to": "D"
+      }
+    ],
+    "asserts": [
+      {
+        "relation": "perp",
+        "args": [
+          "SA",
+          "ABCD"
+        ]
+      },
+      {
+        "relation": "dist",
+        "args": [
+          "S",
+          "A"
+        ],
+        "value": 6
+      },
+      {
+        "relation": "dist",
+        "args": [
+          "A",
+          "B"
+        ],
+        "value": 5
+      },
+      {
+        "relation": "dist",
+        "args": [
+          "A",
+          "D"
+        ],
+        "value": 5
+      },
+      {
+        "relation": "dist",
+        "args": [
+          "B",
+          "C"
+        ],
+        "value": 5
+      },
+      {
+        "relation": "dist",
+        "args": [
+          "C",
+          "D"
+        ],
+        "value": 5
+      }
+    ],
+    "queries": [
+      {
+        "kind": "volume",
+        "solid": "pyramid",
+        "points": [
+          "A",
+          "B",
+          "C",
+          "D"
+        ],
+        "apex": "S"
+      }
+    ]
+  },
+  "expect": {
+    "ok": true,
+    "answers": [
+      {
+        "kind": "volume",
+        "text": "50"
+      }
+    ]
+  }
+}
