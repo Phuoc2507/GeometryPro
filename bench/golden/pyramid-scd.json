@@ -1,0 +1,33 @@
+{
+  "id": "pyramid-scd-01",
+  "source": "kernel-smoke.mjs",
+  "text": "Cho hình chóp S.ABCD đáy vuông cạnh 2, SA vuông góc đáy, SA=2. Tính d(A,(SCD)) và thể tích khối chóp.",
+  "plan": {
+    "solidName": "S.ABCD",
+    "ops": [
+      { "op": "oxyz_point", "name": "A", "at": [0, 0, 0] },
+      { "op": "oxyz_point", "name": "B", "at": [2, 0, 0] },
+      { "op": "oxyz_point", "name": "C", "at": [2, 2, 0] },
+      { "op": "oxyz_point", "name": "D", "at": [0, 2, 0] },
+      { "op": "oxyz_point", "name": "S", "at": [0, 0, 2] },
+      { "op": "oxyz_plane", "name": "BASE", "by": { "form": "three_points", "a": "A", "b": "B", "c": "C" } },
+      { "op": "oxyz_plane", "name": "SCD", "by": { "form": "three_points", "a": "S", "b": "C", "c": "D" } },
+      { "op": "edge", "from": "A", "to": "B" }, { "op": "edge", "from": "B", "to": "C" },
+      { "op": "edge", "from": "C", "to": "D" }, { "op": "edge", "from": "D", "to": "A" },
+      { "op": "edge", "from": "S", "to": "A" }, { "op": "edge", "from": "S", "to": "B" },
+      { "op": "edge", "from": "S", "to": "C" }, { "op": "edge", "from": "S", "to": "D" }
+    ],
+    "asserts": [{ "relation": "perp", "args": ["AS", "BASE"] }],
+    "queries": [
+      { "kind": "distance", "a": "A", "b": "SCD" },
+      { "kind": "volume", "solid": "pyramid", "points": ["A", "B", "C", "D"], "apex": "S" }
+    ]
+  },
+  "expect": {
+    "ok": true,
+    "answers": [
+      { "kind": "distance", "text": "√2" },
+      { "kind": "volume", "text": "8/3" }
+    ]
+  }
+}
