@@ -71,11 +71,13 @@ function fmtRelative(iso: string): string {
 // Màu badge theo giai đoạn lỗi (để quét nhanh loại lỗi).
 function stageBadgeClass(stage: string | null): string {
   switch (stage) {
-    case 'exception': case 'kernel_failed': return 'bg-destructive/15 text-destructive';
+    case 'exception': case 'kernel_failed': case 'kernel_error': return 'bg-destructive/15 text-destructive';
     case 'timeout':      return 'bg-orange-500/15 text-orange-600 dark:text-orange-400';
     case 'parse':        return 'bg-purple-500/15 text-purple-600 dark:text-purple-400';
     case 'verify':       return 'bg-amber-500/15 text-amber-600 dark:text-amber-400';
     case 'llm_failed':   return 'bg-rose-500/15 text-rose-600 dark:text-rose-400';
+    case 'abstain':      return 'bg-sky-500/15 text-sky-600 dark:text-sky-400';       // engine chủ động từ chối
+    case 'kernel_unusable': case 'translate_fail': return 'bg-teal-500/15 text-teal-600 dark:text-teal-400'; // dịch/chạy được nhưng hỏng
     default:              return 'bg-slate-500/15 text-slate-600 dark:text-slate-400';
   }
 }

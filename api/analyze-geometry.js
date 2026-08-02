@@ -24,6 +24,7 @@ import { refund } from './_lib/credits.js';
 import { accessError, resolveAiAccess, withQuota, refundAiUsage } from './_lib/aiAccess.js';
 import { withSentry, reportServerError } from './_lib/sentry.js';
 import { logBrokenProblem } from './_lib/brokenProblemLog.js';
+import { logKernelMiss } from './_lib/kernelMissLog.js';
 import { recordDrawStat } from './_lib/drawStats.js';
 import { findGolden } from './_lib/goldenStore.js';
 
@@ -270,10 +271,13 @@ async function handler(req, res) {
           reason: `unusable:ok=${k.ok},v=${k.violations?.length ?? 0},e=${k.errors?.length ?? 0}`,
           ms: _kms, promptLen: trimmedPrompt.length,
         });
+        // "Nộp cả bài": ghi vì-sao engine bó tay + Plan JSON vào problem_reports (bắn-rồi-quên).
+        logKernelMiss({ endpoint: 'analyze-geometry', mode: 'quick', prompt: trimmedPrompt, userId, durationMs: _kms, k });
       } catch (e) {
         console.warn('[kernel] lỗi → rơi về LLM:', e?.message);
         engineClassification = { level: 3, exactness: null, problemType: 'Khác', reason: { kind: 'error', message: e?.message || 'lỗi engine' } };
         logEngineDecision({ mode: 'quick', served: false, reason: `error:${e?.message || ''}`, ms: 0, promptLen: trimmedPrompt.length });
+        logKernelMiss({ endpoint: 'analyze-geometry', mode: 'quick', prompt: trimmedPrompt, userId, thrown: e });
       }
     }
     // ===== Hết KERNEL MODE — từ đây là luồng LLM cũ, KHÔNG đổi =====
@@ -430,9 +434,12 @@ Hãy:
             reason: `unusable:ok=${k.ok},v=${k.violations?.length ?? 0},e=${k.errors?.length ?? 0}`,
             ms: _kms, promptLen: trimmedPrompt.length,
           });
+          // "Nộp cả bài": ghi vì-sao engine bó tay + Plan JSON vào problem_reports (bắn-rồi-quên).
+          logKernelMiss({ endpoint: 'analyze-geometry', mode: 'detailed', prompt: trimmedPrompt, userId, durationMs: _kms, k });
         } catch (e) {
           console.warn('[kernel] detailed/static lỗi → LLM:', e?.message);
           logEngineDecision({ mode: 'detailed', served: false, reason: `error:${e?.message || ''}`, ms: 0, promptLen: trimmedPrompt.length });
+          logKernelMiss({ endpoint: 'analyze-geometry', mode: 'detailed', prompt: trimmedPrompt, userId, thrown: e });
         }
       }
       // ===== Hết KERNEL detailed — dưới đây là luồng LLM cũ, KHÔNG đổi =====
