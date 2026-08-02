@@ -605,7 +605,8 @@ export function LeftSidebar() {
         onClick={() => setIsCollapsed(!isCollapsed)}
         style={{ left: isCollapsed ? 0 : 'var(--lp-w, 260px)' }}
         className={cn(
-          "absolute top-1/2 -translate-y-1/2 rounded-full glass border border-border/50 z-50 h-6 w-6 bg-background shadow-sm hover:bg-secondary flex items-center justify-center",
+          "absolute top-1/2 -translate-y-1/2 rounded-full glass border border-border/50 z-50 h-7 w-7 bg-background shadow-sm flex items-center justify-center",
+          "transition-all duration-150 hover:scale-110 hover:bg-secondary hover:border-primary/60 hover:shadow-md hover:[&_svg]:text-primary",
           isCollapsed ? "translate-x-1/2" : "-translate-x-1/2"
         )}
       >

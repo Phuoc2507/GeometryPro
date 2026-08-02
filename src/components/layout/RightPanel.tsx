@@ -843,7 +843,11 @@ export function RightPanel() {
         aria-label="Ẩn/hiện bảng bên phải"
         onClick={() => setIsCollapsed(!isCollapsed)}
         style={{ right: isCollapsed ? 0 : 'var(--rp-w, 20rem)' }}
-        className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 rounded-full glass border border-border/50 z-50 h-6 w-6 bg-background shadow-sm hover:bg-secondary flex items-center justify-center"
+        className={cn(
+          "absolute top-1/2 -translate-y-1/2 rounded-full glass border border-border/50 z-50 h-7 w-7 bg-background shadow-sm flex items-center justify-center",
+          "transition-all duration-150 hover:scale-110 hover:bg-secondary hover:border-primary/60 hover:shadow-md hover:[&_svg]:text-primary",
+          isCollapsed ? "-translate-x-1/2" : "translate-x-1/2"
+        )}
       >
         {isCollapsed ? (
           <ChevronLeft className="w-3.5 h-3.5 text-muted-foreground" />
