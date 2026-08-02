@@ -60,7 +60,7 @@ export function AnimatedBackground({ className }: { className?: string }) {
       canvas.width = Math.max(1, Math.round(w * dpr));
       canvas.height = Math.max(1, Math.round(h * dpr));
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      const count = Math.min(320, Math.max(80, Math.round((w * h) / 7000)));
+      const count = Math.min(700, Math.max(160, Math.round((w * h) / 3200)));
       stars = Array.from({ length: count }, makeStar);
     };
 
