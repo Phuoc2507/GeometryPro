@@ -42,6 +42,10 @@ export function TopToolbar() {
   const { state, setManualMode, setVideoMode, undo, redo, canUndo, canRedo } = context;
   const isManualMode = state.manualMode;
 
+  // Trang trống (chưa có hình): ẩn thanh công cụ — chưa có gì để thao tác.
+  // Vẫn hiện khi đang VẼ THỦ CÔNG (dù hình chưa hình thành).
+  if (!state.geometry && !isManualMode) return null;
+
   return (
     <>
      <TooltipProvider delayDuration={150} skipDelayDuration={300}>
