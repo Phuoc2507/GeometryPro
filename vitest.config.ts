@@ -6,7 +6,7 @@ export default defineConfig({
     alias: { '@': path.resolve(__dirname, './src') },
   },
   test: {
-    include: ['api/_lib/kernel/**/*.test.ts', 'api/_lib/__tests__/**/*.test.js', 'api/_lib/advance/__tests__/**/*.test.js', 'src/**/*.test.ts', 'src/**/*.test.tsx'],
+    include: ['api/_lib/kernel/**/*.test.ts', 'api/_lib/__tests__/**/*.test.js', 'api/_lib/advance/__tests__/**/*.test.js', 'api/_lib/bench/__tests__/**/*.test.js', 'src/**/*.test.ts', 'src/**/*.test.tsx'],
     environment: 'node',
     // Several numerical kernel suites enforce wall-clock convergence limits.
     // Run files serially so a concurrent optimizer cannot consume that budget.
