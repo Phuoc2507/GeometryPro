@@ -1,7 +1,7 @@
 
 import { useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { User, LogOut, Save, Settings, Sparkles, Crown, ListChecks, GraduationCap, Presentation, ShieldCheck, Lock, Tag, Users } from 'lucide-react';
+import { User, LogOut, Save, Settings, Sparkles, Crown, ListChecks, GraduationCap, Presentation, ShieldCheck, Lock, Tag, Users, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -18,6 +18,11 @@ import { authUrlWithRedirect } from '@/lib/authRedirect';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const RENEW_THRESHOLD_DAYS = 7;
+
+// Nhãn gói hiển thị theo tier hiệu lực.
+const PLAN_LABEL: Record<string, string> = {
+  free: 'Miễn phí', student: 'Học sinh', teacher: 'Giáo viên', pro: 'Pro', school: 'Trường',
+};
 
 export function UserMenu() {
   const navigate = useNavigate();
@@ -79,11 +84,11 @@ export function UserMenu() {
 
   if (!user) {
     return (
-      <Button 
-        variant="outline" 
-        size="sm" 
+      <Button
+        variant="outline"
+        size="sm"
         onClick={() => navigate(authUrlWithRedirect(location.pathname + location.search))}
-        className="gap-2"
+        className="gap-2 w-full"
       >
         <User className="w-4 h-4" />
         Đăng nhập
@@ -93,21 +98,34 @@ export function UserMenu() {
 
   const displayName = profile?.display_name || user.email?.split('@')[0] || 'User';
   const initials = displayName.slice(0, 2).toUpperCase();
+  // Tên hiển thị: CHỈ dùng display_name đã đặt; KHÔNG rơi về phần trước @ của email (lộ Gmail).
+  const safeName = profile?.display_name?.trim() || 'Tài khoản';
+  const planLabel = PLAN_LABEL[tier] ?? 'Miễn phí';
 
   return (
     <>
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        {/* Chỉ AVATAR — bỏ tên hiển thị vì nó lấy từ phần trước @ của email (lộ Gmail).
-            Tên/email đầy đủ chỉ hiện BÊN TRONG menu khi chính chủ mở ra. */}
-        <Button variant="ghost" size="icon" aria-label="Tài khoản" className="rounded-full">
-          <Avatar className="w-7 h-7">
+        {/* Hàng tài khoản: avatar · tên (an toàn) · GÓI · mũi tên */}
+        <button
+          aria-label="Tài khoản"
+          className="w-full flex items-center gap-2.5 rounded-lg px-1.5 py-1.5 text-left hover:bg-secondary/50 transition-colors"
+        >
+          <Avatar className="w-8 h-8 shrink-0">
             <AvatarImage src={profile?.avatar_url || undefined} alt="Ảnh đại diện" />
             <AvatarFallback className="text-xs bg-primary/10 text-primary">
               {initials}
             </AvatarFallback>
           </Avatar>
-        </Button>
+          <div className="min-w-0 flex-1 leading-tight">
+            <div className="text-sm font-medium truncate">{safeName}</div>
+            <div className="text-[11px] text-muted-foreground truncate flex items-center gap-1">
+              {planLabel}
+              {isPro && <Crown className="w-3 h-3 text-amber-500" />}
+            </div>
+          </div>
+          <ChevronDown className="w-4 h-4 text-muted-foreground shrink-0" />
+        </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-48">
         <div className="px-2 py-1.5">

@@ -536,10 +536,9 @@ function SidebarContent() {
         </DialogContent>
       </Dialog>
 
-      {/* Footer — tài khoản ở góc dưới trái */}
-      <div className="p-3 border-t border-border/50 flex items-center gap-2">
+      {/* Footer — tài khoản (avatar · gói · mũi tên) ở góc dưới trái */}
+      <div className="p-2.5 border-t border-border/50">
         <UserMenu />
-        <span className="text-sm font-medium text-muted-foreground">Tài khoản</span>
       </div>
     </>
   );
