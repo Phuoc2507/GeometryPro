@@ -12,6 +12,7 @@
     "server": "npm run build:kernel && node server.js",
     "smoke:kernel": "npm run build:kernel && node scripts/kernel-smoke.mjs",
     "bench:gate": "npm run build:kernel && node scripts/bench-gate.mjs",
+    "bench:capture": "npm run build:kernel && node scripts/bench-capture.mjs",
     "lint": "eslint .",
     "preview": "vite preview",
     "test": "vitest run",

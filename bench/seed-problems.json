@@ -1,0 +1,30 @@
+[
+  {
+    "id": "cap-vol-chop-vuong-4",
+    "text": "Cho hình chóp S.ABCD có đáy ABCD là hình vuông cạnh 4, SA vuông góc với mặt phẳng đáy và SA = 4. Tính thể tích khối chóp S.ABCD."
+  },
+  {
+    "id": "cap-vol-chop-vuong-6-8",
+    "text": "Cho hình chóp S.ABCD có đáy ABCD là hình vuông cạnh 6, SA vuông góc với mặt phẳng đáy và SA = 8. Tính thể tích khối chóp S.ABCD."
+  },
+  {
+    "id": "cap-vol-chop-vuong-3",
+    "text": "Cho hình chóp S.ABCD có đáy ABCD là hình vuông cạnh 3, SA vuông góc với mặt phẳng đáy và SA = 3. Tính thể tích khối chóp S.ABCD."
+  },
+  {
+    "id": "cap-dist-A-SCD-canh2-SA4",
+    "text": "Cho hình chóp S.ABCD có đáy ABCD là hình vuông cạnh 2, SA vuông góc với mặt phẳng đáy và SA = 4. Tính khoảng cách từ A đến mặt phẳng (SCD)."
+  },
+  {
+    "id": "cap-dist-A-SBC-vuong-B",
+    "text": "Cho hình chóp S.ABC có SA vuông góc với mặt phẳng đáy, SA = 3, tam giác ABC vuông tại B với AB = 4 và BC = 3. Tính khoảng cách từ A đến mặt phẳng (SBC)."
+  },
+  {
+    "id": "cap-vol-tu-dien-deu-2",
+    "text": "Cho tứ diện đều ABCD có cạnh bằng 2. Tính thể tích khối tứ diện ABCD."
+  },
+  {
+    "id": "cap-dist-A-SCD-canh2-SA2",
+    "text": "Cho hình chóp S.ABCD có đáy ABCD là hình vuông cạnh 2, SA vuông góc với mặt phẳng đáy và SA = 2. Tính khoảng cách từ A đến mặt phẳng (SBD)."
+  }
+]
