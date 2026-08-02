@@ -6,8 +6,8 @@
  * danh sách bước read-only). Đọc qua RLS "Public can read public geometries".
  */
 import { useEffect, useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
-import { Loader2, ArrowLeft, CheckCircle2, AlertTriangle } from 'lucide-react';
+import { useParams, Link, useNavigate } from 'react-router-dom';
+import { Loader2, ArrowLeft, CheckCircle2, AlertTriangle, Save, Check } from 'lucide-react';
 import 'katex/dist/katex.min.css';
 import { BlockMath } from 'react-katex';
 import { supabase } from '@/integrations/supabase/client';
@@ -20,6 +20,8 @@ import { Wordmark } from '@/components/Brand';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { GeometryData } from '@/types/geometry';
+import { useAuth } from '@/context/AuthContext';
+import { useSavedGeometries } from '@/hooks/useSavedGeometries';
 import type { SolveResult } from '@/hooks/useSolver';
 
 interface SharedRow {
@@ -87,6 +89,31 @@ function SharedViewInner({ row }: { row: SharedRow }) {
   const problem = row.prompt || geometry.solve?.problem || geometry.llmPrompt || '';
   const solve = geometry.solve?.result;
 
+  const { user, openAuthModal } = useAuth();
+  const { saveGeometry } = useSavedGeometries();
+  const navigate = useNavigate();
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+
+  // Người được share lưu bài về tài khoản của mình (bản riêng tư) để xem lại sau.
+  const handleSave = async () => {
+    if (saved) {
+      navigate('/saved');
+      return;
+    }
+    if (!user) {
+      openAuthModal('save');
+      return;
+    }
+    setSaving(true);
+    try {
+      const result = await saveGeometry(row.name, geometry, false);
+      if (result) setSaved(true);
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
     <>
       <FigureLoader geometry={geometry} />
@@ -96,8 +123,15 @@ function SharedViewInner({ row }: { row: SharedRow }) {
           <Link to="/" className="flex items-center gap-2">
             <Wordmark />
           </Link>
-          <Button asChild size="sm" variant="outline">
-            <Link to="/">Tự vẽ bài như này</Link>
+          <Button size="sm" variant={saved ? 'outline' : 'default'} className="gap-1.5" onClick={handleSave} disabled={saving}>
+            {saving ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : saved ? (
+              <Check className="w-4 h-4" />
+            ) : (
+              <Save className="w-4 h-4" />
+            )}
+            {saving ? 'Đang lưu…' : saved ? 'Đã lưu — Xem lại' : 'Lưu bài này'}
           </Button>
         </header>
 
