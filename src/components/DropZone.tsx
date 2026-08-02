@@ -162,8 +162,20 @@ export function DropZone() {
 
   return (
     <div className="absolute inset-0 flex items-center justify-center z-10 pointer-events-none px-4 pb-4 pt-20">
+      {/* ─── Nền hiệu ứng như Landing (lưới mảnh + quầng sáng trôi) ─── */}
       <div
-        className={`glass rounded-2xl p-4 sm:p-6 border-2 border-dashed max-w-md w-full pointer-events-auto transition-all duration-300 max-h-[calc(100dvh-6rem)] overflow-y-auto scrollbar-hide ${
+        aria-hidden
+        className="absolute inset-0 -z-10 graph-paper-fine opacity-60"
+        style={{
+          maskImage: 'radial-gradient(ellipse 75% 65% at 50% 42%, black, transparent 78%)',
+          WebkitMaskImage: 'radial-gradient(ellipse 75% 65% at 50% 42%, black, transparent 78%)',
+        }}
+      />
+      <div aria-hidden className="lp-orb lp-orb-a w-72 h-72 top-10 left-4 sm:left-24 bg-primary/25 -z-10" />
+      <div aria-hidden className="lp-orb lp-orb-b w-80 h-80 bottom-4 right-4 sm:right-24 bg-blue-400/15 -z-10" />
+
+      <div
+        className={`relative glass rounded-2xl p-4 sm:p-6 border-2 border-dashed max-w-md w-full pointer-events-auto transition-all duration-300 max-h-[calc(100dvh-6rem)] overflow-y-auto scrollbar-hide ${
           isDragging
             ? 'border-primary bg-primary/10 scale-105'
             : 'border-border/50 animate-pulse-border'
