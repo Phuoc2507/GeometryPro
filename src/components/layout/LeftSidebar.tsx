@@ -28,6 +28,7 @@ import { QueueItem } from '@/types/geometry';
 import { Project } from '@/types/project';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
+import { UserMenu } from '@/components/UserMenu';
 import { formatDistanceToNow } from 'date-fns';
 import { vi } from 'date-fns/locale';
 
@@ -535,11 +536,10 @@ function SidebarContent() {
         </DialogContent>
       </Dialog>
 
-      {/* Footer */}
-      <div className="p-4 border-t border-border/50">
-        <p className="text-xs text-muted-foreground text-center">
-          v2.6.3 — AI-Powered Geometry
-        </p>
+      {/* Footer — tài khoản ở góc dưới trái */}
+      <div className="p-3 border-t border-border/50 flex items-center gap-2">
+        <UserMenu />
+        <span className="text-sm font-medium text-muted-foreground">Tài khoản</span>
       </div>
     </>
   );

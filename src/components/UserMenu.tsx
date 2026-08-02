@@ -206,6 +206,9 @@ export function UserMenu() {
           <LogOut className="w-4 h-4 mr-2" />
           Đăng xuất
         </DropdownMenuItem>
+        <div className="px-2 pt-1.5 pb-0.5 mt-1 border-t border-border/40 text-[10px] text-muted-foreground/60 text-center">
+          v2.6.3 — AI-Powered Geometry
+        </div>
       </DropdownMenuContent>
     </DropdownMenu>
     </>

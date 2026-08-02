@@ -20,7 +20,6 @@ import { CaptureModal } from '@/components/CaptureModal';
 import { ShareSheet } from '@/components/ShareSheet';
 import { OpenFileButton } from '@/components/OpenFileButton';
 import { SaveGeometryDialog } from '@/components/SaveGeometryDialog';
-import { UserMenu } from '@/components/UserMenu';
 import { ManualDrawToolbar } from '@/components/ManualDrawToolbar';
 import { useAuth } from '@/context/AuthContext';
 import { UpgradeModal } from '@/components/UpgradeModal';
@@ -274,9 +273,7 @@ export function TopToolbar() {
             </div>
           </DropdownMenuContent>
         </DropdownMenu>
-
-        <div className="w-px h-6 bg-border/50 mx-1" />
-        <UserMenu />
+        {/* Avatar tài khoản đã dời xuống góc dưới trái (LeftSidebar) */}
       </div>
      </TooltipProvider>
 
