@@ -5,7 +5,7 @@
  * phần xem/sửa hình (chip tổng quan, số đo, độ dài cạnh, sửa toạ độ, JSON) không bị nhân đôi.
  */
 import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
-import { Box, MapPin, Ruler, Cuboid, Code, ChevronDown, Info, Pencil, Undo2, Redo2, Check, Copy, Globe } from 'lucide-react';
+import { Box, MapPin, Ruler, Cuboid, Code, ChevronDown, Info, Pencil, Undo2, Redo2, Check, Copy, Globe, Layers } from 'lucide-react';
 import type { Point3D } from '@/types/geometry';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
@@ -13,7 +13,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { useGeometryOptional } from '@/context/GeometryContext';
 import { computeProperties, fmt, isAnalysisFigure } from '@/lib/geometry/calculations';
-import { getPrimarySphereCenter, recenterGeometry } from '@/lib/geometry/recenterGeometry';
+import { getPrimarySphereCenter, getBaseFaceCenter, recenterGeometry } from '@/lib/geometry/recenterGeometry';
 import { projectScene } from '@/lib/advanceProject';
 import { DynamicPointControls } from '@/components/DynamicPointControls';
 import { cn } from '@/lib/utils';
@@ -116,26 +116,35 @@ export function GeometryPropertiesTab() {
   const properties = useMemo(() => (geometry ? computeProperties(geometry) : null), [geometry]);
   const analysisFig = useMemo(() => (geometry ? isAnalysisFigure(geometry) : false), [geometry]);
 
-  // ─── Chế độ xem: DỜI GỐC TOẠ ĐỘ VỀ TÂM MẶT CẦU (chỉ hiện với bài có mặt cầu) ───
-  // Bật ⇒ toạ độ mọi điểm được tính lại theo tâm cầu (tâm cầu thành O(0,0,0)); trục & lưới
-  // đi qua tâm nên dễ nhìn. Đây là đổi gốc (tịnh tiến) — không sai hình học.
-  const recenter = context?.state.recenterToSphere ?? false;
+  // ─── Chế độ xem: DỜI GỐC TOẠ ĐỘ VỀ TÂM MẶT CẦU / TÂM MẶT ĐÁY ───
+  // Bật ⇒ toạ độ mọi điểm được tính lại theo tâm đã chọn (tâm đó thành O(0,0,0)); trục & lưới
+  // đi qua tâm nên dễ nhìn. Chỉ là đổi gốc (tịnh tiến) — không sai hình học. Mặt cầu hiện với
+  // bài có cầu; mặt đáy hiện với hình chóp/khối có đáy. Hai chế độ loại trừ nhau (reducer lo).
+  const recenterSphere = context?.state.recenterToSphere ?? false;
+  const recenterBase = context?.state.recenterToBase ?? false;
   const sphereCenter = useMemo(() => getPrimarySphereCenter(geometry), [geometry]);
+  const baseCenter = useMemo(() => getBaseFaceCenter(geometry), [geometry]);
   const hasSphere = !!sphereCenter;
-  const displayGeometry = useMemo(
-    () => (recenter && sphereCenter && geometry ? recenterGeometry(geometry, sphereCenter) : geometry),
-    [geometry, recenter, sphereCenter],
+  const hasBase = !!baseCenter;
+  // Gốc thay thế đang áp (nếu có). sphereCenter/baseCenter đã memo nên ổn định theo geometry.
+  const activeCenter = useMemo(
+    () => (recenterSphere && sphereCenter ? sphereCenter : recenterBase && baseCenter ? baseCenter : null),
+    [recenterSphere, recenterBase, sphereCenter, baseCenter],
   );
-  // Bảng hiển thị toạ độ theo gốc MỚI; khi ghi phải cộng lại tâm cầu để lưu về gốc GỐC
+  const displayGeometry = useMemo(
+    () => (activeCenter && geometry ? recenterGeometry(geometry, activeCenter) : geometry),
+    [geometry, activeCenter],
+  );
+  // Bảng hiển thị toạ độ theo gốc MỚI; khi ghi phải cộng lại tâm đang áp để lưu về gốc GỐC
   // (giữ khớp với lời giải/đề — vốn neo theo gốc gốc).
   const handleUpdatePoint = useCallback((id: string, x: number, y: number, z: number) => {
     if (!context) return;
-    if (recenter && sphereCenter) {
-      context.updatePoint(id, x + sphereCenter.x, y + sphereCenter.y, z + sphereCenter.z);
+    if (activeCenter) {
+      context.updatePoint(id, x + activeCenter.x, y + activeCenter.y, z + activeCenter.z);
     } else {
       context.updatePoint(id, x, y, z);
     }
-  }, [context, recenter, sphereCenter]);
+  }, [context, activeCenter]);
 
   // Đỉnh/cạnh để ĐẾM & LIỆT KÊ: ở Advance chỉ lấy phần ĐANG HIỆN (bỏ điểm mẫu/khung dây ẩn);
   // bài thường giữ nguyên toàn bộ.
@@ -294,15 +303,37 @@ export function GeometryPropertiesTab() {
                 <label className="flex items-center justify-between gap-2 cursor-pointer">
                   <span className="text-[11.5px] font-medium text-foreground">Dời trục toạ độ về tâm hình cầu</span>
                   <Switch
-                    checked={recenter}
+                    checked={recenterSphere}
                     onCheckedChange={() => context.toggleRecenterToSphere()}
                     aria-label="Dời trục toạ độ về tâm hình cầu"
                   />
                 </label>
                 <p className="text-[10.5px] text-muted-foreground/80 mt-0.5 leading-snug">
-                  {recenter
+                  {recenterSphere
                     ? 'Đang lấy tâm cầu làm gốc O(0,0,0) — toạ độ bên dưới đã tính lại theo gốc mới.'
                     : 'Đặt tâm mặt cầu về gốc O(0,0,0); toạ độ mọi điểm được tính lại theo gốc mới.'}
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* Công tắc: DỜI GỐC VỀ TÂM MẶT PHẲNG ĐÁY — chỉ hiện với hình chóp/khối có đáy. */}
+          {hasBase && (
+            <div className="flex items-start gap-2 mb-2 p-2 rounded-lg bg-primary/5 border border-primary/15">
+              <Layers className="w-3.5 h-3.5 text-primary shrink-0 mt-0.5" />
+              <div className="flex-1 min-w-0">
+                <label className="flex items-center justify-between gap-2 cursor-pointer">
+                  <span className="text-[11.5px] font-medium text-foreground">Dời trục toạ độ về tâm mặt phẳng đáy</span>
+                  <Switch
+                    checked={recenterBase}
+                    onCheckedChange={() => context.toggleRecenterToBase()}
+                    aria-label="Dời trục toạ độ về tâm mặt phẳng đáy"
+                  />
+                </label>
+                <p className="text-[10.5px] text-muted-foreground/80 mt-0.5 leading-snug">
+                  {recenterBase
+                    ? 'Đang lấy tâm mặt đáy làm gốc O(0,0,0) — toạ độ bên dưới đã tính lại theo gốc mới.'
+                    : 'Đặt tâm mặt phẳng đáy về gốc O(0,0,0); toạ độ mọi điểm được tính lại theo gốc mới.'}
                 </p>
               </div>
             </div>
