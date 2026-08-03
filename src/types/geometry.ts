@@ -435,6 +435,8 @@ export interface GeometryState {
   showPoints: boolean;
   autoColor: boolean;
   showCoordinateGrid: boolean;
+  /** Chế độ xem: dời gốc toạ độ về tâm mặt cầu (chỉ hình có cầu). Xem recenterGeometry.ts. */
+  recenterToSphere: boolean;
   aiModel: 'max' | 'high' | 'medium' | 'low';
   useReasoning: boolean;
   streamingText?: string;
@@ -452,6 +454,7 @@ export type GeometryAction =
   | { type: 'TOGGLE_POINTS' }
   | { type: 'TOGGLE_AUTO_COLOR' }
   | { type: 'TOGGLE_COORDINATE_GRID' }
+  | { type: 'TOGGLE_RECENTER_TO_SPHERE' }
   | { type: 'UPDATE_SCAN_PROGRESS'; progress: number; status: string }
   | { type: 'SET_GEOMETRY'; geometry: GeometryData; undoStack?: GeometryData[]; redoStack?: GeometryData[] }
   | { type: 'START_BUILDING' }

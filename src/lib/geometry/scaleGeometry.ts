@@ -1,6 +1,50 @@
 import type { GeometryData, PointCoordinates } from '@/types/geometry';
 
 /**
+ * Độ lớn toạ độ lớn nhất (theo trị tuyệt đối) trong hình — xét points và tâm/bán kính
+ * các khối có toạ độ tuyệt đối. Chấp nhận payload cũ (tâm là id điểm) qua việc tra ngược.
+ * Cùng tập primitive với vòng scale bên dưới để hệ số luôn khớp.
+ */
+export function computeMaxExtent(geometry: GeometryData | null): number {
+  if (!geometry) return 0;
+  const pointById = new Map(geometry.points.map((p) => [p.id, p]));
+  const finite = (value: unknown): number => {
+    const n = Number(value);
+    return Number.isFinite(n) ? n : 0;
+  };
+  const coords = (value: unknown): PointCoordinates => {
+    if (typeof value === 'string') {
+      const p = pointById.get(value);
+      return p ? { x: finite(p.x), y: finite(p.y), z: finite(p.z) } : { x: 0, y: 0, z: 0 };
+    }
+    if (value && typeof value === 'object') {
+      const r = value as Record<string, unknown>;
+      return { x: finite(r.x), y: finite(r.y), z: finite(r.z) };
+    }
+    return { x: 0, y: 0, z: 0 };
+  };
+  let max = 0;
+  const inc = (c: PointCoordinates) => {
+    max = Math.max(max, Math.abs(c.x), Math.abs(c.y), Math.abs(c.z));
+  };
+  geometry.points.forEach((p) => inc({ x: finite(p.x), y: finite(p.y), z: finite(p.z) }));
+  geometry.spheres?.forEach((s) => { inc(coords(s.center)); max = Math.max(max, Math.abs(finite(s.radius))); });
+  geometry.circles?.forEach((c) => { inc(coords(c.center)); max = Math.max(max, Math.abs(finite(c.radius))); });
+  geometry.cylinders?.forEach((cy) => { inc(coords(cy.center1)); inc(coords(cy.center2)); max = Math.max(max, Math.abs(finite(cy.radius))); });
+  geometry.cones?.forEach((co) => { inc(coords(co.apex)); inc(coords(co.baseCenter)); max = Math.max(max, Math.abs(finite(co.radius))); });
+  return max;
+}
+
+/**
+ * Hệ số scaleGeometry đang áp cho hình: 1 nếu hình đủ nhỏ (max ≤ 20), ngược lại max/8.
+ * Dùng để lưới toạ độ hiện SỐ THẬT: toạ độ tại vạch lưới thứ i (đơn vị Three) = i × hệ số.
+ */
+export function getScaleFactor(geometry: GeometryData | null): number {
+  const maximum = computeMaxExtent(geometry);
+  return maximum > 20 ? maximum / 8 : 1;
+}
+
+/**
  * Returns a normalized, scaled copy of geometry that fits the renderer's
  * standard bounds. Legacy payloads may reference a point by id where newer
  * payloads carry coordinates, so normalization deliberately accepts unknown.
@@ -63,29 +107,9 @@ export function scaleGeometry(geometry: GeometryData | null): GeometryData | nul
     })),
   };
 
-  let maximum = 0;
-  const includePoint = (point: PointCoordinates) => {
-    maximum = Math.max(maximum, Math.abs(point.x), Math.abs(point.y), Math.abs(point.z));
-  };
-  normalized.points.forEach(includePoint);
-  normalized.spheres?.forEach((sphere) => {
-    includePoint(sphere.center);
-    maximum = Math.max(maximum, Math.abs(sphere.radius));
-  });
-  normalized.circles?.forEach((circle) => {
-    includePoint(circle.center);
-    maximum = Math.max(maximum, Math.abs(circle.radius));
-  });
-  normalized.cylinders?.forEach((cylinder) => {
-    includePoint(cylinder.center1);
-    includePoint(cylinder.center2);
-    maximum = Math.max(maximum, Math.abs(cylinder.radius));
-  });
-  normalized.cones?.forEach((cone) => {
-    includePoint(cone.apex);
-    includePoint(cone.baseCenter);
-    maximum = Math.max(maximum, Math.abs(cone.radius));
-  });
+  // Hệ số scale tính trên chính `normalized` (đã ép số hữu hạn + tra tâm) — computeMaxExtent
+  // dùng cùng cách chuẩn hoá nên cho kết quả trùng, giữ một nguồn sự thật duy nhất.
+  const maximum = computeMaxExtent(normalized);
 
   if (maximum <= 20) return normalized;
 

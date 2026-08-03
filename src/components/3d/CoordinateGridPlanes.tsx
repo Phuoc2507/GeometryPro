@@ -9,6 +9,8 @@ interface CoordinateGridPlanesProps {
   size?: number;
   is2D?: boolean;
   unit?: string;
+  /** Toạ độ thật tại mỗi vạch lưới = vạch (đơn vị Three) × unitPerStep (hệ số auto-scale). 1 = không scale. */
+  unitPerStep?: number;
 }
 
 function AxisLabel({ position, label, color }: { position: [number, number, number]; label: string; color: string }) {
@@ -28,6 +30,31 @@ function AxisLabel({ position, label, color }: { position: [number, number, numb
   );
 }
 
+// Nhãn SỐ tại một vạch trên trục — nhỏ hơn nhãn tên trục, mờ hơn để không rối.
+function TickLabel({ position, value, color }: { position: [number, number, number]; value: string; color: string }) {
+  return (
+    <Html position={position} center distanceFactor={20} zIndexRange={[9, 0]} style={{ pointerEvents: 'none' }}>
+      <span style={{
+        color,
+        fontWeight: 600,
+        fontSize: '10px',
+        opacity: 0.9,
+        textShadow: '0 0 3px rgba(0,0,0,0.85)',
+        pointerEvents: 'none',
+        userSelect: 'none',
+        fontVariantNumeric: 'tabular-nums',
+      }}>
+        {value}
+      </span>
+    </Html>
+  );
+}
+
+// Số đẹp: làm tròn 2 chữ số, bỏ ".00". (VD 3 → "3", 3.7 → "3.7")
+function fmtTick(v: number): string {
+  return String(Math.round(v * 100) / 100);
+}
+
 export function CoordinateGridPlanes({
   showXY = true,
   showXZ = false,
@@ -35,9 +62,16 @@ export function CoordinateGridPlanes({
   size = 8,
   is2D = false,
   unit,
+  unitPerStep = 1,
 }: CoordinateGridPlanesProps) {
   const step = 1;
   const halfSize = size / 2;
+
+  // Vạch số trên trục: thưa dần theo kích thước lưới để không rối (≈ tối đa 6 vạch mỗi phía).
+  const tickStep = Math.max(1, Math.round(halfSize / 6));
+  const ticks: number[] = [];
+  for (let i = tickStep; i <= halfSize + 1e-9; i += tickStep) ticks.push(i);
+
   const xLabel = unit ? `x (${unit})` : "x";
   const yLabel = unit ? `y (${unit})` : "y";
   const zLabel = unit ? `z (${unit})` : "z";
@@ -85,6 +119,21 @@ export function CoordinateGridPlanes({
       <Line points={[[is2D ? -20 : 0,0,0],[is2D ? 20 : axisLength,0,0]]} color="#ef4444" lineWidth={2.5} />
       <Line points={[[0,0,is2D ? -20 : 0],[0,0,is2D ? 20 : axisLength]]} color="#22c55e" lineWidth={2.5} />
       {!is2D && <Line points={[[0,0,0],[0,axisLength,0]]} color="#3b82f6" lineWidth={2.5} />}
+
+      {/* Số toạ độ trên trục/lưới — theo cùng công tắc "lưới toạ độ". Số = vạch × hệ số scale,
+          nên khi đã dời gốc về tâm cầu (hệ số thường = 1) số đọc đúng theo gốc mới. */}
+      {showXY && ticks.map((i) => (
+        <group key={`tick-${i}`}>
+          {/* Trục x (đỏ) — cả hai phía, nằm trên mặt đất Oxy */}
+          <TickLabel position={[i, 0.06, -0.3]} value={fmtTick(i * unitPerStep)} color="#ef4444" />
+          <TickLabel position={[-i, 0.06, -0.3]} value={fmtTick(-i * unitPerStep)} color="#ef4444" />
+          {/* Trục y (xanh lá) — math y vẽ trên trục z của Three, cả hai phía */}
+          <TickLabel position={[-0.3, 0.06, i]} value={fmtTick(i * unitPerStep)} color="#22c55e" />
+          <TickLabel position={[-0.3, 0.06, -i]} value={fmtTick(-i * unitPerStep)} color="#22c55e" />
+          {/* Trục z (xanh dương) — math z vẽ trên trục y của Three, chỉ phía dương (nơi có đường trục) */}
+          {!is2D && <TickLabel position={[-0.28, i, -0.28]} value={fmtTick(i * unitPerStep)} color="#3b82f6" />}
+        </group>
+      ))}
 
       {/* XY plane grid (z=0 in math = y=0 in Three.js) — this is the ground */}
       {showXY && generateGridLines('x', 'y', 'z', 0).map((pts, i) => {

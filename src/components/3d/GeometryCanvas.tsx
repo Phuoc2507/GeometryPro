@@ -15,7 +15,8 @@ import {
   useCameraStateOptional,
   type CaptureHandler,
 } from '@/context/CameraContext';
-import { scaleGeometry } from '@/lib/geometry/scaleGeometry';
+import { scaleGeometry, getScaleFactor } from '@/lib/geometry/scaleGeometry';
+import { recenterGeometryOnSphere } from '@/lib/geometry/recenterGeometry';
 import { computeFitBounds } from '@/lib/geometry/fitBounds';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import type { GeometryData } from '@/types/geometry';
@@ -245,11 +246,13 @@ interface SceneProps {
   autoRotate?: boolean;
   showCoordinateGrid?: boolean;
   is2D?: boolean;
+  /** Hệ số scaleGeometry đang áp — để lưới hiện SỐ THẬT (toạ độ = vạch × hệ số). 1 = không scale. */
+  scaleFactor?: number;
   /** Task C1/C2: điểm cần "bay tới" (toạ độ math). nonce đổi = trigger bay mới. null = không bay (mặc định). */
   focus?: { pts: Array<{ x: number; y: number; z: number }>; nonce: number } | null;
 }
 
-function Scene({ geometry, isBuilding, autoRotate = false, is2D = false, focus = null, showCoordinateGrid = true }: SceneProps) {
+function Scene({ geometry, isBuilding, autoRotate = false, is2D = false, focus = null, showCoordinateGrid = true, scaleFactor = 1 }: SceneProps) {
   const geometryContext = useGeometryOptional();
   const cameraContext = useCameraOptional();
   const { camera } = useThree();
@@ -416,7 +419,7 @@ function Scene({ geometry, isBuilding, autoRotate = false, is2D = false, focus =
       />
 
       {/* Coordinate Grid with axis labels */}
-      <CoordinateGridPlanes showXY={showCoordinateGrid} showXZ={false} showYZ={false} size={gridSize} is2D={is2D} unit={geometry?.axisUnit} />
+      <CoordinateGridPlanes showXY={showCoordinateGrid} showXZ={false} showYZ={false} size={gridSize} is2D={is2D} unit={geometry?.axisUnit} unitPerStep={scaleFactor} />
 
       {/* Geometries */}
       <group>
@@ -467,6 +470,7 @@ export function GeometryCanvas({
   const isBuilding = state?.isBuilding ?? false;
   const autoRotate = state?.autoRotate ?? false;
   const showCoordinateGrid = state?.showCoordinateGrid ?? true;
+  const recenterToSphere = state?.recenterToSphere ?? false;
 
   const is2D = useMemo(() => {
     return geometry?.tags?.some((t: string) => t.includes('2D')) || false;
@@ -512,10 +516,17 @@ export function GeometryCanvas({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [geometryContext, cameraContext]);
 
+  // Chế độ xem "dời trục về tâm cầu": tịnh tiến TRƯỚC khi auto-scale, để tâm cầu về gốc O
+  // rồi mới co cho vừa khung. Không có cầu (hoặc tắt) → giữ nguyên hình.
+  const displayBase = useMemo(
+    () => (recenterToSphere ? recenterGeometryOnSphere(geometry ?? null) : (geometry ?? null)),
+    [geometry, recenterToSphere],
+  );
+
   // Auto-scale large geometry coordinates to fit within standard [-8, 8] bounds
-  const scaledGeometry = useMemo(() => {
-    return scaleGeometry(geometry);
-  }, [geometry]);
+  const scaledGeometry = useMemo(() => scaleGeometry(displayBase), [displayBase]);
+  // Hệ số scale tương ứng → truyền xuống lưới để hiện SỐ THẬT tại mỗi vạch.
+  const gridScaleFactor = useMemo(() => getScaleFactor(displayBase), [displayBase]);
 
   // Get canvas reference after render
   useEffect(() => {
@@ -575,7 +586,7 @@ export function GeometryCanvas({
           }}
           style={{ background: 'transparent' }}
         >
-          <Scene geometry={scaledGeometry} isBuilding={isBuilding} autoRotate={autoRotate} showCoordinateGrid={showCoordinateGrid} is2D={is2D} focus={cameraContext?.cameraFocus ?? focus} />
+          <Scene geometry={scaledGeometry} isBuilding={isBuilding} autoRotate={autoRotate} showCoordinateGrid={showCoordinateGrid} is2D={is2D} scaleFactor={gridScaleFactor} focus={cameraContext?.cameraFocus ?? focus} />
         </Canvas>
       </ErrorBoundary>
 
