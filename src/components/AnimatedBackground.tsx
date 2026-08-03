@@ -103,6 +103,9 @@ export function AnimatedBackground({ className }: { className?: string }) {
     let w = 0, h = 0, raf = 0, running = true;
     let ftEMA = 16;                                 // trung bình thời gian 1 khung (ms) — dùng để tự hạ tải
     let lastT = 0;
+    // Vùng "cấm" ở giữa (nơi đặt thẻ nhập đề) — khối sẽ bay VÒNG QUANH, không chui sau thẻ.
+    // Nửa-kích-thước tính theo px, bọc quanh thẻ + lề, nhưng luôn chừa ít nhất ~8% viền ngoài.
+    let keepHW = 0, keepHH = 0;
     let polys: Poly[] = [];
     let stars: Star[] = [];
     const rnd = () => Math.random();
@@ -130,9 +133,13 @@ export function AnimatedBackground({ className }: { className?: string }) {
       const col = `${Math.round(lerp(BLUE[0], PURPLE[0], mix))},${Math.round(lerp(BLUE[1], PURPLE[1], mix))},${Math.round(lerp(BLUE[2], PURPLE[2], mix))}`;
       const spin = lerp(0.0108, 0.0042, depth) * motionScale;  // gần xoay nhanh hơn
       const sgn = () => (rnd() < 0.5 ? -1 : 1);
+      // Sinh khối trên một VÒNG bao ngoài vùng thẻ (để không nằm sẵn sau thẻ).
+      const ang = rnd() * 6.283;
+      const rr = 1.06 + rnd() * 0.5;
       return {
         shape: (rnd() * SHAPES.length) | 0,
-        fx: rnd(), fy: rnd(),
+        fx: 0.5 + Math.cos(ang) * (keepHW / (w || 1)) * rr,
+        fy: 0.5 + Math.sin(ang) * (keepHH / (h || 1)) * rr,
         vfx: (rnd() - 0.5) * 0.00013 * motionScale, vfy: (rnd() - 0.5) * 0.00013 * motionScale,
         size: lerp(150, 44, depth),
         zoff: lerp(1.1, 5.2, depth),
@@ -152,6 +159,9 @@ export function AnimatedBackground({ className }: { className?: string }) {
       canvas.width = Math.max(1, Math.round(w * dpr));
       canvas.height = Math.max(1, Math.round(h * dpr));
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      // Vùng cấm bọc quanh thẻ (~ max-w-md 448px, chừa 40px lề), nhưng không quá 42% viewport.
+      keepHW = Math.min((Math.min(448, w - 32)) / 2 + 40, w * 0.42);
+      keepHH = Math.min((Math.min(640, h - 80)) / 2 + 40, h * 0.42);
       const pCount = Math.min(18, Math.max(6, Math.round((w * h) / 108000 * perf)));
       polys = Array.from({ length: pCount }, makePoly);
       const sCount = Math.min(220, Math.max(40, Math.round((w * h) / 9000 * perf)));
@@ -240,6 +250,15 @@ export function AnimatedBackground({ className }: { className?: string }) {
       for (const p of ordered) {
         p.rx += p.sx; p.ry += p.sy; p.rz += p.sz;
         p.fx += p.vfx; p.fy += p.vfy;
+        // Nếu khối lấn vào vùng thẻ giữa → đẩy dần ra ngoài (bay vòng quanh, không bị che).
+        const dx = p.fx * w - w / 2, dy = p.fy * h - h / 2;
+        const nd = Math.hypot(dx / (keepHW || 1), dy / (keepHH || 1));
+        if (nd < 1) {
+          const len = Math.hypot(dx, dy) || 1;
+          const push = (1 - nd) * 0.012;
+          p.fx += (dx / len) * push;
+          p.fy += (dy / len) * push;
+        }
         if (p.fx < -0.2) p.fx += 1.4; else if (p.fx > 1.2) p.fx -= 1.4;
         if (p.fy < -0.2) p.fy += 1.4; else if (p.fy > 1.2) p.fy -= 1.4;
         paintPoly(p, p.fx * w, p.fy * h);
