@@ -32,6 +32,8 @@ interface DraggablePointProps {
   allLines: Line3D[];
   delay: number;
   isBuilding: boolean;
+  /** Ẩn NHÃN chữ (vẫn giữ chấm): đỉnh ẩn danh của mặt phẳng kiểu SGK. */
+  hideLabel?: boolean;
 }
 
 /**
@@ -52,7 +54,7 @@ function closestPointOnSegment(
   return { point: closest, distance: pos.distanceTo(closest) };
 }
 
-export function DraggablePoint({ point, allPoints, allLines, delay, isBuilding }: DraggablePointProps) {
+export function DraggablePoint({ point, allPoints, allLines, delay, isBuilding, hideLabel = false }: DraggablePointProps) {
   const context = useGeometryOptional();
   const meshRef = useRef<THREE.Mesh>(null);
   const groupRef = useRef<THREE.Group>(null);
@@ -237,7 +239,7 @@ export function DraggablePoint({ point, allPoints, allLines, delay, isBuilding }
       )}
 
       {/* Label */}
-      {point.label && (
+      {point.label && !hideLabel && (
         <Html position={[0, 0, 0]} center distanceFactor={12} zIndexRange={[30, 0]} style={{ pointerEvents: 'none' }}>
           <div 
             style={{

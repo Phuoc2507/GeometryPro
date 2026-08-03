@@ -46,6 +46,7 @@ import { DynamicUnfolding } from './DynamicUnfolding';
 import { useToolMode } from '@/context/ToolModeContext';
 import { collectPlanePointIds } from '@/lib/geometry/planeReferences';
 import { deriveSurfacePlanes } from '@/lib/geometry/surfaceFaces';
+import { planeSgkName } from '@/lib/geometry/planeSgkLabel';
 
 // Advance mode: cờ dim → mờ (giữ ngữ cảnh câu trước), highlight/không cờ → đầy.
 const DIM_OPACITY = 0.25;
@@ -250,6 +251,20 @@ export function GeometryRenderer({ geometry: geometryProp, isBuilding }: Geometr
     return [...byId.values()];
   }, [geometry, isManualMode]);
 
+  // Đỉnh ẩn danh của mặt phẳng kiểu SGK (P', P''…) → ẩn NHÃN, chỉ hiện MỘT nhãn "(P)"
+  // do AnimatedPlane3D vẽ. Chỉ gom id đỉnh của những mặt phẳng thật sự "ẩn danh".
+  const planeLabelHiddenIds = React.useMemo(() => {
+    const set = new Set<string>();
+    if (!geometry) return set;
+    const byId = new Map(geometry.points.map((p) => [p.id, p]));
+    for (const plane of renderPlanes) {
+      if (!plane.pointIds?.length) continue;
+      const labels = plane.pointIds.map((id) => byId.get(id)?.label);
+      if (planeSgkName(labels)) plane.pointIds.forEach((id) => set.add(id));
+    }
+    return set;
+  }, [geometry, renderPlanes]);
+
   if (!geometry) return null;
 
   const {
@@ -299,6 +314,7 @@ export function GeometryRenderer({ geometry: geometryProp, isBuilding }: Geometr
             allLines={lines}
             delay={index * pointDelay}
             isBuilding={effectiveIsBuilding}
+            hideLabel={planeLabelHiddenIds.has(point.id)}
           />
         ) : (
           <AnimatedPoint
@@ -309,6 +325,7 @@ export function GeometryRenderer({ geometry: geometryProp, isBuilding }: Geometr
             highlighted={highlightedIds.has(point.id) || highlightedIds.has(point.label)}
             opacity={point.dim ? DIM_OPACITY : 1}
             emphasize={!!point.highlight}
+            hideLabel={planeLabelHiddenIds.has(point.id)}
           />
         );
       })}

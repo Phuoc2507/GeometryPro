@@ -35,9 +35,11 @@ interface AnimatedPointProps {
   opacity?: number;
   /** Advance mode: điểm mới ở câu hiện tại → nổi nhẹ (to hơn, sáng hơn). */
   emphasize?: boolean;
+  /** Ẩn NHÃN chữ (vẫn giữ chấm): dùng cho đỉnh ẩn danh của mặt phẳng kiểu SGK. */
+  hideLabel?: boolean;
 }
 
-export function AnimatedPoint({ point, delay, isBuilding, highlighted = false, opacity = 1, emphasize = false }: AnimatedPointProps) {
+export function AnimatedPoint({ point, delay, isBuilding, highlighted = false, opacity = 1, emphasize = false, hideLabel = false }: AnimatedPointProps) {
   const meshRef = useRef<THREE.Mesh>(null);
   const glowRef = useRef<THREE.Mesh>(null);
   const [visible, setVisible] = useState(true);
@@ -99,6 +101,7 @@ export function AnimatedPoint({ point, delay, isBuilding, highlighted = false, o
         <meshBasicMaterial color={pointColor} transparent={opacity < 1} opacity={opacity} />
       </mesh>
 
+        {!hideLabel && (
         <Html position={[0, 0, 0]} center distanceFactor={12} zIndexRange={[30, 0]} style={{ pointerEvents: 'none' }}>
           <div style={{
             transform: `translate(15px, -20px)`, // offset to top-right
@@ -116,6 +119,7 @@ export function AnimatedPoint({ point, delay, isBuilding, highlighted = false, o
             </span>
           </div>
         </Html>
+        )}
     </group>
   );
 }
