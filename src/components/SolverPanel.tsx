@@ -797,15 +797,28 @@ export function SolverContent({ creditNote, compact }: { creditNote?: string; co
   // rồi tự nạp, thay vì hiện "mất". Chỉ khi: đã đăng nhập, có ?id, chưa có kết quả,
   // không có job đang chạy phiên này, và CÓ dấu "đang giải".
   const { user } = useAuth();
-  const [resuming, setResuming] = useState(false);
+  // Khởi tạo NGAY từ dấu localStorage (không đợi auth) để sau F5 KHÔNG nháy màn nhập đề
+  // rồi mới chờ — vì lúc đó user còn null, nếu đợi user thì form hiện ra và bấm Gửi lần nữa
+  // sẽ giải 2 lần. Có dấu "đang giải" cho ?id này ⇒ vào thẳng trạng thái chờ.
+  const [resuming, setResuming] = useState(() => {
+    try {
+      const id = new URLSearchParams(window.location.search).get('id');
+      return !!id && !!getSolving(id);
+    } catch { return false; }
+  });
   useEffect(() => {
     const id = new URLSearchParams(window.location.search).get('id');
-    if (!id || !user) { setResuming(false); return; }
+    if (!id) { setResuming(false); return; }
     if (result || loading) { clearSolving(id); setResuming(false); return; }
     if (!getSolving(id)) { setResuming(false); return; }
 
-    let active = true; let tries = 0; let timer: ReturnType<typeof setTimeout> | undefined;
+    // Còn dấu "đang giải" mà chưa có kết quả → GIỮ trạng thái chờ (che form, cấm giải lại).
     setResuming(true);
+    // Cần phiên đăng nhập để truy vấn DB (RLS). Auth sau F5 nạp trễ → chưa có user thì
+    // cứ chờ, effect chạy lại khi user có; UI vẫn ở trạng thái "đang tải lại".
+    if (!user) return;
+
+    let active = true; let tries = 0; let timer: ReturnType<typeof setTimeout> | undefined;
     const poll = async () => {
       if (!active) return;
       tries++;
@@ -916,7 +929,7 @@ export function SolverContent({ creditNote, compact }: { creditNote?: string; co
     return () => { const c = cameraRef.current; c?.setHighlightedIds(new Set()); c?.setRevealVisibleIds(null); };
   }, [result, currentStep, reveal]);
 
-  const canSolve = !!geometry && problem.trim().length >= 10 && !loading;
+  const canSolve = !!geometry && problem.trim().length >= 10 && !loading && !resuming;
 
   const handleSolve = () => {
     if (!canSolve || !geometry) return;
