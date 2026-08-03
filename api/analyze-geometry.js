@@ -225,6 +225,9 @@ async function handler(req, res) {
           if (_ea && Number.isFinite(_ea.approx)) {
             geometry.engineAnswer = { text: _ea.text, approx: _ea.approx, verified: true }; // engine đã tự kiểm ở nhánh phục vụ này
           }
+          // Lưu TRỌN kết quả engine để /api/solve tái dùng — KHỎI dịch lại (bỏ 1 lượt LLM),
+          // kể cả bài THANG CHỮ (approx=null) mà engineAnswer ở trên không bắt.
+          geometry.engineSolve = { ok: !!k.ok, answers: k.answers || [], violations: k.violations || [], tier: k.tier || null };
           const answersLog = (k.answers || [])
             .map((a) => `${a.kind}: ${a.text}${a.approximate ? ' (xấp xỉ)' : ''}`)
             .join('; ');
@@ -389,6 +392,7 @@ Hãy:
             if (_ea && Number.isFinite(_ea.approx)) {
               geometry.engineAnswer = { text: _ea.text, approx: _ea.approx, verified: true }; // engine đã tự kiểm ở nhánh phục vụ này
             }
+            geometry.engineSolve = { ok: !!k.ok, answers: k.answers || [], violations: k.violations || [], tier: k.tier || null };
             const answersLog = (k.answers || [])
               .map((a) => `${a.kind}: ${a.text}${a.approximate ? ' (xấp xỉ)' : ''}`).join('; ');
             const enginePayload = {

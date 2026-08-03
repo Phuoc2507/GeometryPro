@@ -380,6 +380,11 @@ export interface GeometryData {
   confidence?: number;
   /** Phân loại 3 mức an toàn (B): mức + chính xác + dạng bài + lý do. Lồng ⇒ tự sống sót qua spread. */
   classification?: SafetyClassification;
+  /** Đáp engine (text/approx) đã tính ở bước VẼ — /api/solve tái dùng để KHỎI dịch lại. */
+  engineAnswer?: { text: string; approx: number | null; verified?: boolean };
+  /** TRỌN kết quả engine tất định từ bước VẼ (ok/answers/violations/tier). /api/solve tái dùng
+   *  để bỏ HẲN lượt gọi translator LLM lần hai (tiết kiệm token cho bài THANG CHỮ, cạnh 'a'…). */
+  engineSolve?: { ok: boolean; answers: unknown[]; violations: unknown[]; tier: unknown };
   timeline?: AnimationTimeline;
   agents?: Agent3D[];
   tags?: string[];

@@ -54,8 +54,13 @@ async function handler(req, res) {
   // Engine tất định giải trước → đáp số + verified THẬT. Có thể ném (abstain/schema) ⇒ bọc try/catch.
   let eng = null;
   let engTier = null; // tier khi solveProblem NÉM (hiếm: import kernel-dist hỏng / runAny nổ bất ngờ).
+  const es = geometry.engineSolve;
   const ea = geometry.engineAnswer;
-  if (ea && typeof ea.approx === 'number' && Number.isFinite(ea.approx)) {
+  if (es && typeof es === 'object' && Array.isArray(es.answers)) {
+    // Tái dùng TRỌN kết quả engine từ bước VẼ (engine tất định ⇒ chạy lại cũng y hệt) — bỏ HẲN
+    // lượt gọi translator LLM lần hai. Áp cho cả bài THANG CHỮ (approx=null) mà engineAnswer bỏ sót.
+    eng = { ok: !!es.ok, answers: es.answers, violations: es.violations || [], tier: es.tier || null };
+  } else if (ea && typeof ea.approx === 'number' && Number.isFinite(ea.approx)) {
     // Tái dùng đáp engine từ bước VẼ — KHÔNG chạy engine lại (bỏ dịch+giải trùng)
     eng = { ok: !!ea.verified, answers: [{ text: ea.text, approx: ea.approx }], violations: [] };
   } else {
