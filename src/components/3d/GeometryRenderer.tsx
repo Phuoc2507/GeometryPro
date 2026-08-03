@@ -47,6 +47,7 @@ import { useToolMode } from '@/context/ToolModeContext';
 import { collectPlanePointIds } from '@/lib/geometry/planeReferences';
 import { deriveSurfacePlanes } from '@/lib/geometry/surfaceFaces';
 import { planeSgkName } from '@/lib/geometry/planeSgkLabel';
+import { PlaneSgkLabel } from './PlaneSgkLabel';
 
 // Advance mode: cờ dim → mờ (giữ ngữ cảnh câu trước), highlight/không cờ → đầy.
 const DIM_OPACITY = 0.25;
@@ -253,19 +254,21 @@ export function GeometryRenderer({ geometry: geometryProp, isBuilding }: Geometr
 
   // Đỉnh ẩn danh của mặt phẳng kiểu SGK (P', P''…) → ẩn NHÃN, chỉ hiện MỘT nhãn "(P)"
   // do AnimatedPlane3D vẽ. Chỉ gom id đỉnh của những mặt phẳng thật sự "ẩn danh".
+  // Dựa trên geometry.planes GỐC (không phải renderPlanes) để áp dụng cả mặt phẳng độc lập
+  // (tường, mặt đất) — vốn không nằm trong danh sách mặt suy-ra-từ-khối. Bài cũ thiếu pointIds
+  // thì collectPlanePointIds khớp thêm theo toạ độ.
   const planeLabelHiddenIds = React.useMemo(() => {
     const set = new Set<string>();
     if (!geometry) return set;
     const byId = new Map(geometry.points.map((p) => [p.id, p]));
-    // Bài cũ có thể lưu mặt phẳng KHÔNG kèm pointIds → collectPlanePointIds khớp thêm theo toạ độ.
-    for (const plane of renderPlanes) {
+    for (const plane of geometry.planes ?? []) {
       const ids = [...collectPlanePointIds(plane, geometry.points)];
       if (ids.length < 3) continue;
       const labels = ids.map((id) => byId.get(id)?.label);
       if (planeSgkName(labels)) ids.forEach((id) => set.add(id));
     }
     return set;
-  }, [geometry, renderPlanes]);
+  }, [geometry]);
 
   if (!geometry) return null;
 
@@ -371,6 +374,11 @@ export function GeometryRenderer({ geometry: geometryProp, isBuilding }: Geometr
           }
         }
       })}
+
+      {/* Nhãn mặt phẳng kiểu SGK — "(P)" cạnh một góc (dựa trên planes gốc, kể cả mặt độc lập). */}
+      {mode === 'none' && planes.map((pl) => (
+        pl.hidden ? null : <PlaneSgkLabel key={`sgk-${pl.id}`} plane={pl} points={points} />
+      ))}
 
       {/* Render the Dynamic Cross Section if mode is cut */}
       {mode === 'cut' && (

@@ -4,9 +4,7 @@ import * as THREE from 'three';
 import type { Plane3D } from '@/types/geometry';
 import { getCssHslVar } from '@/lib/getCssHslVar';
 import { loadPreferences } from '@/lib/preferences';
-import { planeSgkName } from '@/lib/geometry/planeSgkLabel';
-import { collectPlanePointIds } from '@/lib/geometry/planeReferences';
-import { Line, Html } from '@react-three/drei';
+import { Line } from '@react-three/drei';
 import { useAnimationOptional } from '@/context/AnimationContext';
 import { useGeometryOptional } from '@/context/GeometryContext';
 import { handleAddPoint } from './ClickToPlacePoint';
@@ -83,26 +81,6 @@ export function AnimatedPlane3D({
     [resolvedPlanePoints],
   );
   useEffect(() => () => polygon?.geometry.dispose(), [polygon]);
-
-  // Kiểu SGK: mặt phẳng có 4 đỉnh ẩn danh (P', P''…) chỉ hiện MỘT nhãn "(P)" cạnh
-  // một góc; nhãn của các đỉnh đó bị ẩn (xem GeometryRenderer). null nếu là điểm tên thật.
-  const sgkName = useMemo(() => {
-    const pts = geometryCtx?.state.geometry?.points;
-    if (!pts) return null;
-    const byId = new Map(pts.map((p) => [p.id, p]));
-    // Bài cũ có thể thiếu pointIds → khớp thêm theo toạ độ.
-    const ids = [...collectPlanePointIds(plane, pts)];
-    if (ids.length < 3) return null;
-    return planeSgkName(ids.map((id) => byId.get(id)?.label));
-  }, [geometryCtx?.state.geometry?.points, plane]);
-
-  // Vị trí nhãn: một góc, đẩy nhẹ ra ngoài tâm cho giống SGK (ghi ngoài mép mặt).
-  const labelPos = useMemo(() => {
-    const v = polygon?.vertices?.[0];
-    const c = polygon?.center;
-    if (!sgkName || !v || !c) return null;
-    return new THREE.Vector3().subVectors(v, c).multiplyScalar(0.16).add(v);
-  }, [polygon, sgkName]);
 
   const scratch = useMemo(() => ({
     matrix: new THREE.Matrix4(),
@@ -251,31 +229,6 @@ export function AnimatedPlane3D({
         transparent
         opacity={tracks.length > 0 ? opacityFactor * 0.6 : 0}
       />
-
-      {/* Nhãn mặt phẳng kiểu SGK — "(P)" cạnh một góc (thay cho 4 nhãn P', P''…). */}
-      {sgkName && labelPos && (
-        <Html
-          position={[labelPos.x, labelPos.y, labelPos.z]}
-          center
-          distanceFactor={12}
-          zIndexRange={[30, 0]}
-          style={{ pointerEvents: 'none' }}
-        >
-          <span
-            className="math-label"
-            style={{
-              color: 'hsl(var(--foreground))',
-              fontSize: '18px',
-              fontStyle: 'italic',
-              WebkitTextStroke: '3px hsl(var(--background))',
-              paintOrder: 'stroke fill',
-              whiteSpace: 'nowrap',
-            }}
-          >
-            ({sgkName})
-          </span>
-        </Html>
-      )}
     </group>
   );
 }

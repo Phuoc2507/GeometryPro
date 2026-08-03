@@ -10,6 +10,11 @@ describe('planeSgkName', () => {
     expect(planeSgkName(['P1', 'P2', 'P3', 'P4'])).toBe('P');
   });
 
+  it('mặt tường/mặt đất W1..W4, G1..G4 → (W), (G)', () => {
+    expect(planeSgkName(['W1', 'W2', 'W3', 'W4'])).toBe('W');
+    expect(planeSgkName(['G1', 'G2', 'G3', 'G4'])).toBe('G');
+  });
+
   it('đỉnh tên thật khác nhau (A,B,C,D) → null, không đụng tới', () => {
     expect(planeSgkName(['A', 'B', 'C', 'D'])).toBeNull();
   });
