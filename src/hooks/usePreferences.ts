@@ -11,6 +11,8 @@ export function usePreferences() {
   const setPref = useCallback(
     <K extends keyof AppPreferences>(key: K, value: AppPreferences[K]) => {
       setPrefs(setPreference(key, value));
+      // Báo cho scene 3D (đang mở ở tab/route khác) cập nhật ngay, vd độ mờ lớp kính.
+      window.dispatchEvent(new Event('geometrypro:prefs'));
     },
     [],
   );

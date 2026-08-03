@@ -13,9 +13,10 @@ import {
 import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { Switch } from '@/components/ui/switch';
+import { Slider } from '@/components/ui/slider';
 import { usePreferences } from '@/hooks/usePreferences';
 import { useGeometryHistory } from '@/hooks/useGeometryHistory';
-import { AppPreferences } from '@/lib/preferences';
+import { AppPreferences, GLASS_OPACITY_MIN, GLASS_OPACITY_MAX } from '@/lib/preferences';
 import { formatCredits } from '@/lib/utils';
 import { authUrlWithRedirect } from '@/lib/authRedirect';
 
@@ -26,7 +27,10 @@ const TIER_LABELS: Record<string, string> = {
   school: 'Trường học',
 };
 
-const PREF_TOGGLES: { key: keyof AppPreferences; label: string; hint: string }[] = [
+// Chỉ các khoá boolean mới lên dạng công tắc (planeGlassOpacity là số, dùng slider riêng).
+type BoolPrefKey = { [K in keyof AppPreferences]: AppPreferences[K] extends boolean ? K : never }[keyof AppPreferences];
+
+const PREF_TOGGLES: { key: BoolPrefKey; label: string; hint: string }[] = [
   { key: 'showCoordinateGrid', label: 'Lưới toạ độ', hint: 'Hiện mặt phẳng lưới Oxy trong không gian.' },
   { key: 'showPoints', label: 'Hiện điểm', hint: 'Hiện nhãn và chấm cho các điểm.' },
   { key: 'autoColorPlanes', label: 'Tô màu mặt phẳng', hint: 'Tự tô màu các mặt phẳng để dễ phân biệt.' },
@@ -298,16 +302,40 @@ const Settings = () => {
               </CardHeader>
               <CardContent className="space-y-4">
                 {PREF_TOGGLES.map(({ key, label, hint }) => (
-                  <div key={key} className="flex items-center justify-between gap-4">
-                    <div className="space-y-0.5">
-                      <Label htmlFor={`pref-${key}`}>{label}</Label>
-                      <p className="text-xs text-muted-foreground">{hint}</p>
+                  <div key={key}>
+                    <div className="flex items-center justify-between gap-4">
+                      <div className="space-y-0.5">
+                        <Label htmlFor={`pref-${key}`}>{label}</Label>
+                        <p className="text-xs text-muted-foreground">{hint}</p>
+                      </div>
+                      <Switch
+                        id={`pref-${key}`}
+                        checked={prefs[key]}
+                        onCheckedChange={(v) => setPref(key, v)}
+                      />
                     </div>
-                    <Switch
-                      id={`pref-${key}`}
-                      checked={prefs[key]}
-                      onCheckedChange={(v) => setPref(key, v)}
-                    />
+
+                    {/* Slider độ mờ lớp kính — chỉ hiện & dùng được khi đã bật tô màu mặt phẳng. */}
+                    {key === 'autoColorPlanes' && prefs.autoColorPlanes && (
+                      <div className="mt-3 ml-0.5 pl-3 border-l-2 border-primary/30 space-y-1.5">
+                        <div className="flex items-center justify-between">
+                          <Label htmlFor="pref-glass" className="text-xs text-muted-foreground">Độ mờ lớp kính</Label>
+                          <span className="text-xs font-medium tabular-nums text-primary">
+                            {Math.round(prefs.planeGlassOpacity * 100)}%
+                          </span>
+                        </div>
+                        <Slider
+                          id="pref-glass"
+                          min={GLASS_OPACITY_MIN}
+                          max={GLASS_OPACITY_MAX}
+                          step={0.01}
+                          value={[prefs.planeGlassOpacity]}
+                          onValueChange={([v]) => setPref('planeGlassOpacity', v)}
+                          aria-label="Độ mờ lớp kính mặt phẳng"
+                        />
+                        <p className="text-[11px] text-muted-foreground">Kéo để chỉnh mặt phẳng đậm/nhạt như kính mờ.</p>
+                      </div>
+                    )}
                   </div>
                 ))}
               </CardContent>

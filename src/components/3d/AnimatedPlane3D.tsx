@@ -3,6 +3,7 @@ import { useFrame, type ThreeEvent } from '@react-three/fiber';
 import * as THREE from 'three';
 import type { Plane3D } from '@/types/geometry';
 import { getCssHslVar } from '@/lib/getCssHslVar';
+import { loadPreferences } from '@/lib/preferences';
 import { Line } from '@react-three/drei';
 import { useAnimationOptional } from '@/context/AnimationContext';
 import { useGeometryOptional } from '@/context/GeometryContext';
@@ -18,6 +19,21 @@ interface AnimatedPlane3DProps {
 }
 
 type OpacityMaterial = THREE.Material & { opacity: number };
+
+/** Độ mờ lớp kính (khi bật "tô màu mặt phẳng"), đọc từ Settings và cập nhật ngay khi đổi. */
+function usePlaneGlassOpacity(): number {
+  const [v, setV] = useState(() => loadPreferences().planeGlassOpacity);
+  useEffect(() => {
+    const update = () => setV(loadPreferences().planeGlassOpacity);
+    window.addEventListener('geometrypro:prefs', update);
+    window.addEventListener('storage', update);
+    return () => {
+      window.removeEventListener('geometrypro:prefs', update);
+      window.removeEventListener('storage', update);
+    };
+  }, []);
+  return v;
+}
 
 export function AnimatedPlane3D({
   plane,
@@ -35,6 +51,7 @@ export function AnimatedPlane3D({
   const geometryCtx = useGeometryOptional();
 
   const autoColor = geometryCtx?.state.autoColor ?? false;
+  const glassOpacity = usePlaneGlassOpacity();
   const color = useMemo(
     () => autoColor ? (plane.color || getCssHslVar('--accent')) : '#94a3b8',
     [autoColor, plane.color],
@@ -132,12 +149,15 @@ export function AnimatedPlane3D({
       group.matrixWorldNeedsUpdate = true;
     }
 
-    // Surface faces render see-through now: the shaded fill is fully
-    // transparent, leaving only the outline. Animated cross-sections (fold /
-    // fade tracks) keep their fill so the animation stays visible.
+    // Mặc định mặt phẳng vẽ SUỐT (chỉ còn viền do AnimatedLine vẽ). Khi bật
+    // "tô màu mặt phẳng" (autoColor) → phủ một LỚP KÍNH MỜ với độ mờ chỉnh trong
+    // Settings. Cross-section động (fold/fade) luôn giữ fill để thấy animation.
     if (tracks.length > 0) {
       const baseOpacity = (plane.opacity ?? 0.2) * nextOpacity * opacityFactor;
       material.opacity = isHighlighted ? Math.min(1, baseOpacity * 2) : baseOpacity;
+    } else if (autoColor) {
+      const baseOpacity = glassOpacity * nextOpacity * opacityFactor;
+      material.opacity = isHighlighted ? Math.min(0.85, baseOpacity * 1.8) : baseOpacity;
     } else {
       material.opacity = 0;
     }
@@ -193,7 +213,7 @@ export function AnimatedPlane3D({
           ref={materialRef}
           color={displayColor}
           transparent
-          opacity={tracks.length > 0 ? (plane.opacity ?? 0.2) * opacityFactor : 0}
+          opacity={tracks.length > 0 ? (plane.opacity ?? 0.2) * opacityFactor : (autoColor ? glassOpacity * opacityFactor : 0)}
           side={THREE.DoubleSide}
           depthWrite={false}
           polygonOffset

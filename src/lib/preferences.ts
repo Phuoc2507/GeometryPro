@@ -17,7 +17,15 @@ export interface AppPreferences {
   showIllustrationValues: boolean;
   /** Luôn hiện lời giải: bỏ ẩn đáp số & không cần bấm "Vì sao?" ở mỗi bước. */
   alwaysShowSolution: boolean;
+  /** Độ mờ lớp kính khi bật "tô màu mặt phẳng" (0.03–0.6). */
+  planeGlassOpacity: number;
 }
+
+/** Giới hạn độ mờ lớp kính để không quá đặc (che hình) hay quá nhạt (không thấy). */
+export const GLASS_OPACITY_MIN = 0.03;
+export const GLASS_OPACITY_MAX = 0.6;
+export const clampGlassOpacity = (v: number): number =>
+  Math.min(GLASS_OPACITY_MAX, Math.max(GLASS_OPACITY_MIN, v));
 
 export const DEFAULT_PREFERENCES: AppPreferences = {
   showCoordinateGrid: true,
@@ -26,6 +34,7 @@ export const DEFAULT_PREFERENCES: AppPreferences = {
   autoRotate: false,
   showIllustrationValues: true,
   alwaysShowSolution: true, // mặc định HIỆN thẳng lời giải (bỏ gating "Vì sao?"); tắt để bật lại chế độ tự nghĩ
+  planeGlassOpacity: 0.18,
 };
 
 const STORAGE_KEY = 'geo3d:prefs';
@@ -38,12 +47,16 @@ function getStorage(): Storage | null {
   }
 }
 
-/** Chỉ nhận giá trị boolean cho mỗi khoá đã biết; khoá thiếu/sai kiểu → default. */
+/** Nhận đúng KIỂU của mỗi khoá đã biết (boolean/number); khoá thiếu/sai kiểu → default. */
 function normalize(parsed: Record<string, unknown>): AppPreferences {
   const out: AppPreferences = { ...DEFAULT_PREFERENCES };
   (Object.keys(DEFAULT_PREFERENCES) as (keyof AppPreferences)[]).forEach((k) => {
-    if (typeof parsed[k] === 'boolean') {
-      out[k] = parsed[k] as boolean;
+    const def = DEFAULT_PREFERENCES[k];
+    const val = parsed[k];
+    if (typeof def === 'boolean' && typeof val === 'boolean') {
+      (out[k] as boolean) = val;
+    } else if (typeof def === 'number' && typeof val === 'number' && Number.isFinite(val)) {
+      (out[k] as number) = k === 'planeGlassOpacity' ? clampGlassOpacity(val) : val;
     }
   });
   return out;
