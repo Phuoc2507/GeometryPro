@@ -177,6 +177,129 @@ function MathText({ text, className }: { text: string; className?: string }) {
   );
 }
 
+// ─── Căn/phân số: hiển thị đẹp (KaTeX) + xấp xỉ thập phân ──────────────────────
+
+/** Đổi căn unicode "a√b" → LaTeX "a\sqrt{b}" (giữ nguyên phần còn lại). */
+function surdUnicodeToTex(s: string): string {
+  return s.replace(/(\d+)?\s*√\s*(\d+(?:\.\d+)?)/g, (_m, c, r) => `${c ?? ''}\\sqrt{${r}}`);
+}
+
+/**
+ * Nếu chuỗi là MỘT GIÁ TRỊ dạng số/căn/phân số (vd "√10", "3√2", "5√2/3", "-7/4")
+ * thì trả LaTeX để render đẹp; ngược lại trả null (để render như văn bản thường).
+ */
+function valueToTex(s: string): string | null {
+  const t = s.trim();
+  if (!/[√/]/.test(t)) return null;                                   // không căn/phân số → không cần
+  if (!/^[-+]?(?:\d+(?:\.\d+)?)?(?:√\d+)?(?:\/\d+)?$/.test(t)) return null;
+  if (!/\d/.test(t)) return null;
+  let sign = '';
+  let body = t;
+  if (body[0] === '-') { sign = '-'; body = body.slice(1); }
+  else if (body[0] === '+') { body = body.slice(1); }
+  const slash = body.indexOf('/');
+  if (slash >= 0) {
+    const num = surdUnicodeToTex(body.slice(0, slash)) || '1';
+    const den = body.slice(slash + 1);
+    return `${sign}\\frac{${num}}{${den}}`;
+  }
+  return `${sign}${surdUnicodeToTex(body)}`;
+}
+
+/** Ô đáp số: render căn/phân số bằng KaTeX; văn xuôi thì bọc LaTeX thô như lời giải. */
+function AnswerMath({ text, className }: { text: string; className?: string }) {
+  const raw = (text || '').trim();
+  if (!raw) return null;
+  const vt = raw.includes('$') ? null : valueToTex(raw);
+  if (vt) {
+    return (
+      <span className={className}>
+        <InlineMath math={vt} renderError={() => <span>{raw}</span>} />
+      </span>
+    );
+  }
+  return <MathText text={autoMathWrap(surdUnicodeToTex(raw))} className={className} />;
+}
+
+/** Làm tròn gọn để hiện "≈": 2 chữ số thập phân, bỏ số 0 thừa (3.162→3.16, 5.20→5.2). */
+function fmtApprox(v: number): string {
+  return `${Math.round(v * 100) / 100}`;
+}
+
+/**
+ * Đánh giá số học một biểu thức LaTeX ĐƠN GIẢN: số, + - * / ^, ngoặc, \sqrt, \frac, √.
+ * Trả null nếu không phân tích được (an toàn — chỉ dùng để hiện xấp xỉ; sai thì bỏ qua).
+ */
+function evalTex(input: string): number | null {
+  const s = input
+    .replace(/\\left|\\right|\\!|\\,|\\;|\\ /g, '')
+    .replace(/\\cdot|\\times/g, '*')
+    .replace(/\\dfrac|\\tfrac/g, '\\frac')
+    .replace(/(\d)\s*√/g, '$1*√')
+    .replace(/√\s*(\d+(?:\.\d+)?)/g, '\\sqrt{$1}')
+    .replace(/\s+/g, '');
+  let i = 0;
+  const atom = (): number => {
+    if (s[i] === '(') { i++; const v = expr(); if (s[i] === ')') i++; return v; }
+    if (s[i] === '{') { i++; const v = expr(); if (s[i] === '}') i++; return v; }
+    if (s[i] === '-') { i++; return -atom(); }
+    if (s[i] === '+') { i++; return atom(); }
+    if (s.startsWith('\\sqrt', i)) { i += 5; return Math.sqrt(atom()); }
+    if (s.startsWith('\\frac', i)) { i += 5; const a = atom(); const b = atom(); return a / b; }
+    const m = /^\d+(?:\.\d+)?/.exec(s.slice(i));
+    if (m) { i += m[0].length; return parseFloat(m[0]); }
+    throw new Error('parse');
+  };
+  const power = (): number => {
+    let b = atom();
+    if (s[i] === '^') { i++; b = Math.pow(b, atom()); }
+    return b;
+  };
+  const term = (): number => {
+    let v = power();
+    while (i < s.length) {
+      if (s[i] === '*') { i++; v *= power(); }
+      else if (s[i] === '/') { i++; v /= power(); }
+      else if (s[i] === '\\' || s[i] === '(') { v *= power(); }   // nhân ngầm: 2\sqrt{3}
+      else break;
+    }
+    return v;
+  };
+  const expr = (): number => {
+    let v = term();
+    while (s[i] === '+' || s[i] === '-') { const op = s[i++]; const r = term(); v = op === '+' ? v + r : v - r; }
+    return v;
+  };
+  try {
+    const v = expr();
+    if (i < s.length) return null;
+    return Number.isFinite(v) ? v : null;
+  } catch { return null; }
+}
+
+/** Vế phải sau dấu "=" NGOÀI CÙNG cuối cùng (không nằm trong {}). */
+function lastRhs(tex: string): string {
+  let depth = 0, last = -1;
+  for (let i = 0; i < tex.length; i++) {
+    const c = tex[i];
+    if (c === '{') depth++;
+    else if (c === '}') depth = Math.max(0, depth - 1);
+    else if (c === '=' && depth === 0) last = i;
+  }
+  return last >= 0 ? tex.slice(last + 1) : tex;
+}
+
+/** Nếu vế phải là căn/phân số (không phải số nguyên) → trả " \approx X" để nối vào công thức. */
+function approxSuffix(tex: string): string {
+  if (/\\approx|≈/.test(tex)) return '';
+  const rhs = lastRhs(tex);
+  if (!/\\sqrt|\\frac|√/.test(rhs)) return '';
+  const v = evalTex(rhs);
+  if (v == null || !Number.isFinite(v)) return '';
+  if (Math.abs(v - Math.round(v)) < 1e-9) return '';   // đã là số nguyên → khỏi xấp xỉ
+  return ` \\approx ${fmtApprox(v)}`;
+}
+
 // Các toán tử SUY RA / TƯƠNG ĐƯƠNG ở cấp ngoài cùng — chỗ xuống dòng tự nhiên của công thức dài.
 const BREAK_OPS = new Set(['Longleftrightarrow', 'Leftrightarrow', 'Longrightarrow', 'Rightarrow',
   'Longleftarrow', 'Leftarrow', 'implies', 'impliedby', 'iff', 'longmapsto', 'longrightarrow', 'mapsto', 'to']);
@@ -223,7 +346,14 @@ function FormulaBlock({ formula }: { formula: string }) {
   if (tex.startsWith('$$') && tex.endsWith('$$')) tex = tex.slice(2, -2);
   else if (tex.startsWith('$') && tex.endsWith('$')) tex = tex.slice(1, -1);
   else if (tex.startsWith('\\[') && tex.endsWith('\\]')) tex = tex.slice(2, -2);
+  // Thêm xấp xỉ thập phân cạnh kết quả căn/phân số, vd "R = √10 ≈ 3.16".
+  const suffix = approxSuffix(tex);
   tex = wrapTex(tex);
+  if (suffix) {
+    tex = tex.includes('\\end{gathered}')
+      ? tex.replace('\\end{gathered}', `${suffix}\\end{gathered}`)
+      : tex + suffix;
+  }
   return (
     // Công thức dài không bị cắt: cuộn ngang (xử lý ở index.css cho .katex-display) + thu nhỏ chút.
     <div className="mt-1 rounded-lg bg-secondary/40 border border-border/40 px-3 py-2 overflow-x-auto [&_.katex]:text-[0.95rem]">
@@ -420,7 +550,14 @@ function SolveResultViewImpl({
           <div className="text-[10.5px] font-bold uppercase tracking-[0.14em] text-primary">Đáp số</div>
           {answerShown ? (
             <>
-              <MathText text={result.final_answer} className="mt-1.5 text-lg font-semibold text-foreground break-words" />
+              <div className="mt-1.5 flex items-baseline flex-wrap gap-x-2 gap-y-1">
+                <AnswerMath text={result.final_answer} className="text-lg font-semibold text-foreground break-words [&_.katex]:text-[1.2rem]" />
+                {result.answer_value != null && Number.isFinite(result.answer_value) &&
+                 /√|\/|\\sqrt|\\frac/.test(result.final_answer) &&
+                 Math.abs(result.answer_value - Math.round(result.answer_value)) > 1e-9 && (
+                  <span className="text-sm font-medium text-muted-foreground tabular-nums">≈ {fmtApprox(result.answer_value)}</span>
+                )}
+              </div>
               <span className={cn('inline-flex items-center gap-1.5 mt-2.5 text-[11px] font-semibold px-2.5 py-1 rounded-full border', chipTone)}>
                 <TierIcon className="w-3 h-3" />
                 {meta.description}
