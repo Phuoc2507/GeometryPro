@@ -86,9 +86,23 @@ export function AnimatedBackground({ className }: { className?: string }) {
     if (!ctx) return;
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
     const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
-    const motionScale = reduce ? 0.35 : 1;   // "giảm chuyển động" → xoay chậm lại, KHÔNG đứng hình
+    const motionScale = reduce ? 0.5 : 1;   // "giảm chuyển động" → xoay chậm lại, KHÔNG đứng hình
+
+    // ── Tự thích ứng theo NĂNG LỰC MÁY người dùng ──
+    // Đọc số nhân CPU, RAM (Chrome), cờ tiết kiệm dữ liệu → hệ số chất lượng.
+    // Máy mạnh → nhiều khối; máy yếu/tiết kiệm pin → ít khối cho mượt.
+    const nav = navigator as Navigator & { deviceMemory?: number; connection?: { saveData?: boolean } };
+    const cores = nav.hardwareConcurrency || 4;
+    const mem = nav.deviceMemory || 4;
+    const saveData = nav.connection?.saveData ?? false;
+    let perf = 0.5 * Math.min(cores / 8, 1) + 0.5 * Math.min(mem / 8, 1); // 0..1
+    perf = 0.6 + perf * 0.75;                       // 0.6 (yếu) .. 1.35 (mạnh)
+    if (saveData) perf *= 0.6;
+    if (reduce) perf *= 0.85;
 
     let w = 0, h = 0, raf = 0, running = true;
+    let ftEMA = 16;                                 // trung bình thời gian 1 khung (ms) — dùng để tự hạ tải
+    let lastT = 0;
     let polys: Poly[] = [];
     let stars: Star[] = [];
     const rnd = () => Math.random();
@@ -114,7 +128,7 @@ export function AnimatedBackground({ className }: { className?: string }) {
       const depth = rnd();                       // 0 = gần, 1 = xa
       const mix = rnd();                         // pha màu xanh → tím
       const col = `${Math.round(lerp(BLUE[0], PURPLE[0], mix))},${Math.round(lerp(BLUE[1], PURPLE[1], mix))},${Math.round(lerp(BLUE[2], PURPLE[2], mix))}`;
-      const spin = lerp(0.0072, 0.0026, depth) * motionScale;  // gần xoay nhanh hơn
+      const spin = lerp(0.0108, 0.0042, depth) * motionScale;  // gần xoay nhanh hơn
       const sgn = () => (rnd() < 0.5 ? -1 : 1);
       return {
         shape: (rnd() * SHAPES.length) | 0,
@@ -138,9 +152,9 @@ export function AnimatedBackground({ className }: { className?: string }) {
       canvas.width = Math.max(1, Math.round(w * dpr));
       canvas.height = Math.max(1, Math.round(h * dpr));
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      const pCount = Math.min(10, Math.max(5, Math.round((w * h) / 185000)));
+      const pCount = Math.min(18, Math.max(6, Math.round((w * h) / 108000 * perf)));
       polys = Array.from({ length: pCount }, makePoly);
-      const sCount = Math.min(180, Math.max(40, Math.round((w * h) / 9000)));
+      const sCount = Math.min(220, Math.max(40, Math.round((w * h) / 9000 * perf)));
       stars = Array.from({ length: sCount }, makeStar);
     };
 
@@ -238,6 +252,14 @@ export function AnimatedBackground({ className }: { className?: string }) {
           (canvas.clientHeight && Math.abs(canvas.clientHeight - h) > 2)) {
         resize();
       }
+      // Đo nhịp khung thực tế; nếu MÁY YẾU khiến giật (EMA > ~33ms ≈ <30fps)
+      // thì âm thầm bỏ bớt 1 khối cho tới khi mượt lại (không xuống dưới 5 khối).
+      if (lastT) {
+        const dt = Math.min(t - lastT, 100);
+        ftEMA = ftEMA * 0.92 + dt * 0.08;
+        if (ftEMA > 33 && polys.length > 5) { polys.pop(); ftEMA = 24; }
+      }
+      lastT = t;
       render(t);
       raf = requestAnimationFrame(draw);
     };
