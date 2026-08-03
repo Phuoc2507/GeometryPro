@@ -61,7 +61,7 @@ export function SolveJobsProvider({ children }: { children: ReactNode }) {
           method: 'POST',
           headers,
           credentials: 'same-origin',
-          body: JSON.stringify({ problem, geometry, tags }),
+          body: JSON.stringify({ problem, geometry, tags, id }),  // id: để server LƯU lời giải kèm bài (chống mất khi F5)
         });
         const data = await res.json();
         cacheQuotaFromResponse(res, data);

@@ -9,6 +9,7 @@ import { accessError, resolveAiAccess, withQuota, refundAiUsage } from './_lib/a
 import crypto from 'crypto';
 import { withSentry } from './_lib/sentry.js';
 import { logBrokenProblem } from './_lib/brokenProblemLog.js';
+import { persistSolveResult } from './_lib/persistSolve.js';
 
 async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -16,7 +17,7 @@ async function handler(req, res) {
   }
 
   const startedAt = Date.now();  // đo thời gian (log bài lỗi)
-  const { problem, geometry, tags } = req.body || {};
+  const { problem, geometry, tags, id } = req.body || {};  // id = khoá lịch sử (?id) để LƯU kèm ở server
 
   // Validate đầu vào TRƯỚC khi trừ credit (không trừ cho request hỏng).
   if (!problem || typeof problem !== 'string' || problem.trim().length < 10) {
@@ -105,7 +106,16 @@ async function handler(req, res) {
   const out = assembleSolveResult(eng, parsed);
   // Ưu tiên: tier từ solveProblem → tier lỗi (catch) → classification tái dùng từ hình (nhánh reuse).
   const tier = (eng && eng.tier) || engTier || (geometry && geometry.classification) || null;
-  return res.json(withQuota({ ...out, tier, geometry }, access));
+  const result = { ...out, tier };
+
+  // LƯU kết quả tại SERVER (nếu là tài khoản + có id lịch sử) → F5/rời trang giữa chừng
+  // vẫn không mất lời giải, không mất credit oan. Nuốt lỗi, không chặn response.
+  if (access.userId && typeof id === 'string' && id) {
+    try { await persistSolveResult({ userId: access.userId, historyId: id, problem: problem.trim(), result }); }
+    catch { /* bỏ qua */ }
+  }
+
+  return res.json(withQuota({ ...result, geometry }, access));
 }
 
 export default withSentry(handler, 'solve');
