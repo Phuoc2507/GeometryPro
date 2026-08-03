@@ -16,7 +16,7 @@ import {
   type CaptureHandler,
 } from '@/context/CameraContext';
 import { scaleGeometry, getScaleFactor } from '@/lib/geometry/scaleGeometry';
-import { recenterGeometryOnSphere } from '@/lib/geometry/recenterGeometry';
+import { recenterGeometryOnSphere, recenterGeometryOnBase } from '@/lib/geometry/recenterGeometry';
 import { computeFitBounds } from '@/lib/geometry/fitBounds';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import type { GeometryData } from '@/types/geometry';
@@ -471,6 +471,7 @@ export function GeometryCanvas({
   const autoRotate = state?.autoRotate ?? false;
   const showCoordinateGrid = state?.showCoordinateGrid ?? true;
   const recenterToSphere = state?.recenterToSphere ?? false;
+  const recenterToBase = state?.recenterToBase ?? false;
 
   const is2D = useMemo(() => {
     return geometry?.tags?.some((t: string) => t.includes('2D')) || false;
@@ -516,12 +517,15 @@ export function GeometryCanvas({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [geometryContext, cameraContext]);
 
-  // Chế độ xem "dời trục về tâm cầu": tịnh tiến TRƯỚC khi auto-scale, để tâm cầu về gốc O
-  // rồi mới co cho vừa khung. Không có cầu (hoặc tắt) → giữ nguyên hình.
-  const displayBase = useMemo(
-    () => (recenterToSphere ? recenterGeometryOnSphere(geometry ?? null) : (geometry ?? null)),
-    [geometry, recenterToSphere],
-  );
+  // Chế độ xem "dời trục về tâm cầu / tâm đáy": tịnh tiến TRƯỚC khi auto-scale, để tâm
+  // được chọn về gốc O rồi mới co cho vừa khung. Hai chế độ loại trừ nhau (reducer đảm
+  // bảo); tắt cả hai → giữ nguyên hình.
+  const displayBase = useMemo(() => {
+    const g = geometry ?? null;
+    if (recenterToSphere) return recenterGeometryOnSphere(g);
+    if (recenterToBase) return recenterGeometryOnBase(g);
+    return g;
+  }, [geometry, recenterToSphere, recenterToBase]);
 
   // Auto-scale large geometry coordinates to fit within standard [-8, 8] bounds
   const scaledGeometry = useMemo(() => scaleGeometry(displayBase), [displayBase]);
