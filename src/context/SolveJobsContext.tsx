@@ -13,6 +13,7 @@ import { GeometryData } from '@/types/geometry';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/context/AuthContext';
 import { cacheQuotaFromResponse } from '@/lib/quota';
+import { markSolving, clearSolving } from '@/lib/solvingMarker';
 import type { SolveResult } from '@/hooks/useSolver';
 
 export interface SolveJob {
@@ -49,6 +50,7 @@ export function SolveJobsProvider({ children }: { children: ReactNode }) {
     // Đang giải rồi thì không giải lại (bấm 2 lần / 2 panel cùng bấm).
     if (jobsRef.current[key]?.status === 'solving') return;
     setJobs((prev) => ({ ...prev, [key]: { status: 'solving', id, problem, geometry, result: null, error: null } }));
+    markSolving(id, problem);   // để reload giữa chừng biết mà chờ kết quả server lưu
 
     (async () => {
       try {
@@ -83,9 +85,11 @@ export function SolveJobsProvider({ children }: { children: ReactNode }) {
         };
         // Chỉ ghi nếu job chưa bị xoá (người dùng bấm "Giải lại" xoá đi giữa chừng).
         setJobs((prev) => (prev[key] ? { ...prev, [key]: { ...prev[key], status: 'done', result, error: null } } : prev));
+        clearSolving(id);
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : String(err);
         setJobs((prev) => (prev[key] ? { ...prev, [key]: { ...prev[key], status: 'error', error: msg } } : prev));
+        clearSolving(id);
       }
     })();
   }, [openAuthModal]);

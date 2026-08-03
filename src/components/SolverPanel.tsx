@@ -29,6 +29,10 @@ import { useCameraOptional }   from '@/context/CameraContext';
 import { useSolveJobs } from '@/context/SolveJobsContext';
 import { useGeometryHistory } from '@/hooks/useGeometryHistory';
 import { useResizableWidth } from '@/hooks/useResizableWidth';
+import { useAuth } from '@/context/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
+import { getSolving, clearSolving } from '@/lib/solvingMarker';
+import type { GeometryData } from '@/types/geometry';
 import { buildSolveReveal, type SolveReveal } from '@/lib/solveReveal';
 import { FeedbackDialog } from '@/components/FeedbackDialog';
 import { SaveGoldenButton } from '@/components/SaveGoldenButton';
@@ -650,6 +654,38 @@ export function SolverContent({ creditNote, compact }: { creditNote?: string; co
   const result = dismissed ? null : (job?.status === 'done' ? job.result : savedSolve);
   const isFresh = !dismissed && job?.status === 'done'; // kết quả GIẢI MỚI phiên này → cần lưu kèm hình
 
+  // ── Khôi phục sau F5/rời trang GIỮA lúc đang giải ──
+  // Server đã lưu kết quả (persistSolve) dù client rớt → ở đây thăm dò DB tới khi có
+  // rồi tự nạp, thay vì hiện "mất". Chỉ khi: đã đăng nhập, có ?id, chưa có kết quả,
+  // không có job đang chạy phiên này, và CÓ dấu "đang giải".
+  const { user } = useAuth();
+  const [resuming, setResuming] = useState(false);
+  useEffect(() => {
+    const id = new URLSearchParams(window.location.search).get('id');
+    if (!id || !user) { setResuming(false); return; }
+    if (result || loading) { clearSolving(id); setResuming(false); return; }
+    if (!getSolving(id)) { setResuming(false); return; }
+
+    let active = true; let tries = 0; let timer: ReturnType<typeof setTimeout> | undefined;
+    setResuming(true);
+    const poll = async () => {
+      if (!active) return;
+      tries++;
+      const { data } = await supabase.from('saved_geometries').select('geometry_data').eq('id', id).maybeSingle();
+      const gd = data?.geometry_data as unknown as (GeometryData & { solve?: { result?: unknown } }) | undefined;
+      if (gd?.solve?.result) {
+        clearSolving(id);
+        if (active) { setResuming(false); ctx?.loadGeometry(gd, { historyId: id }); }
+        return;
+      }
+      if (tries >= 30) { clearSolving(id); if (active) setResuming(false); return; } // ~2 phút thì thôi
+      timer = setTimeout(poll, 4000);
+    };
+    poll();
+    return () => { active = false; if (timer) clearTimeout(timer); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, result, loading]);
+
   // Pre-fill with last detected problem when geometry changes
   useEffect(() => {
     if (lastProblem && !result) {
@@ -775,12 +811,12 @@ export function SolverContent({ creditNote, compact }: { creditNote?: string; co
     );
   }
 
-  // ── Loading ───────────────────────────────────────────────────────────────
-  if (loading) {
+  // ── Loading (đang giải / đang khôi phục sau reload) ───────────────────────
+  if (loading || resuming) {
     return (
       <div className="h-full flex flex-col items-center justify-center gap-3">
         <Loader2 className="w-8 h-8 text-primary animate-spin" />
-        <p className="text-sm text-muted-foreground">Đang giải bài toán...</p>
+        <p className="text-sm text-muted-foreground">{resuming ? 'Đang tải lại lời giải…' : 'Đang giải bài toán...'}</p>
       </div>
     );
   }
