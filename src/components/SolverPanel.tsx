@@ -15,7 +15,7 @@ import type { Dispatch, SetStateAction } from 'react';
 import {
   ChevronLeft, ChevronRight, Sparkles, Loader2,
   AlertTriangle, RotateCcw, BookOpen, ChevronDown, Eye,
-  Lightbulb, CheckCircle2, XCircle, Play,
+  Lightbulb, CheckCircle2, XCircle, Play, Copy, Check,
 } from 'lucide-react';
 import { gradeAnswer, type GradeVerdict } from '@/lib/gradeAnswer';
 import { loadPreferences } from '@/lib/preferences';
@@ -301,6 +301,14 @@ function approxSuffix(tex: string): string {
   return ` \\approx ${fmtApprox(v).replace(',', '{,}')}`;
 }
 
+/**
+ * Lỗi KỸ THUẬT nội bộ (schema/translator/JSON…) không nên hiện cho người dùng —
+ * badge "chưa kiểm chứng" đã đủ ý. Chỉ hiện lý do khi là câu giải thích thường.
+ */
+function isTechnicalReason(msg: string): boolean {
+  return /schema|translator|invalid input|failed|traceback|exception|json|undefined|\bnull\b|stacktrace|\bNaN\b|parse error|timeout|ENOENT|econn|http \d{3}/i.test(msg);
+}
+
 // Các toán tử SUY RA / TƯƠNG ĐƯƠNG ở cấp ngoài cùng — chỗ xuống dòng tự nhiên của công thức dài.
 const BREAK_OPS = new Set(['Longleftrightarrow', 'Leftrightarrow', 'Longrightarrow', 'Rightarrow',
   'Longleftarrow', 'Leftarrow', 'implies', 'impliedby', 'iff', 'longmapsto', 'longrightarrow', 'mapsto', 'to']);
@@ -483,6 +491,16 @@ function SolveResultViewImpl({
   const step   = result.steps[currentStep] ?? null;
   const nSteps  = result.steps.length;
   const [showProblem, setShowProblem] = useState(false);
+  const [copiedProblem, setCopiedProblem] = useState(false);
+  const copyProblem = useCallback(async () => {
+    const text = (problem || '').trim();
+    if (!text) return;
+    try {
+      await navigator.clipboard.writeText(text); // chép đề GỐC (giữ nguyên $...$/định dạng)
+      setCopiedProblem(true);
+      window.setTimeout(() => setCopiedProblem(false), 1500);
+    } catch { /* trình duyệt chặn clipboard → bỏ qua */ }
+  }, [problem]);
   const [showAll, setShowAll] = useState(false);          // xem TẤT CẢ bước cùng lúc
   const [answerShown, setAnswerShown] = useState(!gateStudent);
 
@@ -564,7 +582,7 @@ function SolveResultViewImpl({
                 {meta.description}
                 {level === 1 && result.tier?.exactness ? ` · ${exactnessLabel(result.tier.exactness)}` : ''}
               </span>
-              {level === 3 && reasonMsg && (
+              {level === 3 && reasonMsg && !isTechnicalReason(reasonMsg) && (
                 <p className="text-[11px] mt-2 text-muted-foreground/90 leading-snug break-words">{reasonMsg}</p>
               )}
             </>
@@ -609,15 +627,26 @@ function SolveResultViewImpl({
       {/* ─── Đề bài (thu gọn, render đẹp như lời giải) — ẩn ở bản gọn ─── */}
       {!compact && problem && problem.trim() && (
         <div className="mx-4 mb-2 shrink-0 rounded-xl border border-border/60 bg-secondary/15 overflow-hidden">
-          <button
-            onClick={() => setShowProblem((v) => !v)}
-            aria-expanded={showProblem}
-            className="w-full flex items-center gap-1.5 px-3.5 py-2.5 text-left hover:bg-secondary/40 transition-colors"
-          >
-            <BookOpen className="w-3.5 h-3.5 text-primary shrink-0" />
-            <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground flex-1">Đề bài</span>
-            <ChevronDown className={cn('w-4 h-4 text-muted-foreground transition-transform', !showProblem && '-rotate-90')} />
-          </button>
+          <div className="w-full flex items-center pr-1.5">
+            <button
+              onClick={() => setShowProblem((v) => !v)}
+              aria-expanded={showProblem}
+              className="flex items-center gap-1.5 flex-1 min-w-0 px-3.5 py-2.5 text-left hover:bg-secondary/40 transition-colors"
+            >
+              <BookOpen className="w-3.5 h-3.5 text-primary shrink-0" />
+              <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground flex-1">Đề bài</span>
+              <ChevronDown className={cn('w-4 h-4 text-muted-foreground transition-transform', !showProblem && '-rotate-90')} />
+            </button>
+            {/* Copy nhanh đề GỐC — giữ nguyên định dạng, không lỗi như bôi đen chép từ công thức đã render. */}
+            <button
+              onClick={copyProblem}
+              title="Sao chép đề bài (giữ định dạng)"
+              aria-label="Sao chép đề bài"
+              className="shrink-0 ml-1 h-7 w-7 rounded-md flex items-center justify-center text-muted-foreground hover:text-primary hover:bg-secondary/50 transition-colors"
+            >
+              {copiedProblem ? <Check className="w-3.5 h-3.5 text-green-500" /> : <Copy className="w-3.5 h-3.5" />}
+            </button>
+          </div>
           {showProblem && (
             <div className="px-3.5 pb-3 max-h-40 overflow-y-auto">
               <MathText text={autoMathWrap(problem)} className="text-sm text-foreground/85 leading-relaxed" />
