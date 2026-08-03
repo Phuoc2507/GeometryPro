@@ -86,6 +86,7 @@ export function AnimatedBackground({ className }: { className?: string }) {
     if (!ctx) return;
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
     const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
+    const motionScale = reduce ? 0.35 : 1;   // "giảm chuyển động" → xoay chậm lại, KHÔNG đứng hình
 
     let w = 0, h = 0, raf = 0, running = true;
     let polys: Poly[] = [];
@@ -113,12 +114,12 @@ export function AnimatedBackground({ className }: { className?: string }) {
       const depth = rnd();                       // 0 = gần, 1 = xa
       const mix = rnd();                         // pha màu xanh → tím
       const col = `${Math.round(lerp(BLUE[0], PURPLE[0], mix))},${Math.round(lerp(BLUE[1], PURPLE[1], mix))},${Math.round(lerp(BLUE[2], PURPLE[2], mix))}`;
-      const spin = lerp(0.0016, 0.0005, depth);  // gần xoay nhanh hơn
+      const spin = lerp(0.0072, 0.0026, depth) * motionScale;  // gần xoay nhanh hơn
       const sgn = () => (rnd() < 0.5 ? -1 : 1);
       return {
         shape: (rnd() * SHAPES.length) | 0,
         fx: rnd(), fy: rnd(),
-        vfx: (rnd() - 0.5) * 0.00006, vfy: (rnd() - 0.5) * 0.00006,
+        vfx: (rnd() - 0.5) * 0.00013 * motionScale, vfy: (rnd() - 0.5) * 0.00013 * motionScale,
         size: lerp(150, 44, depth),
         zoff: lerp(1.1, 5.2, depth),
         alpha: lerp(0.5, 0.12, depth),
@@ -243,17 +244,8 @@ export function AnimatedBackground({ className }: { className?: string }) {
 
     resize();
     window.addEventListener('resize', resize);
-
-    if (reduce) {
-      // Khung tĩnh: không loop, không theo chuột.
-      render(0);
-      const onResize = () => { resize(); render(0); };
-      window.removeEventListener('resize', resize);
-      window.addEventListener('resize', onResize);
-      return () => { running = false; window.removeEventListener('resize', onResize); };
-    }
-
-    window.addEventListener('mousemove', onMove);
+    // Parallax theo con trỏ chỉ bật khi KHÔNG bật "giảm chuyển động".
+    if (!reduce) window.addEventListener('mousemove', onMove);
     raf = requestAnimationFrame(draw);
 
     return () => {
