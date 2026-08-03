@@ -257,10 +257,12 @@ export function GeometryRenderer({ geometry: geometryProp, isBuilding }: Geometr
     const set = new Set<string>();
     if (!geometry) return set;
     const byId = new Map(geometry.points.map((p) => [p.id, p]));
+    // Bài cũ có thể lưu mặt phẳng KHÔNG kèm pointIds → collectPlanePointIds khớp thêm theo toạ độ.
     for (const plane of renderPlanes) {
-      if (!plane.pointIds?.length) continue;
-      const labels = plane.pointIds.map((id) => byId.get(id)?.label);
-      if (planeSgkName(labels)) plane.pointIds.forEach((id) => set.add(id));
+      const ids = [...collectPlanePointIds(plane, geometry.points)];
+      if (ids.length < 3) continue;
+      const labels = ids.map((id) => byId.get(id)?.label);
+      if (planeSgkName(labels)) ids.forEach((id) => set.add(id));
     }
     return set;
   }, [geometry, renderPlanes]);

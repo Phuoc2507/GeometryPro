@@ -5,6 +5,7 @@ import type { Plane3D } from '@/types/geometry';
 import { getCssHslVar } from '@/lib/getCssHslVar';
 import { loadPreferences } from '@/lib/preferences';
 import { planeSgkName } from '@/lib/geometry/planeSgkLabel';
+import { collectPlanePointIds } from '@/lib/geometry/planeReferences';
 import { Line, Html } from '@react-three/drei';
 import { useAnimationOptional } from '@/context/AnimationContext';
 import { useGeometryOptional } from '@/context/GeometryContext';
@@ -87,10 +88,13 @@ export function AnimatedPlane3D({
   // một góc; nhãn của các đỉnh đó bị ẩn (xem GeometryRenderer). null nếu là điểm tên thật.
   const sgkName = useMemo(() => {
     const pts = geometryCtx?.state.geometry?.points;
-    if (!plane.pointIds?.length || !pts) return null;
+    if (!pts) return null;
     const byId = new Map(pts.map((p) => [p.id, p]));
-    return planeSgkName(plane.pointIds.map((id) => byId.get(id)?.label));
-  }, [geometryCtx?.state.geometry?.points, plane.pointIds]);
+    // Bài cũ có thể thiếu pointIds → khớp thêm theo toạ độ.
+    const ids = [...collectPlanePointIds(plane, pts)];
+    if (ids.length < 3) return null;
+    return planeSgkName(ids.map((id) => byId.get(id)?.label));
+  }, [geometryCtx?.state.geometry?.points, plane]);
 
   // Vị trí nhãn: một góc, đẩy nhẹ ra ngoài tâm cho giống SGK (ghi ngoài mép mặt).
   const labelPos = useMemo(() => {
