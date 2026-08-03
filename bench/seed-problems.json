@@ -58,5 +58,21 @@
   {
     "id": "cap-vol-lang-tru-tamgiac-deu-2-5",
     "text": "Cho lăng trụ đứng ABC.A'B'C' có đáy ABC là tam giác đều cạnh 2 và chiều cao lăng trụ bằng 5. Tính thể tích khối lăng trụ ABC.A'B'C'."
+  },
+  {
+    "id": "cap-vol-lap-phuong-3",
+    "text": "Tính thể tích khối lập phương ABCD.A'B'C'D' có cạnh bằng 3."
+  },
+  {
+    "id": "cap-vol-hop-2x3x4",
+    "text": "Cho hình hộp chữ nhật ABCD.A'B'C'D' có AB = 2, AD = 3, AA' = 4. Tính thể tích khối hộp chữ nhật ABCD.A'B'C'D'."
+  },
+  {
+    "id": "cap-vol-hop-3x3x5",
+    "text": "Cho hình hộp chữ nhật ABCD.A'B'C'D' có AB = 3, AD = 3, AA' = 5. Tính thể tích khối hộp chữ nhật."
+  },
+  {
+    "id": "cap-vol-lang-tru-tamgiac-vuong-346-h7",
+    "text": "Cho lăng trụ đứng ABC.A'B'C' có đáy ABC là tam giác vuông tại B với AB = 3, BC = 4, chiều cao lăng trụ AA' = 7. Tính thể tích khối lăng trụ ABC.A'B'C'."
   }
 ]

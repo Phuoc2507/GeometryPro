@@ -7,7 +7,7 @@ import { type ComputeOutcome, type DistanceAnswer, type AngleAnswer, type Scalar
 import type { Scalar } from '../scalar';
 import { computeDistance } from './distance';
 import { computeAngle } from './angle';
-import { computeTetraVolume, computePyramidVolume, volumeRatio, computeSphereVolume } from './volume';
+import { computeTetraVolume, computePyramidVolume, computePrismVolume, volumeRatio, computeSphereVolume } from './volume';
 import { computeTriangleArea, computePolygonArea, computeSphereArea } from './area';
 import { computeRelativePosition, type RelPosAnswer } from './relative';
 import { computeIntersection, type IntersectionAnswer } from './intersect';
@@ -24,6 +24,7 @@ export const QueryESchema = z.union([
   z.object({ kind: z.literal('equation'), target: Tok }),
   z.object({ kind: z.literal('volume'), solid: z.literal('sphere'), target: Tok }),
   z.object({ kind: z.literal('volume'), solid: z.enum(['tetrahedron', 'pyramid']), points: z.array(Tok).min(3), apex: Tok.optional() }),
+  z.object({ kind: z.literal('volume'), solid: z.literal('prism'), base: z.array(Tok).min(3), top: z.array(Tok).min(3) }),
   z.object({ kind: z.literal('volume_ratio'), a: SolidSpec, b: SolidSpec }),
   z.object({ kind: z.literal('area'), shape: z.literal('sphere'), target: Tok }),
   z.object({ kind: z.literal('area'), shape: z.enum(['triangle', 'polygon']), points: z.array(Tok).min(3) }),
@@ -92,6 +93,9 @@ export function computeQuery(query: QueryE, et: EntityTable): ComputeOutcome<Que
           const e = resolveEntityE(query.target, et);
           if (e.kind !== 'sphere') return { ok: false, problem: 'volume(sphere) needs a sphere' };
           return { ok: true, answer: computeSphereVolume(e) };
+        }
+        if (query.solid === 'prism') {
+          return computePrismVolume(asPoints(query.base, et), asPoints(query.top, et));
         }
         const pts = asPoints(query.points, et);
         if (query.solid === 'tetrahedron') {

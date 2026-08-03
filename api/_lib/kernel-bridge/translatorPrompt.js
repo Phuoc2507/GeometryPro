@@ -114,6 +114,9 @@ CHƯA cố định tới đồng dạng; (3) đáp cần SUY-RA-tập-hợp / bi
 - Thể tích chóp: { "kind": "volume", "solid": "pyramid", "points": ["A", "B", "C", "D"], "apex": "S" }
 - Thể tích tứ diện: { "kind": "volume", "solid": "tetrahedron", "points": ["A", "B", "C", "D"] }
 - Thể tích khối cầu: { "kind": "volume", "solid": "sphere", "target": "S" }
+- Thể tích khối LĂNG TRỤ / hình HỘP / lập phương: { "kind": "volume", "solid": "prism", "base": ["A","B","C","D"], "top": ["A1","B1","C1","D1"] }
+  base = đỉnh MẶT ĐÁY theo thứ tự vòng; top = đỉnh MẶT NẮP THEO ĐÚNG THỨ TỰ tương ứng (A1 trên A, B1 trên B...). Nắp = đáy tịnh tiến.
+  DÙNG khối này cho MỌI hình hộp/lăng trụ — TUYỆT ĐỐI KHÔNG tự xẻ khối thành nhiều chóp rồi cộng (dễ sai).
 - Tỉ số thể tích: { "kind": "volume_ratio", "a": { "solid": "tetrahedron", "points": [...] }, "b": { "solid": "pyramid", "points": [...], "apex": "..." } }
 - Diện tích tam giác: { "kind": "area", "shape": "triangle", "points": ["A", "B", "C"] }
 - Diện tích ĐA GIÁC (thiết diện): { "kind": "area", "shape": "polygon", "points": [...các đỉnh theo THỨ TỰ vòng, ≥3] }
@@ -129,6 +132,7 @@ CHƯA cố định tới đồng dạng; (3) đáp cần SUY-RA-tập-hợp / bi
 ## NGUYÊN TẮC TOẠ-ĐỘ-HOÁ
 - Đặt hình sao cho toạ độ đơn giản (số nguyên nếu được): một đỉnh ở gốc O(0,0,0); cạnh vuông góc theo các trục.
 - Ví dụ hình chóp có SA⊥đáy: đặt A tại gốc, đáy trong mặt z=0, S trên trục z.
+- Hình HỘP / LĂNG TRỤ ĐỨNG: đặt mặt đáy trong z=0, mặt nắp z=h (h = chiều cao); mỗi đỉnh nắp = đỉnh đáy cùng tên +h theo z. Hỏi thể tích ⇒ dùng query solid:"prism".
 - Toạ độ nhận số nguyên, chuỗi phân số ("3/2"), HOẶC chuỗi CĂN chính xác. KHÔNG dùng số thập phân vô hạn.
 - Với toạ độ VÔ TỈ (tam giác đều, góc 60°, đa giác đều...), BẮT BUỘC viết dạng căn chính xác bằng chuỗi:
   "sqrt(3)", "sqrt(3)/2", "2*sqrt(3)", "2*sqrt(3)/3" — TUYỆT ĐỐI KHÔNG viết 1.732 (sẽ mất đáp số căn đẹp).

@@ -50,6 +50,54 @@ export function computePyramidVolume(base: PointE[], apex: PointE): ComputeOutco
   return { ok: true, answer: certifyScalar('volume', pyramidVolumeScalar(base, apex), floatRef) };
 }
 
+// ×6 tổng thể tích có dấu của lăng trụ: xẻ đáy thành quạt tam giác (b0,bi,bi+1);
+// mỗi tam-giác-đáy + tam-giác-nắp tương ứng = lăng trụ tam giác = 3 tứ diện.
+export function prismVolumeScalar(base: PointE[], top: PointE[]): Scalar {
+  let sum = rat(0n);
+  for (let i = 1; i < base.length - 1; i++) {
+    const b0 = base[0].p, bi = base[i].p, bj = base[i + 1].p;
+    const t0 = top[0].p, ti = top[i].p, tj = top[i + 1].p;
+    sum = add(sum, tripleScalar(b0, bi, bj, t0));
+    sum = add(sum, tripleScalar(bi, bj, t0, ti));
+    sum = add(sum, tripleScalar(bj, t0, ti, tj));
+  }
+  return div(absS(sum), rat(6n));
+}
+
+function fPrism(base: Vec3[], top: Vec3[]): number {
+  let s = 0;
+  for (let i = 1; i < base.length - 1; i++) {
+    s += scalarTriple(sub(base[i], base[0]), sub(base[i + 1], base[0]), sub(top[0], base[0]));
+    s += scalarTriple(sub(base[i + 1], base[i]), sub(top[0], base[i]), sub(top[i], base[i]));
+    s += scalarTriple(sub(top[0], base[i + 1]), sub(top[i], base[i + 1]), sub(top[i + 1], base[i + 1]));
+  }
+  return Math.abs(s) / 6;
+}
+
+// Nắp phải là đáy TỊNH TIẾN: mọi top[i]−base[i] phải bằng nhau. Nếu không (chóp cụt…) → không phải lăng trụ.
+function translationMismatch(base: PointE[], top: PointE[]): string | null {
+  const v0 = subV(top[0].p, base[0].p);
+  for (let i = 1; i < base.length; i++) {
+    const d = subV(subV(top[i].p, base[i].p), v0);
+    if (!(isZeroS(d.x) && isZeroS(d.y) && isZeroS(d.z)))
+      return 'prism: top face is not a parallel translate of the base (not a prism)';
+  }
+  return null;
+}
+
+export function computePrismVolume(base: PointE[], top: PointE[]): ComputeOutcome<ScalarAnswer> {
+  if (base.length < 3) return { ok: false, problem: 'prism base needs at least 3 vertices' };
+  if (top.length !== base.length) return { ok: false, problem: 'prism: base and top must have the same number of vertices' };
+  const cpB = coplanarityProblem(base.map((p) => p.p), 'prism base');
+  if (cpB) return { ok: false, problem: cpB };
+  const cpT = coplanarityProblem(top.map((p) => p.p), 'prism top');
+  if (cpT) return { ok: false, problem: cpT };
+  const mism = translationMismatch(base, top);
+  if (mism) return { ok: false, problem: mism };
+  const floatRef = fPrism(base.map((p) => av(p.p)), top.map((p) => av(p.p)));
+  return { ok: true, answer: certifyScalar('volume', prismVolumeScalar(base, top), floatRef) };
+}
+
 export function computeSphereVolume(s: SphereE): ScalarAnswer {
   const R = Math.sqrt(s.r2.approx);
   const approx = (4 / 3) * Math.PI * R * R * R;

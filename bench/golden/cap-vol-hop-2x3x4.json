@@ -1,0 +1,195 @@
+{
+  "id": "cap-vol-hop-2x3x4",
+  "source": "capture",
+  "text": "Cho hình hộp chữ nhật ABCD.A'B'C'D' có AB = 2, AD = 3, AA' = 4. Tính thể tích khối hộp chữ nhật ABCD.A'B'C'D'.",
+  "plan": {
+    "solidName": "ABCD.A1B1C1D1",
+    "ops": [
+      {
+        "op": "oxyz_point",
+        "name": "A",
+        "at": [
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "B",
+        "at": [
+          2,
+          0,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "C",
+        "at": [
+          2,
+          3,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "D",
+        "at": [
+          0,
+          3,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "A1",
+        "at": [
+          0,
+          0,
+          4
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "B1",
+        "at": [
+          2,
+          0,
+          4
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "C1",
+        "at": [
+          2,
+          3,
+          4
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "D1",
+        "at": [
+          0,
+          3,
+          4
+        ]
+      },
+      {
+        "op": "edge",
+        "from": "A",
+        "to": "B"
+      },
+      {
+        "op": "edge",
+        "from": "B",
+        "to": "C"
+      },
+      {
+        "op": "edge",
+        "from": "C",
+        "to": "D"
+      },
+      {
+        "op": "edge",
+        "from": "D",
+        "to": "A"
+      },
+      {
+        "op": "edge",
+        "from": "A1",
+        "to": "B1"
+      },
+      {
+        "op": "edge",
+        "from": "B1",
+        "to": "C1"
+      },
+      {
+        "op": "edge",
+        "from": "C1",
+        "to": "D1"
+      },
+      {
+        "op": "edge",
+        "from": "D1",
+        "to": "A1"
+      },
+      {
+        "op": "edge",
+        "from": "A",
+        "to": "A1"
+      },
+      {
+        "op": "edge",
+        "from": "B",
+        "to": "B1"
+      },
+      {
+        "op": "edge",
+        "from": "C",
+        "to": "C1"
+      },
+      {
+        "op": "edge",
+        "from": "D",
+        "to": "D1"
+      }
+    ],
+    "asserts": [
+      {
+        "relation": "dist",
+        "args": [
+          "A",
+          "B"
+        ],
+        "value": 2
+      },
+      {
+        "relation": "dist",
+        "args": [
+          "A",
+          "D"
+        ],
+        "value": 3
+      },
+      {
+        "relation": "dist",
+        "args": [
+          "A",
+          "A1"
+        ],
+        "value": 4
+      }
+    ],
+    "queries": [
+      {
+        "kind": "volume",
+        "solid": "prism",
+        "base": [
+          "A",
+          "B",
+          "C",
+          "D"
+        ],
+        "top": [
+          "A1",
+          "B1",
+          "C1",
+          "D1"
+        ]
+      }
+    ]
+  },
+  "expect": {
+    "ok": true,
+    "answers": [
+      {
+        "kind": "volume",
+        "text": "24"
+      }
+    ]
+  }
+}

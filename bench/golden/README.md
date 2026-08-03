@@ -16,7 +16,7 @@ Mỗi `*.json` là 1 ca: `{ id, source, text?, plan, expect:{ ok, answers:[{kind
 
 ## Lỗi engine bắt được lúc soi golden (ứng viên Tầng 2)
 Bước "ngó đáp bằng tay" khi gặt golden đã lộ vài chỗ engine sai/hụt — **KHÔNG đóng băng làm golden**, để dành vá:
-- **Thể tích khối hộp / lập phương SAI:** "lập phương cạnh 3" → engine trả `9, 9, 9` (xẻ khối thành 3 chóp) thay vì `27`; "hình hộp chữ nhật 2×3×4" → trả `8` thay vì `24`. Cả họ khối-hộp đều lệch.
+- ✅ **[ĐÃ VÁ — Tầng 2, 2026-08-03] Thể tích khối hộp / lập phương SAI:** trước đây "lập phương cạnh 3" → `9, 9, 9` (xẻ khối thành 3 chóp) và "hộp 2×3×4" → `8`. Đã thêm primitive `solid:"prism"` (đáy+nắp, tính exact bằng xẻ tứ diện) vào dialect oxyz + nhắc translator dùng. Giờ lập phương → `27`, hộp 2×3×4 → `24`, hộp 3×3×5 → `45`, lăng trụ tam giác vuông → `42`. 4 golden `cap-vol-lap-phuong-3`, `cap-vol-hop-2x3x4`, `cap-vol-hop-3x3x5`, `cap-vol-lang-tru-tamgiac-vuong-346-h7` canh giữ.
 - **Tứ diện đều cạnh 3 bỏ cuộc:** cạnh 2 và cạnh 4 giải được nhưng cạnh 3 trả `ok:false` (lỗ hổng, abstain an toàn — không phải đáp sai).
 
 ## Lộ trình (chưa làm)

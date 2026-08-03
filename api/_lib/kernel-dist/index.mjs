@@ -6007,6 +6007,47 @@ function computePyramidVolume(base, apex) {
   const floatRef = fPyramid(base.map((p) => av3(p.p)), av3(apex.p));
   return { ok: true, answer: certifyScalar("volume", pyramidVolumeScalar(base, apex), floatRef) };
 }
+function prismVolumeScalar(base, top) {
+  let sum = rat(0n);
+  for (let i = 1; i < base.length - 1; i++) {
+    const b0 = base[0].p, bi = base[i].p, bj = base[i + 1].p;
+    const t0 = top[0].p, ti = top[i].p, tj = top[i + 1].p;
+    sum = add2(sum, tripleScalar(b0, bi, bj, t0));
+    sum = add2(sum, tripleScalar(bi, bj, t0, ti));
+    sum = add2(sum, tripleScalar(bj, t0, ti, tj));
+  }
+  return div(absS(sum), rat(6n));
+}
+function fPrism(base, top) {
+  let s = 0;
+  for (let i = 1; i < base.length - 1; i++) {
+    s += scalarTriple(sub(base[i], base[0]), sub(base[i + 1], base[0]), sub(top[0], base[0]));
+    s += scalarTriple(sub(base[i + 1], base[i]), sub(top[0], base[i]), sub(top[i], base[i]));
+    s += scalarTriple(sub(top[0], base[i + 1]), sub(top[i], base[i + 1]), sub(top[i + 1], base[i + 1]));
+  }
+  return Math.abs(s) / 6;
+}
+function translationMismatch(base, top) {
+  const v0 = subV(top[0].p, base[0].p);
+  for (let i = 1; i < base.length; i++) {
+    const d = subV(subV(top[i].p, base[i].p), v0);
+    if (!(isZeroS(d.x) && isZeroS(d.y) && isZeroS(d.z)))
+      return "prism: top face is not a parallel translate of the base (not a prism)";
+  }
+  return null;
+}
+function computePrismVolume(base, top) {
+  if (base.length < 3) return { ok: false, problem: "prism base needs at least 3 vertices" };
+  if (top.length !== base.length) return { ok: false, problem: "prism: base and top must have the same number of vertices" };
+  const cpB = coplanarityProblem(base.map((p) => p.p), "prism base");
+  if (cpB) return { ok: false, problem: cpB };
+  const cpT = coplanarityProblem(top.map((p) => p.p), "prism top");
+  if (cpT) return { ok: false, problem: cpT };
+  const mism = translationMismatch(base, top);
+  if (mism) return { ok: false, problem: mism };
+  const floatRef = fPrism(base.map((p) => av3(p.p)), top.map((p) => av3(p.p)));
+  return { ok: true, answer: certifyScalar("volume", prismVolumeScalar(base, top), floatRef) };
+}
 function computeSphereVolume(s) {
   const R = Math.sqrt(s.r2.approx);
   const approx = 4 / 3 * Math.PI * R * R * R;
@@ -6243,6 +6284,7 @@ var QueryESchema = external_exports.union([
   external_exports.object({ kind: external_exports.literal("equation"), target: Tok }),
   external_exports.object({ kind: external_exports.literal("volume"), solid: external_exports.literal("sphere"), target: Tok }),
   external_exports.object({ kind: external_exports.literal("volume"), solid: external_exports.enum(["tetrahedron", "pyramid"]), points: external_exports.array(Tok).min(3), apex: Tok.optional() }),
+  external_exports.object({ kind: external_exports.literal("volume"), solid: external_exports.literal("prism"), base: external_exports.array(Tok).min(3), top: external_exports.array(Tok).min(3) }),
   external_exports.object({ kind: external_exports.literal("volume_ratio"), a: SolidSpec, b: SolidSpec }),
   external_exports.object({ kind: external_exports.literal("area"), shape: external_exports.literal("sphere"), target: Tok }),
   external_exports.object({ kind: external_exports.literal("area"), shape: external_exports.enum(["triangle", "polygon"]), points: external_exports.array(Tok).min(3) }),
@@ -6298,6 +6340,9 @@ function computeQuery(query, et) {
           const e = resolveEntityE(query.target, et);
           if (e.kind !== "sphere") return { ok: false, problem: "volume(sphere) needs a sphere" };
           return { ok: true, answer: computeSphereVolume(e) };
+        }
+        if (query.solid === "prism") {
+          return computePrismVolume(asPoints(query.base, et), asPoints(query.top, et));
         }
         const pts = asPoints(query.points, et);
         if (query.solid === "tetrahedron") {

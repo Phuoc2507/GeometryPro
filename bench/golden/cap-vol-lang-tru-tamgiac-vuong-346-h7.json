@@ -1,0 +1,160 @@
+{
+  "id": "cap-vol-lang-tru-tamgiac-vuong-346-h7",
+  "source": "capture",
+  "text": "Cho lăng trụ đứng ABC.A'B'C' có đáy ABC là tam giác vuông tại B với AB = 3, BC = 4, chiều cao lăng trụ AA' = 7. Tính thể tích khối lăng trụ ABC.A'B'C'.",
+  "plan": {
+    "solidName": "ABC.A1B1C1",
+    "ops": [
+      {
+        "op": "oxyz_point",
+        "name": "B",
+        "at": [
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "A",
+        "at": [
+          3,
+          0,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "C",
+        "at": [
+          0,
+          4,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "B1",
+        "at": [
+          0,
+          0,
+          7
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "A1",
+        "at": [
+          3,
+          0,
+          7
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "C1",
+        "at": [
+          0,
+          4,
+          7
+        ]
+      },
+      {
+        "op": "edge",
+        "from": "A",
+        "to": "B"
+      },
+      {
+        "op": "edge",
+        "from": "B",
+        "to": "C"
+      },
+      {
+        "op": "edge",
+        "from": "C",
+        "to": "A"
+      },
+      {
+        "op": "edge",
+        "from": "A1",
+        "to": "B1"
+      },
+      {
+        "op": "edge",
+        "from": "B1",
+        "to": "C1"
+      },
+      {
+        "op": "edge",
+        "from": "C1",
+        "to": "A1"
+      },
+      {
+        "op": "edge",
+        "from": "A",
+        "to": "A1"
+      },
+      {
+        "op": "edge",
+        "from": "B",
+        "to": "B1"
+      },
+      {
+        "op": "edge",
+        "from": "C",
+        "to": "C1"
+      }
+    ],
+    "asserts": [
+      {
+        "relation": "dist",
+        "args": [
+          "A",
+          "B"
+        ],
+        "value": 3
+      },
+      {
+        "relation": "dist",
+        "args": [
+          "B",
+          "C"
+        ],
+        "value": 4
+      },
+      {
+        "relation": "dist",
+        "args": [
+          "A",
+          "A1"
+        ],
+        "value": 7
+      }
+    ],
+    "queries": [
+      {
+        "kind": "volume",
+        "solid": "prism",
+        "base": [
+          "A",
+          "B",
+          "C"
+        ],
+        "top": [
+          "A1",
+          "B1",
+          "C1"
+        ]
+      }
+    ]
+  },
+  "expect": {
+    "ok": true,
+    "answers": [
+      {
+        "kind": "volume",
+        "text": "42"
+      }
+    ]
+  }
+}

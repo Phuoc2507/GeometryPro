@@ -44,6 +44,18 @@ describe('computeQuery', () => {
     const r = computeQuery({ kind: 'volume', solid: 'tetrahedron', points: ['A', 'X', 'Y', 'Z'] }, et);
     expect(r.ok && r.answer.kind === 'volume' && r.answer.exact).toEqual(makeExact(1n, 6n, 1));
   });
+  it('volume lăng trụ (hộp 2×3×4) = 24, qua schema + route', () => {
+    const et = createEmptyEntityTable();
+    const box: [string, bigint, bigint, bigint][] = [
+      ['A', 0n, 0n, 0n], ['B', 2n, 0n, 0n], ['C', 2n, 3n, 0n], ['D', 0n, 3n, 0n],
+      ['A1', 0n, 0n, 4n], ['B1', 2n, 0n, 4n], ['C1', 2n, 3n, 4n], ['D1', 0n, 3n, 4n],
+    ];
+    for (const [n, x, y, z] of box) et.points.set(n, pointFromCoords(ratVec(x, y, z)));
+    const q = { kind: 'volume', solid: 'prism', base: ['A', 'B', 'C', 'D'], top: ['A1', 'B1', 'C1', 'D1'] };
+    expect(QueryESchema.safeParse(q).success).toBe(true);
+    const r = computeQuery(QueryESchema.parse(q), et);
+    expect(r.ok && r.answer.kind === 'volume' && r.answer.exact).toEqual(makeExact(24n, 1n, 1));
+  });
   it('token không giải được → {ok:false}, không ném', () => {
     const r = computeQuery({ kind: 'distance', a: 'A', b: 'NOPE' }, scene());
     expect(r.ok).toBe(false);

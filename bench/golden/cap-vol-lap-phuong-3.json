@@ -1,0 +1,179 @@
+{
+  "id": "cap-vol-lap-phuong-3",
+  "source": "capture",
+  "text": "Tính thể tích khối lập phương ABCD.A'B'C'D' có cạnh bằng 3.",
+  "plan": {
+    "solidName": "ABCD.A'B'C'D'",
+    "ops": [
+      {
+        "op": "oxyz_point",
+        "name": "A",
+        "at": [
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "B",
+        "at": [
+          3,
+          0,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "C",
+        "at": [
+          3,
+          3,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "D",
+        "at": [
+          0,
+          3,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "A1",
+        "at": [
+          0,
+          0,
+          3
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "B1",
+        "at": [
+          3,
+          0,
+          3
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "C1",
+        "at": [
+          3,
+          3,
+          3
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "D1",
+        "at": [
+          0,
+          3,
+          3
+        ]
+      },
+      {
+        "op": "edge",
+        "from": "A",
+        "to": "B"
+      },
+      {
+        "op": "edge",
+        "from": "B",
+        "to": "C"
+      },
+      {
+        "op": "edge",
+        "from": "C",
+        "to": "D"
+      },
+      {
+        "op": "edge",
+        "from": "D",
+        "to": "A"
+      },
+      {
+        "op": "edge",
+        "from": "A1",
+        "to": "B1"
+      },
+      {
+        "op": "edge",
+        "from": "B1",
+        "to": "C1"
+      },
+      {
+        "op": "edge",
+        "from": "C1",
+        "to": "D1"
+      },
+      {
+        "op": "edge",
+        "from": "D1",
+        "to": "A1"
+      },
+      {
+        "op": "edge",
+        "from": "A",
+        "to": "A1"
+      },
+      {
+        "op": "edge",
+        "from": "B",
+        "to": "B1"
+      },
+      {
+        "op": "edge",
+        "from": "C",
+        "to": "C1"
+      },
+      {
+        "op": "edge",
+        "from": "D",
+        "to": "D1"
+      }
+    ],
+    "asserts": [
+      {
+        "relation": "dist",
+        "args": [
+          "A",
+          "B"
+        ],
+        "value": 3
+      }
+    ],
+    "queries": [
+      {
+        "kind": "volume",
+        "solid": "prism",
+        "base": [
+          "A",
+          "B",
+          "C",
+          "D"
+        ],
+        "top": [
+          "A1",
+          "B1",
+          "C1",
+          "D1"
+        ]
+      }
+    ]
+  },
+  "expect": {
+    "ok": true,
+    "answers": [
+      {
+        "kind": "volume",
+        "text": "27"
+      }
+    ]
+  }
+}
