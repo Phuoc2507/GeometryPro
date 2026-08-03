@@ -221,9 +221,9 @@ function AnswerMath({ text, className }: { text: string; className?: string }) {
   return <MathText text={autoMathWrap(surdUnicodeToTex(raw))} className={className} />;
 }
 
-/** Làm tròn gọn để hiện "≈": 2 chữ số thập phân, bỏ số 0 thừa (3.162→3.16, 5.20→5.2). */
+/** Làm tròn gọn để hiện "≈": 2 chữ số thập phân, bỏ số 0 thừa (3.162→"3,16"), dấu phẩy kiểu VN. */
 function fmtApprox(v: number): string {
-  return `${Math.round(v * 100) / 100}`;
+  return `${Math.round(v * 100) / 100}`.replace('.', ',');
 }
 
 /**
@@ -297,7 +297,8 @@ function approxSuffix(tex: string): string {
   const v = evalTex(rhs);
   if (v == null || !Number.isFinite(v)) return '';
   if (Math.abs(v - Math.round(v)) < 1e-9) return '';   // đã là số nguyên → khỏi xấp xỉ
-  return ` \\approx ${fmtApprox(v)}`;
+  // Trong LaTeX, dấu phẩy VN phải bọc {,} để KaTeX KHÔNG chèn khoảng trắng sau nó ("3,16" chứ không "3, 16").
+  return ` \\approx ${fmtApprox(v).replace(',', '{,}')}`;
 }
 
 // Các toán tử SUY RA / TƯƠNG ĐƯƠNG ở cấp ngoài cùng — chỗ xuống dòng tự nhiên của công thức dài.
