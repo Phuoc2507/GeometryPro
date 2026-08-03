@@ -9,7 +9,6 @@ import { useCameraOptional, useCameraStateOptional, type CameraState } from '@/c
 import { project3DTo2D, generateProjectedLatex } from '@/lib/geometry/projection';
 import { buildRevolutionSolidFigure } from '@/lib/geometry/revolutionSolidFigure';
 import { wrapTikzAsDocument } from '@/lib/geometry/latexDocument';
-import { computeProperties, isAnalysisFigure } from '@/lib/geometry/calculations';
 import { cn } from '@/lib/utils';
 import { scaleGeometry } from '@/lib/geometry/scaleGeometry';
 import { projectScene } from '@/lib/advanceProject';
@@ -26,7 +25,7 @@ import {
   mergeLineDashStyles,
 } from '@/lib/geometry/hiddenLineDetection';
 
-function PanelContent() {
+function PanelContent({ compact = false }: { compact?: boolean } = {}) {
   const [copied, setCopied] = useState(false);
   const [tikzScale, setTikzScale] = useState(1.2);
   const [activeTab, setActiveTab] = useState('export');
@@ -54,11 +53,6 @@ function PanelContent() {
     if (!effectiveGeometry) return null;
     return scaleGeometry(effectiveGeometry);
   }, [effectiveGeometry]);
-
-  const properties = useMemo(() => {
-    if (!context?.state.geometry) return null;
-    return computeProperties(context.state.geometry);
-  }, [context?.state.geometry]);
 
   const visualCameraState = camera?.isLivePreviewEnabled
     ? cameraStateContext?.previewCameraState
@@ -161,19 +155,10 @@ function PanelContent() {
 
   return (
     <div className="h-full flex flex-col">
-      {/* Header */}
-      <div className="p-4 border-b border-border/50">
-        <h2 className="font-semibold text-foreground">{state.geometry.name}</h2>
-        <p className="text-xs text-muted-foreground mt-1">
-          {/* Cảnh giải tích: chỉ hiện loại hình, bỏ "N đỉnh • N cạnh" (điểm mẫu đường sinh không phải đỉnh). */}
-          {properties?.shapeType || 'Geometry'}
-          {!isAnalysisFigure(state.geometry) && ` • ${state.geometry.points.length} đỉnh • ${state.geometry.lines.length} cạnh`}
-        </p>
-      </div>
-
-      {/* Tabs */}
+      {/* Bỏ header tên hình để nhường chỗ — tên/loại hình vẫn xem ở tab Thuộc tính.
+          Tabs đẩy lên sát trên; ở bản mobile (Sheet) chừa khoảng trên cho nút đóng (X). */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col min-h-0">
-        <TabsList className="mx-4 mt-4 grid w-auto grid-cols-3">
+        <TabsList className={cn('mx-4 grid w-auto grid-cols-3', compact ? 'mt-9' : 'mt-3')}>
           <TabsTrigger value="export" className="gap-1.5 text-xs px-1">
             <Download className="w-3 h-3" />
             Xuất
@@ -818,7 +803,7 @@ export function MobileRightPanel() {
       </SheetTrigger>
       <SheetContent side="right" className="w-80 p-0 glass border-l border-border/50">
         <ErrorBoundary>
-          <PanelContent />
+          <PanelContent compact />
         </ErrorBoundary>
       </SheetContent>
     </Sheet>
