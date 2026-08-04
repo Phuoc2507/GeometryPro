@@ -63,7 +63,8 @@ export function DrawQualityPrompt() {
 
   return (
     <>
-      {visible && (
+      {/* Chỉ hỏi khi ĐÃ có hình để "xem bên trên" — tránh đè lên card nhập đề (empty state). */}
+      {visible && geometry && (
         <div className="fixed bottom-28 left-1/2 z-40 w-[min(92vw,380px)] -translate-x-1/2 animate-in fade-in slide-in-from-bottom-2 rounded-xl border border-border/60 bg-background/95 p-3 shadow-xl backdrop-blur">
           <button
             onClick={() => setVisible(false)}
