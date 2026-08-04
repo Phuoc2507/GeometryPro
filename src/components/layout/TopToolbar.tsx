@@ -49,7 +49,10 @@ export function TopToolbar() {
   return (
     <>
      <TooltipProvider delayDuration={150} skipDelayDuration={300}>
-      <div className="fixed top-4 left-1/2 -translate-x-1/2 z-40 flex items-center gap-1 sm:gap-2 glass rounded-xl px-1.5 sm:px-2 py-1.5 border border-border/50 max-w-[calc(100vw-1rem)] overflow-x-auto scrollbar-hide [&>*]:shrink-0">
+      {/* Trên điện thoại có 2 nút cố định 2 bên (☰ trái · hình khối phải, mỗi nút chiếm ~56px mép).
+          Giới hạn bề rộng thanh giữa để mép trái/phải KHÔNG chui xuống dưới 2 nút đó (hết chồng icon);
+          nếu vẫn dư thì overflow-x-auto cho cuộn ngang. Trên lg 2 nút bên bị ẩn nên nới rộng lại. */}
+      <div className="fixed top-4 left-1/2 -translate-x-1/2 z-40 flex items-center gap-1 sm:gap-2 glass rounded-xl px-1.5 sm:px-2 py-1.5 border border-border/50 max-w-[calc(100vw-8rem)] lg:max-w-[calc(100vw-1rem)] overflow-x-auto scrollbar-hide [&>*]:shrink-0">
 
         {/* VIEW DROPDOWN */}
         <DropdownMenu>
