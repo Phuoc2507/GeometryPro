@@ -142,14 +142,27 @@ interface BaseFace {
   level: number;
 }
 
+/** Có primitive KHỐI TRÒN/GIẢI TÍCH (cầu/trụ/nón)? Những hình này KHÔNG phải chóp. */
+function hasRoundSolid(geometry: GeometryData): boolean {
+  return (
+    (geometry.spheres?.length ?? 0) > 0 ||
+    (geometry.cylinders?.length ?? 0) > 0 ||
+    (geometry.cones?.length ?? 0) > 0
+  );
+}
+
 /**
- * Dò mặt đáy của khối (chóp/lăng trụ/hộp…). Trả `null` nếu không đủ tin cậy
- * (ít hơn 4 điểm, hoặc không có mặt phẳng vuông trục ≥3 điểm ở biên kèm đỉnh đối
- * diện). Thà không hiện công tắc còn hơn dời về một tâm đoán sai.
+ * Dò mặt đáy của HÌNH CHÓP. Trả `null` nếu không phải chóp/không đủ tin cậy:
+ *  - có mặt cầu/trụ/nón (khối tròn — không phải chóp) ⇒ loại thẳng;
+ *  - dưới 4 điểm (thiếu đáy ≥3 + đỉnh);
+ *  - không có mặt phẳng vuông trục ở biên với ĐÁY đông hơn hẳn ĐỈNH;
+ *  - đáy SUY BIẾN (các điểm thẳng hàng ⇒ diện tích ~0, không phải đa giác thật).
+ * Thà không hiện công tắc còn hơn dời về một tâm đoán sai.
  */
 export function detectBaseFace(geometry: GeometryData | null): BaseFace | null {
   const pts = geometry?.points;
-  if (!pts || pts.length < 4) return null; // cần ≥3 đỉnh đáy + ≥1 đỉnh
+  if (!geometry || !pts || pts.length < 4) return null; // cần ≥3 đỉnh đáy + ≥1 đỉnh
+  if (hasRoundSolid(geometry)) return null;             // cầu/trụ/nón ⇒ không phải chóp
 
   interface Cand { axis: AxisIndex; level: number; group: typeof pts; count: number; }
   let best: Cand | null = null;
@@ -181,6 +194,10 @@ export function detectBaseFace(geometry: GeometryData | null): BaseFace | null {
       // trụ (nhiều điểm nhưng đối diện cũng nhiều) — tránh nhận nhầm "đáy".
       const topCount = groups.get(level === minKey ? maxKey : minKey)!.length;
       if (group.length <= 2 * topCount) continue;
+      // Đáy phải là ĐA GIÁC THẬT: nếu các điểm thẳng hàng (diện tích ~0) thì đây là
+      // đường kính / cạnh chứ không phải mặt đáy — bác. (Vá lỗi bài mặt cầu I,A,B
+      // thẳng hàng bị nhận nhầm là "đáy tam giác".)
+      if (isDegenerateFace(group, a)) continue;
       const cand: Cand = { axis: a, level, group, count: group.length };
       if (better(cand, best)) best = cand;
     }
@@ -251,6 +268,40 @@ function convexHull2D(input: Array<{ u: number; v: number }>): Array<{ u: number
   lower.pop();
   upper.pop();
   return lower.concat(upper);
+}
+
+/** |Diện tích| đa giác (đỉnh đã sắp thứ tự) theo shoelace. */
+function polygonArea2D(poly: Array<{ u: number; v: number }>): number {
+  const n = poly.length;
+  if (n < 3) return 0;
+  let a2 = 0;
+  for (let i = 0; i < n; i++) {
+    const p = poly[i];
+    const q = poly[(i + 1) % n];
+    a2 += p.u * q.v - q.u * p.v;
+  }
+  return Math.abs(a2) / 2;
+}
+
+/**
+ * Đáy có SUY BIẾN không (các điểm thẳng hàng ⇒ bao lồi <3 đỉnh hoặc diện tích ~0)?
+ * Ngưỡng tương đối theo kích thước đáy để bền với toạ độ lớn/nhỏ. Đáy suy biến =
+ * đường kính/đoạn thẳng, KHÔNG phải mặt đa giác ⇒ không coi là mặt đáy hình chóp.
+ */
+function isDegenerateFace(group: Array<{ x: number; y: number; z: number }>, axis: AxisIndex): boolean {
+  const [ua, va] = inPlaneAxes(axis);
+  const proj = group.map((p) => ({ u: axisOf(p, ua), v: axisOf(p, va) }));
+  const hull = convexHull2D(proj);
+  if (hull.length < 3) return true;
+  let minU = Infinity, maxU = -Infinity, minV = Infinity, maxV = -Infinity;
+  for (const q of proj) {
+    if (q.u < minU) minU = q.u;
+    if (q.u > maxU) maxU = q.u;
+    if (q.v < minV) minV = q.v;
+    if (q.v > maxV) maxV = q.v;
+  }
+  const scale = Math.max(maxU - minU, maxV - minV, 1);
+  return polygonArea2D(hull) < 1e-6 * scale * scale;
 }
 
 /**

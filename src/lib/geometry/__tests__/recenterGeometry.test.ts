@@ -201,6 +201,42 @@ describe('getBaseFaceCenter · dời gốc về tâm mặt phẳng đáy', () =>
     expect(hasBaseFace(sample())).toBe(false);
   });
 
+  it('BÀI MẶT CẦU 4 điểm — I,A,B thẳng hàng trên đường kính + O ⇒ KHÔNG nhận nhầm là chóp', () => {
+    // Tái hiện đúng lỗi ảnh chụp: cầu tâm I, A/B hai đầu đường kính (thẳng hàng với I),
+    // thêm điểm O ngoài. Trước đây {I,A,B} bị tưởng là "đáy tam giác", O là "đỉnh".
+    const g: GeometryData = {
+      name: 'sphere-4pts',
+      points: [
+        { id: 'I', label: 'I', x: 1, y: 2, z: -3 },
+        { id: 'A', label: 'A', x: 7, y: 2, z: -3 },
+        { id: 'B', label: 'B', x: -5, y: 2, z: -3 },
+        { id: 'O', label: 'O', x: -1, y: -2, z: 3 },
+      ],
+      lines: [],
+      spheres: [{ id: 's', center: { x: 1, y: 2, z: -3 }, radius: 6 }],
+    };
+    expect(hasBaseFace(g)).toBe(false);
+    expect(getBaseFaceCenter(g)).toBeNull();
+  });
+
+  it('có mặt cầu ⇒ LUÔN ẩn công tắc đáy, dù có 4 điểm không thẳng hàng', () => {
+    // Ngay cả khi các điểm tình cờ tạo được "đáy" đa giác, có cầu ⇒ đây là bài mặt cầu.
+    const g = pyramid([['A', 0, 0, 0], ['B', 4, 0, 0], ['C', 4, 4, 0], ['D', 0, 4, 0]], ['S', 2, 2, 6]);
+    g.spheres = [{ id: 's', center: { x: 2, y: 2, z: 3 }, radius: 5 }];
+    expect(hasBaseFace(g)).toBe(false);
+  });
+
+  it('đáy 3 điểm THẲNG HÀNG + 1 đỉnh (không có cầu) ⇒ đáy suy biến, không phải chóp', () => {
+    const g = pyramid([['A', 0, 0, 0], ['B', 3, 0, 0], ['C', 6, 0, 0]], ['S', 3, 0, 5]);
+    expect(hasBaseFace(g)).toBe(false);
+  });
+
+  it('có mặt trụ/nón ⇒ ẩn công tắc đáy', () => {
+    const base = pyramid([['A', 0, 0, 0], ['B', 4, 0, 0], ['C', 4, 4, 0], ['D', 0, 4, 0]], ['S', 2, 2, 6]);
+    expect(hasBaseFace({ ...base, cylinders: [{ id: 'cy', center1: { x: 0, y: 0, z: 0 }, center2: { x: 0, y: 0, z: 5 }, radius: 2 }] })).toBe(false);
+    expect(hasBaseFace({ ...base, cones: [{ id: 'co', apex: { x: 0, y: 0, z: 5 }, baseCenter: { x: 0, y: 0, z: 0 }, radius: 2 }] })).toBe(false);
+  });
+
   it('tâm đáy đã ở gốc ⇒ trả chính hình cũ (không bản sao thừa)', () => {
     const g = pyramid(
       [['A', -2, 0, -2], ['B', 2, 0, -2], ['C', 2, 0, 2], ['D', -2, 0, 2]],
