@@ -75,6 +75,18 @@ export const grantCredit = (userId: string, amount: number, reason?: string, ide
 export const setRole = (userId: string, role: 'admin' | 'user') =>
   adminApi<{ ok: boolean }>('set-role', { userId, role });
 
+export interface SetPlanResult {
+  ok: boolean;
+  plan_tier: string;
+  plan_code: string;
+  plan_credits: number;
+  plan_expires_at: string | null;
+}
+
+// Đổi gói cho một user (admin override). Chỉ gửi mã gói; server đọc bảng plans.
+export const setPlan = (userId: string, planCode: string) =>
+  adminApi<SetPlanResult>('set-plan', { userId, planCode });
+
 // ── Hình chuẩn (golden) ──────────────────────────────────────────────────────
 export interface SaveGoldenParams {
   prompt: string;

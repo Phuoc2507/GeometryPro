@@ -26,6 +26,7 @@ async function handler(req, res) {
       case 'list-orders':  return await listOrders(admin, req, res);
       case 'grant-credit': return await grantCredit(gate, req, res);
       case 'set-role':     return await setRole(gate, req, res);
+      case 'set-plan':     return await setPlan(gate, req, res);
       case 'save-golden':   return await saveGolden(gate, req, res);
       case 'list-golden':   return await listGolden(admin, req, res);
       case 'delete-golden': return await deleteGolden(admin, req, res);
@@ -172,6 +173,52 @@ async function setRole(gate, req, res) {
     .eq('user_id', userId);
   if (error) return res.status(500).json({ error: error.message });
   return res.json({ ok: true });
+}
+
+// ── set-plan: admin ĐỔI GÓI (tier/credit/hạn) cho một user, KHÔNG qua thanh toán ─
+// Client chỉ gửi MÃ GÓI; server đọc bảng `plans` (nguồn chuẩn) rồi ghi hồ sơ y hệt
+// fulfill_paid_order nhưng cấp một kỳ hạn MỚI tính từ bây giờ. planCode='free' (hoặc
+// gói hạn 0) ⇒ GỠ gói: hạ về free, hết hạn null, plan_credits về 0. Đây là ghi đè
+// quản trị (cấp/hỗ trợ tay) — credit MUA (purchased_credits) giữ nguyên, không đụng.
+async function setPlan(gate, req, res) {
+  const { admin } = gate;
+  const userId = String(req.body?.userId || '');
+  const planCode = String(req.body?.planCode || '');
+  if (!userId) return res.status(400).json({ error: 'Thiếu userId' });
+  if (!planCode) return res.status(400).json({ error: 'Thiếu mã gói' });
+
+  const { data: plan, error: pErr } = await admin
+    .from('plans')
+    .select('code, tier, name, duration_days, credits_per_cycle')
+    .eq('code', planCode)
+    .maybeSingle();
+  if (pErr) return res.status(500).json({ error: pErr.message });
+  if (!plan) return res.status(400).json({ error: 'Gói không tồn tại' });
+
+  const durationDays = Number(plan.duration_days) || 0;
+  const isFree = plan.tier === 'free' || plan.code === 'free' || durationDays <= 0;
+  const nowMs = Date.now();
+  const nowIso = new Date(nowMs).toISOString();
+  const patch = {
+    plan_type: isFree ? 'free' : plan.tier,
+    plan_tier: isFree ? 'free' : plan.tier,
+    plan_code: plan.code,
+    plan_expires_at: isFree ? null : new Date(nowMs + durationDays * 86400000).toISOString(),
+    plan_credits: isFree ? 0 : Number(plan.credits_per_cycle) || 0,
+    credits_reset_at: nowIso,
+    updated_at: nowIso,
+  };
+
+  const { error } = await admin.from('profiles').update(patch).eq('user_id', userId);
+  if (error) return res.status(500).json({ error: error.message });
+
+  return res.json({
+    ok: true,
+    plan_tier: patch.plan_tier,
+    plan_code: patch.plan_code,
+    plan_credits: patch.plan_credits,
+    plan_expires_at: patch.plan_expires_at,
+  });
 }
 
 // ── save-golden: LƯU "hình chuẩn" (hình đúng do admin duyệt) cho một đề ───────

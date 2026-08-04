@@ -378,8 +378,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const credits = planCredits + purchasedCredits;
 
   // Vai trò bị khoá theo gói: tier 'student' → học sinh; tier trả phí khác → giáo viên; free → mở khoá.
-  const lockedRole: 'student' | 'teacher' | null =
+  // ADMIN được MIỄN khoá — tự do chuyển Học sinh ↔ Giáo viên bất kể gói (để test/hỗ trợ khách).
+  const planLockedRole: 'student' | 'teacher' | null =
     tier === 'free' ? null : (tier === 'student' ? 'student' : 'teacher');
+  const lockedRole: 'student' | 'teacher' | null = isAdmin ? null : planLockedRole;
   const isRoleLocked = lockedRole !== null;
 
   return (

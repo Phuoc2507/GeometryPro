@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Loader2, RefreshCw, Search, Coins, ShieldCheck, ShieldOff, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Loader2, RefreshCw, Search, Coins, ShieldCheck, ShieldOff, ChevronLeft, ChevronRight, Tag } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -7,12 +7,20 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useAuth } from '@/context/AuthContext';
-import { listUsers, grantCredit, setRole, type AdminUser } from '@/lib/adminApi';
+import { supabase } from '@/integrations/supabase/client';
+import { listUsers, grantCredit, setRole, setPlan, type AdminUser } from '@/lib/adminApi';
 
 const TIER_LABELS: Record<string, string> = {
-  free: 'Miễn phí', teacher: 'Cơ bản', pro: 'Chuyên nghiệp', school: 'Trường học',
+  free: 'Miễn phí', student: 'Học sinh', teacher: 'Cơ bản', pro: 'Chuyên nghiệp', school: 'Trường học',
 };
+
+// Gói (đọc công khai từ bảng plans) để admin chọn khi đổi gói cho user.
+interface PlanRow {
+  code: string; tier: string; name: string;
+  price_vnd: number; duration_days: number; credits_per_cycle: number;
+}
 
 function fmtDate(iso: string | null): string {
   if (!iso) return '—';
@@ -28,6 +36,7 @@ export function UsersTab() {
   const [total, setTotal] = useState<number | null>(null);
   const [search, setSearch] = useState('');
   const [granting, setGranting] = useState<AdminUser | null>(null);
+  const [planning, setPlanning] = useState<AdminUser | null>(null);
 
   const fetchPage = useCallback(async (p: number) => {
     setLoading(true);
@@ -98,7 +107,7 @@ export function UsersTab() {
                   <TableHead className="w-[110px]">Gói</TableHead>
                   <TableHead className="w-[90px] text-right">Credit</TableHead>
                   <TableHead className="w-[90px]">Vai trò</TableHead>
-                  <TableHead className="w-[160px] text-right">Thao tác</TableHead>
+                  <TableHead className="w-[230px] text-right">Thao tác</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -121,6 +130,9 @@ export function UsersTab() {
                     <TableCell className="text-right whitespace-nowrap">
                       <Button variant="ghost" size="sm" className="h-7 gap-1 px-2" onClick={() => setGranting(u)}>
                         <Coins className="h-3.5 w-3.5" /> Credit
+                      </Button>
+                      <Button variant="ghost" size="sm" className="h-7 gap-1 px-2" onClick={() => setPlanning(u)}>
+                        <Tag className="h-3.5 w-3.5" /> Gói
                       </Button>
                       <Button
                         variant="ghost" size="sm" className="h-7 gap-1 px-2"
@@ -160,6 +172,12 @@ export function UsersTab() {
         onGranted={(id, remaining) => {
           if (remaining != null) setUsers((prev) => prev.map((x) => (x.id === id ? { ...x, credits: remaining } : x)));
         }}
+      />
+
+      <ChangePlanDialog
+        user={planning}
+        onClose={() => setPlanning(null)}
+        onChanged={(id, patch) => setUsers((prev) => prev.map((x) => (x.id === id ? { ...x, ...patch } : x)))}
       />
     </Card>
   );
@@ -222,6 +240,115 @@ function GrantCreditDialog({ user, onClose, onGranted }: {
             <DialogFooter>
               <Button variant="ghost" onClick={onClose} disabled={submitting}>Hủy</Button>
               <Button onClick={submit} disabled={submitting || !amount}>
+                {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Xác nhận'}
+              </Button>
+            </DialogFooter>
+          </>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// Hộp thoại ĐỔI GÓI cho một user (admin override, không qua thanh toán).
+// Đọc danh sách gói công khai từ bảng plans; server áp tier/credit/hạn theo mã gói.
+function ChangePlanDialog({ user, onClose, onChanged }: {
+  user: AdminUser | null;
+  onClose: () => void;
+  onChanged: (userId: string, patch: Partial<AdminUser>) => void;
+}) {
+  const [plans, setPlans] = useState<PlanRow[]>([]);
+  const [loadingPlans, setLoadingPlans] = useState(false);
+  const [code, setCode] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (!user) return;
+    let cancelled = false;
+    setLoadingPlans(true);
+    (async () => {
+      const { data, error } = await supabase
+        .from('plans')
+        .select('code, tier, name, price_vnd, duration_days, credits_per_cycle')
+        .eq('active', true)
+        .order('price_vnd', { ascending: true });
+      if (cancelled) return;
+      if (error || !data) { toast.error('Không tải được danh sách gói'); setPlans([]); }
+      else setPlans(data as PlanRow[]);
+      setLoadingPlans(false);
+    })();
+    return () => { cancelled = true; };
+  }, [user]);
+
+  // Chọn mặc định = gói hiện tại của user nếu còn trong danh sách, không thì về 'free'.
+  useEffect(() => {
+    if (!user || plans.length === 0) return;
+    const has = plans.some((p) => p.code === user.plan_code);
+    setCode(has ? user.plan_code : (plans.find((p) => p.tier === 'free')?.code ?? plans[0].code));
+  }, [user, plans]);
+
+  const submit = async () => {
+    if (!user || !code) return;
+    setSubmitting(true);
+    try {
+      const res = await setPlan(user.id, code);
+      const purchased = Number(user.purchased_credits || 0);
+      onChanged(user.id, {
+        plan_tier: res.plan_tier,
+        plan_code: res.plan_code,
+        plan_credits: res.plan_credits,
+        plan_expires_at: res.plan_expires_at,
+        credits: res.plan_credits + purchased,
+      });
+      toast.success(`Đã đổi gói sang ${TIER_LABELS[res.plan_tier] || res.plan_tier}`);
+      onClose();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Không đổi được gói');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <Dialog open={!!user} onOpenChange={(o) => { if (!o) onClose(); }}>
+      <DialogContent className="sm:max-w-[440px]">
+        {user && (
+          <>
+            <DialogHeader>
+              <DialogTitle>Đổi gói</DialogTitle>
+              <DialogDescription>
+                {user.email || user.id} · gói hiện tại: <strong>{TIER_LABELS[user.plan_tier] || user.plan_tier}</strong>
+                {user.plan_expires_at ? ` (hết hạn ${fmtDate(user.plan_expires_at)})` : ''}.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-3 py-1">
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium text-muted-foreground">Gói mới</label>
+                {loadingPlans ? (
+                  <div className="flex h-9 items-center justify-center rounded-md border border-border/60">
+                    <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                  </div>
+                ) : (
+                  <Select value={code} onValueChange={setCode}>
+                    <SelectTrigger><SelectValue placeholder="Chọn gói" /></SelectTrigger>
+                    <SelectContent>
+                      {plans.map((p) => (
+                        <SelectItem key={p.code} value={p.code} className="text-xs">
+                          {p.name} · {p.credits_per_cycle.toLocaleString('vi-VN')} credit{p.duration_days ? ` · ${p.duration_days} ngày` : ''}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              </div>
+              <p className="text-[11px] text-muted-foreground">
+                Đặt lại <strong>credit gói</strong> theo gói mới &amp; cấp kỳ hạn mới tính từ bây giờ. Chọn <strong>Miễn phí</strong> để gỡ gói.
+                Credit <strong>mua</strong> (không hết hạn) giữ nguyên. Tier cũng quyết định vai trò Học sinh/Giáo viên của khách.
+              </p>
+            </div>
+            <DialogFooter>
+              <Button variant="ghost" onClick={onClose} disabled={submitting}>Hủy</Button>
+              <Button onClick={submit} disabled={submitting || !code || loadingPlans}>
                 {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Xác nhận'}
               </Button>
             </DialogFooter>
