@@ -30,6 +30,40 @@ describe('entityTableToGeometryData', () => {
     expect(geo.spheres![0].center).toEqual({ x: 1, y: 1, z: 0 });
   });
 
+  it('mặt PHƯƠNG TRÌNH (P) không có điểm nào trên nó → dựng tấm hữu hạn 4 góc + nhãn "(P)"', () => {
+    const res = run({
+      solidName: 'wall',
+      ops: [
+        { op: 'oxyz_point', name: 'M', at: [1, -3, 4] }, // không nằm trên (P)
+        { op: 'oxyz_plane', name: 'P', by: { form: 'coeffs', a: 1, b: -2, c: 2, d: -3 } },
+      ],
+    });
+    expect(res.ok).toBe(true);
+    const geo = entityTableToGeometryData(res.entities, 'wall');
+    const plane = geo.planes?.find((p) => p.id === 'P');
+    expect(plane).toBeTruthy();
+    expect(plane!.label).toBe('(P)');
+    expect(plane!.pointIds).toEqual(['P1', 'P2', 'P3', 'P4']);
+    // 4 góc + 4 cạnh của tấm được thêm vào hình.
+    expect(geo.points.filter((p) => /^P\d$/.test(p.id))).toHaveLength(4);
+    expect(geo.lines.length).toBeGreaterThanOrEqual(4);
+  });
+
+  it('mặt định nghĩa bằng ≥3 điểm có tên (ABCD) KHÔNG sinh góc tổng hợp', () => {
+    const res = run({
+      solidName: 'sq',
+      ops: [
+        { op: 'oxyz_point', name: 'A', at: [0, 0, 0] },
+        { op: 'oxyz_point', name: 'B', at: [2, 0, 0] },
+        { op: 'oxyz_point', name: 'C', at: [2, 2, 0] },
+        { op: 'oxyz_point', name: 'D', at: [0, 2, 0] },
+        { op: 'oxyz_plane', name: 'ABCD', by: { form: 'three_points', a: 'A', b: 'B', c: 'C' } },
+      ],
+    });
+    const geo = entityTableToGeometryData(res.entities, 'sq');
+    expect(geo.points).toHaveLength(4); // không thêm góc P1..P4
+  });
+
   it('renders synthetic edges as lines', () => {
     const res = run({
       solidName: 'sq',

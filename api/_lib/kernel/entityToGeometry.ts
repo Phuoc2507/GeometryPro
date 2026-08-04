@@ -79,7 +79,78 @@ export function entityTableToGeometryData(et: EntityTable, name: string): Geomet
         const p = et.points.get(n)!;
         return { x: p.p.x.approx, y: p.p.y.approx, z: p.p.z.approx };
       }),
-    }));
+    })) as GeometryData['planes'];
+
+  // Mặt phẳng cho bởi PHƯƠNG TRÌNH (P): ax+by+cz+d=0 là mặt VÔ HẠN — không có đa giác nên
+  // trước đây "Vẽ kỹ" (kernel) KHÔNG hiện, khác "Vẽ nhanh" (LLM tự dựng 4 góc). Dựng một TẤM
+  // HỮU HẠN quanh vùng hình: 4 điểm góc (placeholder → tự ẩn nhãn), 4 cạnh, và plane có
+  // label "(P)" để hiện đúng kiểu SGK. Bỏ qua mặt đã là face (đa giác có tên).
+  const EQ_PLANE_COLORS = ['#9ca3af', '#4ade80', '#60a5fa', '#f59e0b'];
+  // Chỉ dựng tấm tổng hợp cho mặt PHƯƠNG TRÌNH thật sự: mặt mà DƯỚI 3 điểm-có-tên nằm trên nó.
+  // Mặt định nghĩa bằng ≥3 điểm có tên (vd (ABCD) qua A,B,C) đã có/được vẽ bằng chính các điểm đó —
+  // bỏ qua để không sinh góc thừa (giữ đúng hành vi cũ, tránh làm rối hình).
+  const onPlaneCount = (n: { x: number; y: number; z: number }, d: number): number => {
+    const len = Math.hypot(n.x, n.y, n.z) || 1;
+    let cnt = 0;
+    for (const p of points) {
+      if (Math.abs(n.x * p.x + n.y * p.y + n.z * p.z + d) / len <= 1e-6 * Math.max(1, Math.abs(p.x), Math.abs(p.y), Math.abs(p.z))) cnt++;
+    }
+    return cnt;
+  };
+  const eqPlanes = Array.from(et.planes.entries()).filter(([key, pe]) =>
+    !et.faces.has(key) && onPlaneCount({ x: pe.n.x.approx, y: pe.n.y.approx, z: pe.n.z.approx }, pe.d.approx) < 3,
+  );
+  if (eqPlanes.length > 0) {
+    // Tâm + bán kính vùng hình (từ các điểm đã có) để canh kích thước tấm.
+    let cx = 0, cy = 0, cz = 0;
+    for (const p of points) { cx += p.x; cy += p.y; cz += p.z; }
+    const nP = Math.max(1, points.length);
+    const center = { x: cx / nP, y: cy / nP, z: cz / nP };
+    let radius = 4;
+    for (const p of points) {
+      radius = Math.max(radius, Math.hypot(p.x - center.x, p.y - center.y, p.z - center.z));
+    }
+    const half = radius * 1.3;
+
+    eqPlanes.forEach(([key, pe], idx) => {
+      const n = { x: pe.n.x.approx, y: pe.n.y.approx, z: pe.n.z.approx };
+      const d = pe.d.approx;
+      const nn = n.x * n.x + n.y * n.y + n.z * n.z;
+      if (!(nn > 0)) return;
+      // Chiếu tâm vùng hình xuống mặt phẳng để tấm bám sát hình.
+      const t = (n.x * center.x + n.y * center.y + n.z * center.z + d) / nn;
+      const c = { x: center.x - n.x * t, y: center.y - n.y * t, z: center.z - n.z * t };
+      // Hai vector đơn vị nằm trong mặt (vuông góc n).
+      const axis = Math.abs(n.x) < Math.abs(n.z) ? { x: 1, y: 0, z: 0 } : { x: 0, y: 0, z: 1 };
+      const u0 = { x: n.y * axis.z - n.z * axis.y, y: n.z * axis.x - n.x * axis.z, z: n.x * axis.y - n.y * axis.x };
+      const ul = Math.hypot(u0.x, u0.y, u0.z) || 1;
+      const u = { x: u0.x / ul, y: u0.y / ul, z: u0.z / ul };
+      const v0 = { x: n.y * u.z - n.z * u.y, y: n.z * u.x - n.x * u.z, z: n.x * u.y - n.y * u.x };
+      const vl = Math.hypot(v0.x, v0.y, v0.z) || 1;
+      const v = { x: v0.x / vl, y: v0.y / vl, z: v0.z / vl };
+      // 4 góc đi quanh biên (không đi chéo).
+      const signs = [[1, 1], [-1, 1], [-1, -1], [1, -1]];
+      const corners = signs.map(([su, sv]) => ({
+        x: c.x + u.x * half * su + v.x * half * sv,
+        y: c.y + u.y * half * su + v.y * half * sv,
+        z: c.z + u.z * half * su + v.z * half * sv,
+      }));
+      const ids = corners.map((_, i) => `${key}${i + 1}`);
+      corners.forEach((pt, i) => points.push({ id: ids[i], label: ids[i], x: pt.x, y: pt.y, z: pt.z }));
+      for (let i = 0; i < 4; i++) {
+        const a = ids[i], b = ids[(i + 1) % 4];
+        lines.push({ id: `${a}${b}`, from: a, to: b, style: 'solid' as const });
+      }
+      planes.push({
+        id: key,
+        label: `(${key})`,
+        pointIds: ids,
+        points: corners,
+        color: EQ_PLANE_COLORS[idx % EQ_PLANE_COLORS.length],
+        opacity: 0.12,
+      });
+    });
+  }
 
   return { name, points, lines, spheres, planes } as GeometryData;
 }
