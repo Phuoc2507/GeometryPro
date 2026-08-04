@@ -17,7 +17,14 @@ export function PlaneSgkLabel({ plane, points }: { plane: Plane3D; points: Point
   const sgkName = useMemo(() => {
     const ids = [...collectPlanePointIds(plane, points)];
     if (ids.length < 3) return null;
-    return planeSgkName(ids.map((id) => byId.get(id)?.label));
+    // Chỉ gộp nhãn khi các đỉnh là ẩn danh (placeholder); mặt có đỉnh tên thật để yên.
+    const derived = planeSgkName(ids.map((id) => byId.get(id)?.label));
+    if (!derived) return null;
+    // Ưu tiên TÊN ĐỀ do AI đặt ở plane.label ("(P)", "(Q)", "(α)"…); nếu không có → chữ gốc của đỉnh.
+    const lbl = (plane.label || '').trim();
+    if (/^\(.+\)$/.test(lbl)) return lbl;
+    if (/^[A-Za-zΑ-Ωα-ω]$/.test(lbl)) return `(${lbl})`;
+    return `(${derived})`;
   }, [plane, points, byId]);
 
   const pos = useMemo(() => {
@@ -49,7 +56,7 @@ export function PlaneSgkLabel({ plane, points }: { plane: Plane3D; points: Point
           whiteSpace: 'nowrap',
         }}
       >
-        ({sgkName})
+        {sgkName}
       </span>
     </Html>
   );

@@ -43,7 +43,8 @@ QUY TẮC ĐẶT TOẠ ĐỘ THEO LOẠI HÌNH
    - NGỮ PHÁP "expr" (bắt buộc theo đúng, sai sẽ bị bỏ): hàm được phép: sin, cos, tan, sqrt, abs, exp, ln, log (ln=log=logarit TỰ NHIÊN); hằng: pi, e; toán tử: + - * / ^ ; biến DUY NHẤT là x. PHẢI viết dấu nhân tường minh (2*x, KHÔNG "2x"); dùng exp(x/2) hoặc e^(x/2) CHỨ KHÔNG e^{x/2}; không ngoặc nhọn/không LaTeX. Ví dụ hợp lệ: "exp(x/2)*sqrt(x)", "ln(x)+1", "1/(x^2+1)", "sqrt(4-x^2)".
    - VỆ SINH NHÃN đường cong: chỉ đặt label cho điểm CÓ NGHĨA (O, giao trục, cận a/b); điểm phụ trên đường sinh để label rỗng "".
    - Vật chuyển động: mảng "agents" với id, label, initialPosition, color. (Kết hợp với "timeline" nếu có).
-   - Mặt phẳng (đa giác): mảng "planes" với id, pointIds, points, color, opacity. Chỉ tạo mặt biên thật sự của khối hoặc mặt cắt được đề bài nêu rõ; KHÔNG ghép các điểm không đồng phẳng và KHÔNG tạo mặt chạy xuyên qua lòng khối. pointIds phải tham chiếu đúng ID trong "points"; points phải là cùng các tọa độ theo thứ tự đi quanh đường biên, không đi theo đường chéo. Với không gian có nhiều điểm phụ, không dùng điểm ngoài biên để tạo plane. Dùng opacity 0.08–0.15 để tránh các mặt chồng lên nhau quá đậm.
+   - Mặt phẳng (đa giác): mảng "planes" với id, label, pointIds, points, color, opacity. Chỉ tạo mặt biên thật sự của khối hoặc mặt cắt được đề bài nêu rõ; KHÔNG ghép các điểm không đồng phẳng và KHÔNG tạo mặt chạy xuyên qua lòng khối. pointIds phải tham chiếu đúng ID trong "points"; points phải là cùng các tọa độ theo thứ tự đi quanh đường biên, không đi theo đường chéo. Với không gian có nhiều điểm phụ, không dùng điểm ngoài biên để tạo plane. Dùng opacity 0.08–0.15 để tránh các mặt chồng lên nhau quá đậm.
+     ★ ĐẶT TÊN MẶT PHẲNG THEO ĐỀ (kiểu SGK): nếu đề gọi mặt phẳng bằng một tên — vd (P), (Q), (α), (ABC), (SBC) — thì set trường "label" của plane ĐÚNG tên đó KÈM ngoặc, vd "label":"(P)". Các đỉnh của mặt phẳng đó (nếu là điểm PHỤ do bạn tự dựng để vẽ tấm mặt, không phải điểm có tên riêng trong đề) hãy đặt id/label theo dạng chữ-gốc + chỉ số của mặt: mặt (P) → 4 đỉnh P1,P2,P3,P4; mặt tường/(Q) → Q1..Q4. Hệ thống sẽ TỰ ẩn 4 nhãn phụ này và chỉ hiện MỘT nhãn "(P)" cạnh một góc. TUYỆT ĐỐI KHÔNG đặt tên đỉnh mặt phẳng bằng các chữ vô nghĩa như W1..W4 khi đề đã gọi mặt là (P) — phải theo đúng chữ của đề.
 
 ═══════════════════════════════════════════════════════
 TÍNH ĐIỂM ĐẶC BIỆT (BẮT BUỘC DÙNG CÔNG THỨC)
@@ -80,7 +81,7 @@ OUTPUT FORMAT — CHỈ JSON THUẦN, KHÔNG MARKDOWN
     "name": "Tên hình ngắn",
     "points": [{"id": "A", "label": "A", "x": -2, "y": -2, "z": 0}, ...],
     "lines": [{"id": "l1", "from": "A", "to": "B", "style": "solid"}, ...],
-    "planes": [{"id": "p1", "pointIds": ["A","B","C"], "points": [{"x":-2,"y":-2,"z":0}, {"x":2,"y":-2,"z":0}, {"x":2,"y":2,"z":0}], "color": "#3b82f6", "opacity": 0.12}],
+    "planes": [{"id": "p1", "label": "(P)", "pointIds": ["P1","P2","P3","P4"], "points": [{"x":-2,"y":-2,"z":0}, {"x":2,"y":-2,"z":0}, {"x":2,"y":2,"z":0}, {"x":-2,"y":2,"z":0}], "color": "#3b82f6", "opacity": 0.12}],
     "circles": [...], "spheres": [...], "cones": [...], "cylinders": [...],
     "surfaces": [...], "curves": [...], "areaRegions": [...], "revolutionSolids": [...], "agents": [...], "timeline": {...}
   }
