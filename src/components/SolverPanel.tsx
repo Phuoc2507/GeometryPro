@@ -561,69 +561,6 @@ function SolveResultViewImpl({
 
   return (
     <div className="h-full flex flex-col">
-      {/* ─── Đáp số (desktop). Bản GỌN (mobile) BỎ HẲN đáp số/tự chấm/xem đáp án —
-             chỉ còn lời giải từng bước. ─── */}
-      {!compact && (
-      <div className="px-4 pt-4 pb-2 shrink-0">
-        <div className="rounded-2xl border border-primary/25 bg-gradient-to-br from-primary/10 to-primary/[0.03] px-4 py-3.5">
-          <div className="text-[10.5px] font-bold uppercase tracking-[0.14em] text-primary">Đáp số</div>
-          {answerShown ? (
-            <>
-              <div className="mt-1.5 flex items-baseline flex-wrap gap-x-2 gap-y-1">
-                <AnswerMath text={result.final_answer} className="text-lg font-semibold text-foreground break-words [&_.katex]:text-[1.2rem]" />
-                {result.answer_value != null && Number.isFinite(result.answer_value) &&
-                 /√|\/|\\sqrt|\\frac/.test(result.final_answer) &&
-                 Math.abs(result.answer_value - Math.round(result.answer_value)) > 1e-9 && (
-                  <span className="text-sm font-medium text-muted-foreground tabular-nums">≈ {fmtApprox(result.answer_value)}</span>
-                )}
-              </div>
-              <span className={cn('inline-flex items-center gap-1.5 mt-2.5 text-[11px] font-semibold px-2.5 py-1 rounded-full border', chipTone)}>
-                <TierIcon className="w-3 h-3" />
-                {meta.description}
-                {level === 1 && result.tier?.exactness ? ` · ${exactnessLabel(result.tier.exactness)}` : ''}
-              </span>
-              {level === 3 && reasonMsg && !isTechnicalReason(reasonMsg) && (
-                <p className="text-[11px] mt-2 text-muted-foreground/90 leading-snug break-words">{reasonMsg}</p>
-              )}
-            </>
-          ) : (
-            <div className="mt-2 space-y-2">
-              {/* Tự nhập đáp án để tự chấm (nếu bài có số chuẩn). */}
-              {canGrade && (
-                <>
-                  <div className="flex gap-2">
-                    <input
-                      value={guess}
-                      onChange={(e) => { setGuess(e.target.value); setVerdict(null); }}
-                      onKeyDown={(e) => { if (e.key === 'Enter') checkGuess(); }}
-                      placeholder="Nhập đáp số của em… vd 2√3, 4/3, pi/6"
-                      aria-label="Nhập đáp số của em"
-                      className="flex-1 min-w-0 h-10 rounded-xl border border-primary/40 bg-background/60 px-3 text-sm text-foreground outline-none focus:border-primary transition-colors"
-                    />
-                    <Button onClick={checkGuess} disabled={!guess.trim()} size="sm" className="h-10 px-4 rounded-xl shrink-0">
-                      Kiểm tra
-                    </Button>
-                  </div>
-                  {verdict && <AnswerFeedback verdict={verdict} />}
-                </>
-              )}
-              <button
-                onClick={() => setAnswerShown(true)}
-                className="w-full inline-flex items-center justify-center gap-2 h-9 rounded-xl border border-dashed border-primary/50 text-primary text-[13px] font-semibold hover:bg-primary/10 transition-colors"
-              >
-                <Eye className="w-4 h-4" /> Xem đáp án
-              </button>
-            </div>
-          )}
-        </div>
-        {!answerShown && !verdict && (
-          <p className="text-[11px] text-muted-foreground/70 text-center mt-1.5">
-            {canGrade ? 'Tự làm rồi nhập đáp số để đối chiếu — hoặc bấm “Xem đáp án”.' : 'Thử tự làm theo các bước trước nhé — bấm khi muốn đối chiếu.'}
-          </p>
-        )}
-      </div>
-      )}
-
       {/* ─── Đề bài (thu gọn, render đẹp như lời giải) — ẩn ở bản gọn ─── */}
       {!compact && problem && problem.trim() && (
         <div className="mx-4 mb-2 shrink-0 rounded-xl border border-border/60 bg-secondary/15 overflow-hidden">
@@ -764,6 +701,68 @@ function SolveResultViewImpl({
             Bước sau <ChevronRight className="w-4 h-4" />
           </Button>
         </div>
+      )}
+
+      {/* ─── Đáp số — ĐẶT DƯỚI lời giải từng bước. Bản GỌN (mobile) bỏ hẳn. ─── */}
+      {!compact && (
+      <div className="px-4 pt-2 pb-2 shrink-0 border-t border-border/40">
+        <div className="rounded-2xl border border-primary/25 bg-gradient-to-br from-primary/10 to-primary/[0.03] px-4 py-3.5">
+          <div className="text-[10.5px] font-bold uppercase tracking-[0.14em] text-primary">Đáp số</div>
+          {answerShown ? (
+            <>
+              <div className="mt-1.5 flex items-baseline flex-wrap gap-x-2 gap-y-1">
+                <AnswerMath text={result.final_answer} className="text-lg font-semibold text-foreground break-words [&_.katex]:text-[1.2rem]" />
+                {result.answer_value != null && Number.isFinite(result.answer_value) &&
+                 /√|\/|\\sqrt|\\frac/.test(result.final_answer) &&
+                 Math.abs(result.answer_value - Math.round(result.answer_value)) > 1e-9 && (
+                  <span className="text-sm font-medium text-muted-foreground tabular-nums">≈ {fmtApprox(result.answer_value)}</span>
+                )}
+              </div>
+              <span className={cn('inline-flex items-center gap-1.5 mt-2.5 text-[11px] font-semibold px-2.5 py-1 rounded-full border', chipTone)}>
+                <TierIcon className="w-3 h-3" />
+                {meta.description}
+                {level === 1 && result.tier?.exactness ? ` · ${exactnessLabel(result.tier.exactness)}` : ''}
+              </span>
+              {level === 3 && reasonMsg && !isTechnicalReason(reasonMsg) && (
+                <p className="text-[11px] mt-2 text-muted-foreground/90 leading-snug break-words">{reasonMsg}</p>
+              )}
+            </>
+          ) : (
+            <div className="mt-2 space-y-2">
+              {/* Tự nhập đáp án để tự chấm (nếu bài có số chuẩn). */}
+              {canGrade && (
+                <>
+                  <div className="flex gap-2">
+                    <input
+                      value={guess}
+                      onChange={(e) => { setGuess(e.target.value); setVerdict(null); }}
+                      onKeyDown={(e) => { if (e.key === 'Enter') checkGuess(); }}
+                      placeholder="Nhập đáp số của em… vd 2√3, 4/3, pi/6"
+                      aria-label="Nhập đáp số của em"
+                      className="flex-1 min-w-0 h-10 rounded-xl border border-primary/40 bg-background/60 px-3 text-sm text-foreground outline-none focus:border-primary transition-colors"
+                    />
+                    <Button onClick={checkGuess} disabled={!guess.trim()} size="sm" className="h-10 px-4 rounded-xl shrink-0">
+                      Kiểm tra
+                    </Button>
+                  </div>
+                  {verdict && <AnswerFeedback verdict={verdict} />}
+                </>
+              )}
+              <button
+                onClick={() => setAnswerShown(true)}
+                className="w-full inline-flex items-center justify-center gap-2 h-9 rounded-xl border border-dashed border-primary/50 text-primary text-[13px] font-semibold hover:bg-primary/10 transition-colors"
+              >
+                <Eye className="w-4 h-4" /> Xem đáp án
+              </button>
+            </div>
+          )}
+        </div>
+        {!answerShown && !verdict && (
+          <p className="text-[11px] text-muted-foreground/70 text-center mt-1.5">
+            {canGrade ? 'Tự làm rồi nhập đáp số để đối chiếu — hoặc bấm “Xem đáp án”.' : 'Thử tự làm theo các bước trước nhé — bấm khi muốn đối chiếu.'}
+          </p>
+        )}
+      </div>
       )}
 
       {/* ─── Giải lại (desktop; mobile đã có nút tam giác nhỏ cạnh tiêu đề) ─── */}
