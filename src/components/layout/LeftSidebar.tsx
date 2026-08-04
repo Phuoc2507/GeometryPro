@@ -146,7 +146,7 @@ function QueueItemCard({ item, isActive, onView, onRemove }: {
   );
 }
 
-function SidebarContent() {
+function SidebarContent({ onRequestClose }: { onRequestClose?: () => void } = {}) {
   const context = useGeometryOptional();
   const { user, openAuthModal } = useAuth();
   const { toast } = useToast();
@@ -327,6 +327,8 @@ function SidebarContent() {
             url.searchParams.delete('id');
             window.history.replaceState({}, '', url.toString());
             context?.clearGeometry();
+            // Trên di động: đóng luôn thanh bên (Sheet) để xem ngay canvas trống của bài mới.
+            onRequestClose?.();
           }}
         >
           <div className="flex items-center justify-between w-full">
@@ -569,7 +571,7 @@ export function MobileSidebar() {
       </SheetTrigger>
       <SheetContent side="left" className="w-[300px] p-0 glass border-r border-border/50">
         <div className="h-full flex flex-col bg-background/95">
-          <SidebarContent />
+          <SidebarContent onRequestClose={() => setOpen(false)} />
         </div>
       </SheetContent>
     </Sheet>
