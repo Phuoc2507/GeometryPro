@@ -3,6 +3,7 @@
 // (để admin tự đối chiếu). KHÔNG trừ credit, KHÔNG đụng kernel — chỉ gọi LLM thô.
 import { requireAdmin } from './_lib/adminAuth.js';
 import { callVilao } from './_lib/vilao.js';
+import { parseJsonResponse } from './_lib/jsonHelpers.js';
 import { BASE_PROMPT } from './_prompts/prompts/base.js';
 import { LEVEL_STATIC } from './_prompts/prompts/levels.js';
 import { getTestApiKeys, getTestApiKeysPublic } from './_lib/testApiKeys.js';
@@ -27,9 +28,11 @@ async function runOne(key, problem, image) {
       imageBase64: image || null,
       returnRaw: true,
     });
+    // Dùng bộ trích JSON linh hoạt GIỐNG luồng vẽ thật (strip ```json fence, block
+    // <think> của model reasoning, JSON bị cắt) — KHÔNG gọi AI sửa để đo trung thực.
     let parsed = null;
     let parseError = null;
-    try { parsed = JSON.parse(raw.content); } catch (e) { parseError = e.message; }
+    try { parsed = parseJsonResponse(raw.content); } catch (e) { parseError = e.message; }
     const geometry = parsed ? (parsed.geometry || parsed) : null;
     return {
       keyId: key.id, keyName: key.name, model: key.model, ok: true,
