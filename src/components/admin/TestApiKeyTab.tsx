@@ -133,7 +133,8 @@ export function TestApiKeyTab() {
 
   const openResult = (batch: Batch, r: TestKeyResult) => {
     if (r.geometry == null) return;
-    const id = uid();
+    // id CỐ ĐỊNH theo (lô, key) → mở lại nhiều lần KHÔNG sinh rác localStorage mới.
+    const id = `${batch.id}-${r.keyId}`;
     try {
       localStorage.setItem(RESULT_PREFIX + id, JSON.stringify({ name: batch.name, keyName: r.keyName, geometry: r.geometry }));
       window.open(`/admin/test-view/${id}`, '_blank', 'noopener');
@@ -142,7 +143,16 @@ export function TestApiKeyTab() {
     }
   };
 
-  const clearLog = () => { setBatches([]); saveBatches([]); };
+  const clearLog = () => {
+    // Dọn luôn các hình đã lưu để "Mở bài" (tránh rác localStorage).
+    try {
+      for (let i = localStorage.length - 1; i >= 0; i--) {
+        const k = localStorage.key(i);
+        if (k && k.startsWith(RESULT_PREFIX)) localStorage.removeItem(k);
+      }
+    } catch { /* bỏ qua */ }
+    setBatches([]); saveBatches([]);
+  };
 
   return (
     <div className="space-y-4">
@@ -204,12 +214,14 @@ export function TestApiKeyTab() {
                 >
                   <ChevronDown className={cn('w-4 h-4 text-muted-foreground shrink-0 transition-transform', !isOpen && '-rotate-90')} />
                   <span className="text-[13px] font-medium flex-1 min-w-0 truncate">{b.name}</span>
-                  <span className={cn('text-[10px] font-semibold px-2 py-0.5 rounded-full border shrink-0',
-                    b.hasDiff
-                      ? 'bg-amber-500/12 text-amber-600 dark:text-amber-400 border-amber-500/30'
-                      : 'bg-green-500/12 text-green-600 dark:text-green-400 border-green-500/30')}>
-                    {b.hasDiff ? 'Khác biệt' : 'Giống nhau'}
-                  </span>
+                  {b.results.filter((r) => r.ok).length >= 2 && (
+                    <span className={cn('text-[10px] font-semibold px-2 py-0.5 rounded-full border shrink-0',
+                      b.hasDiff
+                        ? 'bg-amber-500/12 text-amber-600 dark:text-amber-400 border-amber-500/30'
+                        : 'bg-green-500/12 text-green-600 dark:text-green-400 border-green-500/30')}>
+                      {b.hasDiff ? 'Khác biệt' : 'Giống nhau'}
+                    </span>
+                  )}
                   <span className="text-[10px] text-muted-foreground shrink-0 hidden sm:inline">{b.results.length} key · {timeAgo(b.createdAt)}</span>
                 </button>
 

@@ -5,7 +5,7 @@
  * từ localStorage (key `geo3d:test-result:<id>`) do TestApiKeyTab ghi trước khi mở tab.
  * Chỉ để admin xem nhanh hình mà một api key vẽ ra — không lưu DB, không public.
  */
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useParams } from 'react-router-dom';
 import { AlertTriangle } from 'lucide-react';
 import { GeometryProvider, useGeometryOptional } from '@/context/GeometryContext';
@@ -26,17 +26,15 @@ function FigureLoader({ geometry }: { geometry: GeometryData }) {
 
 export default function TestResultView() {
   const { id } = useParams<{ id: string }>();
-  const [error, setError] = useState<string | null>(null);
 
-  const payload = useMemo(() => {
-    if (!id) return null;
+  const { payload, error } = useMemo(() => {
+    if (!id) return { payload: null, error: 'Thiếu mã kết quả.' };
     try {
       const raw = localStorage.getItem(STORE_PREFIX + id);
-      if (!raw) { setError('Không tìm thấy kết quả (có thể đã bị xoá hoặc mở ở trình duyệt khác).'); return null; }
-      return JSON.parse(raw) as { name?: string; keyName?: string; geometry: GeometryData };
+      if (!raw) return { payload: null, error: 'Không tìm thấy kết quả (có thể đã bị xoá hoặc mở ở trình duyệt khác).' };
+      return { payload: JSON.parse(raw) as { name?: string; keyName?: string; geometry: GeometryData }, error: null };
     } catch {
-      setError('Dữ liệu kết quả hỏng.');
-      return null;
+      return { payload: null, error: 'Dữ liệu kết quả hỏng.' };
     }
   }, [id]);
 
