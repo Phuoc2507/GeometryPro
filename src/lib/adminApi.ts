@@ -178,5 +178,5 @@ async function testApi<T>(payload: Record<string, unknown>): Promise<T> {
 export const testApiListKeys = () =>
   testApi<{ keys: TestKeyMeta[] }>({ action: 'list-keys' }).then((r) => r.keys);
 
-export const testApiSend = (problem: string, keyIds: string[]) =>
-  testApi<{ results: TestKeyResult[] }>({ problem, keyIds }).then((r) => r.results);
+export const testApiSend = (problem: string, keyIds: string[], image?: string | null) =>
+  testApi<{ results: TestKeyResult[] }>({ problem, keyIds, image: image ?? null }).then((r) => r.results);

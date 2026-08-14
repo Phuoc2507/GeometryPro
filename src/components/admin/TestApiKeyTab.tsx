@@ -7,7 +7,7 @@
  */
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  Send, Loader2, ChevronDown, ExternalLink, Trash2, KeyRound, CheckCircle2, XCircle,
+  Send, Loader2, ChevronDown, ExternalLink, Trash2, KeyRound, CheckCircle2, XCircle, X,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -32,6 +32,35 @@ interface Batch {
 
 const uid = () =>
   (crypto.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`);
+
+/** Nén ảnh dán vào (≤1200px, JPEG 0.8) — giống luồng vẽ chính, để payload nhẹ. */
+function compressImage(file: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const src = e.target?.result as string;
+      const img = new Image();
+      img.onload = () => {
+        let { width, height } = img;
+        const MAX = 1200;
+        if (width > MAX || height > MAX) {
+          if (width > height) { height = Math.round((height * MAX) / width); width = MAX; }
+          else { width = Math.round((width * MAX) / height); height = MAX; }
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = width; canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) { resolve(src); return; }
+        ctx.drawImage(img, 0, 0, width, height);
+        resolve(canvas.toDataURL('image/jpeg', 0.8));
+      };
+      img.onerror = reject;
+      img.src = src;
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
 
 /** Chuẩn hoá JSON để so sánh: sắp khoá + làm tròn số (bỏ nhiễu float). */
 function canonical(obj: unknown): string {
@@ -87,7 +116,30 @@ export function TestApiKeyTab() {
   const [keys, setKeys] = useState<TestKeyMeta[]>([]);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [problem, setProblem] = useState('');
+  const [image, setImage] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
+
+  // Ctrl+V ảnh vào bất cứ đâu trong tab → nén rồi đính kèm.
+  useEffect(() => {
+    const onPaste = (e: ClipboardEvent) => {
+      const items = e.clipboardData?.items;
+      if (!items) return;
+      for (const it of items) {
+        if (it.type.startsWith('image/')) {
+          const file = it.getAsFile();
+          if (file) {
+            e.preventDefault();
+            compressImage(file)
+              .then(setImage)
+              .catch(() => toast({ title: 'Không đọc được ảnh', variant: 'destructive' }));
+          }
+          return;
+        }
+      }
+    };
+    document.addEventListener('paste', onPaste);
+    return () => document.removeEventListener('paste', onPaste);
+  }, []);
   const [batches, setBatches] = useState<Batch[]>(() => loadBatches());
   const [openBatch, setOpenBatch] = useState<string | null>(null);
   const [openJson, setOpenJson] = useState<Set<string>>(new Set());
@@ -110,14 +162,15 @@ export function TestApiKeyTab() {
 
   const send = useCallback(async () => {
     const text = problem.trim();
-    if (!text || selected.size === 0) return;
+    if ((!text && !image) || selected.size === 0) return;
     setSending(true);
     try {
-      const results = await testApiSend(text, [...selected]);
+      const results = await testApiSend(text, [...selected], image);
       const { groups, hasDiff } = groupResults(results);
+      const rawName = text || '📷 Ảnh đã dán';
       const batch: Batch = {
         id: uid(),
-        name: text.length > 70 ? `${text.slice(0, 70)}…` : text,
+        name: rawName.length > 70 ? `${rawName.slice(0, 70)}…` : rawName,
         problem: text,
         createdAt: Date.now(),
         results, groups, hasDiff,
@@ -129,7 +182,7 @@ export function TestApiKeyTab() {
     } finally {
       setSending(false);
     }
-  }, [problem, selected]);
+  }, [problem, image, selected]);
 
   const openResult = (batch: Batch, r: TestKeyResult) => {
     if (r.geometry == null) return;
@@ -161,9 +214,23 @@ export function TestApiKeyTab() {
         <Textarea
           value={problem}
           onChange={(e) => setProblem(e.target.value)}
-          placeholder="Dán đề bài để gửi thử qua các API key…"
+          placeholder="Gõ hoặc dán đề bài… (Ctrl+V để dán ảnh chụp đề)"
           className="min-h-[90px] text-sm"
         />
+
+        {/* Ảnh đã dán (Ctrl+V) */}
+        {image && (
+          <div className="relative w-fit">
+            <img src={image} alt="Ảnh đề đã dán" className="max-h-40 rounded-lg border border-border/60" />
+            <button
+              onClick={() => setImage(null)}
+              aria-label="Bỏ ảnh"
+              className="absolute -top-2 -right-2 h-6 w-6 rounded-full bg-background border border-border shadow flex items-center justify-center text-muted-foreground hover:text-foreground"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        )}
 
         <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
           <label className="flex items-center gap-2 text-xs font-medium cursor-pointer select-none">
@@ -183,7 +250,7 @@ export function TestApiKeyTab() {
           <p className="text-[11px] text-muted-foreground">
             {selected.size >= 2 ? `Gửi LÔ cho ${selected.size} key — sẽ so sánh JSON hình.` : 'Gửi cho 1 key.'}
           </p>
-          <Button size="sm" onClick={send} disabled={sending || !problem.trim() || selected.size === 0} className="gap-1.5">
+          <Button size="sm" onClick={send} disabled={sending || (!problem.trim() && !image) || selected.size === 0} className="gap-1.5">
             {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
             {sending ? 'Đang gửi…' : 'Gửi'}
           </Button>

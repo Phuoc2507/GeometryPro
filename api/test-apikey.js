@@ -11,16 +11,20 @@ export const config = { maxDuration: 60 };
 
 const SYSTEM_PROMPT = `${BASE_PROMPT}\n\n${LEVEL_STATIC}`;
 
-async function runOne(key, problem) {
+async function runOne(key, problem, image) {
   const t0 = Date.now();
   try {
-    const raw = await callVilao(SYSTEM_PROMPT, problem, {
+    const userMsg = image
+      ? (problem || 'Đề bài nằm trong ảnh đính kèm — hãy đọc kỹ và dựng hình.')
+      : problem;
+    const raw = await callVilao(SYSTEM_PROMPT, userMsg, {
       model: key.model,
       apiKey: key.apiKey,
       maxTokens: 8192,
       timeoutMs: 50000,
       aiModel: 'low',
       maxAttempts: 1,   // test: KHÔNG retry để đo trung thực từng key
+      imageBase64: image || null,
       returnRaw: true,
     });
     let parsed = null;
@@ -53,14 +57,15 @@ export default async function handler(req, res) {
   const gate = await requireAdmin(req);
   if (!gate.ok) return res.status(gate.status).json({ error: gate.error });
 
-  const { action, problem, keyIds } = req.body || {};
+  const { action, problem, keyIds, image } = req.body || {};
 
   if (action === 'list-keys') {
     return res.status(200).json({ keys: getTestApiKeysPublic() });
   }
 
   const text = (problem || '').toString().trim();
-  if (!text) return res.status(400).json({ error: 'Thiếu đề bài' });
+  const img = typeof image === 'string' && image ? image : null;
+  if (!text && !img) return res.status(400).json({ error: 'Thiếu đề bài (gõ chữ hoặc dán ảnh)' });
 
   const all = getTestApiKeys();
   const chosen = (Array.isArray(keyIds) && keyIds.length)
@@ -68,6 +73,6 @@ export default async function handler(req, res) {
     : all;
   if (!chosen.length) return res.status(400).json({ error: 'Không có API key hợp lệ để gửi' });
 
-  const results = await Promise.all(chosen.map((k) => runOne(k, text)));
+  const results = await Promise.all(chosen.map((k) => runOne(k, text, img)));
   return res.status(200).json({ results });
 }
