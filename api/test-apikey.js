@@ -4,6 +4,7 @@
 import { requireAdmin } from './_lib/adminAuth.js';
 import { callVilao } from './_lib/vilao.js';
 import { parseJsonResponse } from './_lib/jsonHelpers.js';
+import { normalizeGeometryData } from './_lib/normalizeGeometry.js';
 import { BASE_PROMPT } from './_prompts/prompts/base.js';
 import { LEVEL_STATIC } from './_prompts/prompts/levels.js';
 import { getTestApiKeys, getTestApiKeysPublic } from './_lib/testApiKeys.js';
@@ -34,6 +35,12 @@ async function runOne(key, problem, image) {
     let parseError = null;
     try { parsed = parseJsonResponse(raw.content); } catch (e) { parseError = e.message; }
     const geometry = parsed ? (parsed.geometry || parsed) : null;
+    // Bản đã CHUẨN HOÁ để render (giống luồng vẽ thật) — tránh crash "map of undefined"
+    // khi model trả geometry thiếu mảng. Giữ `geometry` thô cho việc so sánh/xem JSON.
+    let renderGeometry = null;
+    if (geometry) {
+      try { renderGeometry = normalizeGeometryData(geometry); } catch { renderGeometry = null; }
+    }
     return {
       keyId: key.id, keyName: key.name, model: key.model, ok: true,
       timeMs: Date.now() - t0,
@@ -44,6 +51,7 @@ async function runOne(key, problem, image) {
       } : null,
       raw: raw.content,
       geometry,
+      renderGeometry,
       parseError,
     };
   } catch (e) {

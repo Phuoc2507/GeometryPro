@@ -11,15 +11,21 @@ import { AlertTriangle } from 'lucide-react';
 import { GeometryProvider, useGeometryOptional } from '@/context/GeometryContext';
 import { CameraProvider } from '@/context/CameraContext';
 import { GeometryCanvas } from '@/components/3d/GeometryCanvas';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { Wordmark } from '@/components/Brand';
 import { GeometryData } from '@/types/geometry';
 
 const STORE_PREFIX = 'geo3d:test-result:';
 
+/** Đảm bảo tối thiểu các mảng để render không crash (entry cũ có thể là geometry thô). */
+function safeGeometry(g: GeometryData): GeometryData {
+  return { ...g, points: Array.isArray(g?.points) ? g.points : [], lines: Array.isArray(g?.lines) ? g.lines : [] };
+}
+
 function FigureLoader({ geometry }: { geometry: GeometryData }) {
   const ctx = useGeometryOptional();
   useEffect(() => {
-    ctx?.loadGeometry(geometry, { silent: true });
+    ctx?.loadGeometry(safeGeometry(geometry), { silent: true });
   }, [ctx, geometry]);
   return null;
 }
@@ -52,7 +58,9 @@ export default function TestResultView() {
       <CameraProvider>
         <div className="relative h-screen w-full bg-background overflow-hidden">
           <FigureLoader geometry={payload.geometry} />
-          <GeometryCanvas />
+          <ErrorBoundary>
+            <GeometryCanvas />
+          </ErrorBoundary>
           {/* Nhãn góc: tên bài + tên api key đã vẽ */}
           <div className="absolute top-3 left-3 z-10 flex flex-col gap-1 pointer-events-none">
             <Wordmark className="h-5 opacity-80" />

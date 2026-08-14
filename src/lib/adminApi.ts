@@ -158,7 +158,8 @@ export interface TestKeyResult {
   parseError?: string | null;
   tokens?: { prompt: number | null; completion: number | null; total: number | null } | null;
   raw?: string;
-  geometry?: unknown | null;
+  geometry?: unknown | null;        // JSON hình THÔ của model (để so sánh / xem)
+  renderGeometry?: unknown | null;  // đã chuẩn hoá, render an toàn (cho "Mở bài")
 }
 
 async function testApi<T>(payload: Record<string, unknown>): Promise<T> {

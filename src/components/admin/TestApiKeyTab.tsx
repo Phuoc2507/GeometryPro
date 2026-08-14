@@ -185,11 +185,12 @@ export function TestApiKeyTab() {
   }, [problem, image, selected]);
 
   const openResult = (batch: Batch, r: TestKeyResult) => {
-    if (r.geometry == null) return;
+    const geo = r.renderGeometry ?? r.geometry;  // ưu tiên bản đã chuẩn hoá (render an toàn)
+    if (geo == null) return;
     // id CỐ ĐỊNH theo (lô, key) → mở lại nhiều lần KHÔNG sinh rác localStorage mới.
     const id = `${batch.id}-${r.keyId}`;
     try {
-      localStorage.setItem(RESULT_PREFIX + id, JSON.stringify({ name: batch.name, keyName: r.keyName, geometry: r.geometry }));
+      localStorage.setItem(RESULT_PREFIX + id, JSON.stringify({ name: batch.name, keyName: r.keyName, geometry: geo }));
       window.open(`/admin/test-view/${id}`, '_blank', 'noopener');
     } catch {
       toast({ title: 'Không mở được', description: 'Bộ nhớ trình duyệt đầy — xoá bớt log rồi thử lại.', variant: 'destructive' });
@@ -321,7 +322,7 @@ export function TestApiKeyTab() {
                           {r.ok && (
                             <div className="mt-2 flex items-center gap-2">
                               <Button size="sm" variant="outline" className="h-7 gap-1.5 text-xs"
-                                disabled={r.geometry == null} onClick={() => openResult(b, r)}>
+                                disabled={(r.renderGeometry ?? r.geometry) == null} onClick={() => openResult(b, r)}>
                                 <ExternalLink className="w-3.5 h-3.5" /> Mở bài
                               </Button>
                               <Button size="sm" variant="ghost" className="h-7 gap-1.5 text-xs text-muted-foreground"
