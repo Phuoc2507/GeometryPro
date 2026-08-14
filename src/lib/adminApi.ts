@@ -145,3 +145,38 @@ export const redrawProblem = async (prompt: string, maxAttempts = 1): Promise<Re
   if (!res.ok) throw new Error(body?.error || 'Lỗi máy chủ khi vẽ lại');
   return body.candidate as RedrawCandidate;
 };
+
+// ── Test API Key (endpoint riêng /api/test-apikey) ───────────────────────────
+export interface TestKeyMeta { id: string; name: string; model: string }
+export interface TestKeyResult {
+  keyId: string;
+  keyName: string;
+  model: string;
+  ok: boolean;
+  timeMs: number;
+  error?: string;
+  parseError?: string | null;
+  tokens?: { prompt: number | null; completion: number | null; total: number | null } | null;
+  raw?: string;
+  geometry?: unknown | null;
+}
+
+async function testApi<T>(payload: Record<string, unknown>): Promise<T> {
+  const { data } = await supabase.auth.getSession();
+  const token = data.session?.access_token;
+  if (!token) throw new Error('Bạn cần đăng nhập lại');
+  const res = await fetch('/api/test-apikey', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+    body: JSON.stringify(payload),
+  });
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(body?.error || 'Lỗi máy chủ');
+  return body as T;
+}
+
+export const testApiListKeys = () =>
+  testApi<{ keys: TestKeyMeta[] }>({ action: 'list-keys' }).then((r) => r.keys);
+
+export const testApiSend = (problem: string, keyIds: string[]) =>
+  testApi<{ results: TestKeyResult[] }>({ problem, keyIds }).then((r) => r.results);

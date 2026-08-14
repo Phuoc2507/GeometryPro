@@ -85,6 +85,7 @@ export async function callVilao(systemPrompt, userPrompt, options = {}) {
     apiKey = null,
     maxAttempts = 2,   // số lần thử tối đa (kể cả retry nội bộ khi lỗi mạng/timeout). Đặt 1 khi caller
                        // đã tự hedge (chạy song song) để khỏi chồng retry gây phí token.
+    returnRaw = false, // true → trả { content, usage, model } (cho tab Test API Key: cần token). Mặc định giữ nguyên (trả content).
   } = options;
 
   let modelToUse = VILAO_MODEL;
@@ -195,6 +196,9 @@ export async function callVilao(systemPrompt, userPrompt, options = {}) {
           continue;
         }
         throw new Error('Vilao returned empty content');
+      }
+      if (returnRaw) {
+        return { content: data.choices[0].message.content, usage: data.usage || null, model: modelToUse };
       }
       return data.choices[0].message.content;
 
