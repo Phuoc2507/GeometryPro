@@ -1,4 +1,4 @@
-import { Zap, Layers, Sparkles, Lock, HelpCircle, Clock, Coins, Check } from 'lucide-react';
+import { Zap, Layers, Sparkles, Lock, HelpCircle, Coins, Check } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn, formatCredits } from '@/lib/utils';
 import { useAuth } from '@/context/AuthContext';
@@ -18,7 +18,6 @@ const modes = [
     id: 'quick' as DrawMode,
     label: 'Vẽ nhanh',
     icon: Zap,
-    time: '~5s',
     // Nhãn siêu ngắn dưới nút (tag) — nhìn phát hiểu ngay khác biệt CẢ 3 mà không cần bấm.
     tag: 'Nhanh · gọn',
     // Mô tả HƯỚNG NGƯỜI DÙNG (thay cho "1 lần gọi AI" khó hiểu): nói lợi ích, không nói kỹ thuật.
@@ -31,14 +30,12 @@ const modes = [
     icon: Layers,
     tag: 'Kỹ · chi tiết',
     desc: 'Chi tiết & chính xác hơn',
-    time: '~10s',
     credits: 20, // khớp CREDIT_COST.draw_detailed
   },
   {
     id: 'advance' as DrawMode,
     label: 'Advance',
     icon: Sparkles,
-    time: '~30s',
     tag: 'Nâng cao',
     desc: 'Đa-câu / động',
     credits: 30, // khớp CREDIT_COST.draw_advance
@@ -54,7 +51,7 @@ const compareModes = [
     icon: Zap,
     accent: 'text-amber-500',
     ring: 'border-amber-500/30 bg-amber-500/5',
-    meta: '~5s · 10 credit',
+    meta: '10 credit',
     points: ['Vẽ 1 bước, ưu tiên tốc độ', 'Hình tĩnh: điểm & cạnh chính'],
     bestFor: 'Hình cơ bản, xem nhanh, tiết kiệm',
   },
@@ -64,7 +61,7 @@ const compareModes = [
     icon: Layers,
     accent: 'text-primary',
     ring: 'border-primary/30 bg-primary/5',
-    meta: '~10s · 20 credit',
+    meta: '20 credit',
     points: ['Phân loại đề trước rồi mới vẽ', 'Chi tiết hơn, có thể có chuyển động'],
     bestFor: 'Bài phức tạp, cần chính xác & trình bày kỹ',
   },
@@ -118,7 +115,7 @@ export function DrawModeSelector({ value, onChange }: DrawModeSelectorProps) {
                         {m.label}
                       </span>
                       <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
-                        <Clock className="w-3 h-3" />
+                        <Coins className="w-3 h-3" />
                         {m.meta}
                       </span>
                     </div>
@@ -205,7 +202,7 @@ export function DrawModeSelector({ value, onChange }: DrawModeSelectorProps) {
             <span className="text-primary">Đã hết lượt hôm nay — nâng cấp để vẽ tiếp</span>
           )
         ) : (
-          <><Clock className="w-3 h-3" /> Ước tính {selected.time}</>
+          <>Miễn phí</>
         )}
       </p>
     </div>
