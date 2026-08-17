@@ -1,4 +1,5 @@
-import { Zap, Layers, Sparkles } from 'lucide-react';
+import { Zap, Layers, Sparkles, Lock } from 'lucide-react';
+import { toast } from 'sonner';
 import { cn, formatCredits } from '@/lib/utils';
 import { useAuth } from '@/context/AuthContext';
 import { getGuestQuotaRemaining } from '@/lib/quota';
@@ -39,7 +40,7 @@ const modes = [
 ];
 
 export function DrawModeSelector({ value, onChange }: DrawModeSelectorProps) {
-  const { tier, credits, user, drawQuotaRemaining, openAuthModal } = useAuth();
+  const { tier, credits, user, drawQuotaRemaining, isAdmin } = useAuth();
   const [, setQuotaVersion] = useState(0);
   useEffect(() => {
     const refresh = () => setQuotaVersion((version) => version + 1);
@@ -54,26 +55,29 @@ export function DrawModeSelector({ value, onChange }: DrawModeSelectorProps) {
     <div className="w-full space-y-1.5">
       <div className="flex gap-1.5 w-full">
         {modes.map((mode) => {
-          const Icon = mode.icon;
+          // Advance đang nâng cấp → KHOÁ cho mọi người trừ quản trị viên (khách cũng không phải admin).
+          const advanceLocked = mode.id === 'advance' && !isAdmin;
+          const Icon = advanceLocked ? Lock : mode.icon;
           const isActive = value === mode.id;
-          const requiresAccount = !user && mode.id === 'advance';
           return (
             <button
               key={mode.id}
               onClick={() => {
-                if (requiresAccount) {
-                  openAuthModal('advance');
+                if (advanceLocked) {
+                  toast.info('Chế độ Advance đang được nâng cấp', {
+                    description: 'Tính năng tạm thời chỉ dành cho quản trị viên. Bạn hãy dùng Vẽ nhanh hoặc Vẽ kỹ nhé.',
+                  });
                   return;
                 }
                 onChange(mode.id);
               }}
-              aria-disabled={requiresAccount}
+              aria-disabled={advanceLocked}
               className={cn(
                 "flex-1 flex flex-col items-center gap-0.5 py-2 px-1 rounded-xl text-xs transition-all duration-200 border",
                 isActive
                   ? "bg-primary/15 border-primary/40 text-primary"
                   : "bg-secondary/30 border-transparent text-muted-foreground hover:bg-secondary/50",
-                requiresAccount && "opacity-60"
+                advanceLocked && "opacity-60"
               )}
             >
               <Icon className="w-3.5 h-3.5" />
@@ -84,7 +88,12 @@ export function DrawModeSelector({ value, onChange }: DrawModeSelectorProps) {
       </div>
       {/* Giá + số dư (gói trả phí) hoặc thời gian ước tính (free) */}
       <p className="text-[11px] text-muted-foreground/70 text-center flex items-center justify-center gap-1">
-        {isPaid ? (
+        {selected.id === 'advance' && !isAdmin ? (
+          <span className="text-primary flex items-center gap-1">
+            <Lock className="w-3 h-3" />
+            Advance đang nâng cấp — chỉ dành cho quản trị viên
+          </span>
+        ) : isPaid ? (
           <>
             <Sparkles className="w-3 h-3 text-primary" />
             Tốn <strong className="text-primary">{selected.credits} credit</strong> · còn {formatCredits(credits)}

@@ -17,6 +17,13 @@ import { withSentry, reportServerError } from './_lib/sentry.js';
 import { logBrokenProblem } from './_lib/brokenProblemLog.js';
 import { createClient } from '@supabase/supabase-js';
 import { findGolden } from './_lib/goldenStore.js';
+import { requireAdmin } from './_lib/adminAuth.js';
+
+// KHOÁ Advance (đang nâng cấp): tạm thời CHỈ quản trị viên được dùng chế độ Advance.
+// Thông điệp trả về cho người dùng thường khi họ (hoặc client cũ) gọi thẳng endpoint.
+export const ADVANCE_ADMIN_ONLY_MSG =
+  'Chế độ Advance đang được nâng cấp, tạm thời chỉ dành cho quản trị viên. ' +
+  'Bạn hãy dùng Vẽ nhanh hoặc Vẽ kỹ nhé.';
 
 // Client service-role để tra "hình chuẩn" (golden). Thiếu env ⇒ null ⇒ bỏ qua golden (luồng cũ chạy y nguyên).
 const _supaUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -267,6 +274,17 @@ async function handler(req, res) {
     // Seed CHỮ: có chữ thì dùng chữ; chỉ-ảnh → '' (splitProblem sẽ đọc ảnh & điền đề vào split.setup).
     const problemSeed = hasText ? prompt.trim() : '';
     dbgPrompt = problemSeed || null;
+
+    // ---- KHOÁ Advance: CHỈ quản trị viên ---- (chặn TRƯỚC khi trừ credit/quota)
+    // Đọc role='admin' TỪ DB (không tin client). Người dùng thường / khách nhận 403 với thông điệp
+    // "đang nâng cấp"; chưa đăng nhập (không có Bearer) nhận 401 để client mời đăng nhập.
+    const adminGate = await requireAdmin(req);
+    if (!adminGate.ok) {
+      if (adminGate.status === 403) {
+        return res.status(403).json({ error: ADVANCE_ADMIN_ONLY_MSG, code: 'advance_admin_only' });
+      }
+      return res.status(adminGate.status).json({ error: adminGate.error });
+    }
 
     access = await resolveAiAccess(req, res, {
       feature: 'draw',
