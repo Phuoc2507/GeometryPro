@@ -19,6 +19,8 @@ const modes = [
     label: 'Vẽ nhanh',
     icon: Zap,
     time: '~5s',
+    // Nhãn siêu ngắn dưới nút (tag) — nhìn phát hiểu ngay khác biệt CẢ 3 mà không cần bấm.
+    tag: 'Nhanh · gọn',
     // Mô tả HƯỚNG NGƯỜI DÙNG (thay cho "1 lần gọi AI" khó hiểu): nói lợi ích, không nói kỹ thuật.
     desc: 'Hình cơ bản, xem nhanh',
     credits: 10, // khớp CREDIT_COST.draw_quick (api/_lib/entitlements.js)
@@ -27,6 +29,7 @@ const modes = [
     id: 'detailed' as DrawMode,
     label: 'Vẽ kỹ',
     icon: Layers,
+    tag: 'Kỹ · chi tiết',
     desc: 'Chi tiết & chính xác hơn',
     time: '~10s',
     credits: 20, // khớp CREDIT_COST.draw_detailed
@@ -36,6 +39,7 @@ const modes = [
     label: 'Advance',
     icon: Sparkles,
     time: '~30s',
+    tag: 'Nâng cao',
     desc: 'Đa-câu / động',
     credits: 30, // khớp CREDIT_COST.draw_advance
   },
@@ -169,17 +173,17 @@ export function DrawModeSelector({ value, onChange }: DrawModeSelectorProps) {
               )}
             >
               <Icon className="w-3.5 h-3.5" />
-              <span className="font-medium">{mode.label}</span>
+              <span className="font-medium leading-tight">{mode.label}</span>
+              <span className={cn(
+                "text-[9px] leading-tight",
+                isActive ? "text-primary/80" : "text-muted-foreground/60"
+              )}>
+                {mode.tag}
+              </span>
             </button>
           );
         })}
       </div>
-      {/* Mô tả NGẮN của chế độ đang chọn — luôn hiển thị để người dùng hiểu ngay đang dùng gì. */}
-      {!(selected.id === 'advance' && !isAdmin) && (
-        <p className="text-[11px] font-medium text-center text-foreground/70">
-          {selected.desc}
-        </p>
-      )}
       {/* Giá + số dư (gói trả phí) hoặc thời gian ước tính (free) */}
       <p className="text-[11px] text-muted-foreground/70 text-center flex items-center justify-center gap-1">
         {selected.id === 'advance' && !isAdmin ? (
