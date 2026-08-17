@@ -14,6 +14,7 @@ import webhookHandler from './api/webhook.js';
 import analyzeAdvanceHandler from './api/analyze-advance.js';
 import adminHandler from './api/admin.js';
 import adminRedrawHandler from './api/admin-redraw.js';
+import referralHandler from './api/referral.js';
 
 export function createApp() {
 const app = express();
@@ -118,6 +119,17 @@ app.post('/api/admin-redraw', async (req, res) => {
     await adminRedrawHandler(req, res);
   } catch (error) {
     console.error('Error in /api/admin-redraw:', error);
+    if (!res.headersSent) {
+      res.status(500).json({ error: error.message || 'Internal Server Error' });
+    }
+  }
+});
+
+app.get('/api/referral', async (req, res) => {
+  try {
+    await referralHandler(req, res);
+  } catch (error) {
+    console.error('Error in /api/referral:', error);
     if (!res.headersSent) {
       res.status(500).json({ error: error.message || 'Internal Server Error' });
     }

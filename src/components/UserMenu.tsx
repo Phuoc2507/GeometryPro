@@ -1,7 +1,7 @@
 
 import { useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { User, LogOut, Save, Settings, Sparkles, Crown, ListChecks, GraduationCap, Presentation, ShieldCheck, Lock, Tag, Users, ChevronDown } from 'lucide-react';
+import { User, LogOut, Save, Settings, Sparkles, Crown, ListChecks, GraduationCap, Presentation, ShieldCheck, Lock, Tag, Users, Gift, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -197,6 +197,10 @@ export function UserMenu() {
         <DropdownMenuItem onClick={() => navigate('/bang-gia')}>
           <Tag className="w-4 h-4 mr-2" />
           Bảng giá
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => navigate('/gioi-thieu')}>
+          <Gift className="w-4 h-4 mr-2" />
+          Giới thiệu bạn
         </DropdownMenuItem>
         <DropdownMenuItem onClick={() => navigate('/settings')}>
           <Settings className="w-4 h-4 mr-2" />

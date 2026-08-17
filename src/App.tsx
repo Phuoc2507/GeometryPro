@@ -25,6 +25,7 @@ const AdminFeedbackView = React.lazy(() => import('./pages/AdminFeedbackView'));
 const TestResultView = React.lazy(() => import('./pages/TestResultView'));
 const ProblemTypeCatalog = React.lazy(() => import('./pages/ProblemTypeCatalog'));
 const Pricing = React.lazy(() => import('./pages/Pricing'));
+const Referral = React.lazy(() => import('./pages/Referral'));
 const TeamManage = React.lazy(() => import('./pages/TeamManage'));
 const Terms = React.lazy(() => import('./pages/Terms'));
 const Privacy = React.lazy(() => import('./pages/Privacy'));
@@ -97,6 +98,7 @@ function App() {
                     <Route path="/saved" element={<SavedGeometries />} />
                     <Route path="/settings" element={<Settings />} />
                     <Route path="/bang-gia" element={<Pricing />} />
+                    <Route path="/gioi-thieu" element={<Referral />} />
                     <Route path="/quan-ly-to" element={<TeamManage />} />
                     <Route path="/admin" element={<Admin />} />
                     <Route path="/admin/feedback/:id" element={<AdminFeedbackView />} />
