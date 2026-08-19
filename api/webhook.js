@@ -41,6 +41,9 @@ async function handler(req, res) {
   try {
     const { data, error } = await supabase.rpc('fulfill_paid_order', {
       p_order_code: orderCode,
+      // STK người trả (PayOS trả về) — lưu sẵn cho bộ lọc chống farm (Phase 6).
+      p_counter_account_number: webhookData.counterAccountNumber ?? null,
+      p_counter_account_name: webhookData.counterAccountName ?? null,
     });
     if (error || !data?.ok) {
       console.error('[webhook] fulfillment failed:', orderCode, error?.message || data?.err);

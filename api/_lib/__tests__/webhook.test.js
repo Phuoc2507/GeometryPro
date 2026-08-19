@@ -52,7 +52,28 @@ describe('PayOS webhook fulfillment', () => {
     const res = response();
     await handler({ method: 'POST', body: {} }, res);
     expect(res.statusCode).toBe(500);
-    expect(mocks.rpc).toHaveBeenCalledWith('fulfill_paid_order', { p_order_code: 123456 });
+    expect(mocks.rpc).toHaveBeenCalledWith('fulfill_paid_order', {
+      p_order_code: 123456,
+      p_counter_account_number: null,
+      p_counter_account_name: null,
+    });
+  });
+
+  it('passes the payer bank account through for referral commission', async () => {
+    mocks.verify.mockResolvedValue({
+      code: '00', success: true, orderCode: 123456,
+      counterAccountNumber: '0011002233', counterAccountName: 'NGUYEN VAN A',
+    });
+    mocks.rpc.mockResolvedValue({ data: { ok: true, duplicate: false }, error: null });
+    vi.resetModules();
+    const { default: handler } = await import('../../webhook.js');
+    const res = response();
+    await handler({ method: 'POST', body: {} }, res);
+    expect(mocks.rpc).toHaveBeenCalledWith('fulfill_paid_order', {
+      p_order_code: 123456,
+      p_counter_account_number: '0011002233',
+      p_counter_account_name: 'NGUYEN VAN A',
+    });
   });
 
   it('acknowledges a duplicate without granting twice', async () => {
