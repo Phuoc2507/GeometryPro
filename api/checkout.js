@@ -1,6 +1,7 @@
 import { PayOS } from '@payos/node';
 import { createClient } from '@supabase/supabase-js';
 import { withSentry, reportServerError } from './_lib/sentry.js';
+import { validateReferral, REFERRAL_DISCOUNT_RATE } from './_lib/referralCore.js';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.VITE_SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -37,7 +38,7 @@ async function handler(req, res) {
 
   let orderCode = null;
   try {
-    const { returnUrl, cancelUrl, planCode, creditPack } = req.body || {};
+    const { returnUrl, cancelUrl, planCode, creditPack, referralCode } = req.body || {};
     const isCreditPack = creditPack != null && planCode == null;
 
     if (!supabase) {
@@ -64,6 +65,10 @@ async function handler(req, res) {
     let orderPlanCode;
     let creditAmount = null;
     let description;
+    // Mã mời (chỉ áp cho gói, không áp cho nạp credit lẻ). Mặc định không có.
+    let refCode = null;
+    let refReferrerId = null;
+    let refDiscount = 0;
 
     if (isCreditPack) {
       const amount = Number(creditPack);
@@ -95,6 +100,18 @@ async function handler(req, res) {
       finalAmount = Number(plan.price_vnd);
       orderPlanCode = plan.code;
       description = `Geo3D ${plan.code}`.slice(0, 25);
+
+      // Áp mã mời: kiểm tra ở server (nguồn sự thật) rồi giảm 10%. Mã sai/không đủ
+      // điều kiện → bỏ qua, tính giá đầy đủ (client đã tự kiểm trước khi bấm).
+      if (typeof referralCode === 'string' && referralCode.trim()) {
+        const rv = await validateReferral(supabase, referralCode, user.id);
+        if (rv.ok && rv.referrerId !== user.id) {
+          refDiscount = Math.round(finalAmount * REFERRAL_DISCOUNT_RATE);
+          finalAmount = finalAmount - refDiscount;
+          refCode = rv.code;
+          refReferrerId = rv.referrerId;
+        }
+      }
     }
 
     const { error: profileError } = await supabase
@@ -113,6 +130,9 @@ async function handler(req, res) {
         plan_code: orderPlanCode,
         credit_amount: creditAmount,
         status: 'pending',
+        referral_code: refCode,
+        referrer_id: refReferrerId,
+        discount_amount: refDiscount,
       })
       .select('order_code')
       .single();

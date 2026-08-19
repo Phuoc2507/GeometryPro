@@ -1,6 +1,7 @@
 import crypto from 'crypto';
 import { createClient } from '@supabase/supabase-js';
 import { withSentry, reportServerError } from './_lib/sentry.js';
+import { validateReferral, referralReasonText } from './_lib/referralCore.js';
 
 // Phase 1 — Mã mời: trả về mã mời của user (sinh nếu chưa có) + vài số liệu cho
 // trang "Giới thiệu bạn". CHƯA đụng tới tiền hoa hồng thật (đó là Phase 3).
@@ -35,6 +36,18 @@ async function handler(req, res) {
     const { data: { user }, error: authError } = await supabase.auth.getUser(authHeader.slice(7));
     if (authError || !user) {
       return res.status(401).json({ error: 'Phiên đăng nhập không hợp lệ' });
+    }
+
+    // Chế độ KIỂM TRA mã (?validate=CODE) — dùng cho ô nhập mã ở màn thanh toán.
+    const validateCode = req.query?.validate;
+    if (validateCode !== undefined) {
+      const result = await validateReferral(supabase, validateCode, user.id);
+      return res.status(200).json({
+        valid: result.ok,
+        reason: result.reason || null,
+        message: result.ok ? null : referralReasonText(result.reason),
+        referrerName: result.ok ? (result.referrerName || null) : null,
+      });
     }
 
     // Đảm bảo có dòng profiles để gắn mã.

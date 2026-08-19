@@ -73,6 +73,21 @@ function PaymentSuccessHandler() {
   return null;
 }
 
+// Bắt mã mời từ link chia sẻ (?ref=CODE): lưu vào localStorage để dùng ở màn thanh toán,
+// rồi dọn tham số khỏi URL cho gọn.
+function ReferralCapture() {
+  const [params, setParams] = useSearchParams();
+  useEffect(() => {
+    const ref = params.get('ref');
+    if (!ref) return;
+    try { localStorage.setItem('geo3d:ref', ref.trim().toUpperCase()); } catch { /* bỏ qua */ }
+    params.delete('ref');
+    setParams(params, { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  return null;
+}
+
 const queryClient = new QueryClient();
 
 function App() {
@@ -88,6 +103,7 @@ function App() {
                 <AuthModal />
                 <GlobalUpgradeModal />
                 <PaymentSuccessHandler />
+                <ReferralCapture />
                 <ToolSlider />
                 <Suspense fallback={<PageLoader />}>
                   <Routes>
