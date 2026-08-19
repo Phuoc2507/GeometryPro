@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Gift, Copy, Check, Users, Wallet, Share2, Loader2 } from 'lucide-react';
+import { ArrowLeft, Gift, Copy, Check, Users, Wallet, Share2, Loader2, Building2, ArrowDownToLine, Pencil } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -10,12 +10,37 @@ import { supabase } from '@/integrations/supabase/client';
 import { authUrlWithRedirect } from '@/lib/authRedirect';
 import { fmtVnd } from '@/lib/plans';
 
+interface PayoutAccount {
+  bank_code: string;
+  account_number: string;
+  account_name: string;
+}
+interface Withdrawal {
+  id: string;
+  amount: number;
+  status: 'requested' | 'approved' | 'paid' | 'rejected';
+  requested_at: string;
+  processed_at: string | null;
+}
 interface ReferralData {
   code: string | null;
   referredCount: number;
   commissionAvailable: number;
   commissionPending: number;
+  payoutAccount: PayoutAccount | null;
+  withdrawals: Withdrawal[];
 }
+
+const BANKS = [
+  'Vietcombank', 'Techcombank', 'BIDV', 'VietinBank', 'MB Bank', 'ACB', 'VPBank',
+  'Sacombank', 'TPBank', 'Agribank', 'VIB', 'SHB', 'HDBank', 'OCB', 'MSB', 'SeABank', 'Nam A Bank',
+];
+const WD_STATUS: Record<Withdrawal['status'], { label: string; cls: string }> = {
+  requested: { label: 'Chờ duyệt', cls: 'text-amber-600 dark:text-amber-400' },
+  approved: { label: 'Đã duyệt', cls: 'text-blue-600 dark:text-blue-400' },
+  paid: { label: 'Đã chi', cls: 'text-emerald-600 dark:text-emerald-400' },
+  rejected: { label: 'Từ chối', cls: 'text-destructive' },
+};
 
 const Referral = () => {
   const navigate = useNavigate();
@@ -26,6 +51,12 @@ const Referral = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState<'code' | 'link' | null>(null);
+  const [bankName, setBankName] = useState('');
+  const [accNum, setAccNum] = useState('');
+  const [accName, setAccName] = useState('');
+  const [editingAccount, setEditingAccount] = useState(false);
+  const [savingAcc, setSavingAcc] = useState(false);
+  const [withdrawing, setWithdrawing] = useState(false);
 
   // Chưa đăng nhập → về trang đăng nhập rồi quay lại đây.
   useEffect(() => {
@@ -47,6 +78,14 @@ const Referral = () => {
       const json = await res.json();
       if (!res.ok) throw new Error(json?.error || 'Không tải được mã mời');
       setData(json);
+      if (json.payoutAccount) {
+        setBankName(json.payoutAccount.bank_code);
+        setAccNum(json.payoutAccount.account_number);
+        setAccName(json.payoutAccount.account_name);
+        setEditingAccount(false);
+      } else {
+        setEditingAccount(true);
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Có lỗi xảy ra');
     } finally {
@@ -82,6 +121,55 @@ const Referral = () => {
       }
     }
     copy(shareLink, 'link');
+  };
+
+  const saveAccount = async () => {
+    if (!bankName) { toast({ title: 'Vui lòng chọn ngân hàng', variant: 'destructive' }); return; }
+    if (!/^[0-9]{6,20}$/.test(accNum.trim())) { toast({ title: 'Số tài khoản không hợp lệ', description: '6–20 chữ số.', variant: 'destructive' }); return; }
+    if (accName.trim().length < 2) { toast({ title: 'Nhập tên chủ tài khoản', variant: 'destructive' }); return; }
+    setSavingAcc(true);
+    try {
+      const { data: sd } = await supabase.auth.getSession();
+      const token = sd.session?.access_token;
+      const res = await fetch('/api/payout-account', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ bankCode: bankName, accountNumber: accNum.trim(), accountName: accName.trim() }),
+      });
+      const j = await res.json();
+      if (!res.ok) throw new Error(j.error || 'Không lưu được tài khoản');
+      toast({ title: 'Đã lưu tài khoản ngân hàng' });
+      setEditingAccount(false);
+      load();
+    } catch (e) {
+      toast({ title: 'Lỗi', description: (e as Error).message, variant: 'destructive' });
+    } finally {
+      setSavingAcc(false);
+    }
+  };
+
+  const withdrawAll = async () => {
+    const amount = data?.commissionAvailable || 0;
+    if (amount <= 0) return;
+    if (!data?.payoutAccount) { toast({ title: 'Thêm tài khoản ngân hàng trước khi rút', variant: 'destructive' }); return; }
+    setWithdrawing(true);
+    try {
+      const { data: sd } = await supabase.auth.getSession();
+      const token = sd.session?.access_token;
+      const res = await fetch('/api/withdraw', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ amount }),
+      });
+      const j = await res.json();
+      if (!res.ok) throw new Error(j.error || 'Không tạo được yêu cầu rút');
+      toast({ title: 'Đã gửi yêu cầu rút', description: `${fmtVnd(amount)} — chờ admin chuyển khoản.` });
+      load();
+    } catch (e) {
+      toast({ title: 'Lỗi', description: (e as Error).message, variant: 'destructive' });
+    } finally {
+      setWithdrawing(false);
+    }
   };
 
   if (authLoading || !user) {
@@ -203,6 +291,86 @@ const Referral = () => {
                 </CardContent>
               </Card>
             </div>
+
+            {/* Ví & Rút tiền */}
+            <Card className="border-border/50 bg-background/50 backdrop-blur-sm">
+              <CardHeader>
+                <CardTitle className="text-lg flex items-center gap-2"><Wallet className="w-5 h-5" /> Ví hoa hồng</CardTitle>
+                <CardDescription>Rút tiền về tài khoản ngân hàng của bạn.</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {/* Số dư + nút rút */}
+                <div className="flex items-center justify-between gap-3 rounded-lg bg-primary/5 border border-primary/15 p-3">
+                  <div>
+                    <div className="text-2xl font-bold tabular-nums text-amber-600 dark:text-amber-400">{fmtVnd(data?.commissionAvailable ?? 0)}</div>
+                    <p className="text-xs text-muted-foreground">
+                      có thể rút{data && data.commissionPending > 0 ? ` · ${fmtVnd(data.commissionPending)} đang chờ` : ''}
+                    </p>
+                  </div>
+                  <Button onClick={withdrawAll} disabled={withdrawing || !data?.commissionAvailable || !data?.payoutAccount}>
+                    {withdrawing ? <Loader2 className="w-4 h-4 animate-spin mr-1.5" /> : <ArrowDownToLine className="w-4 h-4 mr-1.5" />}
+                    Rút toàn bộ
+                  </Button>
+                </div>
+
+                {/* Tài khoản ngân hàng */}
+                {data?.payoutAccount && !editingAccount ? (
+                  <div className="flex items-center justify-between gap-3 rounded-lg border border-border/60 p-3">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <Building2 className="w-5 h-5 text-muted-foreground flex-none" />
+                      <div className="min-w-0">
+                        <div className="font-medium text-sm truncate">{data.payoutAccount.bank_code} · {data.payoutAccount.account_number}</div>
+                        <p className="text-xs text-muted-foreground truncate">{data.payoutAccount.account_name}</p>
+                      </div>
+                    </div>
+                    <Button variant="ghost" size="sm" className="flex-none" onClick={() => setEditingAccount(true)}>
+                      <Pencil className="w-4 h-4 mr-1" /> Đổi
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="rounded-lg border border-border/60 p-3 space-y-2.5">
+                    <div className="flex items-center gap-1.5 text-sm font-medium"><Building2 className="w-4 h-4 text-primary" /> Tài khoản nhận tiền</div>
+                    <select
+                      value={bankName}
+                      onChange={(e) => setBankName(e.target.value)}
+                      className="w-full h-9 rounded-md border border-input bg-background px-3 text-sm"
+                    >
+                      <option value="">— Chọn ngân hàng —</option>
+                      {BANKS.map((b) => <option key={b} value={b}>{b}</option>)}
+                    </select>
+                    <Input value={accNum} onChange={(e) => setAccNum(e.target.value.replace(/[^0-9]/g, ''))} placeholder="Số tài khoản" inputMode="numeric" />
+                    <Input value={accName} onChange={(e) => setAccName(e.target.value.toUpperCase())} placeholder="TÊN CHỦ TÀI KHOẢN" className="uppercase" />
+                    <div className="flex gap-2">
+                      <Button size="sm" onClick={saveAccount} disabled={savingAcc}>
+                        {savingAcc ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Lưu tài khoản'}
+                      </Button>
+                      {data?.payoutAccount && (
+                        <Button size="sm" variant="ghost" onClick={() => {
+                          setEditingAccount(false);
+                          setBankName(data.payoutAccount!.bank_code);
+                          setAccNum(data.payoutAccount!.account_number);
+                          setAccName(data.payoutAccount!.account_name);
+                        }}>Huỷ</Button>
+                      )}
+                    </div>
+                    <p className="text-[11px] text-muted-foreground">Một số tài khoản ngân hàng chỉ dùng cho một tài khoản GeoPro.</p>
+                  </div>
+                )}
+
+                {/* Lịch sử rút */}
+                {data && data.withdrawals.length > 0 && (
+                  <div className="space-y-0.5">
+                    <p className="text-xs font-medium text-muted-foreground mb-1">Lịch sử rút</p>
+                    {data.withdrawals.map((w) => (
+                      <div key={w.id} className="flex items-center justify-between text-sm py-1.5 border-b border-border/40 last:border-0">
+                        <span className="tabular-nums">{fmtVnd(w.amount)}</span>
+                        <span className={`text-xs font-medium ${WD_STATUS[w.status].cls}`}>{WD_STATUS[w.status].label}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
 
             {/* Cách hoạt động */}
             <Card className="border-border/50 bg-background/50 backdrop-blur-sm">

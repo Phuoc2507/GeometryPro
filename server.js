@@ -15,6 +15,8 @@ import analyzeAdvanceHandler from './api/analyze-advance.js';
 import adminHandler from './api/admin.js';
 import adminRedrawHandler from './api/admin-redraw.js';
 import referralHandler from './api/referral.js';
+import payoutAccountHandler from './api/payout-account.js';
+import withdrawHandler from './api/withdraw.js';
 
 export function createApp() {
 const app = express();
@@ -130,6 +132,28 @@ app.get('/api/referral', async (req, res) => {
     await referralHandler(req, res);
   } catch (error) {
     console.error('Error in /api/referral:', error);
+    if (!res.headersSent) {
+      res.status(500).json({ error: error.message || 'Internal Server Error' });
+    }
+  }
+});
+
+app.post('/api/payout-account', async (req, res) => {
+  try {
+    await payoutAccountHandler(req, res);
+  } catch (error) {
+    console.error('Error in /api/payout-account:', error);
+    if (!res.headersSent) {
+      res.status(500).json({ error: error.message || 'Internal Server Error' });
+    }
+  }
+});
+
+app.post('/api/withdraw', async (req, res) => {
+  try {
+    await withdrawHandler(req, res);
+  } catch (error) {
+    console.error('Error in /api/withdraw:', error);
     if (!res.headersSent) {
       res.status(500).json({ error: error.message || 'Internal Server Error' });
     }

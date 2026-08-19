@@ -91,11 +91,28 @@ async function handler(req, res) {
       .select('id', { count: 'exact', head: true })
       .eq('referrer_id', user.id);
 
+    // Tài khoản ngân hàng nhận tiền (nếu đã thêm).
+    const { data: payoutAccount } = await supabase
+      .from('payout_accounts')
+      .select('bank_code, account_number, account_name')
+      .eq('user_id', user.id)
+      .maybeSingle();
+
+    // Lịch sử rút tiền gần đây.
+    const { data: withdrawals } = await supabase
+      .from('withdrawals')
+      .select('id, amount, status, requested_at, processed_at')
+      .eq('user_id', user.id)
+      .order('requested_at', { ascending: false })
+      .limit(10);
+
     return res.status(200).json({
       code: profile?.referral_code || null,
       referredCount: referredCount || 0,
       commissionAvailable: profile?.commission_available || 0,
       commissionPending: profile?.commission_pending || 0,
+      payoutAccount: payoutAccount || null,
+      withdrawals: withdrawals || [],
     });
   } catch (error) {
     await reportServerError(error, { route: 'referral' });
