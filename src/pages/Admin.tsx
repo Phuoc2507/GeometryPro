@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   ArrowLeft, ShieldCheck, AlertTriangle, MessageSquare, BarChart3,
-  Loader2, Inbox, RefreshCw, Users, Receipt, Copy, BadgeCheck, KeyRound,
+  Loader2, Inbox, RefreshCw, Users, Receipt, Copy, BadgeCheck, KeyRound, Banknote,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -26,6 +26,7 @@ import { UsersTab } from '@/components/admin/UsersTab';
 import { OrdersTab } from '@/components/admin/OrdersTab';
 import { GoldenTab } from '@/components/admin/GoldenTab';
 import { TestApiKeyTab } from '@/components/admin/TestApiKeyTab';
+import { WithdrawalsTab } from '@/components/admin/WithdrawalsTab';
 import { RedrawGoldenButton } from '@/components/admin/RedrawGoldenButton';
 
 type ProblemReport = Tables<'problem_reports'>;
@@ -339,7 +340,7 @@ const Admin = () => {
         </div>
 
         <Tabs defaultValue="failures" className="w-full">
-          <TabsList className="flex h-auto w-full justify-start gap-1 overflow-x-auto sm:grid sm:grid-cols-7">
+          <TabsList className="flex h-auto w-full justify-start gap-1 overflow-x-auto sm:grid sm:grid-cols-8">
             <TabsTrigger value="failures" className="shrink-0 gap-1.5">
               <AlertTriangle className="h-4 w-4" /> Bài lỗi
               {reports.length > 0 && <Badge variant="secondary" className="ml-1">{reports.length}</Badge>}
@@ -362,6 +363,9 @@ const Admin = () => {
             </TabsTrigger>
             <TabsTrigger value="test-apikey" className="shrink-0 gap-1.5">
               <KeyRound className="h-4 w-4" /> Test API Key
+            </TabsTrigger>
+            <TabsTrigger value="withdrawals" className="shrink-0 gap-1.5">
+              <Banknote className="h-4 w-4" /> Rút tiền
             </TabsTrigger>
           </TabsList>
 
@@ -611,6 +615,10 @@ const Admin = () => {
             <p className="mt-3 text-xs text-muted-foreground">
               * Bài lỗi/nhóm lỗi tính trên tối đa {FETCH_LIMIT} bản ghi mới nhất đã tải; tỉ lệ vẽ được đếm toàn bộ theo ngày.
             </p>
+          </TabsContent>
+
+          <TabsContent value="withdrawals">
+            <WithdrawalsTab />
           </TabsContent>
 
           <TabsContent value="test-apikey">

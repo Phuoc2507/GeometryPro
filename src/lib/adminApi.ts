@@ -87,6 +87,33 @@ export interface SetPlanResult {
 export const setPlan = (userId: string, planCode: string) =>
   adminApi<SetPlanResult>('set-plan', { userId, planCode });
 
+// ── Rút hoa hồng (Mã Mời) ────────────────────────────────────────────────────
+export interface AdminWithdrawal {
+  id: string;
+  amount: number;
+  status: 'requested' | 'approved' | 'paid' | 'rejected';
+  transfer_ref: string | null;
+  admin_note: string | null;
+  requested_at: string;
+  processed_at: string | null;
+  bank_code: string | null;
+  account_number: string | null;
+  account_name: string | null;
+  referrer_name: string | null;
+  referrer_email: string | null;
+}
+export interface ListWithdrawalsResult { withdrawals: AdminWithdrawal[]; page: number; hasMore: boolean }
+
+export const listWithdrawals = (page = 1, perPage = 30) =>
+  adminApi<ListWithdrawalsResult>('list-withdrawals', { page, perPage });
+
+export const resolveWithdrawal = (
+  withdrawalId: string,
+  actionType: 'paid' | 'rejected',
+  transferRef?: string,
+  adminNote?: string,
+) => adminApi<{ ok: boolean; status: string }>('resolve-withdrawal', { withdrawalId, actionType, transferRef, adminNote });
+
 // ── Hình chuẩn (golden) ──────────────────────────────────────────────────────
 export interface SaveGoldenParams {
   prompt: string;

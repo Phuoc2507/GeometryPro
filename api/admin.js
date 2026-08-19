@@ -30,6 +30,8 @@ async function handler(req, res) {
       case 'save-golden':   return await saveGolden(gate, req, res);
       case 'list-golden':   return await listGolden(admin, req, res);
       case 'delete-golden': return await deleteGolden(admin, req, res);
+      case 'list-withdrawals':   return await listWithdrawals(admin, req, res);
+      case 'resolve-withdrawal': return await resolveWithdrawal(admin, req, res);
       default:             return res.status(400).json({ error: 'Hành động không hợp lệ' });
     }
   } catch (error) {
@@ -310,6 +312,88 @@ async function deleteGolden(admin, req, res) {
   const { error } = await admin.from('golden_figures').delete().eq('id', id);
   if (error) return res.status(500).json({ error: error.message });
   return res.json({ ok: true });
+}
+
+// ── list-withdrawals: yêu cầu rút hoa hồng + STK + danh tính người mời ────────
+async function listWithdrawals(admin, req, res) {
+  const page = clampPage(req.body?.page);
+  const perPage = clampPerPage(req.body?.perPage);
+  const from = (page - 1) * perPage;
+
+  const { data: rows, error } = await admin
+    .from('withdrawals')
+    .select('id, user_id, amount, status, transfer_ref, admin_note, requested_at, processed_at, payout_account_id')
+    .order('requested_at', { ascending: false })
+    .range(from, from + perPage);
+  if (error) return res.status(500).json({ error: error.message });
+
+  const all = rows || [];
+  const hasMore = all.length > perPage;
+  const pageRows = all.slice(0, perPage);
+
+  // STK nhận tiền.
+  const acctIds = [...new Set(pageRows.map((r) => r.payout_account_id).filter(Boolean))];
+  const acctMap = {};
+  if (acctIds.length) {
+    const { data: accts } = await admin
+      .from('payout_accounts')
+      .select('id, bank_code, account_number, account_name')
+      .in('id', acctIds);
+    for (const a of accts || []) acctMap[a.id] = a;
+  }
+
+  // Tên + email người mời.
+  const userIds = [...new Set(pageRows.map((r) => r.user_id))];
+  const nameMap = {};
+  if (userIds.length) {
+    const { data: profs } = await admin.from('profiles').select('user_id, display_name').in('user_id', userIds);
+    for (const p of profs || []) nameMap[p.user_id] = p.display_name;
+  }
+  const emailMap = {};
+  await Promise.all(userIds.map(async (uid) => {
+    try {
+      const { data } = await admin.auth.admin.getUserById(uid);
+      if (data?.user?.email) emailMap[uid] = data.user.email;
+    } catch { /* bỏ qua nếu không lấy được email */ }
+  }));
+
+  const withdrawals = pageRows.map((r) => {
+    const a = acctMap[r.payout_account_id] || {};
+    return {
+      id: r.id,
+      amount: r.amount,
+      status: r.status,
+      transfer_ref: r.transfer_ref,
+      admin_note: r.admin_note,
+      requested_at: r.requested_at,
+      processed_at: r.processed_at,
+      bank_code: a.bank_code ?? null,
+      account_number: a.account_number ?? null,
+      account_name: a.account_name ?? null,
+      referrer_name: nameMap[r.user_id] ?? null,
+      referrer_email: emailMap[r.user_id] ?? null,
+    };
+  });
+
+  return res.json({ withdrawals, page, hasMore });
+}
+
+// ── resolve-withdrawal: đánh dấu đã chi / từ chối (hoàn tiền) qua RPC ─────────
+async function resolveWithdrawal(admin, req, res) {
+  const id = String(req.body?.withdrawalId || '');
+  const actionType = req.body?.actionType;
+  if (!id || !['paid', 'rejected'].includes(actionType)) {
+    return res.status(400).json({ error: 'Tham số không hợp lệ' });
+  }
+  const { data, error } = await admin.rpc('resolve_withdrawal', {
+    p_withdrawal_id: id,
+    p_action: actionType,
+    p_transfer_ref: req.body?.transferRef || null,
+    p_admin_note: req.body?.adminNote || null,
+  });
+  if (error) return res.status(500).json({ error: error.message });
+  if (!data?.ok) return res.status(400).json({ error: data?.err || 'Không xử lý được yêu cầu' });
+  return res.json(data);
 }
 
 export default withSentry(handler, 'admin');
