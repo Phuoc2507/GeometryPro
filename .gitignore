@@ -43,3 +43,6 @@ next-env.d.ts
 
 # Visual brainstorm companion (local only)
 .superpowers/
+
+# Bàn chụp ảnh giao diện (tooling cục bộ, không thuộc tính năng)
+.screenshot/
