@@ -50,6 +50,7 @@ create policy "Users can update non-plan fields" on public.profiles
 for update using (auth.uid() = user_id)
 with check (
   auth.uid() = user_id
+  and role                 is not distinct from (select p.role                 from public.profiles p where p.user_id = auth.uid())
   and plan_type            is not distinct from (select p.plan_type            from public.profiles p where p.user_id = auth.uid())
   and plan_tier            is not distinct from (select p.plan_tier            from public.profiles p where p.user_id = auth.uid())
   and plan_code            is not distinct from (select p.plan_code            from public.profiles p where p.user_id = auth.uid())
@@ -327,32 +328,40 @@ begin
 
   -- ── HOA HỒNG MÃ MỜI ────────────────────────────────────────────────
   -- Chỉ với đơn GÓI có người giới thiệu, và là ĐƠN ĐẦU của người được rủ.
+  -- BỌC EXCEPTION: mọi lỗi ở khâu hoa hồng TUYỆT ĐỐI không được làm hỏng việc cấp
+  -- gói cho khách (khách đã trả tiền). Khối begin/exception tạo savepoint riêng, nên
+  -- lỗi ở đây chỉ HOÀN TÁC phần hoa hồng, KHÔNG đụng phần cấp gói/credit đã làm ở trên.
   if v_order.referrer_id is not null and v_order.plan_code is not null then
-    if not exists (select 1 from public.referrals where invitee_id = v_order.user_id) then
-      v_commission := round(v_order.amount::numeric * 0.60)::integer;
+    begin
+      if not exists (select 1 from public.referrals where invitee_id = v_order.user_id) then
+        v_commission := round(v_order.amount::numeric * 0.60)::integer;
 
-      insert into public.referrals(
-        referrer_id, invitee_id, code, order_code, status,
-        discount_amount, commission_amount, confirmed_at,
-        payer_account_number, payer_account_bank
-      ) values (
-        v_order.referrer_id, v_order.user_id, coalesce(v_order.referral_code, ''), p_order_code, 'confirmed',
-        coalesce(v_order.discount_amount, 0), v_commission, now(),
-        p_counter_account_number, p_counter_account_name
-      );
+        -- Cộng ví TRƯỚC + chặn nếu người mời không có dòng profiles (tránh ghi sổ mà không cộng ví).
+        update public.profiles
+           set commission_available = commission_available + v_commission,
+               updated_at = now()
+         where user_id = v_order.referrer_id
+         returning commission_available into v_referrer_balance;
+        if not found then
+          raise exception 'referrer profile % not found', v_order.referrer_id;
+        end if;
 
-      update public.profiles
-         set commission_available = commission_available + v_commission,
-             updated_at = now()
-       where user_id = v_order.referrer_id
-       returning commission_available into v_referrer_balance;
+        insert into public.referrals(
+          referrer_id, invitee_id, code, order_code, status,
+          discount_amount, commission_amount, confirmed_at,
+          payer_account_number, payer_account_bank
+        ) values (
+          v_order.referrer_id, v_order.user_id, coalesce(v_order.referral_code, ''), p_order_code, 'confirmed',
+          coalesce(v_order.discount_amount, 0), v_commission, now(),
+          p_counter_account_number, p_counter_account_name
+        );
 
-      insert into public.commission_ledger(user_id, delta, reason, ref, balance_after)
-      values (
-        v_order.referrer_id, v_commission, 'commission', v_ref,
-        coalesce(v_referrer_balance, v_commission)
-      );
-    end if;
+        insert into public.commission_ledger(user_id, delta, reason, ref, balance_after)
+        values (v_order.referrer_id, v_commission, 'commission', v_ref, v_referrer_balance);
+      end if;
+    exception when others then
+      raise warning 'commission skipped for order %: %', p_order_code, sqlerrm;
+    end;
   end if;
 
   return jsonb_build_object(

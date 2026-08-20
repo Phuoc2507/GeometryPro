@@ -43,6 +43,7 @@ create policy "Users can update non-plan fields" on public.profiles
 for update using (auth.uid() = user_id)
 with check (
   auth.uid() = user_id
+  and role                 is not distinct from (select p.role                 from public.profiles p where p.user_id = auth.uid())
   and plan_type            is not distinct from (select p.plan_type            from public.profiles p where p.user_id = auth.uid())
   and plan_tier            is not distinct from (select p.plan_tier            from public.profiles p where p.user_id = auth.uid())
   and plan_code            is not distinct from (select p.plan_code            from public.profiles p where p.user_id = auth.uid())
