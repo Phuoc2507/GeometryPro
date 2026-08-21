@@ -82,12 +82,12 @@ Mỗi câu trả lời được viết **ngắn, đúng dự án, tự tin nhưn
 > Đáp **do người xác minh** trước — người là **trọng tài cuối**. Công cụ gán nhãn (`scripts/label/`) chỉ **đối chiếu** đáp máy với đáp người **bằng số**. Quy tắc cứng: ca nào engine giải **lệch** đáp người thì **không** được nạp làm golden, mà chuyển thành ca "known‑gap" để vá engine. Ngoài ra mọi ca golden phải **PASS** `npm run bench:gate` (engine‑replay tất định) mới được chốt.
 
 **Q19. Làm sao chứng minh số liệu trong báo cáo là thật, không bịa?**
-> Nguyên tắc biên tập của em: **chỉ ghi số đã đo được và tái lập được**; ô chưa đo ghi rõ `⟦CHỜ ĐO⟧`. Con số đầu bảng — **engine‑replay 145/145** — em **chạy lại ngay tại chỗ** cho hội đồng xem: `npm run bench:gate`, offline, không gọi AI, cho kết quả **giống hệt** mỗi lần. Cái gì chưa chạy (số end‑to‑end, baseline) em **nói thẳng là chưa chạy vì cần khoá API**, không tô vẽ.
+> Nguyên tắc biên tập của em: **chỉ ghi số đã đo được và tái lập được**; ô chưa đo ghi rõ `⟦CHỜ ĐO⟧`. Con số đầu bảng — **engine‑replay 159/159** — em **chạy lại ngay tại chỗ** cho hội đồng xem: `npm run bench:gate`, offline, không gọi AI, cho kết quả **giống hệt** mỗi lần. Cái gì chưa chạy (số end‑to‑end, baseline) em **nói thẳng là chưa chạy vì cần khoá API**, không tô vẽ.
 
 ### (e) Kết quả & đánh giá
 
-**Q20. Con số "145/145" nghĩa là gì? Có phải độ chính xác 100% không?**
-> **Không, và em cẩn thận không nói vậy.** 145/145 là kết quả **engine‑replay**: em đưa **66 plan đã đúng** qua engine (tất định, không gọi AI) và cả 145 ca **pass** — 0 sai đáp, 0 sai trạng thái, 0 lỗi. Nó **chứng minh engine tính đúng** trên rổ mốc và **thực sự trả đáp dạng căn**. Nhưng nó **chưa** đo khâu **LLM dịch đề → plan** (đầu‑cuối), và cỡ mẫu 145 còn nhỏ — nên "100%" chỉ có nghĩa "chưa phát hiện hồi quy trên rổ hiện tại", **không** phải "hệ thống chính xác 100%". Muốn đo đầu‑cuối phải chạy `--full` (gọi LLM, cần API key).
+**Q20. Con số "159/159" nghĩa là gì? Có phải độ chính xác 100% không?**
+> **Không, và em cẩn thận không nói vậy.** 159/159 là kết quả **engine‑replay**: em đưa **66 plan đã đúng** qua engine (tất định, không gọi AI) và cả 159 ca **pass** — 0 sai đáp, 0 sai trạng thái, 0 lỗi. Nó **chứng minh engine tính đúng** trên rổ mốc và **thực sự trả đáp dạng căn**. Nhưng nó **chưa** đo khâu **LLM dịch đề → plan** (đầu‑cuối), và cỡ mẫu 159 còn nhỏ — nên "100%" chỉ có nghĩa "chưa phát hiện hồi quy trên rổ hiện tại", **không** phải "hệ thống chính xác 100%". Muốn đo đầu‑cuối phải chạy `--full` (gọi LLM, cần API key).
 
 **Q21. Baseline so với LLM giải thẳng đâu? Em hơn nó bao nhiêu?**
 > Harness so baseline em **đã dựng xong** (`scripts/eval/baseline.mjs`): chạy `system` (hệ của em) và `llm-direct` (LLM giải thẳng) trên **cùng** tập test, đo accuracy, **confidently‑wrong**, **precision khi trả lời**, latency. Hiện em **đã kiểm thử đường ống ở chế độ mock**; **số thật đang chờ chạy** vì cần khoá API (`VILAO_API_KEY`). Em không đưa số mock vào báo cáo vì nó **không phải kết quả khoa học**. Giả thuyết em kỳ vọng: hệ của em có **confidently‑wrong rất thấp** và **precision cao** nhờ engine tự kiểm + cổng từ chối, đổi lại **từ chối nhiều hơn** trên bài ngoài năng lực.
@@ -134,7 +134,7 @@ Nếu chưa nắm mục nào, **học ngay hôm nay**. Mỗi mục em phải nó
 - [ ] **9. Phân tầng tier:** 3 mức và `engineSolved`/`exact` vs `numeric`; tier là "nguồn sự thật duy nhất" về độ tin cậy.
 - [ ] **10. Tối ưu prompt GA:** genome = bits + order; **không chạm phần lõi/cổng từ chối**; `fitness = accuracy − λ·token`.
 - [ ] **11. Chống overfit:** tách train/test seed 42, tối ưu trên train, báo cáo trên test.
-- [ ] **12. Benchmark & engine‑replay:** 145 ca golden, replay 145/145 tất định offline; so đáp bằng số (dung sai `1e-3`).
+- [ ] **12. Benchmark & engine‑replay:** 159 ca golden, replay 159/159 tất định offline; so đáp bằng số (dung sai `1e-3`).
 - [ ] **13. Confidently‑wrong & precision:** định nghĩa và vì sao chúng là chỉ số **an toàn** cốt lõi.
 - [ ] **14. Ranh giới trung thực:** cái đã đo (engine‑replay) vs cái chưa đo (end‑to‑end, baseline — chờ API key); nói được vì sao chưa đo.
 - [ ] **15. Phân định tự làm:** liệt kê rành mạch phần tự viết vs thư viện bên thứ ba (LLM hosted, three.js, Supabase).
@@ -151,9 +151,9 @@ Nếu chưa nắm mục nào, **học ngay hôm nay**. Mỗi mục em phải nó
 - *Sai lầm:* trả lời mơ hồ "dạ khác nhiều ạ".
 - *Cách xử lý:* Trả lời bằng **ba khác biệt cụ thể, dứt khoát** (xem Q2): **(1) bài toán** — họ chứng minh định lý phẳng, em tính đại lượng không gian + dựng hình; **(2) phương pháp** — họ huấn luyện mô hình trên ~100 triệu mẫu, em **không huấn luyện gì**, chỉ dùng LLM để dịch + engine tự viết + cổng từ chối; **(3) đóng góp mới** — benchmark tiếng Việt đầu tiên. "Điểm chung duy nhất là triết lý neuro‑symbolic; đó là *nguồn cảm hứng*, không phải bản sao."
 
-**Bẫy 3 — "Số 145/145 nghĩa là hệ thống của em đúng 100% à?"**
+**Bẫy 3 — "Số 159/159 nghĩa là hệ thống của em đúng 100% à?"**
 - *Bẫy:* nếu em gật đầu, em **tự bẫy mình** — giám khảo sẽ vặn "vậy sao báo cáo nói cỡ mẫu nhỏ?".
-- *Cách xử lý:* **Chủ động thu hẹp ý nghĩa con số** trước khi bị vặn (xem Q20). "Dạ không ạ. 145/145 là **engine‑replay** — chứng minh **engine tính đúng** trên rổ mốc và trả đáp **dạng căn chính xác**. Nó **chưa** đo khâu LLM dịch đề, và cỡ mẫu 145 còn nhỏ, nên nó chỉ nói 'chưa phát hiện hồi quy', không phải 'chính xác 100%'. Số đầu‑cuối em đang chờ chạy vì cần khoá API." → **Sự trung thực chủ động này ghi điểm liêm chính rất mạnh** trong bối cảnh hậu kiểm.
+- *Cách xử lý:* **Chủ động thu hẹp ý nghĩa con số** trước khi bị vặn (xem Q20). "Dạ không ạ. 159/159 là **engine‑replay** — chứng minh **engine tính đúng** trên rổ mốc và trả đáp **dạng căn chính xác**. Nó **chưa** đo khâu LLM dịch đề, và cỡ mẫu 159 còn nhỏ, nên nó chỉ nói 'chưa phát hiện hồi quy', không phải 'chính xác 100%'. Số đầu‑cuối em đang chờ chạy vì cần khoá API." → **Sự trung thực chủ động này ghi điểm liêm chính rất mạnh** trong bối cảnh hậu kiểm.
 
 > **Nguyên tắc vàng khi gặp bẫy:** giám khảo bẫy để xem em có **trung thực** và **hiểu giới hạn** của chính mình không. Thắng bằng cách **tự nêu hạn chế trước khi bị chỉ ra** — đó là dấu hiệu của người thật sự làm nghiên cứu.
 
@@ -165,7 +165,7 @@ Nếu chưa nắm mục nào, **học ngay hôm nay**. Mỗi mục em phải nó
 
 1. **(30s) Móc câu bằng vấn đề thật.** "Hình học không gian là mạch khó nhất ở THPT. Khi hỏi thẳng một AI, nó hay **bịa toạ độ, tính sai, đưa đáp nghe hợp lý mà không kiểm được**. Đó là vấn đề em giải." — Nêu **nỗi đau**, đừng mở bằng "em xin trình bày đề tài...".
 2. **(45s) Ý tưởng cốt lõi, một câu.** Nói câu thần chú: *"LLM chỉ DỊCH đề thành mô hình hình thức; một ENGINE tất định TÍNH và TỰ KIỂM."* Vẽ nhanh sơ đồ 3 khối. Đây là **linh hồn** của đề tài — nói chậm, rõ.
-3. **(60s) Demo sống nếu có thể.** Nhập một đề → chỉ vào **đáp dạng căn `2√3/3`** (không phải số thập phân) và **hình 3D xoay được**. Nếu không demo được, chạy `npm run bench:gate` cho ra **145/145** ngay tại chỗ — bằng chứng tất định, tái lập.
+3. **(60s) Demo sống nếu có thể.** Nhập một đề → chỉ vào **đáp dạng căn `2√3/3`** (không phải số thập phân) và **hình 3D xoay được**. Nếu không demo được, chạy `npm run bench:gate` cho ra **159/159** ngay tại chỗ — bằng chứng tất định, tái lập.
 4. **(45s) Ba điểm khác biệt.** Cổng từ chối an toàn (thà từ chối còn hơn bịa) · engine trả đáp căn đúng tự viết · benchmark tiếng Việt đầu tiên. Gắn mỗi cái với **một câu vì sao nó quan trọng**.
 5. **(30s) Trung thực về trạng thái.** "Engine và toàn bộ phương pháp đánh giá đã dựng xong; số đầu‑cuối và baseline em **đang chạy** — cần khoá API." → Chủ động minh bạch **ngay từ đầu** làm giám khảo tin em suốt phần sau.
 
@@ -174,4 +174,4 @@ Nếu chưa nắm mục nào, **học ngay hôm nay**. Mỗi mục em phải nó
 - **Luôn quy về câu thần chú** khi bị dồn: mọi câu hỏi khó đều có thể neo lại vào "LLM dịch — engine tính — tự kiểm".
 - **Chuẩn bị sẵn để MỞ MÃ.** Mở laptop, biết đường tới `compute/answer.ts`, `translatorPrompt.js`, `classifyTier.js` — chỉ được vào và giải thích là đòn hạ gục nghi ngờ "không tự làm".
 - **Khi không biết, nói "em chưa đo/chưa làm phần đó".** Không bao giờ bịa. Một câu "cái đó em chưa chạy vì cần API key" **mạnh hơn** một câu chế số — nhất là mùa hậu kiểm này.
-- **Số duy nhất được khẳng định chắc:** engine‑replay **145/145**, ~1085 test đơn vị xanh. Mọi số khác đều kèm "đang đo".
+- **Số duy nhất được khẳng định chắc:** engine‑replay **159/159**, ~1085 test đơn vị xanh. Mọi số khác đều kèm "đang đo".

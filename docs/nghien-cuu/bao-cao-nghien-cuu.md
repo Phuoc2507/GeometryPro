@@ -2,7 +2,7 @@
 
 *A Neuro‑Symbolic System for Solid Geometry Problem Solving with Prompt Optimization and a Vietnamese Benchmark Dataset*
 
-> **Trạng thái bản thảo:** v0.7 — khung đầy đủ; **Phương pháp & Kiến trúc** đã điền chi tiết đối chiếu mã nguồn; Phụ lục A–E + trích dẫn thật; **§5.7 có kết quả đo thật** (engine‑replay **145/145**, và **208/208 đáp ở dạng chính xác**). Bộ dữ liệu hiện gồm **145 ca máy‑sinh đã kiểm chứng** (120 synthetic tự soạn + kiểm hai chiều, 25 capture) — **chưa có đề từ SGK/đề thi thật** (đây là phần mở rộng do nhóm/học sinh thực hiện). Còn lại: số liệu end‑to‑end/baseline (cần khoá API). Nguyên tắc: **không dùng số bịa**; mọi hạn chế nêu thẳng ở §10.
+> **Trạng thái bản thảo:** v0.7 — khung đầy đủ; **Phương pháp & Kiến trúc** đã điền chi tiết đối chiếu mã nguồn; Phụ lục A–E + trích dẫn thật; **§5.7 có kết quả đo thật** (engine‑replay **159/159**, và **226/226 đáp ở dạng chính xác**). Bộ dữ liệu hiện gồm **159 ca máy‑sinh đã kiểm chứng** (134 synthetic tự soạn + kiểm hai chiều, 25 capture) — **chưa có đề từ SGK/đề thi thật** (đây là phần mở rộng do nhóm/học sinh thực hiện). Còn lại: số liệu end‑to‑end/baseline (cần khoá API). Nguyên tắc: **không dùng số bịa**; mọi hạn chế nêu thẳng ở §10.
 > **Lĩnh vực dự thi (đề xuất):** Phần mềm hệ thống / Robot và máy thông minh (Hệ thống thông minh).
 > **Nguyên tắc biên tập:** chỉ ghi những gì đã hiện thực trong mã nguồn hoặc sẽ đo được; **không dùng con số minh hoạ chưa kiểm chứng**. Phần dự kiến luôn ghi rõ là dự kiến.
 
@@ -160,7 +160,7 @@ Thành phần (theo mã nguồn `api/_lib/kernel/**`):
 
 **Quy mô hiện có (đo trên repo):** ~48 file mã, ~5.256 dòng cho riêng kernel; toàn repo **1085 test** đơn vị xanh.
 
-**Giới hạn đã biết (nêu trung thực):** một số bài engine chưa giải và **từ chối an toàn** thay vì bịa (ví dụ tứ diện đều cạnh 3 trong ghi chú bench trả `ok:false` — là abstain an toàn, không phải đáp sai). Ranh giới này được báo cáo minh bạch, không che giấu.
+**Giới hạn đã biết (nêu trung thực):** một số dạng bài engine **từ chối an toàn** thay vì bịa — ví dụ bài **quỹ tích tổng quát**, **bất đẳng thức/biện luận tham số**, hoặc đề **chỉ cho tỉ số cạnh** mà hỏi đại lượng đo tuyệt đối (hình còn tỉ lệ tự do) ⇒ cổng trả `{abstain:true}`. Ranh giới này được liệt kê chi tiết, có đối chiếu mã nguồn, trong phụ lục **`nang-luc-va-ranh-gioi.md`** (bảng năng lực + ba tầng từ chối). *(Lưu ý cập nhật: các ca như **tứ diện đều cạnh 3** trước đây engine bó tay thì nay đã giải được — thể tích `9√2/4` — ranh giới đã dịch ra ngoài; xem `bench/golden/README.md`.)*
 
 ### 4.4. Phân tầng an toàn (tier) và độ tin cậy
 Hệ thống gán **nhãn mức an toàn** cho mỗi kết quả, neo tuyệt đối vào việc *engine có thực sự giải được* (`engineSolved`) và *đáp có ở dạng chính xác hay chỉ là số*. Nhãn này vừa phục vụ người dùng, vừa là biến quan trọng khi đánh giá (phân biệt "giải đúng dạng căn" / "giải ra số" / "từ chối").
@@ -188,7 +188,7 @@ Prompt của khối dịch được **tối ưu tự động** bằng vòng lặ
 
 **Biểu diễn cá thể — an toàn là trên hết:** GA **không đụng vào phần lõi** của prompt gốc (đặc biệt cổng từ chối). Mỗi cá thể (*genome*) chỉ chọn **BẬT/TẮT** và **sắp thứ tự** một số **câu chỉ dẫn bổ sung** (gene) gắn thêm sau prompt gốc. Không gian tìm kiếm này rẻ, tái lập, và dễ giải thích.
 
-*Trạng thái: **đã hiện thực** (`scripts/prompt-opt/`), chạy được end‑to‑end. Cỗ máy tiến hóa đã chạy trên **toàn bộ 145 ca benchmark** ở chế độ **mô phỏng tất định** (`--provider mock`, seed 42, pop 12, gen 10): best fitness **0.720 → 0.803**, best accuracy **91.7% → 100%**, hội tụ và tái lập chính xác theo hạt giống; prompt tốt nhất tự chọn các gene hợp lý (`queries-list`, `integer-coords`, `json-only`, `verify-asserts`). Đường cong fitness: `figures/prompt-opt-fitness-mock-seed42.svg`.*
+*Trạng thái: **đã hiện thực** (`scripts/prompt-opt/`), chạy được end‑to‑end. Cỗ máy tiến hóa đã chạy trên **toàn bộ 159 ca benchmark** ở chế độ **mô phỏng tất định** (`--provider mock`, seed 42, pop 12, gen 10): best fitness **0.714 → 0.803**, best accuracy **91.2% → 100%**, hội tụ và tái lập chính xác theo hạt giống; prompt tốt nhất tự chọn các gene hợp lý (`queries-list`, `integer-coords`, `json-only`, `verify-asserts`). Đường cong fitness: `figures/prompt-opt-fitness-mock-seed42.svg`.*
 
 ![Đường cong fitness qua các thế hệ (mock, seed 42)](figures/prompt-opt-fitness-mock-seed42.svg)
 
@@ -202,7 +202,7 @@ Prompt của khối dịch được **tối ưu tự động** bằng vòng lặ
 Dự án đã có một **bộ đề mốc (golden)** và một **trình chạy đánh giá tất định**:
 - Mỗi ca là một JSON `{ id, source, text?, plan, expect }`; chạy `plan` qua engine bằng chế độ **engine‑replay** (không gọi AI, miễn phí, offline) hoặc `--full` (chạy cả bước dịch, có gọi LLM).
 - So đáp **theo giá trị số** với dung sai `≤ 1e-3·max(1,|đáp|)` (parse được `a√b/c`, `p/q`, thập phân) ⇒ chấp nhận nhiều cách viết cùng một đáp (ví dụ `√2` khớp `1.4142…`). Kết luận mỗi ca: `pass` / `regress-status` / `regress-answer` / `error`.
-- **Hiện có 145 ca golden** (208 đáp). Trong đó **120 ca *synthetic*** (đề gốc tự soạn, đáp **kiểm hai chiều**: tính bằng công thức độc lập ↔ engine tính lại, chỉ nạp khi khớp) và **25 ca *capture*** (engine sinh). **100% đáp ở dạng chính xác** (căn/π/hữu tỉ), 0 đáp làm tròn thập phân. *(Xem `du-lieu-benchmark.md` về công cụ gán nhãn `scripts/label/` và quy trình staging → soát → promote.)*
+- **Hiện có 159 ca golden** (226 đáp). Trong đó **120 ca *synthetic*** (đề gốc tự soạn, đáp **kiểm hai chiều**: tính bằng công thức độc lập ↔ engine tính lại, chỉ nạp khi khớp) và **25 ca *capture*** (engine sinh). **100% đáp ở dạng chính xác** (căn/π/hữu tỉ), 0 đáp làm tròn thập phân. *(Xem `du-lieu-benchmark.md` về công cụ gán nhãn `scripts/label/` và quy trình staging → soát → promote.)*
 - Bài engine bó tay/từ chối được ghi vào bảng `problem_reports` kèm Plan JSON ⇒ nguồn "ca known‑gap" để bổ sung dữ liệu.
 *(Mã: `api/_lib/bench/**` — `runGate.js`, `compareCase.js`, `captureCase.js`; `bench/golden/**`.)*
 
@@ -255,36 +255,36 @@ Mời giáo viên Toán chấm **chất lượng lời giải/annotation** và *
 ### 5.7. Kết quả bước đầu (số ĐO THẬT, cập nhật liên tục)
 
 **Thí nghiệm 1 — Tính đúng đắn của engine ký hiệu (engine‑replay).**
-Chạy `npm run bench:gate` (chế độ engine‑replay: đưa *plan đã đúng* qua engine, **tất định, không gọi AI**) trên toàn bộ **145 ca golden** hiện có (tổng **208 đáp**):
+Chạy `npm run bench:gate` (chế độ engine‑replay: đưa *plan đã đúng* qua engine, **tất định, không gọi AI**) trên toàn bộ **159 ca golden** hiện có (tổng **226 đáp**):
 
 | Chỉ số | Kết quả |
 |---|---|
-| Tổng số ca | 145 |
-| Pass | **145 / 145 (100%)** |
+| Tổng số ca | 159 |
+| Pass | **159 / 159 (100%)** |
 | Sai đáp (regress‑answer) | 0 |
 | Sai trạng thái (regress‑status) | 0 |
 | Lỗi (error) | 0 |
 
-**Thí nghiệm 1b — Độ chính xác *ký hiệu* của đáp (đo trực tiếp trên 208 đáp golden).**
+**Thí nghiệm 1b — Độ chính xác *ký hiệu* của đáp (đo trực tiếp trên 226 đáp golden).**
 Đây là chỉ số phân biệt hệ với "AI làm tròn thập phân": mỗi đáp được kiểm cờ `approximate`.
 
 | Chỉ số | Kết quả |
 |---|---|
-| Tổng số đáp | 208 |
-| Đáp ở **dạng chính xác** (không làm tròn) | **208 / 208 (100%)** |
+| Tổng số đáp | 226 |
+| Đáp ở **dạng chính xác** (không làm tròn) | **226 / 226 (100%)** |
 | Đáp xấp xỉ/thập phân (`approximate:true`) | **0** |
 | — trong đó chứa **π** | 49 |
-| — chứa **căn thức √** | 24 |
-| — số **hữu tỉ** (phân số/nguyên) | 90 |
+| — chứa **căn thức √** | 27 |
+| — số **hữu tỉ** (phân số/nguyên) | 105 |
 | — **nhãn/góc/phương trình** (góc °, vị trí tương đối, mặt phẳng) | 45 |
 
-Phân bố dạng truy vấn (145 ca, nhiều ca đa truy vấn — tổng 208 đáp): **thể tích 54, toạ độ điểm/giao 50, diện tích 30, góc 15, phương trình mặt phẳng 15, vị trí tương đối 15, khoảng cách 13, mặt cầu 6, tỉ số thể tích 5, đường sinh 4**. Bao phủ: đa diện · khoảng cách điểm–mặt · mặt cầu · nón/trụ · nón cụt/chóp cụt · tỉ số thể tích · góc (đường–đường, đường–mặt, mặt–mặt) · thiết diện · vị trí tương đối đường/mặt · phương trình mặt phẳng · chân đường vuông góc/đối xứng/trọng tâm · giao điểm (đường×mặt, đường×đường, đường×cầu). Đáp **dạng căn/π chính xác** — ví dụ thật: khoảng cách `2√3/3`, `√6/3`, `12/5`; thể tích `12π`, `8√2π/3`, `256π/3`, `52π`; diện tích mặt cầu `100π`; góc `60°`, `30°`, `90°`; toạ độ `7/4`, `10/3`; vị trí `chéo nhau`, `song song`, `đường nằm trên mặt`; phương trình `x + y + z - 2 = 0`.
+Phân bố dạng truy vấn (159 ca, nhiều ca đa truy vấn — tổng 226 đáp): **thể tích 61, toạ độ điểm/giao 56, diện tích 33, khoảng cách 15, góc 15, phương trình mặt phẳng 15, vị trí tương đối 15, mặt cầu 6, tỉ số thể tích 5, đường sinh 4**. Bao phủ: đa diện · khoảng cách điểm–mặt · mặt cầu · nón/trụ · nón cụt/chóp cụt · tỉ số thể tích · góc (đường–đường, đường–mặt, mặt–mặt) · thiết diện · vị trí tương đối đường/mặt · phương trình mặt phẳng · chân đường vuông góc/đối xứng/trọng tâm · giao điểm (đường×mặt, đường×đường, đường×cầu). Đáp **dạng căn/π chính xác** — ví dụ thật: khoảng cách `2√3/3`, `√6/3`, `12/5`; thể tích `12π`, `8√2π/3`, `256π/3`, `52π`; diện tích mặt cầu `100π`; góc `60°`, `30°`, `90°`; toạ độ `7/4`, `10/3`; vị trí `chéo nhau`, `song song`, `đường nằm trên mặt`; phương trình `x + y + z - 2 = 0`.
 
 > **Diễn giải trung thực — phép đo này đo cái gì và KHÔNG đo cái gì:**
 > - ✅ Nó chứng minh **engine tất định tính đúng** trên tập ca mốc, và **thực sự trả 100% đáp dạng căn/π/phân số** (không một đáp nào là số thập phân gần đúng) — củng cố CH4 bằng số đo trực tiếp.
 > - ⚠️ Nó **chưa** đo khâu **LLM dịch đề → plan** (end‑to‑end). Muốn đo đầu‑cuối phải chạy `npm run bench:gate -- --full` (có gọi LLM, cần khoá API — *phần của bạn*).
 > - ⚠️ Con số 100% chỉ nói "engine giải đúng khi ĐÃ có plan đúng, chưa phát hiện hồi quy trên rổ", **không** phải "độ chính xác hệ thống 100%".
-> - ⚠️ **Nguồn dữ liệu:** 145 ca hiện là **máy‑sinh/tự soạn** (120 synthetic tự soạn có kiểm hai chiều công‑thức↔engine, 25 capture) — **chưa có đề từ SGK/đề thi thật**. Vì vậy chưa nên suy rộng ra "năng lực trên đề thực". Bổ sung đề thật (ghi nguồn, người tự giải xác minh) là hạng mục nhóm sẽ làm.
+> - ⚠️ **Nguồn dữ liệu:** 159 ca hiện là **máy‑sinh/tự soạn** (134 synthetic tự soạn có kiểm hai chiều công‑thức↔engine, 25 capture) — **chưa có đề từ SGK/đề thi thật**. Vì vậy chưa nên suy rộng ra "năng lực trên đề thực". Bổ sung đề thật (ghi nguồn, người tự giải xác minh) là hạng mục nhóm sẽ làm.
 
 **Các thí nghiệm còn lại (⟦CHỜ CHẠY⟧):** (2) end‑to‑end `--full` để đo tỉ lệ dịch đúng; (3) so baseline LLM thuần; (4) đo *confidently‑wrong* và tỉ lệ từ chối; (5) latency. Các mục này cần khoá API và bộ dữ liệu mở rộng.
 
@@ -297,7 +297,7 @@ Mục này được đưa lên **trang trọng** vì hai mùa thi gần đây c�
 - **Minh bạch:** công bố **toàn bộ báo cáo, mã nguồn và benchmark** để cộng đồng đối chiếu.
 - **Trung thực số liệu:** mọi con số trong báo cáo đều từ thí nghiệm tái lập được; không dùng số minh hoạ. Ô chưa đo ghi rõ `⟦CHỜ ĐO⟧`.
 - **Ghi công đúng:** nêu rõ phần nào dùng thư viện/mô hình bên thứ ba (LLM hosted, three.js, Supabase…), phần nào do nhóm tự phát triển (engine ký hiệu, cổng từ chối, bộ dữ liệu).
-- **Bản quyền & nguồn dữ liệu:** benchmark hiện gồm **145 ca đề gốc tự soạn (synthetic)** và ca capture — *không* chép từ tài liệu có bản quyền. Khi bổ sung đề từ SGK/đề thi, sẽ **ghi rõ nguồn** (sách, trang, năm) và không phát tán trái phép.
+- **Bản quyền & nguồn dữ liệu:** benchmark hiện gồm **159 ca đề gốc tự soạn (synthetic)** và ca capture — *không* chép từ tài liệu có bản quyền. Khi bổ sung đề từ SGK/đề thi, sẽ **ghi rõ nguồn** (sách, trang, năm) và không phát tán trái phép.
 - **Phân định vai trò:** phần đóng góp của từng thành viên (khối lõi Neuro‑Symbolic vs khối trực quan hoá 3D) được ghi minh bạch.
 
 ---
@@ -324,7 +324,7 @@ Ngân sách mục tiêu **≤ 10 triệu VNĐ**, ưu tiên thuê tài nguyên th
 - ✅ Engine ký hiệu (hình học + giải tích), số học chính xác — ~5.256 dòng; toàn repo 1085 test đơn vị xanh.
 - ✅ Khối dịch LLM + cổng từ chối + phân tầng an toàn — đã nối chạy.
 - ✅ Ứng dụng 3D (React Three Fiber) — 17 trang, 136 component.
-- ◑ Benchmark tiếng Việt — **145 ca / 208 đáp** (120 synthetic kiểm hai chiều + 25 capture; 100% đáp dạng chính xác); **chưa có đề SGK/đề thi thật** (phần học sinh làm).
+- ◑ Benchmark tiếng Việt — **159 ca / 226 đáp** (134 synthetic kiểm hai chiều + 25 capture; 100% đáp dạng chính xác); **chưa có đề SGK/đề thi thật** (phần học sinh làm).
 - ◑ Đánh giá định lượng — engine‑replay 20/20 (§5.7); **harness so baseline + tách train/test đã hiện thực** (`scripts/eval/`, kiểm thử mock); còn số end‑to‑end thật (cần API key).
 - ◑ Tối ưu prompt tiến hoá — **đã hiện thực & chạy được** (`scripts/prompt-opt/`); mock 75%→100% tái lập; còn chạy LLM thật.
 - ◻️ Báo cáo khoa học — đang viết (bản này).

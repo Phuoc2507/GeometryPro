@@ -4,7 +4,7 @@
 
 ## 1. Vì sao cần
 
-Benchmark hiện có **145 ca golden / 208 đáp** (120 synthetic tự soạn + 25 capture; CHƯA có đề SGK/đề thi thật). **100% đáp ở dạng chính xác** (căn/π/hữu tỉ), 0 đáp làm tròn. Đây là nút thắt lớn nhất của khâu đánh giá: số liệu chỉ có ý nghĩa thống kê khi tập đủ lớn và đa dạng. Mục tiêu: **~150–300 bài**, phủ nhiều dạng (khoảng cách, góc, thể tích, thiết diện, tương giao, tròn xoay…) và nhiều độ khó.
+Benchmark hiện có **159 ca golden / 226 đáp** (134 synthetic tự soạn + 25 capture; CHƯA có đề SGK/đề thi thật). **100% đáp ở dạng chính xác** (căn/π/hữu tỉ), 0 đáp làm tròn. Đây là nút thắt lớn nhất của khâu đánh giá: số liệu chỉ có ý nghĩa thống kê khi tập đủ lớn và đa dạng. Mục tiêu: **~150–300 bài**, phủ nhiều dạng (khoảng cách, góc, thể tích, thiết diện, tương giao, tròn xoay…) và nhiều độ khó.
 
 ## 2. Một ca golden gồm gì
 
@@ -62,10 +62,10 @@ npm run bench:gate                        # chốt: cả rổ phải PASS
 
 *(Thư mục `bench/golden-staging/` được `.gitignore` — chỉ ca đã promote mới vào rổ chính thức.)*
 
-## 5. Phân bố hiện tại (145 ca / 208 đáp)
+## 5. Phân bố hiện tại (159 ca / 226 đáp)
 
-- **Theo dạng truy vấn:** thể tích 54, toạ độ điểm/giao 50, diện tích 30, góc 15, phương trình mặt phẳng 15, vị trí tương đối 15, khoảng cách 13, mặt cầu 6, tỉ số thể tích 5, đường sinh 4 (nhiều ca đa truy vấn). Nguồn: 120 synthetic + 25 capture.
-- **Theo dạng đáp (208 đáp):** 49 chứa π · 24 chứa căn √ · 90 hữu tỉ · 45 nhãn/góc°/phương trình — **100% ở dạng chính xác, 0 đáp làm tròn thập phân**.
+- **Theo dạng truy vấn:** thể tích 61, toạ độ điểm/giao 56, diện tích 33, khoảng cách 15, góc 15, phương trình mặt phẳng 15, vị trí tương đối 15, mặt cầu 6, tỉ số thể tích 5, đường sinh 4 (nhiều ca đa truy vấn). Nguồn: 134 synthetic + 25 capture.
+- **Theo dạng đáp (226 đáp):** 49 chứa π · 27 chứa căn √ · 105 hữu tỉ · 45 nhãn/góc°/phương trình — **100% ở dạng chính xác, 0 đáp làm tròn thập phân**.
 - Cần bổ sung mạnh: **góc**, **thiết diện/diện tích**, **tương giao (giao điểm/giao tuyến)**, **mặt cầu**, **tròn xoay/giải tích**, và các bài **"thang chữ"** (kích thước bằng `a`).
 
 ## 6. Việc tiếp theo
