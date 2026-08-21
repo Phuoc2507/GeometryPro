@@ -118,7 +118,20 @@ for (const c of s.perCase) {
   console.log(`  ${icon} ${c.id.padEnd(38)} ${String(c.passes).padStart(2)}/${c.runs}${stages.length ? '  ← ' + stages.join(', ') : ''}`);
 }
 
-console.log('\nHai con số cần nhìn:');
+// Không gọi được API thì KHÔNG có gì để đo. In tỉ lệ 0% ở tình huống này là đánh lừa:
+// người đọc sẽ tưởng chất lượng engine tệ trong khi thực ra khoá/mạng/quota mới là vấn đề.
+if (s.apiErrors > 0) {
+  console.log(`\n⚠️  ${s.apiErrors}/${s.totalRuns} lượt KHÔNG GỌI ĐƯỢC API (khoá, mạng, hoặc quota).`);
+  console.log('    Các lượt đó đã bị LOẠI khỏi mẫu — không tính là "dịch không được".');
+}
+if (s.measuredRuns === 0) {
+  console.log('\n✖ PHÉP ĐO THẤT BẠI: không lượt nào gọi được API, không có gì để kết luận.');
+  console.log('  Kiểm tra VILAO_API_KEY, quota, và đường mạng ra api.vilao.ai rồi chạy lại.');
+  if (outFile) writeReport(outFile, { mode: 'full-pipeline', dir, repeat, summary: s, failed: 'api-unreachable' });
+  process.exit(1);
+}
+
+console.log(`\nHai con số cần nhìn (trên ${s.measuredRuns} lượt đo được):`);
 console.log(`  • DỊCH ĐƯỢC : ${pct(s.translateRate)}  (translator ra Plan hợp lệ — thước đo prompt/model)`);
 console.log(`  • ĐÁP ĐÚNG  : ${pct(s.passRate)}  (đúng tới đáp số cuối — thước đo cả đường ống)`);
 

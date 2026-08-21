@@ -16,6 +16,7 @@ const wrongResult = { plan: {}, ok: true, answers: [{ text: '99' }] };
 const engineDead = { plan: {}, ok: false, answers: [], errors: [{ message: 'engine bó tay' }] };
 const abstain = { plan: null, ok: false, answers: [], errors: [{ message: 'translator abstained: thiếu số liệu' }] };
 const translateFail = { plan: null, ok: false, answers: [], errors: [{ message: 'Translator plan failed schema: bad' }] };
+const apiBlocked = { plan: null, ok: false, answers: [], errors: [{ message: 'Vilao API error: 403 Host not in allowlist: api.vilao.ai' }] };
 
 describe('classifyFullResult — tách BỐN khâu có thể hỏng', () => {
   it('dịch từ chối ≠ dịch hỏng (một cái là hành vi đúng, một cái là lỗi)', () => {
@@ -33,6 +34,30 @@ describe('classifyFullResult — tách BỐN khâu có thể hỏng', () => {
 
   it('đúng ⇒ pass', () => {
     expect(classifyFullResult(okResult, 'pass')).toBe('pass');
+  });
+
+  // Bẫy thật, phát hiện khi chạy bench với API bị chặn: nếu gộp lỗi vận chuyển vào
+  // 'translate-fail' thì khoá hết hạn sẽ hiện thành "dịch hỏng 40/40" và người ta đi
+  // sửa prompt trong khi prompt chẳng sao cả.
+  it('KHÔNG gọi được API ⇒ api-error, KHÔNG phải "dịch hỏng"', () => {
+    expect(classifyFullResult(apiBlocked, 'regress-status')).toBe('api-error');
+    for (const msg of [
+      'Vilao API error: 401 Unauthorized',
+      'Vilao API error: 429 rate limit',
+      'Vilao API key is not set (opts.apiKey or VILAO_API_KEY)',
+      'Vilao failed after maximum retries',
+      'Failed to parse Vilao response: <html>',
+      'Vilao returned empty content',
+      'Request timed out',
+    ]) {
+      expect(classifyFullResult({ plan: null, errors: [{ message: msg }] }, 'x'), msg).toBe('api-error');
+    }
+  });
+
+  it('lỗi THẬT của translator vẫn là translate-fail', () => {
+    expect(classifyFullResult(translateFail, 'x')).toBe('translate-fail');
+    expect(classifyFullResult({ plan: null, errors: [{ message: 'Translator returned non-JSON output' }] }, 'x'))
+      .toBe('translate-fail');
   });
 
   it('văng ngoại lệ ⇒ error', () => {
@@ -101,6 +126,30 @@ describe('summarizeFull', () => {
     ]);
     expect(s.worstStages[0]).toEqual(['translate-fail', 2]);
     expect(s.worstStages.map(([k]) => k)).not.toContain('pass');
+  });
+
+  it('lượt KHÔNG gọi được API bị LOẠI khỏi mẫu, không kéo tỉ lệ xuống oan', () => {
+    const s = summarizeFull([
+      { id: 'a', run: 1, stage: 'api-error' },
+      { id: 'b', run: 1, stage: 'api-error' },
+      { id: 'c', run: 1, stage: 'pass' },
+      { id: 'd', run: 1, stage: 'wrong-answer' },
+    ]);
+    expect(s.totalRuns).toBe(4);
+    expect(s.apiErrors).toBe(2);
+    expect(s.measuredRuns).toBe(2);
+    expect(s.passRate).toBe(0.5);        // 1/2 lượt ĐO ĐƯỢC — không phải 1/4
+    expect(s.translateRate).toBe(1);     // cả 2 lượt đo được đều dịch xong
+  });
+
+  it('toàn bộ lượt hỏng ở API ⇒ mẫu bằng 0, tỉ lệ 0 (script sẽ báo PHÉP ĐO THẤT BẠI)', () => {
+    const s = summarizeFull([
+      { id: 'a', run: 1, stage: 'api-error' },
+      { id: 'b', run: 1, stage: 'api-error' },
+    ]);
+    expect(s.measuredRuns).toBe(0);
+    expect(s.passRate).toBe(0);
+    expect(s.translateRate).toBe(0);
   });
 
   it('rổ rỗng không sinh NaN', () => {

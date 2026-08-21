@@ -20,6 +20,7 @@
 
 /** Các giai đoạn một ca có thể dừng lại. Thứ tự = từ sớm tới muộn trong đường ống. */
 export const STAGES = [
+  'api-error',
   'translate-abstain',
   'translate-fail',
   'engine-unusable',
@@ -34,10 +35,29 @@ export const STAGE_LABELS = {
   'engine-unusable': 'engine bó tay',
   'translate-fail': 'dịch hỏng (sai JSON/schema)',
   'translate-abstain': 'dịch từ chối (thiếu số liệu/ngoài danh mục)',
+  'api-error': 'KHÔNG GỌI ĐƯỢC API (khoá/mạng/quota) — không phải lỗi chất lượng',
   'error': 'văng ngoại lệ',
 };
 
 const ABSTAIN_PREFIX = 'translator abstained';
+
+// Lỗi ở tầng VẬN CHUYỂN, không phải model trả về plan tồi. Gộp chung vào
+// 'translate-fail' là đánh lừa người đọc: khoá hết hạn / bị chặn / hết quota sẽ hiện
+// thành "dịch hỏng 40/40" và người ta đi sửa prompt trong khi prompt chẳng sao cả.
+// (Phát hiện đúng bằng cách chạy thật: môi trường chặn miền api.vilao.ai và toàn bộ
+// rổ bị gán nhãn "sai JSON/schema".)
+const API_ERROR_PATTERNS = [
+  'Vilao API error:',            // HTTP 4xx/5xx từ nhà cung cấp
+  'Vilao API key is not set',    // thiếu cấu hình
+  'Vilao failed after maximum retries',
+  'Failed to parse Vilao response',
+  'Vilao returned empty content',
+  'Request timed out',
+];
+
+function isApiError(message) {
+  return API_ERROR_PATTERNS.some((p) => message.includes(p));
+}
 
 /**
  * Ca này dừng ở đâu?
@@ -53,7 +73,10 @@ export function classifyFullResult(result, verdict) {
   // đúng khi đề thiếu số liệu) với DỊCH HỎNG (lỗi thật của translator).
   if (!result.plan) {
     const msg = String(result.errors?.[0]?.message || '');
-    return msg.startsWith(ABSTAIN_PREFIX) ? 'translate-abstain' : 'translate-fail';
+    if (msg.startsWith(ABSTAIN_PREFIX)) return 'translate-abstain';
+    // Chưa gọi được API thì bước dịch CHƯA TỪNG chạy — đừng đổ lỗi cho translator.
+    if (isApiError(msg)) return 'api-error';
+    return 'translate-fail';
   }
 
   if (verdict === 'pass') return 'pass';
@@ -102,7 +125,10 @@ export function summarizeFull(records) {
   const totalRuns = records.length;
   // "Dịch được" = mọi giai đoạn TỪ engine trở đi. Đây là thước đo của translator,
   // tách hẳn khỏi chuyện engine tính đúng hay sai.
-  const translated = totalRuns - byStage['translate-abstain'] - byStage['translate-fail'];
+  // Lượt KHÔNG gọi được API không đo được gì cả ⇒ loại khỏi mẫu, không tính là
+  // "dịch không được" (sẽ vu oan cho translator).
+  const measured = totalRuns - byStage['api-error'];
+  const translated = measured - byStage['translate-abstain'] - byStage['translate-fail'];
 
   // KHÔNG ỔN ĐỊNH = cùng một đề, lần được lần không. Chỉ lộ ra khi repeat > 1;
   // đây là thứ một lần chạy đơn lẻ không bao giờ cho thấy.
@@ -118,8 +144,11 @@ export function summarizeFull(records) {
     totalRuns,
     caseCount: perCaseMap.size,
     repeat: perCaseMap.size > 0 ? Math.round(totalRuns / perCaseMap.size) : 0,
-    passRate: rate(byStage.pass, totalRuns),
-    translateRate: rate(translated, totalRuns),
+    // Mẫu để tính tỉ lệ là các lượt THỰC SỰ gọi được API.
+    measuredRuns: measured,
+    apiErrors: byStage['api-error'],
+    passRate: rate(byStage.pass, measured),
+    translateRate: rate(translated, measured),
     byStage,
     perCase,
     unstable,
