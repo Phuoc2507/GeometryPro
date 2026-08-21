@@ -3,6 +3,7 @@ import { User, Session } from '@supabase/supabase-js';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { setSentryUser } from '@/lib/sentry';
+import { trackEvent, setAnalyticsUser } from '@/lib/analytics';
 import { buildMigrationRows } from '@/lib/history/anonMigration';
 
 interface Profile {
@@ -82,6 +83,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (sessionStorage.getItem('geo3d:pending-signin')) {
       sessionStorage.removeItem('geo3d:pending-signin');
       toast.success('Đăng nhập thành công');
+      // Cờ này CHỈ được đặt khi người dùng chủ động bấm đăng nhập → đo ở đây thì
+      // khôi phục phiên cũ / refresh token không bị đếm nhầm thành lượt đăng nhập.
+      trackEvent('login', { method: sessionStorage.getItem('geo3d:signin-method') || 'password' });
+      sessionStorage.removeItem('geo3d:signin-method');
     }
   };
 
@@ -100,7 +105,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false);
-  const openUpgradeModal = () => setIsUpgradeModalOpen(true);
+  const openUpgradeModal = () => {
+    trackEvent('upgrade_modal_open');
+    setIsUpgradeModalOpen(true);
+  };
   const closeUpgradeModal = () => setIsUpgradeModalOpen(false);
 
   const fetchProfile = async (userId: string) => {
@@ -213,6 +221,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // Defer profile fetch to avoid deadlock
         if (session?.user) {
           setSentryUser(session.user.id);
+          setAnalyticsUser(session.user.id);
           consumeSignInToast();
           hadSession.current = true;
           setTimeout(() => {
@@ -220,6 +229,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           }, 0);
         } else {
           setSentryUser(null);
+          setAnalyticsUser(null);
           setProfile(null);
           // Phiên hết hạn (Supabase tự đăng xuất khi refresh token hỏng) mà KHÔNG do người dùng
           // chủ động → trước đây im lặng. Giờ báo rõ để họ biết cần đăng nhập lại.
@@ -243,6 +253,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (session?.user) {
         setSentryUser(session.user.id);
+        setAnalyticsUser(session.user.id);
         consumeSignInToast();
         hadSession.current = true;
         fetchProfile(session.user.id);
@@ -256,6 +267,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signIn = async (email: string, password: string) => {
     sessionStorage.setItem('geo3d:pending-signin', '1');
+    sessionStorage.setItem('geo3d:signin-method', 'password');
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) sessionStorage.removeItem('geo3d:pending-signin');  // đăng nhập hỏng → đừng toast nhầm ở lần sau
     return { error: error as Error | null };
@@ -271,6 +283,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signInWithGoogle = async (redirectPath?: string) => {
     // Đặt cờ TRƯỚC khi chuyển sang Google; sau khi quay lại, phiên xuất hiện sẽ tiêu thụ cờ → toast.
     sessionStorage.setItem('geo3d:pending-signin', '1');
+    sessionStorage.setItem('geo3d:signin-method', 'google');
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
@@ -294,6 +307,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         },
       },
     });
+    if (!error) trackEvent('signup', { method: 'password' });
     return { error: error as Error | null };
   };
 

@@ -3,6 +3,7 @@ import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { FALLBACK_PLANS, type Plan } from '@/lib/plans';
+import { trackEvent } from '@/lib/analytics';
 
 /**
  * Nạp bảng giá (từ Supabase, fallback tĩnh) + tạo link thanh toán PayOS.
@@ -41,6 +42,11 @@ export function useCheckout() {
       return;
     }
     setBuying(buyingKey);
+    // Đo phễu doanh thu. CHỈ gửi mã gói + CÓ/KHÔNG dùng mã mời — không gửi chính mã mời.
+    trackEvent('checkout_start', {
+      plan: typeof body.planCode === 'string' ? body.planCode : 'credit_pack',
+      with_referral: Boolean(body.referralCode),
+    });
     try {
       const { data: sessionData } = await supabase.auth.getSession();
       const token = sessionData.session?.access_token;
@@ -58,6 +64,7 @@ export function useCheckout() {
       if (!res.ok) throw new Error(data.error || 'Có lỗi khi tạo link thanh toán');
       if (data.checkoutUrl) window.location.href = data.checkoutUrl;
     } catch (error) {
+      trackEvent('checkout_fail', { reason: (error as Error).message });
       toast({ title: 'Lỗi thanh toán', description: (error as Error).message, variant: 'destructive' });
     } finally {
       setBuying(null);

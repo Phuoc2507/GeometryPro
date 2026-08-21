@@ -7,6 +7,7 @@ import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/context/AuthContext';
 import { cacheQuotaFromResponse } from '@/lib/quota';
+import { trackEvent, type AnalyticsEvent } from '@/lib/analytics';
 import { collectPlanePointIds, planeReferencesPoint } from '@/lib/geometry/planeReferences';
 import { normalizePlanarPolygon } from '@/lib/geometry/planeGeometry';
 const LOCAL_API = import.meta.env.VITE_LOCAL_API_URL ?? '';
@@ -39,7 +40,7 @@ interface LocalApiResult {
   error: LocalApiError | null;
 }
 
-async function invokeLocalApi(endpoint: string, body: Record<string, unknown>): Promise<LocalApiResult> {
+async function invokeLocalApiRaw(endpoint: string, body: Record<string, unknown>): Promise<LocalApiResult> {
   try {
     const { data: sessionData } = await supabase.auth.getSession();
     const token = sessionData.session?.access_token;
@@ -75,7 +76,7 @@ async function invokeLocalApi(endpoint: string, body: Record<string, unknown>): 
   }
 }
 
-async function invokeLocalApiStream(
+async function invokeLocalApiStreamRaw(
   endpoint: string, 
   body: Record<string, unknown>, 
   onProgress: (statusText: string, progress: number, chunk?: string) => void
@@ -157,6 +158,68 @@ function needsUpgrade(err: LocalApiError | null): boolean {
 const NEEDS_AUTH_CODES = ['auth_required', 'guest_quota_exceeded', 'guest_ip_quota_exceeded'];
 function needsAuth(err: LocalApiError | null): boolean {
   return err?.status === 401 || err?.status === 429 || NEEDS_AUTH_CODES.includes(err?.code);
+}
+
+// ── Đo phễu (analytics) ────────────────────────────────────────────────
+// Bọc quanh 2 helper gọi API để MỌI đường vẽ đều được đếm, thay vì rải trackEvent
+// ở từng call site rồi quên mất một nhánh.
+//
+// TUYỆT ĐỐI không gửi `prompt` hay `imageBase64` — đó là nội dung của người dùng.
+// Chỉ lấy ra vài nhãn ngắn đã chọn tay ở buildFunnelParams().
+type FunnelEvents = { attempt: AnalyticsEvent; success: AnalyticsEvent; fail: AnalyticsEvent };
+
+function funnelEventsFor(endpoint: string): FunnelEvents | null {
+  if (endpoint.startsWith('/api/analyze-geometry') || endpoint.startsWith('/api/analyze-advance')) {
+    return { attempt: 'draw_attempt', success: 'draw_success', fail: 'draw_fail' };
+  }
+  return null;  // modify-geometry… chưa cần đo phễu
+}
+
+function buildFunnelParams(endpoint: string, body: Record<string, unknown>) {
+  return {
+    endpoint,
+    mode: typeof body.mode === 'string' ? body.mode : 'default',
+    // CHỈ cờ có/không — không bao giờ là chính tấm ảnh.
+    has_image: Boolean(body.imageBase64),
+    ai_model: typeof body.aiModel === 'string' ? body.aiModel : undefined,
+  };
+}
+
+async function withFunnelTracking(
+  endpoint: string,
+  body: Record<string, unknown>,
+  run: () => Promise<LocalApiResult>,
+): Promise<LocalApiResult> {
+  const events = funnelEventsFor(endpoint);
+  if (!events) return run();
+
+  const params = buildFunnelParams(endpoint, body);
+  trackEvent(events.attempt, params);
+  const startedAt = Date.now();
+  const result = await run();
+
+  if (result.error) {
+    trackEvent(events.fail, { ...params, code: result.error.code, status: result.error.status });
+    // Hết lượt / hết credit là tín hiệu DOANH THU, không phải lỗi kỹ thuật → đếm riêng.
+    if (needsUpgrade(result.error) || needsAuth(result.error)) {
+      trackEvent('quota_exhausted', { ...params, code: result.error.code });
+    }
+  } else {
+    trackEvent(events.success, { ...params, ms: Date.now() - startedAt });
+  }
+  return result;
+}
+
+function invokeLocalApi(endpoint: string, body: Record<string, unknown>): Promise<LocalApiResult> {
+  return withFunnelTracking(endpoint, body, () => invokeLocalApiRaw(endpoint, body));
+}
+
+function invokeLocalApiStream(
+  endpoint: string,
+  body: Record<string, unknown>,
+  onProgress: (statusText: string, progress: number, chunk?: string) => void,
+): Promise<LocalApiResult> {
+  return withFunnelTracking(endpoint, body, () => invokeLocalApiStreamRaw(endpoint, body, onProgress));
 }
 import { generateLatexCode } from '@/lib/geometry/generateLatex';
 import { tryLocalCommand } from '@/lib/geometry/localCommands';

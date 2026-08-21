@@ -2,7 +2,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, useSearchParams, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, useSearchParams, useLocation, Navigate } from "react-router-dom";
 import { toast } from "sonner";
 import { AuthProvider } from "@/context/AuthContext";
 import { AnimationProvider } from "@/context/AnimationContext";
@@ -13,6 +13,7 @@ import { UpgradeModal } from "@/components/UpgradeModal";
 import { useAuth } from "@/context/AuthContext";
 import React, { Suspense, useEffect } from 'react';
 import { Loader2 } from 'lucide-react';
+import { trackEvent, trackPageView } from '@/lib/analytics';
 
 const Landing = React.lazy(() => import('./pages/Landing'));
 const StudentMode = React.lazy(() => import('./pages/StudentMode'));
@@ -40,6 +41,17 @@ function PageLoader() {
   );
 }
 
+// Bắn page_view mỗi khi route đổi (SPA không tự sinh page_view như trang tĩnh).
+// Chỉ gửi pathname — KHÔNG gửi query string, vì ?ref=CODE và ?payment=success
+// là dữ liệu riêng, không nên nằm trong báo cáo analytics.
+function PageViewTracker() {
+  const location = useLocation();
+  useEffect(() => {
+    trackPageView(location.pathname);
+  }, [location.pathname]);
+  return null;
+}
+
 // Khoá vai trò (Pha 2): người đang có gói chỉ vào đúng vai trò của gói.
 // Free/hết hạn (lockedRole=null) → vào cả hai bình thường. Khoá vai trò khác → chuyển hướng.
 function RoleGuard({ role, children }: { role: 'student' | 'teacher'; children: React.ReactNode }) {
@@ -63,6 +75,7 @@ function PaymentSuccessHandler() {
   useEffect(() => {
     if (params.get('payment') !== 'success') return;
     toast.success('Thanh toán thành công!', { description: 'Credit đang được cộng vào tài khoản...', duration: 6000 });
+    trackEvent('payment_success');
     refreshProfile();
     const t = setTimeout(() => refreshProfile(), 4000); // chờ webhook cộng credit rồi refresh lại
     params.delete('payment');
@@ -81,6 +94,9 @@ function ReferralCapture() {
     const ref = params.get('ref');
     if (!ref) return;
     try { localStorage.setItem('geo3d:ref', ref.trim().toUpperCase()); } catch { /* bỏ qua */ }
+    // Đo kênh lan truyền: có bao nhiêu lượt vào từ link mã mời.
+    // KHÔNG gửi chính mã — đó là danh tính người mời.
+    trackEvent('referral_link_visit');
     params.delete('ref');
     setParams(params, { replace: true });
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -102,6 +118,7 @@ function App() {
                 <Sonner />
                 <AuthModal />
                 <GlobalUpgradeModal />
+                <PageViewTracker />
                 <PaymentSuccessHandler />
                 <ReferralCapture />
                 <ToolSlider />

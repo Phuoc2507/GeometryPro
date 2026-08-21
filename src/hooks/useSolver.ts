@@ -10,6 +10,7 @@ import { GeometryData } from '@/types/geometry';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/context/AuthContext';
 import { cacheQuotaFromResponse } from '@/lib/quota';
+import { trackEvent } from '@/lib/analytics';
 import type { ConstructSpec } from '@/lib/solveReveal';
 import type { SafetyClassification } from '@/lib/safetyTier';
 
@@ -47,6 +48,8 @@ export function useSolver() {
     setError(null);
     setResult(null);
     setCurrentStep(0);
+    trackEvent('solve_attempt', { has_tags: Boolean(tags && tags.length) });
+    const startedAt = Date.now();
 
     try {
       const { data: sessionData } = await supabase.auth.getSession();
@@ -67,10 +70,12 @@ export function useSolver() {
 
       if (!res.ok) {
         if (res.status === 429 || data.code === 'guest_quota_exceeded' || data.code === 'guest_ip_quota_exceeded') {
+          trackEvent('quota_exhausted', { endpoint: '/api/solve', code: data.code, status: res.status });
           openAuthModal('quota');
         }
         throw new Error(data.error || `HTTP ${res.status}`);
       }
+      trackEvent('solve_success', { ms: Date.now() - startedAt, verified: Boolean(data.verified), tier: data.tier ?? undefined });
 
       setResult({
         steps:        data.steps        ?? [],
@@ -82,6 +87,7 @@ export function useSolver() {
       });
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
+      trackEvent('solve_fail', { reason: msg });
       setError(msg);
     } finally {
       setLoading(false);

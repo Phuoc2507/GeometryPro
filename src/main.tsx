@@ -3,9 +3,13 @@ import * as Sentry from "@sentry/react";
 import App from "./App.tsx";
 import "./index.css";
 import { initSentry } from "./lib/sentry";
+import { initAnalytics } from "./lib/analytics";
 
 // Error tracking (no-op nếu chưa cấu hình VITE_SENTRY_DSN).
 initSentry();
+
+// Analytics phễu (no-op nếu chưa cấu hình VITE_GA_MEASUREMENT_ID / VITE_PLAUSIBLE_DOMAIN).
+initAnalytics();
 
 // Bọc App bằng ErrorBoundary của Sentry để bắt lỗi render toàn ứng dụng.
 createRoot(document.getElementById("root")!).render(

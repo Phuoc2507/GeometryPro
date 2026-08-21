@@ -19,6 +19,7 @@ import {
 } from '@/components/ui/drawer';
 import { Button } from '@/components/ui/button';
 import { toast } from '@/hooks/use-toast';
+import { trackEvent } from '@/lib/analytics';
 import { GeometryData } from '@/types/geometry';
 import { useAuth } from '@/context/AuthContext';
 import { useSavedGeometries } from '@/hooks/useSavedGeometries';
@@ -110,6 +111,7 @@ export function ShareSheet({ open, onOpenChange, geometry, onSaveImage, shareUrl
     if (!effectiveUrl) return;
     try {
       await navigator.clipboard.writeText(effectiveUrl);
+      trackEvent('share_click', { channel: 'copy_link' });
       setCopied(true);
       toast({ title: 'Đã sao chép link!' });
       setTimeout(() => setCopied(false), 2000);
@@ -124,6 +126,7 @@ export function ShareSheet({ open, onOpenChange, geometry, onSaveImage, shareUrl
 
   const handleFacebook = () => {
     if (!effectiveUrl) return;
+    trackEvent('share_click', { channel: 'facebook' });
     openExternal(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(effectiveUrl)}`);
   };
 
