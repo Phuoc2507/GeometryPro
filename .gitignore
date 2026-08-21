@@ -52,3 +52,6 @@ bench/golden-staging/
 
 # Kết quả chạy đánh giá baseline (sinh ra được)
 docs/nghien-cuu/eval-runs/
+
+# Temp worklist scratch dirs from benchmark-authoring agents (reproducible copies live in bench/worklists/)
+scratchpad-wl*/
