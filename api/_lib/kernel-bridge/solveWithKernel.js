@@ -22,10 +22,14 @@ const TRANSLATOR_MODEL = process.env.VILAO_TRANSLATOR_MODEL || 'ram/gemini-3.5-f
 const TRANSLATE_TIMEOUT_MS = Number(process.env.VILAO_TRANSLATOR_TIMEOUT_MS) || 25000;
 
 export async function planFromProblem(problem, options = {}) {
-  const raw = await callVilao(TRANSLATOR_PROMPT, problem, {
-    model: TRANSLATOR_MODEL,
+  // `options.systemPrompt` cho phép caller (vd bộ tối ưu prompt tiến hoá) thử một prompt ỨNG VIÊN
+  // khác mà KHÔNG đụng đường sản xuất. Mặc định giữ nguyên TRANSLATOR_PROMPT ⇒ hành vi cũ không đổi.
+  const systemPrompt = options.systemPrompt || TRANSLATOR_PROMPT;
+  const raw = await callVilao(systemPrompt, problem, {
+    model: options.model || TRANSLATOR_MODEL,
     maxTokens: 4096,
     timeoutMs: options.timeoutMs ?? TRANSLATE_TIMEOUT_MS,
+    apiKey: options.apiKey || null,
   });
   let json;
   try {

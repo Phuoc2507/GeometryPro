@@ -167,7 +167,9 @@ Prompt của khối dịch được **tối ưu tự động** bằng vòng lặ
 3. Chọn lọc – lai ghép – đột biến qua nhiều thế hệ; ghi lại **đường cong fitness**.
 4. So sánh prompt tối ưu với prompt viết tay và với baseline (APE/OPRO nếu khả thi).
 
-*Trạng thái: **chưa hiện thực trong mã** — đây là hạng mục nghiên cứu sẽ làm; sẽ báo cáo thiết kế thuật toán, siêu tham số, và kết quả đo.*
+**Biểu diễn cá thể — an toàn là trên hết:** GA **không đụng vào phần lõi** của prompt gốc (đặc biệt cổng từ chối). Mỗi cá thể (*genome*) chỉ chọn **BẬT/TẮT** và **sắp thứ tự** một số **câu chỉ dẫn bổ sung** (gene) gắn thêm sau prompt gốc. Không gian tìm kiếm này rẻ, tái lập, và dễ giải thích.
+
+*Trạng thái: **đã hiện thực** (`scripts/prompt-opt/`), chạy được. Cỗ máy tiến hóa đã kiểm thử ở chế độ mô phỏng tất định (best accuracy 75%→100%, tái lập theo hạt giống). **Còn lại:** chạy trên LLM thật (`--provider vilao`, cần khoá API) để có đường cong fitness thật và so prompt‑tối‑ưu vs prompt‑tay. Chi tiết phương pháp: xem `docs/nghien-cuu/prompt-optimization.md`.*
 
 ---
 
@@ -277,7 +279,7 @@ Ngân sách mục tiêu **≤ 10 triệu VNĐ**, ưu tiên thuê tài nguyên th
 - ✅ Ứng dụng 3D (React Three Fiber) — 17 trang, 136 component.
 - ◻️ Benchmark tiếng Việt — mới 20 ca (cần mở rộng).
 - ◑ Đánh giá định lượng — **đã chạy engine‑replay: 20/20 pass** (xem §5.6); còn end‑to‑end/baseline/latency.
-- ◻️ Tối ưu prompt tiến hoá — **chưa hiện thực**.
+- ◑ Tối ưu prompt tiến hoá — **đã hiện thực & chạy được** (`scripts/prompt-opt/`); mock 75%→100% tái lập; còn chạy LLM thật.
 - ◻️ Báo cáo khoa học — đang viết (bản này).
 
 ### 8.2. Lộ trình còn lại

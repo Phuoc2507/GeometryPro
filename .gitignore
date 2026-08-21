@@ -43,3 +43,6 @@ next-env.d.ts
 
 # Visual brainstorm companion (local only)
 .superpowers/
+
+# Kết quả chạy tối ưu prompt (sinh ra được, có thể chứa dữ liệu chạy thật)
+docs/nghien-cuu/prompt-opt-runs/
