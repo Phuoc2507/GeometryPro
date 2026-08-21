@@ -12,7 +12,7 @@ import { AuthModal } from "@/components/AuthModal";
 import { UpgradeModal } from "@/components/UpgradeModal";
 import { ReferralAnnouncement } from "@/components/ReferralAnnouncement";
 import { useAuth } from "@/context/AuthContext";
-import React, { Suspense, useEffect } from 'react';
+import React, { Suspense, useEffect, useRef } from 'react';
 import { Loader2 } from 'lucide-react';
 
 const Landing = React.lazy(() => import('./pages/Landing'));
@@ -57,20 +57,59 @@ function GlobalUpgradeModal() {
   return <UpgradeModal open={isUpgradeModalOpen} onOpenChange={(o) => { if (!o) closeUpgradeModal(); }} />;
 }
 
-// Sau khi thanh toán PayOS quay về ?payment=success: báo thành công + refresh credit (webhook cộng async).
+// Sau khi thanh toán PayOS quay về ?payment=success: webhook cộng credit/gói KHÔNG tức thì,
+// nên ta POLL hồ sơ tới khi credit/gói thực sự đổi rồi mới báo "thành công". Tránh cảnh
+// "đã trả tiền mà chưa thấy gì" khi webhook về trễ.
 function PaymentSuccessHandler() {
   const [params, setParams] = useSearchParams();
-  const { refreshProfile } = useAuth();
+  const { refreshProfile, credits, tier, profile } = useAuth();
+  // Ref soi giá trị mới nhất trong vòng lặp async (state không cập nhật giữa các lần lặp).
+  const sigRef = useRef({ credits, tier, exp: profile?.plan_expires_at ?? null });
+  useEffect(() => {
+    sigRef.current = { credits, tier, exp: profile?.plan_expires_at ?? null };
+  }, [credits, tier, profile?.plan_expires_at]);
+
   useEffect(() => {
     if (params.get('payment') !== 'success') return;
     // Đã mua xong → xoá mã mời đã lưu (ưu đãi chỉ cho đơn đầu, tránh dính "not_first" lần sau).
     try { localStorage.removeItem('geo3d:ref'); } catch { /* bỏ qua */ }
-    toast.success('Thanh toán thành công!', { description: 'Credit đang được cộng vào tài khoản...', duration: 6000 });
-    refreshProfile();
-    const t = setTimeout(() => refreshProfile(), 4000); // chờ webhook cộng credit rồi refresh lại
+
+    const before = { ...sigRef.current };
+    const changed = () => {
+      const s = sigRef.current;
+      return s.credits > before.credits || s.tier !== before.tier || s.exp !== before.exp;
+    };
+
+    const toastId = 'pay-confirm';
+    toast.loading('Đang xác nhận thanh toán…', { id: toastId, description: 'Đang cộng credit/gói vào tài khoản.' });
+
+    let cancelled = false;
+    const timers: ReturnType<typeof setTimeout>[] = [];
+    // Backoff ~ tổng 60s: webhook thường về trong vài giây, nhưng có thể trễ.
+    const delays = [1500, 2000, 3000, 4000, 5000, 6000, 8000, 10000, 10000, 10000];
+    const poll = async (i: number) => {
+      if (cancelled) return;
+      await refreshProfile();
+      if (cancelled) return;
+      if (changed()) {
+        toast.success('Thanh toán thành công!', { id: toastId, description: 'Đã cộng vào tài khoản.', duration: 6000 });
+        return;
+      }
+      if (i >= delays.length) {
+        toast.info('Đã nhận thanh toán', {
+          id: toastId,
+          description: 'Hệ thống đang xử lý — credit/gói sẽ tự cập nhật trong ít phút. Tải lại trang nếu cần.',
+          duration: 8000,
+        });
+        return;
+      }
+      timers.push(setTimeout(() => poll(i + 1), delays[i]));
+    };
+    poll(0);
+
     params.delete('payment');
     setParams(params, { replace: true });
-    return () => clearTimeout(t);
+    return () => { cancelled = true; timers.forEach(clearTimeout); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   return null;

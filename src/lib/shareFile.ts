@@ -99,7 +99,7 @@ export function parseProblemFile(text: string): ParseResult {
   // Trường hợp 1: file bọc chuẩn.
   if (obj.type === SHARE_FILE_TYPE || obj.geometry_data) {
     if (obj.type && obj.type !== SHARE_FILE_TYPE) {
-      return { ok: false, error: 'Đây không phải tệp bài của GeometryPro.' };
+      return { ok: false, error: 'Đây không phải tệp bài của geo3d.' };
     }
     if (!isGeometryDataShaped(obj.geometry_data)) {
       return { ok: false, error: 'Tệp thiếu dữ liệu hình học hợp lệ.' };

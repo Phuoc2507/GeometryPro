@@ -522,6 +522,7 @@ export function GeometryProvider({ children }: { children: React.ReactNode }) {
   // Cờ giúp phân biệt "người dùng SỬA hình" với "nạp hình lúc load / AI sinh" → chỉ lưu ngược khi thật sự sửa.
   const pendingPersistRef = useRef(false);
   const persistTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const seedingRef = useRef(false);  // đang tạo mục lịch sử đầu tiên cho hình vẽ tay (chống tạo trùng)
   const requestPersist = useCallback(() => { pendingPersistRef.current = true; }, []);
 
   // Auto-lưu bản đã sửa vào ĐÚNG mục lịch sử theo ?id (localStorage cho khách, Supabase cho user).
@@ -535,13 +536,47 @@ export function GeometryProvider({ children }: { children: React.ReactNode }) {
     // phẳng ở đây sẽ xóa sạch cảnh khi mở lại — nên bỏ qua, giống guard trong SolverPanel.
     if (state.advanceScene) return;
     const id = new URLSearchParams(window.location.search).get('id');
-    if (!id) return; // chưa từng lưu vào lịch sử ⇒ không có mục nào để cập nhật
+    if (!id) {
+      // Hình VẼ TAY chưa có mục lịch sử ⇒ trước đây reload là mất trắng. Tạo MỚI một mục (1 lần)
+      // rồi gắn ?id để mọi thao tác sau tự lưu như hình AI. Bỏ qua khi AI đang dựng (luồng AI tự
+      // tạo ?id riêng) và khi hình còn rỗng (chưa có điểm nào).
+      if (seedingRef.current) return;
+      if (state.isScanning || state.isBuilding || state.activeQueueId) return;
+      if (!Array.isArray(geometry.points) || geometry.points.length === 0) return;
+      seedingRef.current = true;
+      void (async () => {
+        try {
+          const newId = await addToHistory(geometry, geometry.name || 'Bản vẽ thủ công');
+          if (newId) {
+            const url = new URL(window.location.href);
+            url.searchParams.set('id', newId);
+            window.history.replaceState({}, '', url.toString());
+          }
+        } finally {
+          seedingRef.current = false;
+        }
+      })();
+      return;
+    }
     if (persistTimerRef.current) clearTimeout(persistTimerRef.current);
     // Gộp nhiều thao tác liên tiếp thành 1 lần ghi.
     persistTimerRef.current = setTimeout(() => { void updateGeometryData(id, geometry); }, 500);
-  }, [state.geometry, state.advanceScene, updateGeometryData]);
+  }, [state.geometry, state.advanceScene, state.isScanning, state.isBuilding, state.activeQueueId, addToHistory, updateGeometryData]);
 
   useEffect(() => () => { if (persistTimerRef.current) clearTimeout(persistTimerRef.current); }, []);
+
+  // Cảnh báo "còn thay đổi chưa lưu" nếu đóng tab/reload ngay khi bản lưu còn đang chờ ghi
+  // (đang gộp thao tác trong 500ms) hoặc đang tạo mục lịch sử đầu tiên cho hình vẽ tay.
+  useEffect(() => {
+    const onBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (persistTimerRef.current || seedingRef.current) {
+        e.preventDefault();
+        e.returnValue = '';
+      }
+    };
+    window.addEventListener('beforeunload', onBeforeUnload);
+    return () => window.removeEventListener('beforeunload', onBeforeUnload);
+  }, []);
 
   // Lưu ngăn HOÀN TÁC/LÀM LẠI theo ?id để mở lại hình (đổi bài / tải lại / hôm sau) vẫn undo/redo được.
   // Bỏ qua phiên Advance (undo/redo không áp dụng cho stepper nhiều câu).
@@ -1167,6 +1202,12 @@ export function GeometryProvider({ children }: { children: React.ReactNode }) {
 
   const clearGeometry = useCallback(() => {
     dispatch({ type: 'CLEAR_GEOMETRY' });
+    // Bỏ ?id cũ để hình MỚI (vẽ tay hoặc AI) không ghi đè lên bài trước đó — tạo mục lịch sử riêng.
+    const url = new URL(window.location.href);
+    if (url.searchParams.has('id')) {
+      url.searchParams.delete('id');
+      window.history.replaceState({}, '', url.toString());
+    }
     window.dispatchEvent(new Event('geometryCleared'));
   }, []);
 

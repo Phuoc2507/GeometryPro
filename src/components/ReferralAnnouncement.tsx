@@ -52,7 +52,7 @@ export function ReferralAnnouncement() {
           </div>
           <DialogTitle className="text-center text-xl">Giới thiệu bạn — cùng có lợi! 🎁</DialogTitle>
           <DialogDescription className="text-center">
-            Chương trình mới: mời bạn bè dùng GeoPro để nhận thưởng.
+            Chương trình mới: mời bạn bè dùng geo3d để nhận thưởng.
           </DialogDescription>
         </DialogHeader>
 

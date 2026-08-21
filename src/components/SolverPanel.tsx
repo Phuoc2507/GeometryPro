@@ -703,8 +703,8 @@ function SolveResultViewImpl({
         </div>
       )}
 
-      {/* ─── Đáp số — ĐẶT DƯỚI lời giải từng bước. Bản GỌN (mobile) bỏ hẳn. ─── */}
-      {!compact && (
+      {/* ─── Đáp số — ĐẶT DƯỚI lời giải từng bước. Mobile cũng hiện (ghim đáy) để không
+           mất đáp số + huy hiệu "đã/chưa kiểm chứng" — tín hiệu tin cậy quan trọng nhất. ─── */}
       <div className="px-4 pt-2 pb-2 shrink-0 border-t border-border/40">
         <div className="rounded-2xl border border-primary/25 bg-gradient-to-br from-primary/10 to-primary/[0.03] px-4 py-3.5">
           <div className="text-[10.5px] font-bold uppercase tracking-[0.14em] text-primary">Đáp số</div>
@@ -757,13 +757,12 @@ function SolveResultViewImpl({
             </div>
           )}
         </div>
-        {!answerShown && !verdict && (
+        {!compact && !answerShown && !verdict && (
           <p className="text-[11px] text-muted-foreground/70 text-center mt-1.5">
             {canGrade ? 'Tự làm rồi nhập đáp số để đối chiếu — hoặc bấm “Xem đáp án”.' : 'Thử tự làm theo các bước trước nhé — bấm khi muốn đối chiếu.'}
           </p>
         )}
       </div>
-      )}
 
       {/* ─── Giải lại (desktop; mobile đã có nút tam giác nhỏ cạnh tiêu đề) ─── */}
       {!compact && onReset && (

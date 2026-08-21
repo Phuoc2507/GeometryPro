@@ -116,7 +116,7 @@ const Referral = () => {
     if (!shareLink) return;
     if (navigator.share) {
       try {
-        await navigator.share({ title: 'GeoPro', text: 'Dùng GeoPro giải & vẽ hình 3D — nhập mã của mình để được giảm 10%!', url: shareLink });
+        await navigator.share({ title: 'geo3d', text: 'Dùng geo3d giải & vẽ hình 3D — nhập mã của mình để được giảm 10%!', url: shareLink });
         return;
       } catch {
         /* người dùng huỷ share → rơi xuống copy */
@@ -355,7 +355,7 @@ const Referral = () => {
                         }}>Huỷ</Button>
                       )}
                     </div>
-                    <p className="text-[11px] text-muted-foreground">Một số tài khoản ngân hàng chỉ dùng cho một tài khoản GeoPro.</p>
+                    <p className="text-[11px] text-muted-foreground">Một số tài khoản ngân hàng chỉ dùng cho một tài khoản geo3d.</p>
                   </div>
                 )}
 

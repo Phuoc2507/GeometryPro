@@ -105,7 +105,7 @@ export default function AdminFeedbackView() {
   }, [id, authLoading, user, isAdmin]);
 
   useEffect(() => {
-    document.title = row ? `Feedback · ${row.kind} · GeometryPro` : 'Feedback · GeometryPro';
+    document.title = row ? `Feedback · ${row.kind} · GeometryPro` : 'Feedback · geo3d';
   }, [row]);
 
   const updateStatus = useCallback(async (next: Status) => {
