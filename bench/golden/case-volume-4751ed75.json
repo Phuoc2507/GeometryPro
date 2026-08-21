@@ -1,0 +1,69 @@
+{
+  "id": "case-volume-4751ed75",
+  "source": "synthetic",
+  "difficulty": "medium",
+  "text": "Cho hình chóp S.ABC có đáy ABC là tam giác đều cạnh a, SA vuông góc với mặt phẳng đáy và SA = a. Tính thể tích khối chóp S.ABC.",
+  "plan": {
+    "solidName": "S.ABC",
+    "scaleSymbol": "a",
+    "ops": [
+      {
+        "op": "oxyz_point",
+        "name": "A",
+        "at": [
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "B",
+        "at": [
+          1,
+          0,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "C",
+        "at": [
+          "1/2",
+          "sqrt(3)/2",
+          0
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "S",
+        "at": [
+          0,
+          0,
+          1
+        ]
+      }
+    ],
+    "queries": [
+      {
+        "kind": "volume",
+        "solid": "tetrahedron",
+        "points": [
+          "S",
+          "A",
+          "B",
+          "C"
+        ]
+      }
+    ]
+  },
+  "expect": {
+    "ok": true,
+    "answers": [
+      {
+        "kind": "volume",
+        "text": "a³·√3/12"
+      }
+    ]
+  }
+}

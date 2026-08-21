@@ -1,0 +1,59 @@
+{
+  "id": "case-area-8557426d",
+  "source": "synthetic",
+  "difficulty": "medium",
+  "text": "Cho hình lập phương ABCD.A'B'C'D' cạnh a. Tính diện tích tam giác ACB'.",
+  "plan": {
+    "solidName": "ABCD.A'B'C'D'",
+    "scaleSymbol": "a",
+    "ops": [
+      {
+        "op": "oxyz_point",
+        "name": "A",
+        "at": [
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "C",
+        "at": [
+          1,
+          1,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "B1",
+        "at": [
+          1,
+          0,
+          1
+        ]
+      }
+    ],
+    "queries": [
+      {
+        "kind": "area",
+        "shape": "triangle",
+        "points": [
+          "A",
+          "C",
+          "B1"
+        ]
+      }
+    ]
+  },
+  "expect": {
+    "ok": true,
+    "answers": [
+      {
+        "kind": "area",
+        "text": "a²·√3/2"
+      }
+    ]
+  }
+}

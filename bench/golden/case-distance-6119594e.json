@@ -1,0 +1,74 @@
+{
+  "id": "case-distance-6119594e",
+  "source": "synthetic",
+  "difficulty": "hard",
+  "text": "Cho hình chóp S.ABC có SA vuông góc với mặt phẳng đáy, SA = a, tam giác ABC vuông cân tại B với BA = BC = a. Tính khoảng cách từ A đến mặt phẳng (SBC).",
+  "plan": {
+    "solidName": "S.ABC",
+    "scaleSymbol": "a",
+    "ops": [
+      {
+        "op": "oxyz_point",
+        "name": "B",
+        "at": [
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "C",
+        "at": [
+          1,
+          0,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "A",
+        "at": [
+          0,
+          1,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "S",
+        "at": [
+          0,
+          1,
+          1
+        ]
+      },
+      {
+        "op": "oxyz_plane",
+        "name": "SBC",
+        "by": {
+          "form": "three_points",
+          "a": "S",
+          "b": "B",
+          "c": "C"
+        }
+      }
+    ],
+    "queries": [
+      {
+        "kind": "distance",
+        "a": "A",
+        "b": "SBC"
+      }
+    ]
+  },
+  "expect": {
+    "ok": true,
+    "answers": [
+      {
+        "kind": "distance",
+        "text": "a·√2/2"
+      }
+    ]
+  }
+}

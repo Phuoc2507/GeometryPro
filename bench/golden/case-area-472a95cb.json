@@ -1,0 +1,104 @@
+{
+  "id": "case-area-472a95cb",
+  "source": "synthetic",
+  "difficulty": "medium",
+  "text": "Cho hình chóp S.ABCD có đáy ABCD là hình vuông cạnh 4 với A(0;0;0), B(4;0;0), C(4;4;0), D(0;4;0) và đỉnh S(2;2;6). Gọi M, N lần lượt là trung điểm các cạnh SD, SC. Tính diện tích thiết diện của hình chóp cắt bởi mặt phẳng đi qua A, B, N, M (tứ giác ABNM).",
+  "plan": {
+    "solidName": "S.ABCD",
+    "ops": [
+      {
+        "op": "oxyz_point",
+        "name": "A",
+        "at": [
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "B",
+        "at": [
+          4,
+          0,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "C",
+        "at": [
+          4,
+          4,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "D",
+        "at": [
+          0,
+          4,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "S",
+        "at": [
+          2,
+          2,
+          6
+        ]
+      },
+      {
+        "op": "oxyz_midpoint",
+        "name": "M",
+        "a": "S",
+        "b": "D"
+      },
+      {
+        "op": "oxyz_midpoint",
+        "name": "N",
+        "a": "S",
+        "b": "C"
+      },
+      {
+        "op": "edge",
+        "from": "A",
+        "to": "B"
+      },
+      {
+        "op": "edge",
+        "from": "S",
+        "to": "C"
+      },
+      {
+        "op": "edge",
+        "from": "S",
+        "to": "D"
+      }
+    ],
+    "queries": [
+      {
+        "kind": "area",
+        "shape": "polygon",
+        "points": [
+          "A",
+          "B",
+          "N",
+          "M"
+        ]
+      }
+    ]
+  },
+  "expect": {
+    "ok": true,
+    "answers": [
+      {
+        "kind": "area",
+        "text": "9√2"
+      }
+    ]
+  }
+}

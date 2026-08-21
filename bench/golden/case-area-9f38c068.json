@@ -1,0 +1,114 @@
+{
+  "id": "case-area-9f38c068",
+  "source": "synthetic",
+  "difficulty": "medium",
+  "text": "Cho hình hộp chữ nhật ABCD.EFGH có A(0;0;0), B(4;0;0), C(4;3;0), D(0;3;0) và E, F, G, H lần lượt nằm phía trên A, B, C, D với chiều cao 5, tức E(0;0;5), F(4;0;5), G(4;3;5), H(0;3;5). Tính diện tích thiết diện ABGH (mặt phẳng đi qua bốn điểm A, B, G, H).",
+  "plan": {
+    "solidName": "ABCD.EFGH",
+    "ops": [
+      {
+        "op": "oxyz_point",
+        "name": "A",
+        "at": [
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "B",
+        "at": [
+          4,
+          0,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "C",
+        "at": [
+          4,
+          3,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "D",
+        "at": [
+          0,
+          3,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "E",
+        "at": [
+          0,
+          0,
+          5
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "F",
+        "at": [
+          4,
+          0,
+          5
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "G",
+        "at": [
+          4,
+          3,
+          5
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "H",
+        "at": [
+          0,
+          3,
+          5
+        ]
+      },
+      {
+        "op": "edge",
+        "from": "A",
+        "to": "B"
+      },
+      {
+        "op": "edge",
+        "from": "G",
+        "to": "H"
+      }
+    ],
+    "queries": [
+      {
+        "kind": "area",
+        "shape": "polygon",
+        "points": [
+          "A",
+          "B",
+          "G",
+          "H"
+        ]
+      }
+    ]
+  },
+  "expect": {
+    "ok": true,
+    "answers": [
+      {
+        "kind": "area",
+        "text": "4√34"
+      }
+    ]
+  }
+}

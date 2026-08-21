@@ -1,0 +1,70 @@
+{
+  "id": "case-distance-8bebc785",
+  "source": "synthetic",
+  "difficulty": "medium",
+  "text": "Trong không gian Oxyz, cho điểm A(0;3;4) và đường thẳng d đi qua hai điểm E(0;0;0), F(2;0;0). Gọi H là hình chiếu vuông góc của A lên đường thẳng d. Tính độ dài đoạn thẳng AH.",
+  "plan": {
+    "solidName": "chieu-diem-duong",
+    "ops": [
+      {
+        "op": "oxyz_point",
+        "name": "A",
+        "at": [
+          0,
+          3,
+          4
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "E",
+        "at": [
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "F",
+        "at": [
+          2,
+          0,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_line",
+        "name": "d",
+        "by": {
+          "form": "two_points",
+          "a": "E",
+          "b": "F"
+        }
+      },
+      {
+        "op": "oxyz_foot",
+        "name": "H",
+        "from": "A",
+        "onto": "line",
+        "target": "d"
+      }
+    ],
+    "queries": [
+      {
+        "kind": "distance",
+        "a": "A",
+        "b": "H"
+      }
+    ]
+  },
+  "expect": {
+    "ok": true,
+    "answers": [
+      {
+        "kind": "distance",
+        "text": "5"
+      }
+    ]
+  }
+}

@@ -1,0 +1,64 @@
+{
+  "id": "case-distance-8f8ec5e8",
+  "source": "synthetic",
+  "difficulty": "easy",
+  "text": "Cho hình lập phương ABCD.A'B'C'D' cạnh a. Tính độ dài đường chéo AC của mặt đáy.",
+  "plan": {
+    "solidName": "ABCD.A'B'C'D'",
+    "scaleSymbol": "a",
+    "ops": [
+      {
+        "op": "oxyz_point",
+        "name": "A",
+        "at": [
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "B",
+        "at": [
+          1,
+          0,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "C",
+        "at": [
+          1,
+          1,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "D",
+        "at": [
+          0,
+          1,
+          0
+        ]
+      }
+    ],
+    "queries": [
+      {
+        "kind": "distance",
+        "a": "A",
+        "b": "C"
+      }
+    ]
+  },
+  "expect": {
+    "ok": true,
+    "answers": [
+      {
+        "kind": "distance",
+        "text": "a·√2"
+      }
+    ]
+  }
+}

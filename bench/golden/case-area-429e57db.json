@@ -1,0 +1,69 @@
+{
+  "id": "case-area-429e57db",
+  "source": "synthetic",
+  "difficulty": "easy",
+  "text": "Cho hình vuông ABCD cạnh a. Tính diện tích hình vuông ABCD.",
+  "plan": {
+    "solidName": "ABCD",
+    "scaleSymbol": "a",
+    "ops": [
+      {
+        "op": "oxyz_point",
+        "name": "A",
+        "at": [
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "B",
+        "at": [
+          1,
+          0,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "C",
+        "at": [
+          1,
+          1,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "D",
+        "at": [
+          0,
+          1,
+          0
+        ]
+      }
+    ],
+    "queries": [
+      {
+        "kind": "area",
+        "shape": "polygon",
+        "points": [
+          "A",
+          "B",
+          "C",
+          "D"
+        ]
+      }
+    ]
+  },
+  "expect": {
+    "ok": true,
+    "answers": [
+      {
+        "kind": "area",
+        "text": "a²"
+      }
+    ]
+  }
+}

@@ -1,0 +1,83 @@
+{
+  "id": "case-distance-b40f75f4",
+  "source": "synthetic",
+  "difficulty": "hard",
+  "text": "Cho hình lập phương ABCD.A'B'C'D' cạnh a. Tính khoảng cách từ đỉnh A đến mặt phẳng (A'BD).",
+  "plan": {
+    "solidName": "ABCD.A'B'C'D'",
+    "scaleSymbol": "a",
+    "ops": [
+      {
+        "op": "oxyz_point",
+        "name": "A",
+        "at": [
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "B",
+        "at": [
+          1,
+          0,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "C",
+        "at": [
+          1,
+          1,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "D",
+        "at": [
+          0,
+          1,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "A1",
+        "at": [
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "op": "oxyz_plane",
+        "name": "A1BD",
+        "by": {
+          "form": "three_points",
+          "a": "A1",
+          "b": "B",
+          "c": "D"
+        }
+      }
+    ],
+    "queries": [
+      {
+        "kind": "distance",
+        "a": "A",
+        "b": "A1BD"
+      }
+    ]
+  },
+  "expect": {
+    "ok": true,
+    "answers": [
+      {
+        "kind": "distance",
+        "text": "a·√3/3"
+      }
+    ]
+  }
+}

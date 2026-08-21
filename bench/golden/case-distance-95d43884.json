@@ -1,0 +1,54 @@
+{
+  "id": "case-distance-95d43884",
+  "source": "synthetic",
+  "difficulty": "medium",
+  "text": "Trong không gian Oxyz, cho điểm A(2;3;4) và mặt phẳng (P): 2x - y + 2z - 6 = 0. Gọi H là hình chiếu vuông góc của A lên mặt phẳng (P). Tính độ dài đoạn thẳng AH.",
+  "plan": {
+    "solidName": "chieu-diem-mp",
+    "ops": [
+      {
+        "op": "oxyz_point",
+        "name": "A",
+        "at": [
+          2,
+          3,
+          4
+        ]
+      },
+      {
+        "op": "oxyz_plane",
+        "name": "P",
+        "by": {
+          "form": "coeffs",
+          "a": 2,
+          "b": -1,
+          "c": 2,
+          "d": -6
+        }
+      },
+      {
+        "op": "oxyz_foot",
+        "name": "H",
+        "from": "A",
+        "onto": "plane",
+        "target": "P"
+      }
+    ],
+    "queries": [
+      {
+        "kind": "distance",
+        "a": "A",
+        "b": "H"
+      }
+    ]
+  },
+  "expect": {
+    "ok": true,
+    "answers": [
+      {
+        "kind": "distance",
+        "text": "1"
+      }
+    ]
+  }
+}

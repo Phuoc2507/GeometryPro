@@ -1,0 +1,63 @@
+{
+  "id": "case-point-coord-79821490",
+  "source": "synthetic",
+  "difficulty": "medium",
+  "text": "Trong không gian Oxyz, cho điểm A(5;5;5) và mặt phẳng (P): x + 2y + 2z - 16 = 0. Gọi A' là điểm đối xứng của A qua mặt phẳng (P). Tìm hoành độ (tọa độ x) và tung độ (tọa độ y) của điểm A'.",
+  "plan": {
+    "solidName": "doi-xung-mp-toado",
+    "ops": [
+      {
+        "op": "oxyz_point",
+        "name": "A",
+        "at": [
+          5,
+          5,
+          5
+        ]
+      },
+      {
+        "op": "oxyz_plane",
+        "name": "P",
+        "by": {
+          "form": "coeffs",
+          "a": 1,
+          "b": 2,
+          "c": 2,
+          "d": -16
+        }
+      },
+      {
+        "op": "oxyz_reflect_across",
+        "name": "K",
+        "point": "A",
+        "across": "plane",
+        "target": "P"
+      }
+    ],
+    "queries": [
+      {
+        "kind": "point_coord",
+        "target": "K",
+        "axis": "x"
+      },
+      {
+        "kind": "point_coord",
+        "target": "K",
+        "axis": "y"
+      }
+    ]
+  },
+  "expect": {
+    "ok": true,
+    "answers": [
+      {
+        "kind": "point_coord",
+        "text": "3"
+      },
+      {
+        "kind": "point_coord",
+        "text": "1"
+      }
+    ]
+  }
+}

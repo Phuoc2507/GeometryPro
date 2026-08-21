@@ -1,0 +1,85 @@
+{
+  "id": "case-area-506e20a3",
+  "source": "synthetic",
+  "difficulty": "medium",
+  "text": "Cho hình chóp S.ABC có A(0;0;0), B(6;0;0), C(0;6;0), S(2;2;8). Gọi M, N, P lần lượt là trung điểm các cạnh SA, SB, SC. Mặt phẳng (MNP) cắt hình chóp theo thiết diện là tam giác MNP. Tính diện tích tam giác MNP.",
+  "plan": {
+    "solidName": "S.ABC",
+    "ops": [
+      {
+        "op": "oxyz_point",
+        "name": "A",
+        "at": [
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "B",
+        "at": [
+          6,
+          0,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "C",
+        "at": [
+          0,
+          6,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "S",
+        "at": [
+          2,
+          2,
+          8
+        ]
+      },
+      {
+        "op": "oxyz_midpoint",
+        "name": "M",
+        "a": "S",
+        "b": "A"
+      },
+      {
+        "op": "oxyz_midpoint",
+        "name": "N",
+        "a": "S",
+        "b": "B"
+      },
+      {
+        "op": "oxyz_midpoint",
+        "name": "P",
+        "a": "S",
+        "b": "C"
+      }
+    ],
+    "queries": [
+      {
+        "kind": "area",
+        "shape": "polygon",
+        "points": [
+          "M",
+          "N",
+          "P"
+        ]
+      }
+    ]
+  },
+  "expect": {
+    "ok": true,
+    "answers": [
+      {
+        "kind": "area",
+        "text": "9/2"
+      }
+    ]
+  }
+}

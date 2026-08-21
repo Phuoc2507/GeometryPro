@@ -1,0 +1,343 @@
+[
+  {
+    "text": "Cho hình lập phương ABCD.A'B'C'D' cạnh a. Tính thể tích khối lập phương.",
+    "source": "synthetic",
+    "difficulty": "easy",
+    "kind": "volume",
+    "expected": ["a³"],
+    "plan": {
+      "solidName": "ABCD.A'B'C'D'",
+      "scaleSymbol": "a",
+      "ops": [
+        {"op": "oxyz_point", "name": "A", "at": [0, 0, 0]},
+        {"op": "oxyz_point", "name": "B", "at": [1, 0, 0]},
+        {"op": "oxyz_point", "name": "C", "at": [1, 1, 0]},
+        {"op": "oxyz_point", "name": "D", "at": [0, 1, 0]},
+        {"op": "oxyz_point", "name": "A1", "at": [0, 0, 1]},
+        {"op": "oxyz_point", "name": "B1", "at": [1, 0, 1]},
+        {"op": "oxyz_point", "name": "C1", "at": [1, 1, 1]},
+        {"op": "oxyz_point", "name": "D1", "at": [0, 1, 1]}
+      ],
+      "queries": [
+        {"kind": "volume", "solid": "prism", "base": ["A", "B", "C", "D"], "top": ["A1", "B1", "C1", "D1"]}
+      ]
+    }
+  },
+  {
+    "text": "Cho tứ diện đều ABCD cạnh a. Tính thể tích khối tứ diện.",
+    "source": "synthetic",
+    "difficulty": "medium",
+    "kind": "volume",
+    "expected": ["a³√2/12"],
+    "plan": {
+      "solidName": "ABCD",
+      "scaleSymbol": "a",
+      "ops": [
+        {"op": "oxyz_point", "name": "A", "at": [0, 0, 0]},
+        {"op": "oxyz_point", "name": "B", "at": [1, 0, 0]},
+        {"op": "oxyz_point", "name": "C", "at": ["1/2", "sqrt(3)/2", 0]},
+        {"op": "oxyz_point", "name": "D", "at": ["1/2", "sqrt(3)/6", "sqrt(6)/3"]}
+      ],
+      "queries": [
+        {"kind": "volume", "solid": "tetrahedron", "points": ["A", "B", "C", "D"]}
+      ]
+    }
+  },
+  {
+    "text": "Cho hình chóp S.ABCD có đáy ABCD là hình vuông cạnh a, SA vuông góc với mặt phẳng đáy và SA = a. Tính thể tích khối chóp S.ABCD.",
+    "source": "synthetic",
+    "difficulty": "medium",
+    "kind": "volume",
+    "expected": ["a³/3"],
+    "plan": {
+      "solidName": "S.ABCD",
+      "scaleSymbol": "a",
+      "ops": [
+        {"op": "oxyz_point", "name": "A", "at": [0, 0, 0]},
+        {"op": "oxyz_point", "name": "B", "at": [1, 0, 0]},
+        {"op": "oxyz_point", "name": "C", "at": [1, 1, 0]},
+        {"op": "oxyz_point", "name": "D", "at": [0, 1, 0]},
+        {"op": "oxyz_point", "name": "S", "at": [0, 0, 1]}
+      ],
+      "queries": [
+        {"kind": "volume", "solid": "pyramid", "points": ["A", "B", "C", "D"], "apex": "S"}
+      ]
+    }
+  },
+  {
+    "text": "Cho lăng trụ đứng ABC.A'B'C' có đáy ABC là tam giác đều cạnh a và chiều cao lăng trụ bằng a. Tính thể tích khối lăng trụ.",
+    "source": "synthetic",
+    "difficulty": "medium",
+    "kind": "volume",
+    "expected": ["a³√3/4"],
+    "plan": {
+      "solidName": "ABC.A'B'C'",
+      "scaleSymbol": "a",
+      "ops": [
+        {"op": "oxyz_point", "name": "A", "at": [0, 0, 0]},
+        {"op": "oxyz_point", "name": "B", "at": [1, 0, 0]},
+        {"op": "oxyz_point", "name": "C", "at": ["1/2", "sqrt(3)/2", 0]},
+        {"op": "oxyz_point", "name": "A1", "at": [0, 0, 1]},
+        {"op": "oxyz_point", "name": "B1", "at": [1, 0, 1]},
+        {"op": "oxyz_point", "name": "C1", "at": ["1/2", "sqrt(3)/2", 1]}
+      ],
+      "queries": [
+        {"kind": "volume", "solid": "prism", "base": ["A", "B", "C"], "top": ["A1", "B1", "C1"]}
+      ]
+    }
+  },
+  {
+    "text": "Cho hình hộp chữ nhật ABCD.A'B'C'D' có AB = a, AD = a và AA' = 2a. Tính thể tích khối hộp.",
+    "source": "synthetic",
+    "difficulty": "easy",
+    "kind": "volume",
+    "expected": ["2a³"],
+    "plan": {
+      "solidName": "ABCD.A'B'C'D'",
+      "scaleSymbol": "a",
+      "ops": [
+        {"op": "oxyz_point", "name": "A", "at": [0, 0, 0]},
+        {"op": "oxyz_point", "name": "B", "at": [1, 0, 0]},
+        {"op": "oxyz_point", "name": "C", "at": [1, 1, 0]},
+        {"op": "oxyz_point", "name": "D", "at": [0, 1, 0]},
+        {"op": "oxyz_point", "name": "A1", "at": [0, 0, 2]},
+        {"op": "oxyz_point", "name": "B1", "at": [1, 0, 2]},
+        {"op": "oxyz_point", "name": "C1", "at": [1, 1, 2]},
+        {"op": "oxyz_point", "name": "D1", "at": [0, 1, 2]}
+      ],
+      "queries": [
+        {"kind": "volume", "solid": "prism", "base": ["A", "B", "C", "D"], "top": ["A1", "B1", "C1", "D1"]}
+      ]
+    }
+  },
+  {
+    "text": "Cho hình chóp S.ABC có đáy ABC là tam giác đều cạnh a, SA vuông góc với mặt phẳng đáy và SA = a. Tính thể tích khối chóp S.ABC.",
+    "source": "synthetic",
+    "difficulty": "medium",
+    "kind": "volume",
+    "expected": ["a³√3/12"],
+    "plan": {
+      "solidName": "S.ABC",
+      "scaleSymbol": "a",
+      "ops": [
+        {"op": "oxyz_point", "name": "A", "at": [0, 0, 0]},
+        {"op": "oxyz_point", "name": "B", "at": [1, 0, 0]},
+        {"op": "oxyz_point", "name": "C", "at": ["1/2", "sqrt(3)/2", 0]},
+        {"op": "oxyz_point", "name": "S", "at": [0, 0, 1]}
+      ],
+      "queries": [
+        {"kind": "volume", "solid": "tetrahedron", "points": ["S", "A", "B", "C"]}
+      ]
+    }
+  },
+  {
+    "text": "Cho hình hộp chữ nhật ABCD.A'B'C'D' có AB = a, AD = 2a và AA' = 3a. Tính thể tích khối hộp.",
+    "source": "synthetic",
+    "difficulty": "easy",
+    "kind": "volume",
+    "expected": ["6a³"],
+    "plan": {
+      "solidName": "ABCD.A'B'C'D'",
+      "scaleSymbol": "a",
+      "ops": [
+        {"op": "oxyz_point", "name": "A", "at": [0, 0, 0]},
+        {"op": "oxyz_point", "name": "B", "at": [1, 0, 0]},
+        {"op": "oxyz_point", "name": "C", "at": [1, 2, 0]},
+        {"op": "oxyz_point", "name": "D", "at": [0, 2, 0]},
+        {"op": "oxyz_point", "name": "A1", "at": [0, 0, 3]},
+        {"op": "oxyz_point", "name": "B1", "at": [1, 0, 3]},
+        {"op": "oxyz_point", "name": "C1", "at": [1, 2, 3]},
+        {"op": "oxyz_point", "name": "D1", "at": [0, 2, 3]}
+      ],
+      "queries": [
+        {"kind": "volume", "solid": "prism", "base": ["A", "B", "C", "D"], "top": ["A1", "B1", "C1", "D1"]}
+      ]
+    }
+  },
+  {
+    "text": "Cho hình lập phương ABCD.A'B'C'D' cạnh a. Tính độ dài đường chéo AC' của hình lập phương.",
+    "source": "synthetic",
+    "difficulty": "easy",
+    "kind": "distance",
+    "expected": ["a√3"],
+    "plan": {
+      "solidName": "ABCD.A'B'C'D'",
+      "scaleSymbol": "a",
+      "ops": [
+        {"op": "oxyz_point", "name": "A", "at": [0, 0, 0]},
+        {"op": "oxyz_point", "name": "B", "at": [1, 0, 0]},
+        {"op": "oxyz_point", "name": "C", "at": [1, 1, 0]},
+        {"op": "oxyz_point", "name": "D", "at": [0, 1, 0]},
+        {"op": "oxyz_point", "name": "A1", "at": [0, 0, 1]},
+        {"op": "oxyz_point", "name": "B1", "at": [1, 0, 1]},
+        {"op": "oxyz_point", "name": "C1", "at": [1, 1, 1]},
+        {"op": "oxyz_point", "name": "D1", "at": [0, 1, 1]}
+      ],
+      "queries": [
+        {"kind": "distance", "a": "A", "b": "C1"}
+      ]
+    }
+  },
+  {
+    "text": "Cho hình lập phương ABCD.A'B'C'D' cạnh a. Tính độ dài đường chéo AC của mặt đáy.",
+    "source": "synthetic",
+    "difficulty": "easy",
+    "kind": "distance",
+    "expected": ["a√2"],
+    "plan": {
+      "solidName": "ABCD.A'B'C'D'",
+      "scaleSymbol": "a",
+      "ops": [
+        {"op": "oxyz_point", "name": "A", "at": [0, 0, 0]},
+        {"op": "oxyz_point", "name": "B", "at": [1, 0, 0]},
+        {"op": "oxyz_point", "name": "C", "at": [1, 1, 0]},
+        {"op": "oxyz_point", "name": "D", "at": [0, 1, 0]}
+      ],
+      "queries": [
+        {"kind": "distance", "a": "A", "b": "C"}
+      ]
+    }
+  },
+  {
+    "text": "Cho hình lập phương ABCD.A'B'C'D' cạnh a. Tính khoảng cách từ đỉnh A đến mặt phẳng (A'BD).",
+    "source": "synthetic",
+    "difficulty": "hard",
+    "kind": "distance",
+    "expected": ["a√3/3"],
+    "plan": {
+      "solidName": "ABCD.A'B'C'D'",
+      "scaleSymbol": "a",
+      "ops": [
+        {"op": "oxyz_point", "name": "A", "at": [0, 0, 0]},
+        {"op": "oxyz_point", "name": "B", "at": [1, 0, 0]},
+        {"op": "oxyz_point", "name": "C", "at": [1, 1, 0]},
+        {"op": "oxyz_point", "name": "D", "at": [0, 1, 0]},
+        {"op": "oxyz_point", "name": "A1", "at": [0, 0, 1]},
+        {"op": "oxyz_plane", "name": "A1BD", "by": {"form": "three_points", "a": "A1", "b": "B", "c": "D"}}
+      ],
+      "queries": [
+        {"kind": "distance", "a": "A", "b": "A1BD"}
+      ]
+    }
+  },
+  {
+    "text": "Cho hình chóp S.ABC có SA vuông góc với mặt phẳng đáy, SA = a, tam giác ABC vuông cân tại B với BA = BC = a. Tính khoảng cách từ A đến mặt phẳng (SBC).",
+    "source": "synthetic",
+    "difficulty": "hard",
+    "kind": "distance",
+    "expected": ["a√2/2"],
+    "plan": {
+      "solidName": "S.ABC",
+      "scaleSymbol": "a",
+      "ops": [
+        {"op": "oxyz_point", "name": "B", "at": [0, 0, 0]},
+        {"op": "oxyz_point", "name": "C", "at": [1, 0, 0]},
+        {"op": "oxyz_point", "name": "A", "at": [0, 1, 0]},
+        {"op": "oxyz_point", "name": "S", "at": [0, 1, 1]},
+        {"op": "oxyz_plane", "name": "SBC", "by": {"form": "three_points", "a": "S", "b": "B", "c": "C"}}
+      ],
+      "queries": [
+        {"kind": "distance", "a": "A", "b": "SBC"}
+      ]
+    }
+  },
+  {
+    "text": "Cho tứ diện đều ABCD cạnh a. Tính khoảng cách từ đỉnh D đến mặt phẳng (ABC).",
+    "source": "synthetic",
+    "difficulty": "medium",
+    "kind": "distance",
+    "expected": ["a√6/3"],
+    "plan": {
+      "solidName": "ABCD",
+      "scaleSymbol": "a",
+      "ops": [
+        {"op": "oxyz_point", "name": "A", "at": [0, 0, 0]},
+        {"op": "oxyz_point", "name": "B", "at": [1, 0, 0]},
+        {"op": "oxyz_point", "name": "C", "at": ["1/2", "sqrt(3)/2", 0]},
+        {"op": "oxyz_point", "name": "D", "at": ["1/2", "sqrt(3)/6", "sqrt(6)/3"]},
+        {"op": "oxyz_plane", "name": "ABC", "by": {"form": "three_points", "a": "A", "b": "B", "c": "C"}}
+      ],
+      "queries": [
+        {"kind": "distance", "a": "D", "b": "ABC"}
+      ]
+    }
+  },
+  {
+    "text": "Cho tam giác đều ABC cạnh a. Tính diện tích tam giác ABC.",
+    "source": "synthetic",
+    "difficulty": "easy",
+    "kind": "area",
+    "expected": ["a²√3/4"],
+    "plan": {
+      "solidName": "ABC",
+      "scaleSymbol": "a",
+      "ops": [
+        {"op": "oxyz_point", "name": "A", "at": [0, 0, 0]},
+        {"op": "oxyz_point", "name": "B", "at": [1, 0, 0]},
+        {"op": "oxyz_point", "name": "C", "at": ["1/2", "sqrt(3)/2", 0]}
+      ],
+      "queries": [
+        {"kind": "area", "shape": "triangle", "points": ["A", "B", "C"]}
+      ]
+    }
+  },
+  {
+    "text": "Cho hình vuông ABCD cạnh a. Tính diện tích hình vuông ABCD.",
+    "source": "synthetic",
+    "difficulty": "easy",
+    "kind": "area",
+    "expected": ["a²"],
+    "plan": {
+      "solidName": "ABCD",
+      "scaleSymbol": "a",
+      "ops": [
+        {"op": "oxyz_point", "name": "A", "at": [0, 0, 0]},
+        {"op": "oxyz_point", "name": "B", "at": [1, 0, 0]},
+        {"op": "oxyz_point", "name": "C", "at": [1, 1, 0]},
+        {"op": "oxyz_point", "name": "D", "at": [0, 1, 0]}
+      ],
+      "queries": [
+        {"kind": "area", "shape": "polygon", "points": ["A", "B", "C", "D"]}
+      ]
+    }
+  },
+  {
+    "text": "Cho hình lập phương ABCD.A'B'C'D' cạnh a. Tính diện tích tam giác ACB'.",
+    "source": "synthetic",
+    "difficulty": "medium",
+    "kind": "area",
+    "expected": ["a²√3/2"],
+    "plan": {
+      "solidName": "ABCD.A'B'C'D'",
+      "scaleSymbol": "a",
+      "ops": [
+        {"op": "oxyz_point", "name": "A", "at": [0, 0, 0]},
+        {"op": "oxyz_point", "name": "C", "at": [1, 1, 0]},
+        {"op": "oxyz_point", "name": "B1", "at": [1, 0, 1]}
+      ],
+      "queries": [
+        {"kind": "area", "shape": "triangle", "points": ["A", "C", "B1"]}
+      ]
+    }
+  },
+  {
+    "text": "Cho hình lập phương ABCD.A'B'C'D' cạnh a. Tính diện tích thiết diện ABC'D' (mặt phẳng qua AB và C'D').",
+    "source": "synthetic",
+    "difficulty": "medium",
+    "kind": "area",
+    "expected": ["a²√2"],
+    "plan": {
+      "solidName": "ABCD.A'B'C'D'",
+      "scaleSymbol": "a",
+      "ops": [
+        {"op": "oxyz_point", "name": "A", "at": [0, 0, 0]},
+        {"op": "oxyz_point", "name": "B", "at": [1, 0, 0]},
+        {"op": "oxyz_point", "name": "C1", "at": [1, 1, 1]},
+        {"op": "oxyz_point", "name": "D1", "at": [0, 1, 1]}
+      ],
+      "queries": [
+        {"kind": "area", "shape": "polygon", "points": ["A", "B", "C1", "D1"]}
+      ]
+    }
+  }
+]

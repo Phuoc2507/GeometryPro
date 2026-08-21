@@ -1,0 +1,101 @@
+{
+  "id": "case-area-b9b5658f",
+  "source": "synthetic",
+  "difficulty": "medium",
+  "text": "Cho hình chóp S.ABCD có đáy ABCD là hình chữ nhật với AB = 8, AD = 6, SA vuông góc với mặt đáy và SA = 10. Gọi M, N, P, Q lần lượt là trung điểm các cạnh SA, SB, SC, SD. Tính diện tích thiết diện MNPQ.",
+  "plan": {
+    "solidName": "S.ABCD",
+    "ops": [
+      {
+        "op": "oxyz_point",
+        "name": "A",
+        "at": [
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "B",
+        "at": [
+          8,
+          0,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "C",
+        "at": [
+          8,
+          6,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "D",
+        "at": [
+          0,
+          6,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "S",
+        "at": [
+          0,
+          0,
+          10
+        ]
+      },
+      {
+        "op": "oxyz_midpoint",
+        "name": "M",
+        "a": "S",
+        "b": "A"
+      },
+      {
+        "op": "oxyz_midpoint",
+        "name": "N",
+        "a": "S",
+        "b": "B"
+      },
+      {
+        "op": "oxyz_midpoint",
+        "name": "P",
+        "a": "S",
+        "b": "C"
+      },
+      {
+        "op": "oxyz_midpoint",
+        "name": "Q",
+        "a": "S",
+        "b": "D"
+      }
+    ],
+    "queries": [
+      {
+        "kind": "area",
+        "shape": "polygon",
+        "points": [
+          "M",
+          "N",
+          "P",
+          "Q"
+        ]
+      }
+    ]
+  },
+  "expect": {
+    "ok": true,
+    "answers": [
+      {
+        "kind": "area",
+        "text": "12"
+      }
+    ]
+  }
+}

@@ -1,0 +1,59 @@
+{
+  "id": "case-area-0af96a1d",
+  "source": "synthetic",
+  "difficulty": "easy",
+  "text": "Cho tam giác đều ABC cạnh a. Tính diện tích tam giác ABC.",
+  "plan": {
+    "solidName": "ABC",
+    "scaleSymbol": "a",
+    "ops": [
+      {
+        "op": "oxyz_point",
+        "name": "A",
+        "at": [
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "B",
+        "at": [
+          1,
+          0,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "C",
+        "at": [
+          "1/2",
+          "sqrt(3)/2",
+          0
+        ]
+      }
+    ],
+    "queries": [
+      {
+        "kind": "area",
+        "shape": "triangle",
+        "points": [
+          "A",
+          "B",
+          "C"
+        ]
+      }
+    ]
+  },
+  "expect": {
+    "ok": true,
+    "answers": [
+      {
+        "kind": "area",
+        "text": "a²·√3/4"
+      }
+    ]
+  }
+}

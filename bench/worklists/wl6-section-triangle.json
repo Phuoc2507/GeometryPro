@@ -1,0 +1,348 @@
+[
+  {
+    "text": "Trong không gian Oxyz, cho tam giác ABC với A(2;0;0), B(0;3;0), C(0;0;6). Tính diện tích tam giác ABC.",
+    "source": "synthetic",
+    "difficulty": "medium",
+    "kind": "area",
+    "expected": ["3√14"],
+    "plan": {
+      "solidName": "ABC",
+      "ops": [
+        { "op": "oxyz_point", "name": "A", "at": [2, 0, 0] },
+        { "op": "oxyz_point", "name": "B", "at": [0, 3, 0] },
+        { "op": "oxyz_point", "name": "C", "at": [0, 0, 6] },
+        { "op": "edge", "from": "A", "to": "B" },
+        { "op": "edge", "from": "B", "to": "C" },
+        { "op": "edge", "from": "C", "to": "A" }
+      ],
+      "queries": [
+        { "kind": "area", "shape": "triangle", "points": ["A", "B", "C"] }
+      ]
+    }
+  },
+  {
+    "text": "Trong không gian Oxyz, cho ba điểm A(1;1;1), B(4;1;1), C(1;5;1). Tính diện tích tam giác ABC.",
+    "source": "synthetic",
+    "difficulty": "medium",
+    "kind": "area",
+    "expected": ["6"],
+    "plan": {
+      "solidName": "ABC",
+      "ops": [
+        { "op": "oxyz_point", "name": "A", "at": [1, 1, 1] },
+        { "op": "oxyz_point", "name": "B", "at": [4, 1, 1] },
+        { "op": "oxyz_point", "name": "C", "at": [1, 5, 1] },
+        { "op": "edge", "from": "A", "to": "B" },
+        { "op": "edge", "from": "B", "to": "C" },
+        { "op": "edge", "from": "C", "to": "A" }
+      ],
+      "queries": [
+        { "kind": "area", "shape": "triangle", "points": ["A", "B", "C"] }
+      ]
+    }
+  },
+  {
+    "text": "Trong không gian Oxyz, cho tam giác ABC với A(0;0;0), B(2;2;0), C(0;2;2). Tính diện tích tam giác ABC.",
+    "source": "synthetic",
+    "difficulty": "medium",
+    "kind": "area",
+    "expected": ["2√3"],
+    "plan": {
+      "solidName": "ABC",
+      "ops": [
+        { "op": "oxyz_point", "name": "A", "at": [0, 0, 0] },
+        { "op": "oxyz_point", "name": "B", "at": [2, 2, 0] },
+        { "op": "oxyz_point", "name": "C", "at": [0, 2, 2] },
+        { "op": "edge", "from": "A", "to": "B" },
+        { "op": "edge", "from": "B", "to": "C" },
+        { "op": "edge", "from": "C", "to": "A" }
+      ],
+      "queries": [
+        { "kind": "area", "shape": "triangle", "points": ["A", "B", "C"] }
+      ]
+    }
+  },
+  {
+    "text": "Trong không gian Oxyz, cho tam giác ABC với A(2;1;0), B(5;1;4), C(2;5;0). Tính diện tích tam giác ABC.",
+    "source": "synthetic",
+    "difficulty": "medium",
+    "kind": "area",
+    "expected": ["10"],
+    "plan": {
+      "solidName": "ABC",
+      "ops": [
+        { "op": "oxyz_point", "name": "A", "at": [2, 1, 0] },
+        { "op": "oxyz_point", "name": "B", "at": [5, 1, 4] },
+        { "op": "oxyz_point", "name": "C", "at": [2, 5, 0] },
+        { "op": "edge", "from": "A", "to": "B" },
+        { "op": "edge", "from": "B", "to": "C" },
+        { "op": "edge", "from": "C", "to": "A" }
+      ],
+      "queries": [
+        { "kind": "area", "shape": "triangle", "points": ["A", "B", "C"] }
+      ]
+    }
+  },
+  {
+    "text": "Trong không gian Oxyz, cho tam giác ABC với A(0;0;0), B(1;2;2), C(2;2;1). Tính diện tích tam giác ABC.",
+    "source": "synthetic",
+    "difficulty": "medium",
+    "kind": "area",
+    "expected": ["√17/2"],
+    "plan": {
+      "solidName": "ABC",
+      "ops": [
+        { "op": "oxyz_point", "name": "A", "at": [0, 0, 0] },
+        { "op": "oxyz_point", "name": "B", "at": [1, 2, 2] },
+        { "op": "oxyz_point", "name": "C", "at": [2, 2, 1] },
+        { "op": "edge", "from": "A", "to": "B" },
+        { "op": "edge", "from": "B", "to": "C" },
+        { "op": "edge", "from": "C", "to": "A" }
+      ],
+      "queries": [
+        { "kind": "area", "shape": "triangle", "points": ["A", "B", "C"] }
+      ]
+    }
+  },
+  {
+    "text": "Cho hình chóp S.ABCD có đáy ABCD là hình vuông cạnh 6, SA vuông góc với mặt đáy và SA = 6. Mặt phẳng (R) song song với mặt đáy và đi qua trung điểm của cạnh SA, cắt các cạnh bên SA, SB, SC, SD lần lượt tại M, N, P, Q. Tính diện tích thiết diện MNPQ.",
+    "source": "synthetic",
+    "difficulty": "medium",
+    "kind": "area",
+    "expected": ["9"],
+    "plan": {
+      "solidName": "S.ABCD",
+      "ops": [
+        { "op": "oxyz_point", "name": "A", "at": [0, 0, 0] },
+        { "op": "oxyz_point", "name": "B", "at": [6, 0, 0] },
+        { "op": "oxyz_point", "name": "C", "at": [6, 6, 0] },
+        { "op": "oxyz_point", "name": "D", "at": [0, 6, 0] },
+        { "op": "oxyz_point", "name": "S", "at": [0, 0, 6] },
+        { "op": "oxyz_plane", "name": "R", "by": { "form": "coeffs", "a": 0, "b": 0, "c": 1, "d": -3 } },
+        { "op": "edge", "from": "S", "to": "A" },
+        { "op": "edge", "from": "S", "to": "B" },
+        { "op": "edge", "from": "S", "to": "C" },
+        { "op": "edge", "from": "S", "to": "D" },
+        { "op": "oxyz_intersect", "name": "M", "a": "SA", "b": "R" },
+        { "op": "oxyz_intersect", "name": "N", "a": "SB", "b": "R" },
+        { "op": "oxyz_intersect", "name": "P", "a": "SC", "b": "R" },
+        { "op": "oxyz_intersect", "name": "Q", "a": "SD", "b": "R" }
+      ],
+      "queries": [
+        { "kind": "area", "shape": "polygon", "points": ["M", "N", "P", "Q"] }
+      ]
+    }
+  },
+  {
+    "text": "Cho hình chóp S.ABCD có đáy ABCD là hình vuông cạnh 4 với A(0;0;0), B(4;0;0), C(4;4;0), D(0;4;0) và đỉnh S(2;2;6). Gọi M, N lần lượt là trung điểm các cạnh SD, SC. Tính diện tích thiết diện của hình chóp cắt bởi mặt phẳng đi qua A, B, N, M (tứ giác ABNM).",
+    "source": "synthetic",
+    "difficulty": "medium",
+    "kind": "area",
+    "expected": ["9√2"],
+    "plan": {
+      "solidName": "S.ABCD",
+      "ops": [
+        { "op": "oxyz_point", "name": "A", "at": [0, 0, 0] },
+        { "op": "oxyz_point", "name": "B", "at": [4, 0, 0] },
+        { "op": "oxyz_point", "name": "C", "at": [4, 4, 0] },
+        { "op": "oxyz_point", "name": "D", "at": [0, 4, 0] },
+        { "op": "oxyz_point", "name": "S", "at": [2, 2, 6] },
+        { "op": "oxyz_midpoint", "name": "M", "a": "S", "b": "D" },
+        { "op": "oxyz_midpoint", "name": "N", "a": "S", "b": "C" },
+        { "op": "edge", "from": "A", "to": "B" },
+        { "op": "edge", "from": "S", "to": "C" },
+        { "op": "edge", "from": "S", "to": "D" }
+      ],
+      "queries": [
+        { "kind": "area", "shape": "polygon", "points": ["A", "B", "N", "M"] }
+      ]
+    }
+  },
+  {
+    "text": "Cho hình chóp S.ABC có A(0;0;0), B(6;0;0), C(0;6;0), S(2;2;8). Gọi M, N, P lần lượt là trung điểm các cạnh SA, SB, SC. Mặt phẳng (MNP) cắt hình chóp theo thiết diện là tam giác MNP. Tính diện tích tam giác MNP.",
+    "source": "synthetic",
+    "difficulty": "medium",
+    "kind": "area",
+    "expected": ["9/2"],
+    "plan": {
+      "solidName": "S.ABC",
+      "ops": [
+        { "op": "oxyz_point", "name": "A", "at": [0, 0, 0] },
+        { "op": "oxyz_point", "name": "B", "at": [6, 0, 0] },
+        { "op": "oxyz_point", "name": "C", "at": [0, 6, 0] },
+        { "op": "oxyz_point", "name": "S", "at": [2, 2, 8] },
+        { "op": "oxyz_midpoint", "name": "M", "a": "S", "b": "A" },
+        { "op": "oxyz_midpoint", "name": "N", "a": "S", "b": "B" },
+        { "op": "oxyz_midpoint", "name": "P", "a": "S", "b": "C" }
+      ],
+      "queries": [
+        { "kind": "area", "shape": "polygon", "points": ["M", "N", "P"] }
+      ]
+    }
+  },
+  {
+    "text": "Cho hình hộp chữ nhật ABCD.EFGH có A(0;0;0), B(4;0;0), C(4;3;0), D(0;3;0) và E, F, G, H lần lượt nằm phía trên A, B, C, D với chiều cao 5, tức E(0;0;5), F(4;0;5), G(4;3;5), H(0;3;5). Tính diện tích thiết diện ABGH (mặt phẳng đi qua bốn điểm A, B, G, H).",
+    "source": "synthetic",
+    "difficulty": "medium",
+    "kind": "area",
+    "expected": ["4√34"],
+    "plan": {
+      "solidName": "ABCD.EFGH",
+      "ops": [
+        { "op": "oxyz_point", "name": "A", "at": [0, 0, 0] },
+        { "op": "oxyz_point", "name": "B", "at": [4, 0, 0] },
+        { "op": "oxyz_point", "name": "C", "at": [4, 3, 0] },
+        { "op": "oxyz_point", "name": "D", "at": [0, 3, 0] },
+        { "op": "oxyz_point", "name": "E", "at": [0, 0, 5] },
+        { "op": "oxyz_point", "name": "F", "at": [4, 0, 5] },
+        { "op": "oxyz_point", "name": "G", "at": [4, 3, 5] },
+        { "op": "oxyz_point", "name": "H", "at": [0, 3, 5] },
+        { "op": "edge", "from": "A", "to": "B" },
+        { "op": "edge", "from": "G", "to": "H" }
+      ],
+      "queries": [
+        { "kind": "area", "shape": "polygon", "points": ["A", "B", "G", "H"] }
+      ]
+    }
+  },
+  {
+    "text": "Cho hình chóp S.ABCD có đáy ABCD là hình chữ nhật với AB = 8, AD = 6, SA vuông góc với mặt đáy và SA = 10. Gọi M, N, P, Q lần lượt là trung điểm các cạnh SA, SB, SC, SD. Tính diện tích thiết diện MNPQ.",
+    "source": "synthetic",
+    "difficulty": "medium",
+    "kind": "area",
+    "expected": ["12"],
+    "plan": {
+      "solidName": "S.ABCD",
+      "ops": [
+        { "op": "oxyz_point", "name": "A", "at": [0, 0, 0] },
+        { "op": "oxyz_point", "name": "B", "at": [8, 0, 0] },
+        { "op": "oxyz_point", "name": "C", "at": [8, 6, 0] },
+        { "op": "oxyz_point", "name": "D", "at": [0, 6, 0] },
+        { "op": "oxyz_point", "name": "S", "at": [0, 0, 10] },
+        { "op": "oxyz_midpoint", "name": "M", "a": "S", "b": "A" },
+        { "op": "oxyz_midpoint", "name": "N", "a": "S", "b": "B" },
+        { "op": "oxyz_midpoint", "name": "P", "a": "S", "b": "C" },
+        { "op": "oxyz_midpoint", "name": "Q", "a": "S", "b": "D" }
+      ],
+      "queries": [
+        { "kind": "area", "shape": "polygon", "points": ["M", "N", "P", "Q"] }
+      ]
+    }
+  },
+  {
+    "text": "Cho hình hộp chữ nhật có đỉnh A(0;0;0) và ba đỉnh kề B(6;0;0), D(0;6;0), E(0;0;6). Gọi M, N, P lần lượt là trung điểm các cạnh AB, AD, AE. Mặt phẳng (MNP) cắt hình hộp theo thiết diện là tam giác MNP. Tính diện tích tam giác MNP.",
+    "source": "synthetic",
+    "difficulty": "medium",
+    "kind": "area",
+    "expected": ["9√3/2"],
+    "plan": {
+      "solidName": "hop-goc-A",
+      "ops": [
+        { "op": "oxyz_point", "name": "A", "at": [0, 0, 0] },
+        { "op": "oxyz_point", "name": "B", "at": [6, 0, 0] },
+        { "op": "oxyz_point", "name": "D", "at": [0, 6, 0] },
+        { "op": "oxyz_point", "name": "E", "at": [0, 0, 6] },
+        { "op": "oxyz_midpoint", "name": "M", "a": "A", "b": "B" },
+        { "op": "oxyz_midpoint", "name": "N", "a": "A", "b": "D" },
+        { "op": "oxyz_midpoint", "name": "P", "a": "A", "b": "E" }
+      ],
+      "queries": [
+        { "kind": "area", "shape": "polygon", "points": ["M", "N", "P"] }
+      ]
+    }
+  },
+  {
+    "text": "Trong không gian Oxyz, cho điểm A(2;3;4) và mặt phẳng (P): 2x - y + 2z - 6 = 0. Gọi H là hình chiếu vuông góc của A lên mặt phẳng (P). Tính độ dài đoạn thẳng AH.",
+    "source": "synthetic",
+    "difficulty": "medium",
+    "kind": "distance",
+    "expected": ["1"],
+    "plan": {
+      "solidName": "chieu-diem-mp",
+      "ops": [
+        { "op": "oxyz_point", "name": "A", "at": [2, 3, 4] },
+        { "op": "oxyz_plane", "name": "P", "by": { "form": "coeffs", "a": 2, "b": -1, "c": 2, "d": -6 } },
+        { "op": "oxyz_foot", "name": "H", "from": "A", "onto": "plane", "target": "P" }
+      ],
+      "queries": [
+        { "kind": "distance", "a": "A", "b": "H" }
+      ]
+    }
+  },
+  {
+    "text": "Trong không gian Oxyz, cho điểm A(1;2;2) và mặt phẳng (P): x + 2y + 2z - 15 = 0. Gọi A' là điểm đối xứng của A qua mặt phẳng (P). Tính độ dài đoạn thẳng AA'.",
+    "source": "synthetic",
+    "difficulty": "medium",
+    "kind": "distance",
+    "expected": ["4"],
+    "plan": {
+      "solidName": "doi-xung-mp",
+      "ops": [
+        { "op": "oxyz_point", "name": "A", "at": [1, 2, 2] },
+        { "op": "oxyz_plane", "name": "P", "by": { "form": "coeffs", "a": 1, "b": 2, "c": 2, "d": -15 } },
+        { "op": "oxyz_reflect_across", "name": "K", "point": "A", "across": "plane", "target": "P" }
+      ],
+      "queries": [
+        { "kind": "distance", "a": "A", "b": "K" }
+      ]
+    }
+  },
+  {
+    "text": "Trong không gian Oxyz, cho điểm A(0;3;4) và đường thẳng d đi qua hai điểm E(0;0;0), F(2;0;0). Gọi H là hình chiếu vuông góc của A lên đường thẳng d. Tính độ dài đoạn thẳng AH.",
+    "source": "synthetic",
+    "difficulty": "medium",
+    "kind": "distance",
+    "expected": ["5"],
+    "plan": {
+      "solidName": "chieu-diem-duong",
+      "ops": [
+        { "op": "oxyz_point", "name": "A", "at": [0, 3, 4] },
+        { "op": "oxyz_point", "name": "E", "at": [0, 0, 0] },
+        { "op": "oxyz_point", "name": "F", "at": [2, 0, 0] },
+        { "op": "oxyz_line", "name": "d", "by": { "form": "two_points", "a": "E", "b": "F" } },
+        { "op": "oxyz_foot", "name": "H", "from": "A", "onto": "line", "target": "d" }
+      ],
+      "queries": [
+        { "kind": "distance", "a": "A", "b": "H" }
+      ]
+    }
+  },
+  {
+    "text": "Trong không gian Oxyz, cho điểm A(5;1;1) và mặt phẳng (P): 2x + y + 2z - 4 = 0. Gọi H là hình chiếu vuông góc của A lên mặt phẳng (P). Tìm hoành độ (tọa độ x) và cao độ (tọa độ z) của điểm H.",
+    "source": "synthetic",
+    "difficulty": "medium",
+    "kind": "point_coord",
+    "expected": ["3", "-1"],
+    "plan": {
+      "solidName": "chieu-diem-mp-toado",
+      "ops": [
+        { "op": "oxyz_point", "name": "A", "at": [5, 1, 1] },
+        { "op": "oxyz_plane", "name": "P", "by": { "form": "coeffs", "a": 2, "b": 1, "c": 2, "d": -4 } },
+        { "op": "oxyz_foot", "name": "H", "from": "A", "onto": "plane", "target": "P" }
+      ],
+      "queries": [
+        { "kind": "point_coord", "target": "H", "axis": "x" },
+        { "kind": "point_coord", "target": "H", "axis": "z" }
+      ]
+    }
+  },
+  {
+    "text": "Trong không gian Oxyz, cho điểm A(5;5;5) và mặt phẳng (P): x + 2y + 2z - 16 = 0. Gọi A' là điểm đối xứng của A qua mặt phẳng (P). Tìm hoành độ (tọa độ x) và tung độ (tọa độ y) của điểm A'.",
+    "source": "synthetic",
+    "difficulty": "medium",
+    "kind": "point_coord",
+    "expected": ["3", "1"],
+    "plan": {
+      "solidName": "doi-xung-mp-toado",
+      "ops": [
+        { "op": "oxyz_point", "name": "A", "at": [5, 5, 5] },
+        { "op": "oxyz_plane", "name": "P", "by": { "form": "coeffs", "a": 1, "b": 2, "c": 2, "d": -16 } },
+        { "op": "oxyz_reflect_across", "name": "K", "point": "A", "across": "plane", "target": "P" }
+      ],
+      "queries": [
+        { "kind": "point_coord", "target": "K", "axis": "x" },
+        { "kind": "point_coord", "target": "K", "axis": "y" }
+      ]
+    }
+  }
+]

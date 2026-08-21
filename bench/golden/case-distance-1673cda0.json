@@ -1,0 +1,54 @@
+{
+  "id": "case-distance-1673cda0",
+  "source": "synthetic",
+  "difficulty": "medium",
+  "text": "Trong không gian Oxyz, cho điểm A(1;2;2) và mặt phẳng (P): x + 2y + 2z - 15 = 0. Gọi A' là điểm đối xứng của A qua mặt phẳng (P). Tính độ dài đoạn thẳng AA'.",
+  "plan": {
+    "solidName": "doi-xung-mp",
+    "ops": [
+      {
+        "op": "oxyz_point",
+        "name": "A",
+        "at": [
+          1,
+          2,
+          2
+        ]
+      },
+      {
+        "op": "oxyz_plane",
+        "name": "P",
+        "by": {
+          "form": "coeffs",
+          "a": 1,
+          "b": 2,
+          "c": 2,
+          "d": -15
+        }
+      },
+      {
+        "op": "oxyz_reflect_across",
+        "name": "K",
+        "point": "A",
+        "across": "plane",
+        "target": "P"
+      }
+    ],
+    "queries": [
+      {
+        "kind": "distance",
+        "a": "A",
+        "b": "K"
+      }
+    ]
+  },
+  "expect": {
+    "ok": true,
+    "answers": [
+      {
+        "kind": "distance",
+        "text": "4"
+      }
+    ]
+  }
+}

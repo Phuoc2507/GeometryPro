@@ -1,0 +1,85 @@
+{
+  "id": "case-area-600a45ea",
+  "source": "synthetic",
+  "difficulty": "medium",
+  "text": "Cho hình hộp chữ nhật có đỉnh A(0;0;0) và ba đỉnh kề B(6;0;0), D(0;6;0), E(0;0;6). Gọi M, N, P lần lượt là trung điểm các cạnh AB, AD, AE. Mặt phẳng (MNP) cắt hình hộp theo thiết diện là tam giác MNP. Tính diện tích tam giác MNP.",
+  "plan": {
+    "solidName": "hop-goc-A",
+    "ops": [
+      {
+        "op": "oxyz_point",
+        "name": "A",
+        "at": [
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "B",
+        "at": [
+          6,
+          0,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "D",
+        "at": [
+          0,
+          6,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "E",
+        "at": [
+          0,
+          0,
+          6
+        ]
+      },
+      {
+        "op": "oxyz_midpoint",
+        "name": "M",
+        "a": "A",
+        "b": "B"
+      },
+      {
+        "op": "oxyz_midpoint",
+        "name": "N",
+        "a": "A",
+        "b": "D"
+      },
+      {
+        "op": "oxyz_midpoint",
+        "name": "P",
+        "a": "A",
+        "b": "E"
+      }
+    ],
+    "queries": [
+      {
+        "kind": "area",
+        "shape": "polygon",
+        "points": [
+          "M",
+          "N",
+          "P"
+        ]
+      }
+    ]
+  },
+  "expect": {
+    "ok": true,
+    "answers": [
+      {
+        "kind": "area",
+        "text": "9√3/2"
+      }
+    ]
+  }
+}
