@@ -1,8 +1,8 @@
 # Physics Pack v1 — DAO ĐỘNG ĐIỀU HÒA lớp 11 (GDPT 2018) — Design Spec
 
-**Ngày:** 2026-08-21
-**Trạng thái:** Chờ phản biện spec
-**Phạm vi:** Mở rộng engine Vật lý (nền v0 động học — `2026-08-21-physics-pack-design.md`) cho chương **Dao động điều hòa** Vật lí 11. Chỉ thêm file vào `api/_lib/kernel/physics/**` + test; điểm chạm với v0 là 2 diff nhỏ được liệt kê rõ ở §11. KHÔNG sửa core kernel, KHÔNG sửa `src/**`.
+**Ngày:** 2026-08-21 (cập nhật 22/08 — áp phán quyết phản biện đợt 2)
+**Trạng thái:** ĐÃ PHẢN BIỆN đợt 2 — mọi finding OS-1..OS-6 + phán quyết EXACT_COS + 10 phán quyết §14 + 3 phán quyết chung (§15) đã áp vào spec (nguồn: `../reviews/2026-08-21-wave2-specs-review.md`); chờ thi công. Changelog sửa đổi: §16.
+**Phạm vi:** Mở rộng engine Vật lý (nền v0 động học — `2026-08-21-physics-pack-design.md`) cho chương **Dao động điều hòa** Vật lí 11. Chỉ thêm file vào `api/_lib/kernel/physics/**` + test; điểm chạm với v0 gói trong 2 FILE (`planSchema.ts`, `runPhysics.ts`) với danh sách diff kê **TRUNG THỰC từng dòng** ở §11 (OS-4 — KHÔNG phải "2 diff nhỏ": refine cấp plan + lệnh cấm trộn op là logic mới trong planSchema v0). KHÔNG sửa core kernel, KHÔNG sửa `src/**`.
 **Ràng buộc kế thừa:** tuân các phán quyết đã duyệt ở `docs/superpowers/reviews/2026-08-21-arch-physics-review-phien1.md` — unit per-quantity engine tự đổi (F2/D1), EXACT_TRIG {0,±30,±45,±60,±90} mở rộng vòng tròn (C8), tag 4 tầng `ly/11/dao-dong/<skill>` (C4/F10), `answers[].unit` do engine ghi (C6), tol hai tầng EPS_SELF/TOL_ASSERT (C10/F6).
 
 ---
@@ -29,7 +29,7 @@ Bài dao động điều hòa `x = A·cos(ωt + φ)`: **LLM chỉ DỊCH đề �
 | `−4,0752…` (cos off-grid) | null ✓ | trung thực, đúng thiết kế |
 | `2,0071` (2√5π/7 làm tròn 4 lẻ) | null ✓ | KHÔNG khớp giả — reconstruct-check 1e-10 làm việc |
 
-**Kết luận:** recognize hiện nhận `kπ/m` và `p+qπ` (nhánh 4–5) — đủ làm lưới an toàn cho các đáp thuần-π khi exact chết. Nó KHÔNG nhận `π²`, `căn·π`, `k/π`. **Thiết kế của spec này KHÔNG dựa vào việc mở rộng recognize**: tầng `PiScalar` (§3) giữ exact ngay từ thượng nguồn cho cả ba dạng đó. Đề xuất mở rộng recognize chỉ là TÙY CHỌN, đánh dấu cho phản biện (§14.3).
+**Kết luận:** recognize hiện nhận `kπ/m` và `p+qπ` (nhánh 4–5) — đủ làm lưới an toàn cho các đáp thuần-π khi exact chết. Nó KHÔNG nhận `π²`, `căn·π`, `k/π`. **Thiết kế của spec này KHÔNG dựa vào việc mở rộng recognize**: tầng `PiScalar` (§3) giữ exact ngay từ thượng nguồn cho cả ba dạng đó. Đề xuất mở rộng recognize chỉ là TÙY CHỌN — **ĐÃ PHÁN QUYẾT (§14.3): KHÔNG mở rộng ở v1** (phản biện chạy lại recognize.ts thật, xác nhận PiScalar là cần thiết và đủ).
 
 ### 2.2. `AnimatedAgent` eval được `Math.cos` không? — ĐƯỢC, vì dùng `new Function`
 
@@ -96,6 +96,13 @@ const PiRat = z.union([
 
 C8 duyệt EXACT_TRIG cho góc {0,±30,±45,±60,±90}. Dao động cần TRỌN vòng tròn (pha 2π/3, 4π/3, …): với pha = (p/q)·π, **rút gọn p/q mod 2 bằng số học hữu tỉ exact (bigint)**; nếu q ∈ {1,2,3,4,6} ⇒ pha nằm trên lưới 16 điểm (bội π/6 ∪ bội π/4) ⇒ cos/sin exact qua góc chiếu + dấu theo cung phần tư (cos(2π/3) = −cos(π/3) = −1/2, sin(4π/3) = −√3/2, …). q ∉ {1,2,3,4,6} (vd π/5, π/12) ⇒ null ⇒ float — π/12 cho cos = (√6+√2)/4 hai căn, vốn ngoài trường Scalar, đúng thiết kế. Bảng này là hàm thuần trong `piScalar.ts`, kiểm bằng test đối chiếu `Math.cos` trên cả 16 điểm.
 
+**ĐÃ PHÁN QUYẾT (phản biện đợt 2, 22/08): EXACT_COS 16 điểm là MỞ RỘNG HỢP LỆ của C8** — cùng triết lý bộ-góc-đóng, chỉ nới từ nửa lưới {0,±30,±45,±60,±90} lên trọn vòng tròn bội π/6 ∪ bội π/4; không cần duyệt lại kiến trúc.
+
+**Luật so-exact trên lưới (OS-3 — SỬA mô tả cũ):** câu cũ "so exact bằng `cmpScalar`, không snap float" KHÔNG đứng — `cmpScalar` khi hai vế KHÁC radicand rơi về so float với EPS 1e-9 (`answer.ts:139-147`), tức vẫn là snap-float trá hình. Quy tắc CHỐT dùng ở §5.3 và §7:
+- "Exact-khớp lưới" = **EQUALITY trên struct `Exact`** — đối chiếu đúng từng thành phần (num, den, radicand) sau chuẩn hoá, KHÔNG qua cmpScalar;
+- Giá trị **HỮU TỈ** (radicand 1) so với **MỐC VÔ TỈ** của lưới (±√2/2, ±√3/2) ⇒ **mismatch NGAY** — hai cấu trúc khác radicand không bao giờ exact-bằng, không so float để "cứu";
+- Không khớp điểm lưới nào ⇒ rơi ĐƯỜNG SỐ trung thực (float + recognize, `approximate:true`) — không có vùng snap.
+
 ### 3.3. Hiển thị `displayPiScalar`
 
 Quy ước "π đứng trước căn" (chuẩn SGK "2π√5/7"): `sign + (num≠1 hoặc phần còn lại rỗng ? num : '') + πᵏ + (√rad nếu rad>1) + ('/den' nếu den>1)`; k=1 → `π`, k=2 → `π²`; k<0 → mẫu: `5/(2π)`, `1/π²`.
@@ -110,12 +117,12 @@ Ví dụ: {1/5, 1} → `"π/5"`; {−1/2, 1} → `"−π/2"`; {2√5/7, 1} → `
      → text = displayPiScalar(p), approximate:false
    exact chết → recognizeConstant(floatRef)   // vớt được kπ/m, p+qπ (§2.1)
    recognize trượt → toFixed(4), approximate:true
-3. Gắn unit theo bảng §6.3 (engine ghi — C6)
+3. Gắn unit theo bảng unit cuối §6 (engine ghi — C6; dẫn chiếu cũ "§6.3" sai — OS-6)
 ```
 
 ## 4. Schema (zod) — `oscSchema.ts`, nối vào PhysicsPlanSchema v0
 
-Osc THÊM 1 op và 17 query vào 2 discriminatedUnion của v0 (`PhysicsOpSchema`, `PhysicsQuerySchema`). Khung plan (units/asserts/charts/scene) giữ nguyên v0. `units.time` phải `'s'` khi plan có op `oscillator` (refine — chu kỳ tính bằng giờ ngoài đề phổ thông); `units.length` ∈ {'m','cm'} (refine cho osc; đề VN hầu hết cm ⇒ translator khai `'cm'`).
+Osc THÊM 1 op và 17 query vào 2 discriminatedUnion của v0 (`PhysicsOpSchema`, `PhysicsQuerySchema`). Khung plan (units/asserts/charts/scene) giữ nguyên v0. Ba ràng buộc CẤP PLAN (sống trong `planSchema.ts` v0 — thuộc DIFF 1, kê ở §11): (1) `units.time` phải `'s'` khi plan có op `oscillator` (chu kỳ tính bằng giờ ngoài đề phổ thông); (2) `units.length` ∈ {'m','cm'} (đề VN hầu hết cm ⇒ translator khai `'cm'`); (3) **superRefine CẤM TRỘN op dao động (`oscillator`) với op động học (`mover1d`…) trong CÙNG một plan v1 (OS-4)** — plan trộn không bị cấm sẽ làm `qty*` của kinematics THROW khi units.length = 'cm'; đề hỗn hợp (hiếm) ⇒ bridge tách 2 plan riêng, lỗi tiếng Việt rõ "plan v1 không trộn dao động với động học".
 
 ```ts
 // api/_lib/kernel/physics/oscSchema.ts
@@ -166,7 +173,7 @@ export const OscQuerySchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('vmax'), of: Obj, unit: VUnit.optional(), label: … }),
   z.object({ kind: z.literal('amax'), of: Obj, unit: AUnit.optional(), label: … }),
   z.object({ kind: z.literal('speed_at_x'), of: Obj, x: Num, unit: VUnit.optional(), label: … }),  // |v|
-  z.object({ kind: z.literal('x_at_speed'), of: Obj, v: Num.positive(), vUnit: VUnit.optional(), label: … }), // |x|
+  z.object({ kind: z.literal('x_at_speed'), of: Obj, v: Num.min(0), vUnit: VUnit.optional(), label: … }), // |x|; v ≥ 0 (OS-6: v = 0 hợp lệ — hỏi biên, |x| = A)
   z.object({ kind: z.literal('energy_total'), of: Obj, label: … }),                                // J
   z.object({ kind: z.literal('energy_kinetic_at'), of: Obj, at: z.union([z.object({x: Num}), z.object({t: PiRat})]), label: … }),
   z.object({ kind: z.literal('energy_potential_at'), of: Obj, at: /* như trên */, label: … }),
@@ -176,7 +183,12 @@ export const OscQuerySchema = z.discriminatedUnion('kind', [
 ]);
 ```
 
-Tên query TÁCH khỏi kinematics (`x_at` ≠ `position_at`) có chủ đích: ngữ nghĩa khác (li độ 1D quanh VTCB vs toạ độ), dispatch không nhập nhằng, mirror phán quyết D5 "mỗi query MỘT số". Mọi `label` để khớp `answers[]` theo thứ tự — như v0.
+**Refine của op `oscillator` (OS-2 — ĐÃ PHÁN QUYẾT, chặn từ zod):**
+- `omega`, `T`, `f`, `count.dt` phải **> 0 SAU quy đổi PiRat** (tức `n > 0` — `d` đã là int dương): T = 0 hay f = 0 làm `divExact` THROW xuyên pipeline; ω ÂM cho T/f/vmax âm mà tự kiểm hệ thức v² + ω²x² = ω²A² vẫn pass (bình phương nuốt dấu) — cả hai đường sai đều bị chặn ngay tại parse với lỗi tiếng Việt rõ ("chu kỳ phải dương…").
+- `count.n` đã int dương sẵn; `pendulum`: `g` XOR `gAsPiSquared` (đã ghi trong schema).
+- `initial` với `x0 = 0` VÀ `v0 = 0` ⇒ từ chối sớm "vật không dao động (A = 0)" — tầng normalize vẫn giữ guard A > 0 (§5.3, OS-5) cho mọi đường còn lại.
+
+Tên query TÁCH khỏi kinematics (`x_at` ≠ `position_at`) có chủ đích: ngữ nghĩa khác (li độ 1D quanh VTCB vs toạ độ), dispatch không nhập nhằng, mirror phán quyết D5 "mỗi query MỘT số". Mọi `label` để khớp `answers[]` theo thứ tự — như v0. Chính tả field: giá trị VÀO kèm đơn vị dùng `vUnit` (theo v0 — phán quyết chung §15.3); `unit` chỉ dành cho đơn vị ĐẦU RA của đáp (v_at/a_at/vmax/amax/speed_at_x).
 
 ## 5. Chuẩn hóa op → OscModel (`oscillation.ts` — thuần)
 
@@ -210,14 +222,17 @@ Khác kinematics v0 ("hệ nhất quán, engine không đổi"): dao động TR�
 - **rate:** ưu tiên `omega > T > f > count > spring(k)+mass > pendulum`. Công thức: ω; 2π/T; 2πf; 2π·n/dt; √(k/m); √(g/l). Các nguồn KHÔNG được chọn không bị vứt: engine tự sinh check "nguồn dư khớp" (exact khi cùng bậc π, ngược lại |Δ| ≤ EPS_SELF·ω) — đề "k=100, m=250 g, chu kỳ T=π/10 s" tự đối chiếu, dịch sai lộ ngay thành violation.
 - **ampl:** ưu tiên `A > L (/2) > pathPerPeriod (/4) > fromState (√(x²+v²/ω²)) > vmaxGiven (/ω) > initial`. Dư ⇒ auto-assert như trên.
 - Thiếu nguồn ⇒ trường null; query đụng tới ⇒ `errors: "cần <đại lượng> — đề không đủ dữ kiện hoặc dịch thiếu"`, KHÔNG bịa.
+- **Query trỏ nhầm LOẠI op (OS-6):** query dao động (17 kind §4) có `of` trỏ tới op KHÔNG phải `oscillator` (vd `mover1d` động học) ⇒ error TƯỜNG MINH `"query <kind> trỏ '<name>' — không phải vật dao động (op oscillator)"`, không để rơi thành lỗi mù "thiếu đại lượng". Chiều ngược (query động học trỏ op oscillator) cùng luật — thuộc nhánh dispatch của runPhysics (DIFF 2, §11). Với lệnh cấm trộn op (§4/OS-4), ca này chỉ còn xảy ra khi `of` gõ sai tên hoặc bridge dispatch nhầm họ — vẫn phải có message đúng.
 
-### 5.3. Pha từ điều kiện đầu (`initial`)
+### 5.3. Pha từ điều kiện đầu (`initial`) + guard A > 0
 
-A = √(x₀² + (v₀/ω)²) (sqrtP — exact khi biểu thức dưới căn về hữu tỉ). φ: cos φ = x₀/A, sin φ = −v₀/(ωA); nếu CẢ HAI tỉ số exact-khớp một điểm lưới 16 (§3.2, so exact bằng `cmpScalar`, KHÔNG snap float) ⇒ φ exact trên lưới, chọn đại diện ∈ (−π, π]; ngoài lưới ⇒ `atan2` float (approximate trung thực). Hai mẫu chuẩn: "kéo ra x₀ rồi thả nhẹ" (v₀=0) → φ = 0 (x₀>0) hoặc π (x₀<0); "truyền v₀ tại VTCB" (x₀=0) → φ = −π/2 (v₀>0) hoặc +π/2.
+**Guard A > 0 (OS-5):** trước mọi phép tính pha — nếu A = 0 (initial {x0: 0, v0: 0} lọt tới đây, hay bất kỳ nguồn ampl nào quy về 0) ⇒ `errors: "vật không dao động (A = 0 — x₀ = v₀ = 0)"`, KHÔNG tính φ (tránh chia 0 x₀/A), KHÔNG dựng scene; kết hợp refine §4 chặn sớm từ zod.
+
+A = √(x₀² + (v₀/ω)²) (sqrtP — exact khi biểu thức dưới căn về hữu tỉ). φ: cos φ = x₀/A, sin φ = −v₀/(ωA); nếu CẢ HAI tỉ số exact-khớp một điểm lưới 16 (**theo luật equality-struct §3.2 — OS-3: đối chiếu struct `Exact`, hữu tỉ vs mốc vô tỉ ⇒ mismatch ngay; KHÔNG dùng cmpScalar ở đây vì nhánh khác-radicand của nó là so float EPS 1e-9**) ⇒ φ exact trên lưới, chọn đại diện ∈ (−π, π]; ngoài lưới ⇒ `atan2` float (approximate trung thực). Hai mẫu chuẩn: "kéo ra x₀ rồi thả nhẹ" (v₀=0) → φ = 0 (x₀>0) hoặc π (x₀<0); "truyền v₀ tại VTCB" (x₀=0) → φ = −π/2 (v₀>0) hoặc +π/2.
 
 ### 5.4. `gAsPiSquared` — g = π² là số học, không phải mẹo làm tròn
 
-Khai `gAsPiSquared: true` ⇒ engine đặt **g = PiScalar{s:1, k:2}** (approx 9,8696…). Phép rút gọn kinh điển tự rơi ra từ đại số phân bậc: l/g = {s:l, k:−2} → sqrtP (k chẵn) → {√l, k:−1} → ×2π → **T = 2√l, k=0, EXACT** — π triệt tiêu đúng như lời giải SGK, engine KHÔNG hề "coi π²=10". Đường certify float độc lập: 2π√(l/π²) — khớp. Khi đề cho g số (9,8 = 49/5; 10): sqrtP(l/g) exact nếu l/g ra hữu tỉ có căn đẹp ⇒ T dạng (a√b/c)·π (vd `2π√5/7` với l=1, g=9,8). Hệ quả cần ghi: đề "g = 10 VÀ lấy π² = 10" khai `gAsPiSquared:true` (chứ không khai g:10) — vì hai giả thiết đó chỉ nhất quán khi g ≡ π²; asserts kèm theo xem §14.5.
+Khai `gAsPiSquared: true` ⇒ engine đặt **g = PiScalar{s:1, k:2}** (approx 9,8696…). Phép rút gọn kinh điển tự rơi ra từ đại số phân bậc: l/g = {s:l, k:−2} → sqrtP (k chẵn) → {√l, k:−1} → ×2π → **T = 2√l, k=0, EXACT** — π triệt tiêu đúng như lời giải SGK, engine KHÔNG hề "coi π²=10". Đường certify float độc lập: 2π√(l/π²) — khớp. Khi đề cho g số (9,8 = 49/5; 10): sqrtP(l/g) exact nếu l/g ra hữu tỉ có căn đẹp ⇒ T dạng (a√b/c)·π (vd `2π√5/7` với l=1, g=9,8). Hệ quả cần ghi: đề "g = 10 VÀ lấy π² = 10" khai `gAsPiSquared:true` (chứ không khai g:10) — vì hai giả thiết đó chỉ nhất quán khi g ≡ π²; asserts kèm theo: **ĐÃ PHÁN QUYẾT §14.5 — prompt P2 hướng dẫn override `tol: 0.02` cho asserts trong plan gAsPiSquared, engine KHÔNG tự nới tol.**
 
 ## 6. Công thức đóng từng query (`oscCompute.ts`)
 
@@ -232,7 +247,7 @@ Ký hiệu: pha(t) = addP(mulP(ω, t), φ) — PiScalar; mọi query chạy SONG
 | `initial_phase` | φ chuẩn hóa (−π, π] | `−π/2 rad` |
 | `vmax` / `amax` | Aω / Aω² | `50π cm/s`; `500π² cm/s²` |
 | `speed_at_x` | ω·√(A²−x²) — đòi \|x\| ≤ A, vượt ⇒ violation | hữu tỉ hoặc một căn |
-| `x_at_speed` | √(A²−v²/ω²) — đòi v ≤ v_max | như trên |
+| `x_at_speed` | √(A²−v²/ω²) — đòi 0 ≤ v ≤ v_max (v = 0 hợp lệ ⇒ \|x\| = A — biên; OS-6) | như trên |
 | `energy_total` | ½kA² (ưu tiên khi có k) ∥ ½mω²A² — A, x đổi m; đáp J | ω=aπ ⇒ π²: `π²/250 J`; qua k ⇒ hữu tỉ `2/25 J` |
 | `energy_potential_at` | ½mω²x² (∥ ½kx²); biến `t`: x = x_at(t) trước | cos lưới ⇒ cos² hữu tỉ (mulExact gộp radicand) ⇒ exact giữ |
 | `energy_kinetic_at` | W − Wt (subP cùng bậc ⇒ exact) | `π²/1000 J` |
@@ -241,12 +256,14 @@ Ký hiệu: pha(t) = addP(mulP(ω, t), φ) — PiScalar; mọi query chạy SONG
 
 Khi cả hai nguồn năng lượng khả dụng (k VÀ m,ω): tính theo k, tự sinh check `½kA² = ½mω²A²` (tương đương ω²=k/m đã assert ở §5.2 — check rẻ, giữ cho minh bạch).
 
+**Bảng unit đáp (engine ghi — C6; đây là đích của dẫn chiếu §3.4 — OS-6):** `x_at`/`amplitude`/`x_at_speed`/`x_where_energy_ratio` → `units.length` (cm/m); `v_at`/`vmax`/`speed_at_x` → `unit` khai của query, mặc định `units.length`/s; `a_at`/`amax` → tương tự (cm/s² hay m/s²); `period`/`first_time_at_x` → `s`; `frequency` → `Hz`; `omega` → `rad/s`; `initial_phase` → `rad`; `energy_*` → `J`. Text giữ exact-first ("1/5 s", "π/12 s") — thập phân là việc bridge (phán quyết chung §15.2).
+
 ## 7. `first_time_at_x` — nghiệm lượng giác cơ bản, lưới-trước số-sau
 
 Bài: thời điểm ĐẦU TIÊN t > 0 vật qua x = x₀ theo chiều cho trước. Cơ chế hai đường, ghi rõ đường nào vào `checks[]`:
 
 1. **Tỉ số c = x₀/A.** |c| > 1 (quá EPS) ⇒ violation "x₀ ngoài đoạn [−A, A]". |c| = 1 ⇒ trường hợp BIÊN: v = 0 tại đó, `direction` phải là `'any'` (khác ⇒ error "tại biên không có chiều qua"); nghiệm là mốc tới biên.
-2. **Đường LƯỚI (exact):** nếu c exact-khớp một giá trị cos của lưới 16 (`{0, ±1/2, ±√2/2, ±√3/2, ±1}`, so bằng cmpScalar trên exact — KHÔNG snap float) ⇒ θ₀ = arccos(c) ∈ [0, π] là bội exact của π/6 hoặc π/4. Nghiệm: pha ≡ ±θ₀ (mod 2π). Lọc chiều bằng dấu sin: v > 0 ⇔ sin(pha) < 0 ⇔ nhánh **−θ₀**; v < 0 ⇔ nhánh **+θ₀**; `'any'` = min hai nhánh. Với mỗi nhánh: t₀ = divP(subP(nhánh, φ), ω) và t = t₀ + m·T, m nguyên nhỏ nhất cho t > EPS_T — m ước lượng bằng float rồi XÁC NHẬN exact bằng cmpScalar (t > 0 và t − T ≤ 0 ∨ không hợp lệ). Số học: nhánh, φ cùng bậc 1 ⇒ hiệu exact; chia ω bậc 1 ⇒ t hữu tỉ (đề 10π); chia ω bậc 0 ⇒ t bậc 1 (`π/12 s`). Cả hai exact.
+2. **Đường LƯỚI (exact):** nếu c exact-khớp một giá trị cos của lưới 16 (`{0, ±1/2, ±√2/2, ±√3/2, ±1}` — **theo luật equality-struct §3.2 (OS-3): đối chiếu struct `Exact` từng thành phần; c hữu tỉ vs mốc vô tỉ ±√2/2, ±√3/2 ⇒ mismatch ngay, rơi đường số — KHÔNG dùng cmpScalar vì nhánh khác-radicand của nó là so float EPS 1e-9**) ⇒ θ₀ = arccos(c) ∈ [0, π] là bội exact của π/6 hoặc π/4. Nghiệm: pha ≡ ±θ₀ (mod 2π). Lọc chiều bằng dấu sin: v > 0 ⇔ sin(pha) < 0 ⇔ nhánh **−θ₀**; v < 0 ⇔ nhánh **+θ₀**; `'any'` = min hai nhánh. Với mỗi nhánh: t₀ = divP(subP(nhánh, φ), ω) và t = t₀ + m·T, m nguyên nhỏ nhất cho t > EPS_T — m ước lượng bằng float rồi XÁC NHẬN exact bằng DẤU của PiScalar (dấu của s.num — π > 0 nên dấu PiScalar = dấu s; không so cấu trúc chéo radicand): t > 0 và t − T ≤ 0 ∨ không hợp lệ. Số học: nhánh, φ cùng bậc 1 ⇒ hiệu exact; chia ω bậc 1 ⇒ t hữu tỉ (đề 10π); chia ω bậc 0 ⇒ t bậc 1 (`π/12 s`). Cả hai exact.
 3. **Đường SỐ (off-grid, trung thực):** θ₀ = `Math.acos(c_float)`; cùng phép liệt kê nhánh trên float; đáp qua recognize (thường trượt ⇒ thập phân, `approximate:true`). `checks[]` ghi `"first_time: off-grid, đường số"` để người đọc thấy cơ chế.
 4. **Quy ước t > 0 nghiêm ngặt** (EPS_T = 1e-9 s): trạng thái ĐẦU trùng (x₀, chiều) không tính là "qua lần đầu" — khớp cách hỏi đề VN; ghi ở §14.4 cho phản biện soát.
 
@@ -267,13 +284,15 @@ Bài: thời điểm ĐẦU TIÊN t > 0 vật qua x = x₀ theo chiều cho trư
 
 **8.2. Asserts khai báo:** như v0 §7.2 nguyên vẹn (query + equals + tol mặc định TOL_ASSERT=1e-3, override được). **8.3. Ngưỡng:** dùng chung EPS_SELF=1e-6, TOL_ASSERT=1e-3 của v0 (C10) — không đặt hằng mới.
 
+**8.4. Kỷ luật lỗi — pipeline KHÔNG BAO GIỜ throw (OS-2, ĐÃ PHÁN QUYẾT):** mọi suy biến số học phải hoặc bị chặn TỪ ZOD (refine > 0 §4 — vì `divExact` THROW khi mẫu 0: T = 0 lọt qua sẽ nổ xuyên pipeline), hoặc bị guard chặn trước phép chia (A > 0 §5.3; ω null §5.2), hoặc — lưới an toàn cuối — được `runPhysics` bắt (try/catch quanh osc pipeline, DIFF 2 §11) và đổi thành `errors[]` + `ok:false` với message tiếng Việt. Không một Error nào được ném ra tới route/bridge.
+
 ## 9. Scene (`oscScene.ts`) + charts
 
 ### 9.1. Vật dao động trên trục ngang
 
-Dựng khi model đủ **A và ω** (φ thiếu ⇒ minh họa φ=0, gắn tag `illustrative:phi0` — phân vân §14.7): trục x của geo3d, VTCB tại gốc.
+Dựng ANIMATE khi model đủ **A, ω VÀ φ**. **φ thiếu ⇒ KHÔNG animate — dựng TĨNH** (points + line quỹ đạo như dưới, agent đậu tại VTCB, KHÔNG timeline; bỏ hẳn phương án "minh họa φ=0 + tag `illustrative:phi0`" — **ĐÃ PHÁN QUYẾT §14.7a**): trục x của geo3d, VTCB tại gốc.
 
-- Points: `O`(0,0,0) "VTCB"; `Bp`(A,0,0) nhãn `"Biên +A (4 cm)"`; `Bm`(−A,0,0); Line `Bm–Bp` solid xám (đoạn quỹ đạo). Điểm phụ theo query: `X0`(x₀,0,0) khi có first_time (nhãn kèm đáp).
+- Points: `O`(0,0,0) "VTCB"; `Bp`(A,0,0) nhãn `"Biên +A"`; `Bm`(−A,0,0) nhãn `"Biên −A"`; Line `Bm–Bp` solid xám (đoạn quỹ đạo). Điểm phụ theo query: `X0`(x₀,0,0) khi có first_time, nhãn trần `"x₀"`. **LABEL TRẦN toàn bộ scene (OS-1 — ĐÃ PHÁN QUYẾT, đồng bộ F8 và đồng bộ chéo với dynamics cùng đợt): KHÔNG nhúng bất kỳ giá trị nào — dù đề cho (A = 4 cm) hay engine tính (đáp first_time) — vào label; mọi giá trị nằm ở `answers[]`.**
 - Agent: initialPosition [A·cos φ, 0, 0]; màu/radius theo bảng v0 (radius = max(0.12, 0.02·span), span = 2A).
 - **Timeline:** T_phys = max(2T, mọi t trong queries, mọi đáp first_time, 1); quy tắc playback k GIỮ NGUYÊN v0 §8.2 (3–15 s thật thì k=1, ngoài đó D_pb=10, k=T_phys/10 — T=0,2 s ⇒ k=0,1: slow-motion ×10, mắt thấy 5 chu kỳ trong 10 s). Track [0, D_pb], biến t là giây playback:
 
@@ -290,7 +309,7 @@ Hệ số trong `Math.cos`: **ω·k** (đổi trục thời gian playback) và *
 
 ### 9.2. Con lắc đơn: scene TĨNH
 
-Đề con lắc đơn trong phạm vi chỉ cho l, g (không biên độ) ⇒ KHÔNG animate được trung thực. Dựng tĩnh: điểm treo `P`(0,0,l), dây `P–M` solid, vật `M`(0,0,0) label kèm đáp ("T = 2 s"). Không timeline. Animate cung tròn (cos lồng — §2.2 xác nhận chạy được) để dành v2, phân vân §14.7.
+Đề con lắc đơn trong phạm vi chỉ cho l, g (không biên độ) ⇒ KHÔNG animate được trung thực. Dựng tĩnh: điểm treo `P`(0,0,l), dây `P–M` solid, vật `M`(0,0,0) **label trần ("M" hoặc tên vật từ `scene.labels`) — KHÔNG kèm đáp: chuỗi cũ label "T = 2 s" vi phạm F8, giá trị T nằm ở `answers[]` (OS-1)**. Không timeline. Animate cung tròn (cos lồng — §2.2 xác nhận chạy được) để dành v2 — **ĐÃ PHÁN QUYẾT §14.7b**.
 
 ### 9.3. Charts
 
@@ -407,7 +426,7 @@ queries: `energy_total`, `energy_potential_at{at:{x:2}}`, `energy_kinetic_at{at:
 ```
 queries: `energy_total`, `vmax`, `energy_kinetic_at{at:{t:{"n":1,"d":24}}}`.
 
-**Tính tay:** m = 1/5 kg; A = 5 cm → 1/20 m. W = ½·(1/5)·(4π)²·(1/20)² = (1/10)·16π²·(1/400) = **π²/250 J ≈ 0,0395** ({1/250, k:2}). vmax = 5·4π = **20π cm/s ≈ 62,8319** — đúng mẫu "20π cm/s" của quy ước hệ số-π. Pha(1/24) = 4π/24 = π/6 (lưới) ⇒ cos = √3/2 ⇒ x = 5√3/2 cm → √3/40 m; x² = 3/1600 (mulExact gộp radicand 3·3 → hữu tỉ); Wt = (1/10)·16π²·(3/1600) = **3π²/1000 J**; Wđ = π²/250 − 3π²/1000 = 4π²/1000 − 3π²/1000 = **π²/1000 J ≈ 0,0099** (subP CÙNG bậc 2 ⇒ exact). Bảo toàn: Wđ + Wt = 4π²/1000 = W ✓ EXACT trên PiScalar — đây là contract cho "năng lượng bảo toàn exact khi được". (Đề VN hay kèm "lấy π² = 10" để chấm 0,04 J — engine KHÔNG fudge: trả π²/250 và approx 0,0395; xem phân vân §14.6.)
+**Tính tay:** m = 1/5 kg; A = 5 cm → 1/20 m. W = ½·(1/5)·(4π)²·(1/20)² = (1/10)·16π²·(1/400) = **π²/250 J ≈ 0,0395** ({1/250, k:2}). vmax = 5·4π = **20π cm/s ≈ 62,8319** — đúng mẫu "20π cm/s" của quy ước hệ số-π. Pha(1/24) = 4π/24 = π/6 (lưới) ⇒ cos = √3/2 ⇒ x = 5√3/2 cm → √3/40 m; x² = 3/1600 (mulExact gộp radicand 3·3 → hữu tỉ); Wt = (1/10)·16π²·(3/1600) = **3π²/1000 J**; Wđ = π²/250 − 3π²/1000 = 4π²/1000 − 3π²/1000 = **π²/1000 J ≈ 0,0099** (subP CÙNG bậc 2 ⇒ exact). Bảo toàn: Wđ + Wt = 4π²/1000 = W ✓ EXACT trên PiScalar — đây là contract cho "năng lượng bảo toàn exact khi được". (Đề VN hay kèm "lấy π² = 10" để chấm 0,04 J — engine KHÔNG fudge: trả π²/250 và approx 0,0395; **ĐÃ PHÁN QUYẾT §14.6: engine trung thực, trình bày xấp xỉ "≈ 0,04 nếu lấy π² = 10" là việc lời giải LLM.**)
 
 ---
 
@@ -459,8 +478,18 @@ Phủ queries: 17/17 (mỗi kind xuất hiện ≥1 lần); phủ nguồn rate {
 
 ```
 api/_lib/kernel/physics/
-  planSchema.ts      (v0) ← DIFF 1: import OscillatorOp/OscQuerySchema, thêm vào 2 discriminatedUnion (2 dòng)
-  runPhysics.ts      (v0) ← DIFF 2: dispatch op 'oscillator' → osc pipeline; T_phys góp thêm "2T" khi có osc
+  planSchema.ts      (v0) ← DIFF 1 — kê TRUNG THỰC từng dòng (OS-4, thay câu cũ "2 dòng" kê THIẾU):
+                       (a) import OscillatorOp, OscQuerySchema từ './oscSchema';
+                       (b) thêm OscillatorOp vào union op + 17 query osc vào union query (2 dòng);
+                       (c) refine CẤP PLAN: plan có op 'oscillator' ⇒ units.time = 's';
+                       (d) refine CẤP PLAN: plan có op 'oscillator' ⇒ units.length ∈ {'m','cm'};
+                       (e) superRefine CẤM TRỘN op 'oscillator' với op động học (mover1d…) trong CÙNG plan v1
+                           — không cấm thì plan trộn + units.length='cm' làm qty* của kinematics THROW (OS-4);
+                       ⇒ (c)–(e) là LOGIC MỚI trong planSchema v0 (không phải câu refine có sẵn): review diff
+                         + test planSchema v0 phải chạy kèm, ước ~15–20 dòng chứ không phải 2.
+  runPhysics.ts      (v0) ← DIFF 2: dispatch op 'oscillator' → osc pipeline; T_phys góp thêm "2T" khi có osc;
+                       try/catch quanh osc pipeline đổi mọi Error còn lọt thành errors[] — KHÔNG throw ra route (§8.4, OS-2);
+                       query osc trỏ op động học (hoặc ngược lại) ⇒ error tường minh "nhầm loại op" (§5.2, OS-6).
   kinematics.ts  compute.ts  scene.ts   (v0 — KHÔNG đụng)
   oscSchema.ts       MỚI — §4
   piScalar.ts        MỚI — §3 (PiScalar + EXACT_COS vòng tròn + displayPiScalar + certifyPiScalar)
@@ -471,7 +500,8 @@ api/_lib/kernel/physics/
 ```
 
 - **Import được phép:** `../scalar`, `../analysis/recognize`, `../compute/answer` (certifyScalar/cmpScalar), `zod`, `import type` geometry — đúng danh mục C2; KHÔNG cần solver1d.
-- **Nếu v0 thi công TRƯỚC:** hai DIFF trên là toàn bộ điểm chạm (thuần cộng nhánh, không đổi hành vi kinematics — test v0 phải xanh nguyên). **Nếu thi công CHUNG đợt:** union viết thẳng một lần, không có diff.
+- **Nếu v0 thi công TRƯỚC:** hai DIFF trên là toàn bộ điểm chạm (thuần cộng nhánh + refine mới kê ở DIFF 1, không đổi hành vi kinematics với plan thuần động học — test v0 phải xanh nguyên). **Nếu thi công CHUNG đợt:** union + refine viết thẳng một lần, không có diff.
+- **Chép nhắc điều kiện F1 (OS-6, mirror spec dc-circuit §14):** wiring P2 (bridge/route/prompt/few-shot) ngoài phạm vi spec này, nhưng **route nối osc PHẢI có quota** — ghi lại tại đây để điều kiện không rơi mất khi tích hợp.
 - Ràng buộc cứng kế thừa v0 §4 nguyên vẹn: không sửa `run.ts`/`index.ts` gốc/`src/**`; chưa nối kernel-dist (wiring là P2); baseline test hiện có chỉ được CỘNG (~55–60 test mới ước tính: piScalar ≈15, oscillation ≈20, oscCompute ≈12, scene ≈5, contract 10 bài ≈ 25–30 assert).
 - Nghi thức kiểm F9: chạy thêm typecheck qua `tsconfig.kernel.json` (đang được vòng sửa v0 bổ sung).
 
@@ -489,19 +519,55 @@ api/_lib/kernel/physics/
 - Đề cho A âm / dạng x = A·cos²(…) / hàm không điều hòa ⇒ schema reject, error rõ (không dịch ép).
 - Chart UI frontend, wiring route/bridge/prompt (P2), con lắc đơn animate cung tròn (§14.7).
 
-## 14. ĐIỂM CÒN PHÂN VÂN — cho phản biện (trung thực chỗ không chắc)
+## 14. Điểm phân vân — ĐÃ PHÁN QUYẾT TOÀN BỘ (phản biện đợt 2, 22/08)
+
+Mười điểm giữ nguyên văn câu hỏi gốc (trace), mỗi điểm ghi phán quyết tại chỗ. Nguồn: `../reviews/2026-08-21-wave2-specs-review.md` §Findings OSCILLATION — không mở lại tranh luận.
 
 1. **Hai quy ước đơn vị trong một pack:** kinematics v0 "hệ nhất quán, không đổi"; osc "đổi exact tại công thức SI" (§5.1). Bất khả kháng về vật lý (J = kg·m²/s²), nhưng hai triết lý song song trong cùng planSchema — phản biện xác nhận chấp nhận, hay ép v0 cũng chuyển per-quantity toàn phần cho đồng nhất?
-2. **PiRat {n,d,pi} vs khai độ:** đã chọn phân số literal (§3.1) vì "chép nguyên văn 2π/3" ít lỗi hơn LLM đổi 2π/3→120°. Nhược: schema hơi lạ mắt với few-shot. Cần phản biện + thử prompt thật ở P2.
-3. **Mở rộng recognize (TÙY CHỌN):** thêm 2 nhánh `(p/q)·π²` và `(p/q)·√b·π` (chèn sau nhánh 4, cùng reconstruct-check 1e-10 — quét √b·π: 78 radicand × asRational ≤64, chi phí nhỏ; đã kiểm không khớp-giả với hữu tỉ den≤200 vì π vô tỉ "đủ xa"). KHÔNG bắt buộc cho v1 vì PiScalar giữ exact thượng nguồn; chỉ đáng thêm nếu muốn lưới an toàn dày hơn khi collapse. Ai quyết: phản biện. Nếu thêm ⇒ đụng file có sẵn `recognize.ts` (ngoài ranh giới "chỉ thêm file" — cần ghi vào plan riêng).
-4. **Quy ước first_time t > 0 nghiêm ngặt** (§7.4): trạng thái đầu trùng đích không tính. Đề VN đại đa số hỏi vậy, nhưng có đề "kể từ t = 0" tính cả t=0? Phản biện soát 5–10 đề thật.
-5. **gAsPiSquared + asserts của đề:** đề "g=10, π²=10" khai gAsPiSquared ⇒ g.approx = 9,8696; nếu đề kèm dữ kiện dư tính theo g=10 số học thuần (hiếm trong phạm vi con lắc chỉ hỏi T/f), assert lệch tới ~1,3% > TOL_ASSERT 1e-3 ⇒ violation oan. Đề xuất: prompt P2 hướng dẫn override tol=0.02 cho asserts trong plan gAsPiSquared — hay engine tự nới? Chưa chốt.
-6. **Hiển thị π² cho đáp "sách lấy π²=10":** O8 trả `π²/250 J ≈ 0,0395` trong khi đáp án sách in `0,04 J`. Engine đúng và trung thực; nhưng học sinh so đáp sẽ thấy lệch. Có cần field phụ `noteIfPiSq10` ("≈ 0,04 nếu lấy π²=10") do engine tính thêm — hay để lời giải LLM v2 trình bày? Nghiêng phương án hai (engine không in số theo quy ước gần đúng), chờ phản biện.
-7. **Scene:** (a) φ thiếu → animate minh họa φ=0 + tag `illustrative:phi0` — có nên thay bằng "không animate" cho thuần khiết? (b) Con lắc đơn tĩnh (§9.2) — có đáng làm animate cung tròn với biên độ góc minh họa 0,15 rad ngay v1 (cos lồng đã xác minh chạy §2.2), đổi lấy rủi ro "hình vẽ mang số không có trong đề"?
-8. **Ranh giới dạng bài §13 dòng 3** (vmax+amax→ω; hai trạng thái→ω): rất phổ biến trong đề thi, closed-form ngắn. Kéo vào v1 luôn hay giữ kỷ luật "thà ít mà đúng"? Spec nghiêng GIỮ NGOÀI, cần phản biện phê chuẩn để chống phình phạm vi về sau.
-9. **|k| ≤ 2 của PiScalar** (§3): đủ cho phạm vi này; nếu pack sau (sóng cơ: v = λf, sóng dừng) cần bậc khác, nâng trần là đổi hằng — có nên đặt trần 3 ngay từ đầu? (Nghiêng: giữ 2, YAGNI.)
-10. **`x_at_speed`/`speed_at_x` trả GIÁ TRỊ DƯƠNG** (độ lớn) còn `v_at`/`a_at` trả đại số — nhất quán nội bộ nhưng khác dấu quy ước F18 của kinematics (`component:'y'` trả âm). Ghi để prompt v2 trình bày "x = ±4 cm" khi đề hỏi "tại li độ nào" (hai vị trí đối xứng — engine trả một số dương kèm ngữ nghĩa ±, text answer ghi "±4 cm"? hiện thiết kế trả "4 cm" + query semantics "độ lớn li độ"). Phản biện chốt cách ghi text.
+   **ĐÃ PHÁN QUYẾT: CHẤP NHẬN per-quantity cho osc** (v0 thực tế đã per-quantity một phần); KHÔNG ép v0 đổi.
+2. **PiRat {n,d,pi} vs khai độ:** đã chọn phân số literal (§3.1) vì "chép nguyên văn 2π/3" ít lỗi hơn LLM đổi 2π/3→120°. Nhược: schema hơi lạ mắt với few-shot.
+   **ĐÃ PHÁN QUYẾT: GIỮ PiRat**; few-shot P2 BẮT BUỘC có ví dụ pha PHÂN SỐ (vd "2π/3" → `{n:2, d:3, pi:true}`).
+3. **Mở rộng recognize (TÙY CHỌN):** thêm 2 nhánh `(p/q)·π²` và `(p/q)·√b·π` (chèn sau nhánh 4, cùng reconstruct-check 1e-10 — quét √b·π: 78 radicand × asRational ≤64, chi phí nhỏ; đã kiểm không khớp-giả với hữu tỉ den≤200 vì π vô tỉ "đủ xa"). KHÔNG bắt buộc cho v1 vì PiScalar giữ exact thượng nguồn.
+   **ĐÃ PHÁN QUYẾT: KHÔNG mở rộng recognize ở v1** — PiScalar là đường chính (phản biện đã chạy máy xác nhận recognize không nhận π², √b·π, k/π và PiScalar là cần thiết); giữ nguyên `recognize.ts`, không đụng ranh giới "chỉ thêm file".
+4. **Quy ước first_time t > 0 nghiêm ngặt** (§7.4): trạng thái đầu trùng đích không tính.
+   **ĐÃ PHÁN QUYẾT: GIỮ t > 0 nghiêm ngặt** — khớp cách hỏi đề VN.
+5. **gAsPiSquared + asserts của đề:** đề "g=10, π²=10" khai gAsPiSquared ⇒ g.approx = 9,8696; dữ kiện dư tính theo g=10 số học thuần có thể lệch ~1,3% > TOL_ASSERT 1e-3 ⇒ violation oan.
+   **ĐÃ PHÁN QUYẾT: prompt P2 hướng dẫn override `tol: 0.02` cho asserts trong plan gAsPiSquared; ENGINE KHÔNG TỰ NỚI tol** (giữ TOL_ASSERT chuẩn cho mọi plan khác) — đã ghi vào §5.4.
+6. **Hiển thị π² cho đáp "sách lấy π²=10":** O8 trả `π²/250 J ≈ 0,0395` trong khi đáp án sách in `0,04 J`.
+   **ĐÃ PHÁN QUYẾT: engine TRUNG THỰC (không field `noteIfPiSq10`, không in số theo quy ước gần đúng)** — trình bày "≈ 0,04 nếu lấy π² = 10" là việc lời giải LLM (đã ghi vào O8).
+7. **Scene:** (a) φ thiếu → animate minh họa φ=0? (b) Con lắc đơn animate cung tròn ngay v1?
+   **ĐÃ PHÁN QUYẾT: (a) φ thiếu ⇒ KHÔNG animate — dựng TĨNH (bỏ phương án minh họa φ=0 + tag illustrative, đã sửa §9.1); (b) con lắc đơn animate cung tròn để V2 (giữ scene tĩnh §9.2)** — không đưa vào hình số liệu không có trong đề.
+8. **Ranh giới dạng bài §13 dòng 3** (vmax+amax→ω; hai trạng thái→ω): rất phổ biến trong đề thi, closed-form ngắn. Kéo vào v1 luôn?
+   **ĐÃ PHÁN QUYẾT: GIỮ NGOÀI v1** — kỷ luật "thà ít mà đúng", chống phình phạm vi; few-shot abstain ở P2.
+9. **|k| ≤ 2 của PiScalar** (§3): có nên đặt trần 3 ngay từ đầu?
+   **ĐÃ PHÁN QUYẾT: GIỮ TRẦN |k| ≤ 2** (YAGNI — pack sau cần thì nâng hằng).
+10. **`x_at_speed`/`speed_at_x` trả GIÁ TRỊ DƯƠNG** (độ lớn) còn `v_at`/`a_at` trả đại số — text answer ghi "±4 cm" hay "4 cm"?
+   **ĐÃ PHÁN QUYẾT: GIỮ trả MỘT số dương (độ lớn)** — text engine "4 cm" + ngữ nghĩa query "độ lớn li độ"; trình bày "x = ±4 cm" (hai vị trí đối xứng) là việc lời giải LLM, cùng tinh thần phán quyết chung §15.2.
+
+## 15. Phán quyết chung đợt 2 (áp cho CẢ BA spec: dynamics · oscillation · dc-circuit)
+
+Ba luật chung ĐÃ DUYỆT tại `../reviews/2026-08-21-wave2-specs-review.md` (Kết luận):
+
+1. **Label trần:** scene KHÔNG nhúng giá trị engine tính vào bất kỳ label nào (đồng bộ F8) — mọi giá trị nằm ở `answers[]`. *Spec này là nơi vi phạm bị phát hiện (OS-1: "Biên +A (4 cm)", "T = 2 s") — đã sửa §9.1/§9.2 về label trần.*
+2. **Exact-first, thập phân ở bridge:** engine giữ text exact ("1/5 s", "π/12 s", "2/25 J"); mọi formatter thập phân kiểu VN ("0,2 s", "0,08 J") là việc tầng bridge/UI lúc wiring — engine KHÔNG in số theo quy ước trình bày (cùng gốc với §14.6, §14.10). *Chú thích "= 0,2 s" trong lời tính tay §10 chỉ là đối chiếu ≈ cho người đọc, không phải text engine.*
+3. **Chính tả field query theo v0:** field dùng chung viết đúng chính tả planSchema v0 — `value`/`vUnit`/`component`. *Queries osc đã đúng chính tả: giá trị vào kèm đơn vị dùng `vUnit` (`x_at_speed{v, vUnit}`), `unit` chỉ cho đơn vị ĐẦU RA (§4); dynamics đổi theo ở DY-3.*
+
+## 16. Changelog phản biện (22/08)
+
+Áp trọn kết luận `../reviews/2026-08-21-wave2-specs-review.md` (mọi finding + phán quyết ĐÃ DUYỆT). Không đổi bất kỳ giá trị số/đáp nào của 10 bài contract O1–O10 (phản biện xác nhận 31/31 số đúng toàn đợt) — chỉ sửa thiết kế/khai báo/mô tả.
+
+| Finding / phán quyết | Vị trí sửa trong spec |
+|---|---|
+| OS-1 (chặn) — label trần, giá trị về answers[] | §9.1 (Bp/Bm/X0 label trần + luật in đậm), §9.2 (vật M label trần), §15.1 |
+| OS-2 (chặn) — refine > 0 sau quy đổi; không bao giờ throw | §4 (khối "Refine của op oscillator"), §5.3 (guard đi kèm), §8.4 (kỷ luật lỗi), §11 DIFF 2 (try/catch) |
+| OS-3 — so-exact bằng equality struct, bỏ câu "không snap float" | §3.2 (luật so-exact — nơi định nghĩa), §5.3, §7 bước 2 (cả xác nhận m bằng dấu PiScalar thay cmpScalar) |
+| OS-4 (chặn) — kê DIFF trung thực + cấm trộn op | Đầu file (Phạm vi), §4 (ràng buộc cấp plan 1–3), §11 DIFF 1 (a)–(e) |
+| OS-5 — guard A > 0 | §4 (refine initial {0,0}), §5.3 (guard trước khi tính φ) |
+| OS-6 (thấp) — dẫn chiếu, x_at_speed v ≥ 0, error nhầm loại op, formatter, quota F1 | §3.4 (dẫn chiếu → bảng unit §6), §6 (bảng unit mới + dòng x_at_speed), §4 (`v: Num.min(0)`), §5.2 (error "nhầm loại op"), §11 (chép nhắc F1), §15.2 (formatter) |
+| EXACT_COS 16 điểm | §3.2 — 1 dòng phán quyết chính thức "mở rộng C8 HỢP LỆ" |
+| 10 phán quyết §14 | Ghi "ĐÃ PHÁN QUYẾT" từng điểm tại §14.1–§14.10; áp vào thân bài: §2.1 (3), §5.4 (5), O8 (6), §9.1 (7a), §9.2 (7b) |
+| Phán quyết chung (a)(b)(c) | §15 (+ các mục nó trỏ tới) |
 
 ---
 
-*Spec này sẽ bị phản biện trước khi code. Mọi khẳng định về hành vi code có sẵn (recognize, AnimatedAgent, scalar/certify) đều đã kiểm bằng cách đọc + chạy code thật ngày 21/08/2026; mọi con số trong 10 bài contract đã kiểm lại bằng script số học độc lập (kể cả quét minimality first-time).*
+*Spec này ĐÃ qua phản biện đợt 2 (22/08) — kết luận tại `../reviews/2026-08-21-wave2-specs-review.md`, toàn bộ phán quyết đã áp. Mọi khẳng định về hành vi code có sẵn (recognize, AnimatedAgent, scalar/certify) đều đã kiểm bằng cách đọc + chạy code thật ngày 21/08/2026 và được phản biện chạy lại độc lập; mọi con số trong 10 bài contract đã kiểm hai vòng bằng script số học độc lập (kể cả quét minimality first-time) — không sai một số nào.*

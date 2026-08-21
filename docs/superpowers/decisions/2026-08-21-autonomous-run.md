@@ -116,6 +116,10 @@ Pipeline: spec (3 agent) → phản biện thiết kế (2 agent) → sửa spec
   Đang phản biện code (phiên 2). Chem pack: snapshot WIP d1f811d, agent đang
   viết tiếp.
 
+- **D18 · [NGƯỜI DÙNG, sáng 22/08] Từ đợt agent tiếp theo: dùng model opus 4.8,
+  reasoning effort high.** Các agent đợt trước chạy model mặc định của phiên;
+  từ giờ mọi agent mới spawn với opus 4.8 để tăng chất lượng phản biện/thi công.
+
 ## Quyết định chờ ghi tiếp (sẽ bổ sung trong đêm)
 
 - Phân xử 5 điểm lệch giữa spec kiến trúc và spec Lý (theo khuyến nghị phản biện).
