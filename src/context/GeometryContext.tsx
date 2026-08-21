@@ -7,6 +7,7 @@ import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/context/AuthContext';
 import { cacheQuotaFromResponse } from '@/lib/quota';
+import { fetchWithTimeout } from '@/lib/fetchWithTimeout';
 import { collectPlanePointIds, planeReferencesPoint } from '@/lib/geometry/planeReferences';
 import { normalizePlanarPolygon } from '@/lib/geometry/planeGeometry';
 const LOCAL_API = import.meta.env.VITE_LOCAL_API_URL ?? '';
@@ -47,12 +48,12 @@ async function invokeLocalApi(endpoint: string, body: Record<string, unknown>): 
     const headers: Record<string, string> = { 'Content-Type': 'application/json' };
     if (token) headers['Authorization'] = `Bearer ${token}`;
 
-    const res = await fetch(`${LOCAL_API}${endpoint}`, {
+    const res = await fetchWithTimeout(`${LOCAL_API}${endpoint}`, {
       method: 'POST',
       headers,
       credentials: 'same-origin',
       body: JSON.stringify(body),
-    });
+    }, 130000);  // chặn treo vô hạn nếu hàm máy chủ đơ (server tự cap ~120s)
     // Đọc thân dạng CHỮ trước rồi mới thử parse JSON. Khi hàm máy chủ crash/quá giờ, Vercel trả về
     // TRANG LỖI (không phải JSON, vd "An error occurred…") — gọi res.json() thẳng sẽ ném
     // "Unexpected token 'A'…" khó hiểu. Tách ra để báo lỗi gọn gàng cho người dùng.
@@ -87,14 +88,22 @@ async function invokeLocalApiStream(
     const headers: Record<string, string> = { 'Content-Type': 'application/json' };
     if (token) headers['Authorization'] = `Bearer ${token}`;
 
+    // Idle-timeout: chỉ huỷ khi luồng NGƯNG chảy (đơ) — bài vẽ lâu nhưng vẫn báo tiến độ thì không bị cắt.
+    const controller = new AbortController();
+    const IDLE_MS = 90000;
+    let idleTimer = setTimeout(() => controller.abort(), IDLE_MS);
+    const bumpIdle = () => { clearTimeout(idleTimer); idleTimer = setTimeout(() => controller.abort(), IDLE_MS); };
+
     const res = await fetch(`${LOCAL_API}${endpoint}?stream=true`, {
       method: 'POST',
       headers,
       credentials: 'same-origin',
       body: JSON.stringify(body),
+      signal: controller.signal,
     });
 
     if (!res.ok) {
+      clearTimeout(idleTimer);
       const data = await res.json().catch(() => null) as LocalApiData | null;
       cacheQuotaFromResponse(res, data);
       return { data: null, error: { message: data?.error || `HTTP ${res.status}`, code: data?.code, status: res.status } };
@@ -110,6 +119,7 @@ async function invokeLocalApiStream(
     while (true) {
       const { done, value } = await reader.read();
       if (done) break;
+      bumpIdle();  // vừa nhận dữ liệu → gia hạn đồng hồ đơ
       buffer += decoder.decode(value, { stream: true });
       const chunks = buffer.split('\n\n');
       buffer = chunks.pop() || ""; 
@@ -126,6 +136,7 @@ async function invokeLocalApiStream(
               chunk?: string;
             };
             if (parsed.error) {
+              clearTimeout(idleTimer);
               return { data: null, error: { message: parsed.error, code: parsed.code } };
             }
             if (parsed.status === 'done') {
@@ -142,10 +153,15 @@ async function invokeLocalApiStream(
       }
     }
     
+    clearTimeout(idleTimer);
     cacheQuotaFromResponse(res, finalData);
     return { data: finalData, error: null };
   } catch (err: unknown) {
-    return { data: null, error: { message: err instanceof Error ? err.message : 'Network error' } };
+    const aborted = err instanceof Error && err.name === 'AbortError';
+    const message = aborted
+      ? 'Máy chủ phản hồi quá lâu, vui lòng thử lại (nếu gửi ảnh, thử chụp gọn/đề ngắn hơn).'
+      : (err instanceof Error ? err.message : 'Network error');
+    return { data: null, error: { message } };
   }
 }
 

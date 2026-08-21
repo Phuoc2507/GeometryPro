@@ -143,6 +143,8 @@ const Landing = () => {
             <a href="#faq" className="hover:text-foreground transition-colors">FAQ</a>
           </div>
           <div className="flex items-center gap-2">
+            {/* Mobile: nav ẩn nên đưa "Bảng giá" ra đây để không mất lối vào trang giá. */}
+            <Button variant="ghost" size="sm" className="sm:hidden" onClick={() => navigate('/bang-gia')}>Bảng giá</Button>
             {!isLoading && !user && (
               <Button variant="ghost" size="sm" onClick={() => navigate('/auth')}>Đăng nhập</Button>
             )}

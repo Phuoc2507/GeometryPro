@@ -109,6 +109,24 @@ async function handler(req, res) {
   }
 
   const out = assembleSolveResult(eng, parsed);
+
+  // Lời giải RỖNG (không bước + không đáp số) và engine cũng không giải được → không có
+  // giá trị gì cho người dùng. Hoàn credit và báo lỗi thay vì trừ 20 credit "trắng".
+  const noSteps = !Array.isArray(out.steps) || out.steps.length === 0;
+  const noAnswer = !out.final_answer || !String(out.final_answer).trim();
+  if (noSteps && noAnswer && !engineSolved(eng)) {
+    await refundIfCharged();
+    await logBrokenProblem({
+      endpoint: 'solve', userId: access.userId, prompt: problem,
+      errorMessage: 'Empty solution (no steps, no answer)', errorStage: 'empty',
+      durationMs: Date.now() - startedAt,
+    });
+    return res.status(422).json({
+      error: 'Chưa giải được bài này. Đã hoàn lại credit — bạn thử lại hoặc sửa đề rõ hơn nhé.',
+      code: 'empty_solution',
+    });
+  }
+
   // Ưu tiên: tier từ solveProblem → tier lỗi (catch) → classification tái dùng từ hình (nhánh reuse).
   const tier = (eng && eng.tier) || engTier || (geometry && geometry.classification) || null;
   const result = { ...out, tier };

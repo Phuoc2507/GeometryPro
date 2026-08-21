@@ -32,7 +32,7 @@ const Auth = () => {
   const [displayName, setDisplayName] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [errors, setErrors] = useState<{ email?: string; password?: string; general?: string }>({});
+  const [errors, setErrors] = useState<{ email?: string; password?: string; general?: string; success?: boolean }>({});
 
   // Redirect if already logged in — nhưng KHÔNG đá đi khi đang ở phiên đặt lại mật khẩu.
   useEffect(() => {
@@ -74,7 +74,7 @@ const Auth = () => {
       if (isReset) {
         result = await resetPassword(email);
         if (!result.error) {
-          setErrors({ general: 'Vui lòng kiểm tra email để đặt lại mật khẩu.' });
+          setErrors({ general: 'Vui lòng kiểm tra email để đặt lại mật khẩu.', success: true });
           setIsSubmitting(false);
           return;
         }
@@ -94,11 +94,18 @@ const Auth = () => {
           errorMessage = 'Email này đã được đăng ký';
         } else if (errorMessage.includes('Email not confirmed')) {
           errorMessage = 'Vui lòng xác nhận email trước khi đăng nhập';
+        } else if (/rate limit/i.test(errorMessage)) {
+          errorMessage = 'Bạn thao tác hơi nhanh. Vui lòng đợi một lát rồi thử lại.';
+        } else if (/failed to fetch|network|load failed/i.test(errorMessage)) {
+          errorMessage = 'Mất kết nối mạng. Vui lòng kiểm tra internet và thử lại.';
+        } else if (/[A-Za-z]/.test(errorMessage) && !/[àáâãèéêìíòóôõùúăđĩũơưạảấầẩẫậắằẳẵặẹẻẽếềểễệỉịọỏốồổỗộớờởỡợụủứừửữựỳỵỷỹ]/i.test(errorMessage)) {
+          // Thông báo lỗi còn bằng tiếng Anh (chưa map) → thay bằng câu chung tiếng Việt.
+          errorMessage = 'Đã có lỗi xảy ra. Vui lòng thử lại.';
         }
 
         setErrors({ general: errorMessage });
       } else if (isSignUp) {
-        setErrors({ general: 'Vui lòng kiểm tra email để xác nhận tài khoản!' });
+        setErrors({ general: 'Vui lòng kiểm tra email để xác nhận tài khoản!', success: true });
       }
     } catch {
       setErrors({ general: 'Đã có lỗi xảy ra. Vui lòng thử lại.' });
@@ -318,7 +325,7 @@ const Auth = () => {
             {/* Error Message */}
             {errors.general && (
               <div className={`p-3 rounded-lg text-sm ${
-                errors.general.includes('xác nhận')
+                errors.success
                   ? 'bg-primary/10 text-primary border border-primary/20'
                   : 'bg-destructive/10 text-destructive border border-destructive/20'
               }`}>

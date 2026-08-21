@@ -124,6 +124,11 @@ export function UpgradeModal({ open, onOpenChange }: UpgradeModalProps) {
     }
   };
   const handleBuy = (planCode: string) => {
+    // Đang kiểm tra mã mời → đợi kết quả, đừng mua vội kẻo mất giảm 10%.
+    if (refStatus === 'checking') {
+      toast({ title: 'Đang kiểm tra mã mời…', description: 'Đợi một chút để được giảm 10% rồi hãy mua nhé.' });
+      return;
+    }
     // Nhớ mode để khi từ trang thanh toán quay lại, vào đúng vai trò của gói vừa mua.
     try { localStorage.setItem('geo3d:last-mode', mode); } catch { /* bỏ qua */ }
     startCheckout({ planCode, referralCode: refApplied || undefined }, planCode);

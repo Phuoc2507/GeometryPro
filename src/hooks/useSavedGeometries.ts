@@ -168,10 +168,15 @@ export function useSavedGeometries() {
         
       if (error) throw error;
       
-      setSavedGeometries(prev => prev.map(item => 
+      setSavedGeometries(prev => prev.map(item =>
         item.id === id ? { ...item, project_id } : item
       ));
-      
+
+      toast({
+        title: project_id ? "Đã thêm vào dự án!" : "Đã bỏ khỏi dự án",
+        description: project_id ? "Hình đã được thêm vào dự án." : undefined,
+      });
+
       return true;
     } catch (error) {
       console.error('Error moving to project:', error);

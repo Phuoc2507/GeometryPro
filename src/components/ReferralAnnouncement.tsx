@@ -5,8 +5,9 @@ import { Button } from '@/components/ui/button';
 import { Gift, Sparkles } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 
-// Không quảng bá ở các trang này (đăng nhập, quản trị, xem bài chia sẻ).
-const SKIP_PREFIXES = ['/auth', '/admin', '/s/'];
+// Không quảng bá ở các trang này (đăng nhập, quản trị, xem bài chia sẻ,
+// và ngay trang giới thiệu / bảng giá — nơi người dùng đang xem/mua rồi).
+const SKIP_PREFIXES = ['/auth', '/admin', '/s/', '/gioi-thieu', '/bang-gia'];
 
 // Thông báo quảng bá chương trình Mã Mời — hiện khi khách vào app (kể cả đã mua gói).
 // Có "Không hiện lại" (opt-out vĩnh viễn). Chỉ hiện 1 lần mỗi phiên để không làm phiền.

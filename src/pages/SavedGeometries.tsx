@@ -22,7 +22,7 @@ import { vi } from 'date-fns/locale';
 const SavedGeometries = () => {
   const navigate = useNavigate();
   const { user, isLoading: authLoading } = useAuth();
-  const { savedGeometries, isLoading, fetchGeometries, deleteGeometry, moveToProject } = useSavedGeometries();
+  const { savedGeometries, isLoading, fetchGeometries, deleteGeometry, moveToProject, updateGeometry } = useSavedGeometries();
   const { projects } = useProjects();
 
   useEffect(() => {
@@ -114,10 +114,13 @@ const SavedGeometries = () => {
           <ScrollArea className="h-[calc(100vh-200px)]">
             <div className="grid gap-4 md:grid-cols-2">
               {savedGeometries.map((geometry) => (
-                <button
+                <div
                   key={geometry.id}
+                  role="button"
+                  tabIndex={0}
                   onClick={() => handleLoadGeometry(geometry)}
-                  className="glass p-4 rounded-xl text-left hover:bg-secondary/50 transition-colors group border border-border/50"
+                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleLoadGeometry(geometry); } }}
+                  className="glass p-4 rounded-xl text-left hover:bg-secondary/50 transition-colors group border border-border/50 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                 >
                   <div className="flex items-start justify-between mb-3">
                     <div className="flex items-center gap-2">
@@ -154,7 +157,7 @@ const SavedGeometries = () => {
                     <p className="text-sm text-muted-foreground">
                       {geometry.geometry_data.points?.length || 0} điểm • {geometry.geometry_data.lines?.length || 0} đường
                     </p>
-                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <div className="flex items-center gap-1 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <button
@@ -190,6 +193,13 @@ const SavedGeometries = () => {
                             </DropdownMenuPortal>
                           </DropdownMenuSub>
                           <DropdownMenuItem
+                            onClick={(e) => { e.stopPropagation(); updateGeometry(geometry.id, { is_public: !geometry.is_public }); }}
+                          >
+                            {geometry.is_public
+                              ? (<><Lock className="w-4 h-4 mr-2" /> Gỡ công khai (tắt link)</>)
+                              : (<><Globe className="w-4 h-4 mr-2" /> Công khai (tạo link)</>)}
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
                             onClick={(e) => { e.stopPropagation(); exportProblemFile(geometry.geometry_data); }}
                           >
                             <Download className="w-4 h-4 mr-2" /> Tải tệp bài (.json)
@@ -208,7 +218,7 @@ const SavedGeometries = () => {
                       </Button>
                     </div>
                   </div>
-                </button>
+                </div>
               ))}
             </div>
           </ScrollArea>

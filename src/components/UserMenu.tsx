@@ -212,8 +212,9 @@ export function UserMenu() {
             Quản trị
           </DropdownMenuItem>
         )}
-        {/* Mở theo "có gói trả phí" (dùng chung cho cả 2 mode) chứ không khoá theo vai trò tier. */}
-        {hasPlan && (
+        {/* Trang này nằm trong chế độ Giáo viên (RoleGuard=teacher). Người khoá vai trò Học sinh
+            bấm vào sẽ bị đá về /student → ẩn đi để không gây khó hiểu. */}
+        {hasPlan && lockedRole !== 'student' && (
           <DropdownMenuItem onClick={() => navigate('/teacher/dang-bai')}>
             <ListChecks className="w-4 h-4 mr-2" />
             Bảng dạng bài

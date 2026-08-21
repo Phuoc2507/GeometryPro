@@ -8,6 +8,7 @@ import { authUrlWithRedirect } from '@/lib/authRedirect';
 import { fetchWithTimeout } from '@/lib/fetchWithTimeout';
 import { fmtVnd } from '@/lib/plans';
 import { cn } from '@/lib/utils';
+import { toast } from 'sonner';
 
 type Aud = 'student' | 'teacher';
 type Bill = 'month' | 'year';
@@ -122,6 +123,11 @@ export default function Pricing() {
     if (c.contact) { window.location.href = 'mailto:hotro@geo3d.vn?subject=Gói%20Trường%20geo3d'; return; }
     const code = codeFor(c);
     if (!code) return;
+    // Đang kiểm tra mã mời → đợi kết quả, đừng mua vội kẻo mất giảm 10%.
+    if (refStatus === 'checking') {
+      toast.message('Đang kiểm tra mã mời…', { description: 'Đợi một chút để được giảm 10% rồi hãy mua nhé.' });
+      return;
+    }
     try { localStorage.setItem('geo3d:last-mode', aud); } catch { /* bỏ qua */ }
     startCheckout({ planCode: code, referralCode: refApplied || undefined }, code);
   };

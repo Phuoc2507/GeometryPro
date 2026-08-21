@@ -14,7 +14,11 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/context/AuthContext';
 import { cacheQuotaFromResponse } from '@/lib/quota';
 import { markSolving, clearSolving } from '@/lib/solvingMarker';
+import { fetchWithTimeout } from '@/lib/fetchWithTimeout';
 import type { SolveResult } from '@/hooks/useSolver';
+
+// Hết credit / vượt hạn mức trả phí → mở popup nâng cấp (giống luồng vẽ hình).
+const NEEDS_UPGRADE_CODES = ['insufficient', 'quota_exceeded', 'blocked'];
 
 export interface SolveJob {
   status: 'solving' | 'done' | 'error';
@@ -42,7 +46,7 @@ export function SolveJobsProvider({ children }: { children: ReactNode }) {
   const jobsRef = useRef(jobs);
   jobsRef.current = jobs;
   const savedRef = useRef<Set<string>>(new Set());
-  const { openAuthModal } = useAuth();
+  const { openAuthModal, openUpgradeModal } = useAuth();
 
   const getJob = useCallback((key: string) => jobs[key], [jobs]);
 
@@ -59,18 +63,20 @@ export function SolveJobsProvider({ children }: { children: ReactNode }) {
         const headers: Record<string, string> = { 'Content-Type': 'application/json' };
         if (token) headers['Authorization'] = `Bearer ${token}`;
 
-        const res = await fetch('/api/solve', {
+        const res = await fetchWithTimeout('/api/solve', {
           method: 'POST',
           headers,
           credentials: 'same-origin',
           body: JSON.stringify({ problem, geometry, tags, id }),  // id: để server LƯU lời giải kèm bài (chống mất khi F5)
-        });
+        }, 150000);  // giải bài có thể lâu (~2 phút) — cho timeout rộng để không kẹt mãi
         const data = await res.json();
         cacheQuotaFromResponse(res, data);
 
         if (!res.ok) {
           if (res.status === 429 || data.code === 'guest_quota_exceeded' || data.code === 'guest_ip_quota_exceeded') {
             openAuthModal('quota');
+          } else if (res.status === 402 || NEEDS_UPGRADE_CODES.includes(data.code)) {
+            openUpgradeModal();  // hết credit → mở popup nâng cấp thay vì báo lỗi cụt
           }
           throw new Error(data.error || `HTTP ${res.status}`);
         }
@@ -92,7 +98,7 @@ export function SolveJobsProvider({ children }: { children: ReactNode }) {
         clearSolving(id);
       }
     })();
-  }, [openAuthModal]);
+  }, [openAuthModal, openUpgradeModal]);
 
   const clearJob = useCallback((key: string) => {
     savedRef.current.delete(key);
