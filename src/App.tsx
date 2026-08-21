@@ -63,6 +63,8 @@ function PaymentSuccessHandler() {
   const { refreshProfile } = useAuth();
   useEffect(() => {
     if (params.get('payment') !== 'success') return;
+    // Đã mua xong → xoá mã mời đã lưu (ưu đãi chỉ cho đơn đầu, tránh dính "not_first" lần sau).
+    try { localStorage.removeItem('geo3d:ref'); } catch { /* bỏ qua */ }
     toast.success('Thanh toán thành công!', { description: 'Credit đang được cộng vào tài khoản...', duration: 6000 });
     refreshProfile();
     const t = setTimeout(() => refreshProfile(), 4000); // chờ webhook cộng credit rồi refresh lại

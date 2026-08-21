@@ -1,9 +1,12 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Gift, Sparkles } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
+
+// Không quảng bá ở các trang này (đăng nhập, quản trị, xem bài chia sẻ).
+const SKIP_PREFIXES = ['/auth', '/admin', '/s/'];
 
 // Thông báo quảng bá chương trình Mã Mời — hiện khi khách vào app (kể cả đã mua gói).
 // Có "Không hiện lại" (opt-out vĩnh viễn). Chỉ hiện 1 lần mỗi phiên để không làm phiền.
@@ -11,13 +14,16 @@ const DISMISS_KEY = 'geo3d:refPromoDismissed';    // tắt vĩnh viễn
 const SHOWN_KEY = 'geo3d:refPromoShownSession';   // đã hiện trong phiên này
 
 export function ReferralAnnouncement() {
-  const { user } = useAuth();
+  const { user, isUpgradeModalOpen } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [open, setOpen] = useState(false);
   const [dontShow, setDontShow] = useState(false);
 
   useEffect(() => {
     if (!user) return;
+    if (SKIP_PREFIXES.some((p) => location.pathname.startsWith(p))) return;
+    if (isUpgradeModalOpen) return; // đừng chồng lên popup nâng cấp
     let dismissed = false;
     let shown = false;
     try { dismissed = localStorage.getItem(DISMISS_KEY) === '1'; } catch { /* bỏ qua */ }
@@ -28,7 +34,7 @@ export function ReferralAnnouncement() {
       try { sessionStorage.setItem(SHOWN_KEY, '1'); } catch { /* bỏ qua */ }
     }, 1400);
     return () => clearTimeout(t);
-  }, [user]);
+  }, [user, location.pathname, isUpgradeModalOpen]);
 
   const close = () => {
     if (dontShow) { try { localStorage.setItem(DISMISS_KEY, '1'); } catch { /* bỏ qua */ } }

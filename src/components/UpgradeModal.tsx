@@ -52,15 +52,18 @@ export function UpgradeModal({ open, onOpenChange }: UpgradeModalProps) {
     })();
   }, [open]);
 
-  // Tự điền mã mời đã bắt từ link chia sẻ (?ref=) khi mở modal.
+  // Tự điền + tự áp mã mời đã bắt từ link chia sẻ (?ref=) khi mở modal (nếu đã đăng nhập).
   useEffect(() => {
     if (!open || refApplied) return;
-    try { const c = localStorage.getItem('geo3d:ref'); if (c) setRefInput(c); } catch { /* bỏ qua */ }
+    let c = '';
+    try { c = localStorage.getItem('geo3d:ref') || ''; } catch { /* bỏ qua */ }
+    if (c) setRefInput(c);
+    if (c && user && refStatus === 'idle') applyRef(c);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open]);
+  }, [open, user]);
 
-  const applyRef = async () => {
-    const code = refInput.trim().toUpperCase();
+  const applyRef = async (codeArg?: string) => {
+    const code = (codeArg ?? refInput).trim().toUpperCase();
     if (!code) return;
     if (!user) {
       toast({ title: "Vui lòng đăng nhập", description: "Đăng nhập để dùng mã mời.", variant: "destructive" });
@@ -167,7 +170,7 @@ export function UpgradeModal({ open, onOpenChange }: UpgradeModalProps) {
                 <X className="w-4 h-4 mr-1" /> Bỏ
               </Button>
             ) : (
-              <Button type="button" variant="outline" size="sm" onClick={applyRef} disabled={refStatus === 'checking' || !refInput.trim()}>
+              <Button type="button" variant="outline" size="sm" onClick={() => applyRef()} disabled={refStatus === 'checking' || !refInput.trim()}>
                 {refStatus === 'checking' ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Áp dụng'}
               </Button>
             )}

@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Check, Minus, ChevronLeft, ShieldCheck, Loader2, Ticket } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useCheckout } from '@/hooks/useCheckout';
 import { supabase } from '@/integrations/supabase/client';
+import { authUrlWithRedirect } from '@/lib/authRedirect';
 import { fmtVnd } from '@/lib/plans';
 import { cn } from '@/lib/utils';
 
@@ -65,7 +66,7 @@ const segBtn = (active: boolean) =>
 
 export default function Pricing() {
   const navigate = useNavigate();
-  const { tier, lockedRole, isRoleLocked } = useAuth();
+  const { user, tier, lockedRole, isRoleLocked } = useAuth();
   const { plans, buying, startCheckout } = useCheckout();
 
   const [aud, setAud] = useState<Aud>(lockedRole ?? 'student');
@@ -77,14 +78,15 @@ export default function Pricing() {
   const [refStatus, setRefStatus] = useState<'idle' | 'checking' | 'valid' | 'invalid'>('idle');
   const [refMsg, setRefMsg] = useState('');
 
-  const applyRef = async () => {
-    const code = refInput.trim().toUpperCase();
+  const applyRef = async (codeArg?: string) => {
+    const code = (codeArg ?? refInput).trim().toUpperCase();
     if (!code) return;
+    const { data: sd } = await supabase.auth.getSession();
+    const token = sd.session?.access_token;
+    // Chưa đăng nhập → đưa đi đăng nhập rồi quay lại đây (mã tự áp sau khi đăng nhập).
+    if (!token) { navigate(authUrlWithRedirect('/bang-gia')); return; }
     setRefStatus('checking'); setRefMsg('');
     try {
-      const { data: sd } = await supabase.auth.getSession();
-      const token = sd.session?.access_token;
-      if (!token) { setRefStatus('invalid'); setRefMsg('Bạn cần đăng nhập để dùng mã.'); return; }
       const res = await fetch(`/api/referral?validate=${encodeURIComponent(code)}`, { headers: { Authorization: `Bearer ${token}` } });
       const j = await res.json();
       if (j.valid) { setRefApplied(code); setRefStatus('valid'); setRefMsg(j.referrerName ? `Hợp lệ · được giới thiệu bởi ${j.referrerName}` : 'Mã hợp lệ · giảm 10%'); }
@@ -92,6 +94,12 @@ export default function Pricing() {
     } catch { setRefApplied(null); setRefStatus('invalid'); setRefMsg('Không kiểm tra được mã, thử lại.'); }
   };
   const clearRef = () => { setRefApplied(null); setRefInput(''); setRefStatus('idle'); setRefMsg(''); try { localStorage.removeItem('geo3d:ref'); } catch { /* bỏ qua */ } };
+
+  // Tự động áp mã đã lưu (từ link ?ref) khi người dùng đã đăng nhập — tránh mất giảm giá vì quên bấm "Áp dụng".
+  useEffect(() => {
+    if (user && refInput.trim() && refStatus === 'idle' && !refApplied) applyRef(refInput);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user]);
 
   const byCode = new Map(plans.map((p) => [p.code, p]));
   const codeFor = (c: CardDef) => (c.yearOnly ? c.codes?.year : (bill === 'month' ? c.codes?.month : c.codes?.year));
@@ -180,7 +188,7 @@ export default function Pricing() {
             {refApplied ? (
               <button type="button" onClick={clearRef} className="px-4 rounded-lg border border-[#22344F] text-[#9FB2CC] hover:text-white text-sm font-medium">Bỏ</button>
             ) : (
-              <button type="button" onClick={applyRef} disabled={refStatus === 'checking' || !refInput.trim()} className="px-4 rounded-lg bg-[#2E6BF2] text-white text-sm font-semibold disabled:opacity-40 inline-flex items-center justify-center min-w-[84px]">
+              <button type="button" onClick={() => applyRef()} disabled={refStatus === 'checking' || !refInput.trim()} className="px-4 rounded-lg bg-[#2E6BF2] text-white text-sm font-semibold disabled:opacity-40 inline-flex items-center justify-center min-w-[84px]">
                 {refStatus === 'checking' ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Áp dụng'}
               </button>
             )}
