@@ -202,7 +202,7 @@ Prompt của khối dịch được **tối ưu tự động** bằng vòng lặ
 Dự án đã có một **bộ đề mốc (golden)** và một **trình chạy đánh giá tất định**:
 - Mỗi ca là một JSON `{ id, source, text?, plan, expect }`; chạy `plan` qua engine bằng chế độ **engine‑replay** (không gọi AI, miễn phí, offline) hoặc `--full` (chạy cả bước dịch, có gọi LLM).
 - So đáp **theo giá trị số** với dung sai `≤ 1e-3·max(1,|đáp|)` (parse được `a√b/c`, `p/q`, thập phân) ⇒ chấp nhận nhiều cách viết cùng một đáp (ví dụ `√2` khớp `1.4142…`). Kết luận mỗi ca: `pass` / `regress-status` / `regress-answer` / `error`.
-- **Hiện có 159 ca golden** (226 đáp). Trong đó **120 ca *synthetic*** (đề gốc tự soạn, đáp **kiểm hai chiều**: tính bằng công thức độc lập ↔ engine tính lại, chỉ nạp khi khớp) và **25 ca *capture*** (engine sinh). **100% đáp ở dạng chính xác** (căn/π/hữu tỉ), 0 đáp làm tròn thập phân. *(Xem `du-lieu-benchmark.md` về công cụ gán nhãn `scripts/label/` và quy trình staging → soát → promote.)*
+- **Hiện có 159 ca golden** (226 đáp). Trong đó **120 ca *synthetic*** (đề gốc tự soạn, đáp **kiểm hai chiều**: tính bằng công thức độc lập ↔ engine tính lại, chỉ nạp khi khớp) và **25 ca *capture*** (engine sinh). **100% đáp ở dạng chính xác** (căn/π/hữu tỉ), 0 đáp làm tròn thập phân. *(Xem `du-lieu-benchmark.md` về công cụ gán nhãn `scripts/label/` và quy trình staging → soát → promote; **`vi-du-kiem-hai-chieu.md`** minh hoạ 4 ca lời‑giải‑tay ↔ engine để làm rõ "kiểm hai chiều" không phải vòng lặp tự xác nhận.)*
 - Bài engine bó tay/từ chối được ghi vào bảng `problem_reports` kèm Plan JSON ⇒ nguồn "ca known‑gap" để bổ sung dữ liệu.
 *(Mã: `api/_lib/bench/**` — `runGate.js`, `compareCase.js`, `captureCase.js`; `bench/golden/**`.)*
 
