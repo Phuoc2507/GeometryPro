@@ -179,7 +179,7 @@ Nhãn tier là **một nguồn sự thật duy nhất** về độ tin cậy, v�
 - **Ba chế độ vẽ** (`components/DrawModeSelector.tsx`): *Vẽ nhanh* (hình tĩnh một bước — **thử engine ký hiệu trước**, không được mới dùng LLM), *Vẽ kỹ* (phân loại đề, chi tiết hơn, có chuyển động), *Advance* (đa câu hỏi / hoạt hình liên tục — qua `api/analyze-advance.js`). Ngoài ra route thuần Neuro‑Symbolic `api/analyze-geometry-v2.js` là **đường nghiên cứu**: `solveProblem → planFromProblem (LLM dịch) → solvePlan (engine) → classifyTier`.
 - **Công cụ phụ trợ phục vụ nghiên cứu:** tab **Test API Key** (`components/admin/TestApiKeyTab.tsx`) — gửi một đề qua **nhiều API key/mô hình cùng lúc**, đo token/thời gian, chuẩn hoá & so sánh JSON hình (đánh dấu khác biệt) — rất hữu ích để **so baseline**; bảng **problem_reports** ghi lại bài máy vẽ sai để mở rộng benchmark; **golden figures** (`GoldenTab`, `goldenStore.js`) lưu hình đúng đã được admin duyệt.
 
-### 4.6. Tối ưu prompt tự động (đóng góp sẽ hiện thực)
+### 4.6. Tối ưu prompt tự động (đã hiện thực; chờ chạy trên LLM thật)
 Prompt của khối dịch được **tối ưu tự động** bằng vòng lặp tiến hoá:
 1. Khởi tạo quần thể prompt (biến thể của prompt gốc).
 2. **Hàm thích nghi (fitness)** = điểm trên **benchmark** (tỉ lệ dịch đúng + tỉ lệ engine giải được − phạt token).
@@ -188,7 +188,11 @@ Prompt của khối dịch được **tối ưu tự động** bằng vòng lặ
 
 **Biểu diễn cá thể — an toàn là trên hết:** GA **không đụng vào phần lõi** của prompt gốc (đặc biệt cổng từ chối). Mỗi cá thể (*genome*) chỉ chọn **BẬT/TẮT** và **sắp thứ tự** một số **câu chỉ dẫn bổ sung** (gene) gắn thêm sau prompt gốc. Không gian tìm kiếm này rẻ, tái lập, và dễ giải thích.
 
-*Trạng thái: **đã hiện thực** (`scripts/prompt-opt/`), chạy được. Cỗ máy tiến hóa đã kiểm thử ở chế độ mô phỏng tất định (best accuracy 75%→100%, tái lập theo hạt giống). **Còn lại:** chạy trên LLM thật (`--provider vilao`, cần khoá API) để có đường cong fitness thật và so prompt‑tối‑ưu vs prompt‑tay. Chi tiết phương pháp: xem `docs/nghien-cuu/prompt-optimization.md`.*
+*Trạng thái: **đã hiện thực** (`scripts/prompt-opt/`), chạy được end‑to‑end. Cỗ máy tiến hóa đã chạy trên **toàn bộ 145 ca benchmark** ở chế độ **mô phỏng tất định** (`--provider mock`, seed 42, pop 12, gen 10): best fitness **0.720 → 0.803**, best accuracy **91.7% → 100%**, hội tụ và tái lập chính xác theo hạt giống; prompt tốt nhất tự chọn các gene hợp lý (`queries-list`, `integer-coords`, `json-only`, `verify-asserts`). Đường cong fitness: `figures/prompt-opt-fitness-mock-seed42.svg`.*
+
+![Đường cong fitness qua các thế hệ (mock, seed 42)](figures/prompt-opt-fitness-mock-seed42.svg)
+
+> ⚠️ **Đây là chạy MOCK (giả lập tất định, offline).** Nó chứng minh **cỗ máy tiến hoá hoạt động đúng** — chọn lọc/lai ghép/đột biến hội tụ, tái lập theo hạt giống — **KHÔNG** phải kết quả accuracy khoa học. **Còn lại:** chạy trên LLM thật (`--provider vilao`, cần khoá API) để có đường cong fitness thật và so prompt‑tối‑ưu vs prompt‑tay. Chi tiết phương pháp: xem `docs/nghien-cuu/prompt-optimization.md`.
 
 ---
 
