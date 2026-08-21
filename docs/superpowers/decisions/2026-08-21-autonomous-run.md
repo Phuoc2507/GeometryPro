@@ -60,6 +60,19 @@ Pipeline: spec (3 agent) → phản biện thiết kế (2 agent) → sửa spec
   vòng sửa docs Lý; chem pack code ngay sau vòng sửa docs Hóa; route/bridge (P2)
   và UI (P4) KHÔNG thi công đêm nay — cần bàn giao có người xem (quota, UX).
 
+- **D9 · Người dùng yêu cầu "làm cho các chương khác luôn" → mở rộng theo kiểu
+  SPEC-TRƯỚC, không code-trước.** 3 agent spec đợt 2 khởi chạy song song (không
+  chặn v0): Lý-động lực học lớp 10, Lý-dao động điều hòa lớp 11, Hóa-v1 (7 ứng
+  viên + phi kim ~25-30 record + 3 cơ chế mới: trộn tuần tự, CO2+kiềm 2 muối,
+  phản ứng nối tiếp Fe/AgNO3). Các spec này phải qua đúng sàng phản biện như
+  đợt 1 rồi mới code — code đợt 2 dự kiến NGÀY MAI trừ khi v0 xanh sớm trong
+  đêm. Lý do không code thẳng: chuẩn "không bao giờ sai" chỉ giữ được nếu mọi
+  chương qua cùng quy trình; nền v0 chưa xanh thì chưa có gì để chương mới tựa.
+- **D10 · Bộ đề vàng 24 bài (L01-L12, H01-H12) nhận làm test bổ sung cho giai
+  đoạn thi công**, kèm 5 cảnh báo thi công (L11 meet trục y; cos90 exact; nghiệm
+  ma sau dừng; CM với chất excess; g nhận từ đề). Bài nào engine v0 chưa phục vụ
+  được sẽ chuyển phụ lục v1 thay vì nới engine vội.
+
 ## Quyết định chờ ghi tiếp (sẽ bổ sung trong đêm)
 
 - Phân xử 5 điểm lệch giữa spec kiến trúc và spec Lý (theo khuyến nghị phản biện).
