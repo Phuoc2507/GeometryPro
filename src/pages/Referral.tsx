@@ -131,10 +131,10 @@ const Referral = () => {
     try {
       const { data: sd } = await supabase.auth.getSession();
       const token = sd.session?.access_token;
-      const res = await fetch('/api/payout-account', {
+      const res = await fetch('/api/referral', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ bankCode: bankName, accountNumber: accNum.trim(), accountName: accName.trim() }),
+        body: JSON.stringify({ action: 'save-account', bankCode: bankName, accountNumber: accNum.trim(), accountName: accName.trim() }),
       });
       const j = await res.json();
       if (!res.ok) throw new Error(j.error || 'Không lưu được tài khoản');
@@ -156,10 +156,10 @@ const Referral = () => {
     try {
       const { data: sd } = await supabase.auth.getSession();
       const token = sd.session?.access_token;
-      const res = await fetch('/api/withdraw', {
+      const res = await fetch('/api/referral', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ amount }),
+        body: JSON.stringify({ action: 'withdraw', amount }),
       });
       const j = await res.json();
       if (!res.ok) throw new Error(j.error || 'Không tạo được yêu cầu rút');
