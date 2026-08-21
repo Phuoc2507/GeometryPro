@@ -7,6 +7,7 @@ import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Loader2, Crown, CheckCircle2, Sparkles, GraduationCap, Presentation, Ticket, Check, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { fetchWithTimeout } from "@/lib/fetchWithTimeout";
 import { FALLBACK_PLANS, fmtVnd, type Plan } from "@/lib/plans";
 
 interface UpgradeModalProps {
@@ -73,7 +74,7 @@ export function UpgradeModal({ open, onOpenChange }: UpgradeModalProps) {
     try {
       const { data: sd } = await supabase.auth.getSession();
       const token = sd.session?.access_token;
-      const res = await fetch(`/api/referral?validate=${encodeURIComponent(code)}`, {
+      const res = await fetchWithTimeout(`/api/referral?validate=${encodeURIComponent(code)}`, {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
       const j = await res.json();
@@ -104,7 +105,7 @@ export function UpgradeModal({ open, onOpenChange }: UpgradeModalProps) {
       const token = sessionData.session?.access_token;
       if (!token) throw new Error("Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.");
 
-      const response = await fetch("/api/checkout", {
+      const response = await fetchWithTimeout("/api/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({

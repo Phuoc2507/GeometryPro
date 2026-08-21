@@ -9,6 +9,7 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { authUrlWithRedirect } from '@/lib/authRedirect';
 import { fmtVnd } from '@/lib/plans';
+import { fetchWithTimeout } from '@/lib/fetchWithTimeout';
 
 interface PayoutAccount {
   bank_code: string;
@@ -41,6 +42,7 @@ const WD_STATUS: Record<Withdrawal['status'], { label: string; cls: string }> = 
   paid: { label: 'Đã chi', cls: 'text-emerald-600 dark:text-emerald-400' },
   rejected: { label: 'Từ chối', cls: 'text-destructive' },
 };
+const WD_STATUS_FALLBACK = { label: 'Không rõ', cls: 'text-muted-foreground' };
 
 const Referral = () => {
   const navigate = useNavigate();
@@ -72,7 +74,7 @@ const Referral = () => {
       const { data: sessionData } = await supabase.auth.getSession();
       const token = sessionData.session?.access_token;
       if (!token) throw new Error('Chưa đăng nhập');
-      const res = await fetch('/api/referral', {
+      const res = await fetchWithTimeout('/api/referral', {
         headers: { Authorization: `Bearer ${token}` },
       });
       const json = await res.json();
@@ -131,7 +133,7 @@ const Referral = () => {
     try {
       const { data: sd } = await supabase.auth.getSession();
       const token = sd.session?.access_token;
-      const res = await fetch('/api/referral', {
+      const res = await fetchWithTimeout('/api/referral', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ action: 'save-account', bankCode: bankName, accountNumber: accNum.trim(), accountName: accName.trim() }),
@@ -156,7 +158,7 @@ const Referral = () => {
     try {
       const { data: sd } = await supabase.auth.getSession();
       const token = sd.session?.access_token;
-      const res = await fetch('/api/referral', {
+      const res = await fetchWithTimeout('/api/referral', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ action: 'withdraw', amount }),
@@ -364,7 +366,7 @@ const Referral = () => {
                     {data.withdrawals.map((w) => (
                       <div key={w.id} className="flex items-center justify-between text-sm py-1.5 border-b border-border/40 last:border-0">
                         <span className="tabular-nums">{fmtVnd(w.amount)}</span>
-                        <span className={`text-xs font-medium ${WD_STATUS[w.status].cls}`}>{WD_STATUS[w.status].label}</span>
+                        <span className={`text-xs font-medium ${(WD_STATUS[w.status] ?? WD_STATUS_FALLBACK).cls}`}>{(WD_STATUS[w.status] ?? WD_STATUS_FALLBACK).label}</span>
                       </div>
                     ))}
                   </div>

@@ -5,6 +5,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useCheckout } from '@/hooks/useCheckout';
 import { supabase } from '@/integrations/supabase/client';
 import { authUrlWithRedirect } from '@/lib/authRedirect';
+import { fetchWithTimeout } from '@/lib/fetchWithTimeout';
 import { fmtVnd } from '@/lib/plans';
 import { cn } from '@/lib/utils';
 
@@ -87,7 +88,7 @@ export default function Pricing() {
     if (!token) { navigate(authUrlWithRedirect('/bang-gia')); return; }
     setRefStatus('checking'); setRefMsg('');
     try {
-      const res = await fetch(`/api/referral?validate=${encodeURIComponent(code)}`, { headers: { Authorization: `Bearer ${token}` } });
+      const res = await fetchWithTimeout(`/api/referral?validate=${encodeURIComponent(code)}`, { headers: { Authorization: `Bearer ${token}` } });
       const j = await res.json();
       if (j.valid) { setRefApplied(code); setRefStatus('valid'); setRefMsg(j.referrerName ? `Hợp lệ · được giới thiệu bởi ${j.referrerName}` : 'Mã hợp lệ · giảm 10%'); }
       else {

@@ -23,7 +23,7 @@ export function ReferralAnnouncement() {
   useEffect(() => {
     if (!user) return;
     if (SKIP_PREFIXES.some((p) => location.pathname.startsWith(p))) return;
-    if (isUpgradeModalOpen) return; // đừng chồng lên popup nâng cấp
+    if (isUpgradeModalOpen) { setOpen(false); return; } // đừng chồng lên popup nâng cấp
     let dismissed = false;
     let shown = false;
     try { dismissed = localStorage.getItem(DISMISS_KEY) === '1'; } catch { /* bỏ qua */ }
