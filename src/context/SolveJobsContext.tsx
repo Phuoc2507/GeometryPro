@@ -46,13 +46,16 @@ export function SolveJobsProvider({ children }: { children: ReactNode }) {
   const jobsRef = useRef(jobs);
   jobsRef.current = jobs;
   const savedRef = useRef<Set<string>>(new Set());
+  const inFlightRef = useRef<Set<string>>(new Set());  // chặn double-click ĐỒNG BỘ (state chưa kịp cập nhật)
   const { openAuthModal, openUpgradeModal } = useAuth();
 
   const getJob = useCallback((key: string) => jobs[key], [jobs]);
 
   const startJob = useCallback<SolveJobsContextType['startJob']>((key, { id, problem, geometry, tags }) => {
-    // Đang giải rồi thì không giải lại (bấm 2 lần / 2 panel cùng bấm).
-    if (jobsRef.current[key]?.status === 'solving') return;
+    // Đang giải rồi thì không giải lại (bấm 2 lần / 2 panel cùng bấm). Kiểm tra ĐỒNG BỘ bằng ref
+    // (setJobs bất đồng bộ nên 2 click liên tiếp có thể lọt qua nếu chỉ dựa vào state).
+    if (inFlightRef.current.has(key) || jobsRef.current[key]?.status === 'solving') return;
+    inFlightRef.current.add(key);
     setJobs((prev) => ({ ...prev, [key]: { status: 'solving', id, problem, geometry, result: null, error: null } }));
     markSolving(id, problem);   // để reload giữa chừng biết mà chờ kết quả server lưu
 
@@ -96,12 +99,15 @@ export function SolveJobsProvider({ children }: { children: ReactNode }) {
         const msg = err instanceof Error ? err.message : String(err);
         setJobs((prev) => (prev[key] ? { ...prev, [key]: { ...prev[key], status: 'error', error: msg } } : prev));
         clearSolving(id);
+      } finally {
+        inFlightRef.current.delete(key);
       }
     })();
   }, [openAuthModal, openUpgradeModal]);
 
   const clearJob = useCallback((key: string) => {
     savedRef.current.delete(key);
+    inFlightRef.current.delete(key);
     setJobs((prev) => {
       if (!prev[key]) return prev;
       const next = { ...prev };

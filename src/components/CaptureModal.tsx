@@ -249,13 +249,21 @@ export function CaptureModal({ isOpen, onClose, geometry, hiddenLines }: Capture
     }
   };
 
-  const copyLatex = () => {
+  const copyLatex = async () => {
     const latex = getDynamicLatex();
-    navigator.clipboard.writeText(latex);
-    toast({
-      title: "Đã sao chép!",
-      description: "Code LaTeX đã được sao chép vào clipboard",
-    });
+    try {
+      await navigator.clipboard.writeText(latex);
+      toast({
+        title: "Đã sao chép!",
+        description: "Code LaTeX đã được sao chép vào clipboard",
+      });
+    } catch {
+      toast({
+        title: "Không sao chép được",
+        description: "Trình duyệt chặn clipboard. Hãy dùng nút Tải .tex bên cạnh.",
+        variant: "destructive",
+      });
+    }
   };
 
   const downloadLatex = () => {

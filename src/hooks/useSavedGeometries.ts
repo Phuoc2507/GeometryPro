@@ -30,7 +30,8 @@ export function useSavedGeometries() {
         .select('*')
         .eq('user_id', user.id)
         .eq('is_history', false)
-        .order('updated_at', { ascending: false });
+        .order('updated_at', { ascending: false })
+        .limit(200);  // chặn tải vô hạn khi có rất nhiều hình (lấy 200 bản mới nhất)
 
       if (error) throw error;
       

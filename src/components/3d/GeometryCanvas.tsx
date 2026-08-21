@@ -578,7 +578,7 @@ export function GeometryCanvas({
         </div>
       )}
 
-      <ErrorBoundary>
+      <ErrorBoundary onReset={geometryContext?.clearGeometry}>
         <Canvas
           orthographic={is2D}
           camera={{ position: is2D ? [0, 10, 0] : [6, 5, 8], fov: 50, zoom: is2D ? 50 : 1 }}

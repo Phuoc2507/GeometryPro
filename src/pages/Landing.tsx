@@ -117,7 +117,7 @@ const FAQS = [
 ];
 
 const Landing = () => {
-  const { user, isLoading } = useAuth();
+  const { user, isLoading, lockedRole } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -125,8 +125,11 @@ const Landing = () => {
   }, []);
 
   const goTo = (mode: Mode) => {
-    localStorage.setItem(LAST_MODE_KEY, mode);
-    navigate(`/${mode}`);
+    // Người đang có gói bị KHOÁ vai trò: mọi CTA đưa về đúng vai trò của họ, tránh cảnh bấm
+    // "Học sinh" lại bị RoleGuard đá sang "Giáo viên" (nút không dẫn tới nơi ghi trên nhãn).
+    const dest = (lockedRole ?? mode) as Mode;
+    localStorage.setItem(LAST_MODE_KEY, dest);
+    navigate(`/${dest}`);
   };
 
   return (

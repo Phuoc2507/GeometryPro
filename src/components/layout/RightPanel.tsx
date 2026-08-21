@@ -174,8 +174,8 @@ function PanelContent({ compact = false }: { compact?: boolean } = {}) {
         </TabsList>
 
         <TabsContent value="problem" className="flex-1 p-0 m-0 min-h-0 data-[state=active]:flex flex-col">
-          {/* Chưa gắn trừ credit cho /api/solve (chờ engine) -> không hiện creditNote sai. */}
-          <SolverContent />
+          {/* /api/solve trừ 20 credit mỗi lượt (gói Miễn phí dùng 3 lượt/tháng). */}
+          <SolverContent creditNote="Mỗi lượt giải dùng 20 credit · gói Miễn phí: 3 lượt/tháng" />
         </TabsContent>
 
         <TabsContent value="properties" className="flex-1 overflow-hidden p-0 min-h-0 data-[state=active]:flex flex-col">

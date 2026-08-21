@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
+import { withTimeout } from '@/lib/promiseTimeout';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription,
   AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
@@ -45,7 +46,7 @@ export default function TeamManage() {
   const [pendingRemove, setPendingRemove] = useState<Member | null>(null);
 
   const load = useCallback(async () => {
-    const { data, error } = await supabase.rpc('team_get');
+    const { data, error } = await withTimeout(supabase.rpc('team_get'));
     if (error) { setLoadError(true); setTeam(undefined); return; }
     setLoadError(false);
     const payload = data as unknown as { team: TeamData | null } | null;
@@ -58,7 +59,7 @@ export default function TeamManage() {
     if (!mail || busy) return;
     setBusy(true);
     try {
-      const { data, error } = await supabase.rpc('team_add_member', { p_email: mail });
+      const { data, error } = await withTimeout(supabase.rpc('team_add_member', { p_email: mail }));
       const res = data as unknown as { ok: boolean; err?: string } | null;
       if (error || !res?.ok) {
         toast({ title: 'Chưa thêm được', description: ADD_ERR[res?.err ?? ''] ?? 'Có lỗi xảy ra, thử lại.', variant: 'destructive' });
@@ -75,7 +76,7 @@ export default function TeamManage() {
     setPendingRemove(null);
     setBusy(true);
     try {
-      const { data, error } = await supabase.rpc('team_remove_member', { p_user_id: m.user_id });
+      const { data, error } = await withTimeout(supabase.rpc('team_remove_member', { p_user_id: m.user_id }));
       const res = data as unknown as { ok: boolean; err?: string } | null;
       if (error || !res?.ok) {
         toast({ title: 'Chưa gỡ được', description: 'Có lỗi xảy ra, thử lại.', variant: 'destructive' });

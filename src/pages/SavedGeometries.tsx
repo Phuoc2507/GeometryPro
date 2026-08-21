@@ -1,5 +1,9 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription,
+  AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { ArrowLeft, Globe, Lock, Trash2, Clock, MoreHorizontal, FolderPlus, Folder, Download } from 'lucide-react';
 import { Mark } from '@/components/Brand';
 import { authUrlWithRedirect } from '@/lib/authRedirect';
@@ -43,11 +47,10 @@ const SavedGeometries = () => {
     navigate(`/${lastMode}`, { state: { loadGeometry: geometry.geometry_data } });
   };
 
-  const handleDelete = async (e: React.MouseEvent, id: string) => {
+  const [pendingDelete, setPendingDelete] = useState<SavedGeometry | null>(null);
+  const askDelete = (e: React.MouseEvent, g: SavedGeometry) => {
     e.stopPropagation();
-    if (confirm('Bạn có chắc muốn xóa hình này?')) {
-      await deleteGeometry(id);
-    }
+    setPendingDelete(g);
   };
 
   if (authLoading) {
@@ -212,7 +215,7 @@ const SavedGeometries = () => {
                         size="icon"
                         aria-label="Xoá"
                         className="text-destructive hover:text-destructive hover:bg-destructive/10 h-8 w-8"
-                        onClick={(e) => handleDelete(e, geometry.id)}
+                        onClick={(e) => askDelete(e, geometry)}
                       >
                         <Trash2 className="w-4 h-4" />
                       </Button>
@@ -224,6 +227,26 @@ const SavedGeometries = () => {
           </ScrollArea>
         )}
       </div>
+
+      <AlertDialog open={!!pendingDelete} onOpenChange={(o) => { if (!o) setPendingDelete(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Xoá hình đã lưu?</AlertDialogTitle>
+            <AlertDialogDescription>
+              <strong>{pendingDelete?.name ?? 'Hình này'}</strong> sẽ bị xoá vĩnh viễn và không khôi phục được.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Huỷ</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => { const g = pendingDelete; setPendingDelete(null); if (g) deleteGeometry(g.id); }}
+            >
+              Xoá
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

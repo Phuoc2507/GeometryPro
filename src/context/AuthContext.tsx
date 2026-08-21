@@ -4,6 +4,16 @@ import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { setSentryUser } from '@/lib/sentry';
 import { buildMigrationRows } from '@/lib/history/anonMigration';
+import { fetchWithTimeout } from '@/lib/fetchWithTimeout';
+
+// Bọc TIMEOUT cho các lệnh auth (gotrue) — nếu mạng đứng thì trả lỗi thay vì treo spinner mãi.
+// Các lệnh này resolve dạng { data, error }; hết giờ ta resolve { error } để nơi gọi xử lý như lỗi thường.
+async function withAuthTimeout<T extends { error: unknown }>(promise: PromiseLike<T>, ms = 20000): Promise<T> {
+  const timeout = new Promise<T>((resolve) =>
+    setTimeout(() => resolve({ error: new Error('Mạng chậm hoặc máy chủ không phản hồi. Vui lòng thử lại.') } as unknown as T), ms),
+  );
+  return Promise.race([Promise.resolve(promise), timeout]);
+}
 
 interface Profile {
   id: string;
@@ -256,7 +266,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signIn = async (email: string, password: string) => {
     sessionStorage.setItem('geo3d:pending-signin', '1');
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    const { error } = await withAuthTimeout(supabase.auth.signInWithPassword({ email, password }));
     if (error) sessionStorage.removeItem('geo3d:pending-signin');  // đăng nhập hỏng → đừng toast nhầm ở lần sau
     return { error: error as Error | null };
   };
@@ -284,7 +294,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signUp = async (email: string, password: string, displayName?: string, redirectPath?: string) => {
     const redirectUrl = authReturnUrl(redirectPath);
 
-    const { error } = await supabase.auth.signUp({
+    const { data, error } = await withAuthTimeout(supabase.auth.signUp({
       email,
       password,
       options: {
@@ -293,8 +303,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           display_name: displayName,
         },
       },
-    });
-    return { error: error as Error | null };
+    }));
+    if (error) return { error: error as Error };
+    // Supabase bật xác nhận email → đăng ký một email ĐÃ tồn tại không trả lỗi (chống dò email),
+    // nhưng identities rỗng nghĩa là tài khoản đã có. Báo để người dùng đi đăng nhập / đặt lại mật khẩu
+    // thay vì ngồi chờ email xác nhận không bao giờ tới.
+    if (data?.user && Array.isArray(data.user.identities) && data.user.identities.length === 0) {
+      return { error: new Error('Email này đã được đăng ký. Bạn hãy đăng nhập hoặc dùng "Quên mật khẩu".') };
+    }
+    return { error: null };
   };
 
   const signOut = async () => {
@@ -310,7 +327,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const token = sessionData.session?.access_token;
       if (!token) return { error: new Error('Bạn cần đăng nhập lại để xoá tài khoản') };
 
-      const res = await fetch('/api/delete-account', {
+      const res = await fetchWithTimeout('/api/delete-account', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ confirm: true }),
@@ -346,15 +363,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const resetPassword = async (email: string) => {
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    const { error } = await withAuthTimeout(supabase.auth.resetPasswordForEmail(email, {
       redirectTo: `${window.location.origin}/auth?reset=true`,
-    });
+    }));
     return { error: error as Error | null };
   };
 
   // Đặt mật khẩu mới trong phiên khôi phục (sau khi bấm link reset trong email).
   const updatePassword = async (newPassword: string) => {
-    const { error } = await supabase.auth.updateUser({ password: newPassword });
+    const { error } = await withAuthTimeout(supabase.auth.updateUser({ password: newPassword }));
     return { error: error as Error | null };
   };
 

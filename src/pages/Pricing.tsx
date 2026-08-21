@@ -146,16 +146,19 @@ export default function Pricing() {
       else if (bill === 'month') sub = '/tháng · gia hạn hằng tháng';
       else sub = `/năm · ≈ ${fmtVnd(Math.round(v / 12 / 1000) * 1000)}/tháng`;
     }
-    const showDiscount = !!refApplied && paidValue > 0;
+    // Chưa đăng nhập nhưng đã có mã (từ link ?ref) → xem TRƯỚC giá sau giảm để thấy lợi ích ngay
+    // tại lúc quyết định; mã sẽ được áp thật sau khi đăng nhập.
+    const previewDiscount = !user && !!refInput.trim();
+    const showDiscount = (!!refApplied || previewDiscount) && paidValue > 0;
     return (
       <div className="min-h-[60px]">
         {showDiscount ? (
-          <div className="flex items-end gap-2 whitespace-nowrap">
-            <span className="text-[30px] font-extrabold leading-none tracking-tight text-emerald-400">{fmtVnd(Math.round(paidValue * 0.9))}</span>
+          <div className="flex items-end gap-x-2 gap-y-0.5 flex-wrap">
+            <span className="text-[26px] sm:text-[30px] font-extrabold leading-none tracking-tight text-emerald-400">{fmtVnd(Math.round(paidValue * 0.9))}</span>
             <span className="text-[15px] line-through text-[#6B7E99]">{amount}</span>
           </div>
         ) : (
-          <div className="text-[30px] font-extrabold leading-none tracking-tight whitespace-nowrap">{amount}</div>
+          <div className="text-[26px] sm:text-[30px] font-extrabold leading-none tracking-tight whitespace-nowrap">{amount}</div>
         )}
         <div className="text-[#6B7E99] text-[12.5px] mt-2">{sub}</div>
       </div>
@@ -207,6 +210,11 @@ export default function Pricing() {
           {refMsg && (
             <div className={cn('text-[13px] mt-2 flex items-center gap-1', refStatus === 'valid' ? 'text-emerald-400' : 'text-red-400')}>
               {refStatus === 'valid' && <Check className="w-3.5 h-3.5" />}{refMsg}
+            </div>
+          )}
+          {!user && !!refInput.trim() && !refMsg && (
+            <div className="text-[13px] mt-2 text-[#4C8DFF]">
+              Đăng nhập để áp mã — giảm 10% cho đơn đầu tiên (giá dưới đây là giá dự kiến sau giảm).
             </div>
           )}
         </div>

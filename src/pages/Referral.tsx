@@ -210,7 +210,7 @@ const Referral = () => {
                 </div>
                 <div>
                   <div className="text-3xl font-bold text-amber-600 dark:text-amber-400">60%</div>
-                  <p className="text-sm text-muted-foreground">hoa hồng <b>cho bạn</b> trên đơn đầu tiên của người được rủ.</p>
+                  <p className="text-sm text-muted-foreground">hoa hồng <b>cho bạn</b>, tính trên <b>số tiền bạn của bạn thực trả</b> (đã giảm 10%) ở đơn đầu tiên.</p>
                 </div>
               </div>
             </div>
@@ -314,6 +314,9 @@ const Referral = () => {
                     Rút toàn bộ
                   </Button>
                 </div>
+                <p className="text-[11px] text-muted-foreground -mt-1">
+                  Rút toàn bộ số dư về tài khoản đã lưu. Admin chuyển khoản <b>thủ công</b> (thường trong 1–3 ngày làm việc), không mất phí.
+                </p>
 
                 {/* Tài khoản ngân hàng */}
                 {data?.payoutAccount && !editingAccount ? (

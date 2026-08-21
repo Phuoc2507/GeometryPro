@@ -41,10 +41,10 @@ export function ManualDrawToolbar() {
                 variant={activeTool === id ? 'default' : 'ghost'}
                 size="icon"
                 aria-label={label}
-                className="h-7 w-7"
+                className="h-10 w-10 sm:h-7 sm:w-7"
                 onClick={() => toggleTool(id)}
               >
-                <Icon className="w-3.5 h-3.5" />
+                <Icon className="w-4 h-4 sm:w-3.5 sm:h-3.5" />
               </Button>
             </TooltipTrigger>
             <TooltipContent side="bottom">{label}</TooltipContent>

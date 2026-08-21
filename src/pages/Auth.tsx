@@ -24,7 +24,7 @@ const Auth = () => {
   const redirectTo = sanitizeRedirect(searchParams.get('redirect'));
 
   const [isSignUp, setIsSignUp] = useState(false);
-  const [isReset, setIsReset] = useState(false);
+  const [isReset, setIsReset] = useState(searchParams.get('mode') === 'reset');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -40,6 +40,17 @@ const Auth = () => {
       navigate(redirectTo);
     }
   }, [user, isLoading, isRecovery, redirectTo, navigate]);
+
+  // OAuth (Google) bị huỷ/ từ chối → Supabase quay về /auth?error=access_denied. Không có phiên,
+  // nên báo rõ tiếng Việt thay vì im lặng, và dọn cờ pending để lần đăng nhập sau không toast nhầm.
+  useEffect(() => {
+    const oauthErr = searchParams.get('error') || searchParams.get('error_description');
+    if (oauthErr) {
+      try { sessionStorage.removeItem('geo3d:pending-signin'); } catch { /* bỏ qua */ }
+      setErrors({ general: 'Đăng nhập Google chưa hoàn tất (bạn đã huỷ hoặc từ chối). Bạn thử lại nhé.' });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const validateForm = () => {
     const newErrors: typeof errors = {};
@@ -130,7 +141,11 @@ const Auth = () => {
     const { error } = await updatePassword(newPassword);
     setIsSubmitting(false);
     if (error) {
-      setErrors({ general: error.message });
+      // Link reset hết hạn / đã dùng / mở trực tiếp → không có phiên khôi phục.
+      const msg = /session|Auth session|not authenticated|JWT/i.test(error.message)
+        ? 'Link đặt lại mật khẩu đã hết hạn hoặc không hợp lệ. Hãy yêu cầu gửi lại link mới bên dưới.'
+        : error.message;
+      setErrors({ general: msg });
     } else {
       toast.success('Đổi mật khẩu thành công', { description: 'Bạn có thể tiếp tục dùng geo3d.' });
       navigate('/');
@@ -170,6 +185,7 @@ const Auth = () => {
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
                     className="pl-10 pr-10"
+                    autoComplete="new-password"
                     required
                   />
                   <button
@@ -193,14 +209,22 @@ const Auth = () => {
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     className="pl-10"
+                    autoComplete="new-password"
                     required
                   />
                 </div>
               </div>
 
               {errors.general && (
-                <div className="p-3 rounded-lg text-sm bg-destructive/10 text-destructive border border-destructive/20">
-                  {errors.general}
+                <div className="p-3 rounded-lg text-sm bg-destructive/10 text-destructive border border-destructive/20 space-y-2">
+                  <p>{errors.general}</p>
+                  <button
+                    type="button"
+                    onClick={() => navigate('/auth?mode=reset')}
+                    className="underline font-medium hover:opacity-80"
+                  >
+                    Gửi lại link đặt lại mật khẩu
+                  </button>
                 </div>
               )}
 
@@ -274,6 +298,7 @@ const Auth = () => {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="pl-10"
+                  autoComplete="email"
                   required
                 />
               </div>
@@ -306,6 +331,7 @@ const Auth = () => {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     className="pl-10 pr-10"
+                    autoComplete={isSignUp ? 'new-password' : 'current-password'}
                     required
                   />
                   <button
@@ -364,6 +390,7 @@ const Auth = () => {
             <Button
               type="button"
               variant="outline"
+              disabled={isSubmitting}
               className="w-full mt-6 bg-white/5 hover:bg-white/10 border-border/50 text-foreground"
               onClick={() => signInWithGoogle(redirectTo)}
             >
