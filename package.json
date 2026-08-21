@@ -18,7 +18,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "prompt:opt": "npm run build:kernel && node scripts/prompt-opt/run.mjs --provider vilao",
-    "prompt:opt:mock": "npm run build:kernel && node scripts/prompt-opt/run.mjs --provider mock"
+    "prompt:opt:mock": "npm run build:kernel && node scripts/prompt-opt/run.mjs --provider mock",
+    "label": "npm run build:kernel && node scripts/label/label.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",

@@ -1,0 +1,303 @@
+[
+  {
+    "text": "Cho hình chóp S.ABCD có đáy là hình vuông cạnh 4, SA⊥đáy, SA=4. Tính thể tích khối chóp.",
+    "source": "ví dụ-offline",
+    "difficulty": "TB",
+    "kind": "volume",
+    "expected": [
+      "64/3"
+    ],
+    "plan": {
+      "solidName": "S.ABCD",
+      "ops": [
+        {
+          "op": "oxyz_point",
+          "name": "A",
+          "at": [
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "op": "oxyz_point",
+          "name": "B",
+          "at": [
+            4,
+            0,
+            0
+          ]
+        },
+        {
+          "op": "oxyz_point",
+          "name": "C",
+          "at": [
+            4,
+            4,
+            0
+          ]
+        },
+        {
+          "op": "oxyz_point",
+          "name": "D",
+          "at": [
+            0,
+            4,
+            0
+          ]
+        },
+        {
+          "op": "oxyz_point",
+          "name": "S",
+          "at": [
+            0,
+            0,
+            4
+          ]
+        },
+        {
+          "op": "oxyz_plane",
+          "name": "ABCD",
+          "by": {
+            "form": "three_points",
+            "a": "A",
+            "b": "B",
+            "c": "C"
+          }
+        },
+        {
+          "op": "edge",
+          "from": "A",
+          "to": "B"
+        },
+        {
+          "op": "edge",
+          "from": "B",
+          "to": "C"
+        },
+        {
+          "op": "edge",
+          "from": "C",
+          "to": "D"
+        },
+        {
+          "op": "edge",
+          "from": "D",
+          "to": "A"
+        },
+        {
+          "op": "edge",
+          "from": "S",
+          "to": "A"
+        },
+        {
+          "op": "edge",
+          "from": "S",
+          "to": "B"
+        },
+        {
+          "op": "edge",
+          "from": "S",
+          "to": "C"
+        },
+        {
+          "op": "edge",
+          "from": "S",
+          "to": "D"
+        }
+      ],
+      "asserts": [
+        {
+          "relation": "perp",
+          "args": [
+            "SA",
+            "ABCD"
+          ]
+        },
+        {
+          "relation": "dist",
+          "args": [
+            "S",
+            "A"
+          ],
+          "value": 4
+        },
+        {
+          "relation": "dist",
+          "args": [
+            "A",
+            "B"
+          ],
+          "value": 4
+        }
+      ],
+      "queries": [
+        {
+          "kind": "volume",
+          "solid": "pyramid",
+          "points": [
+            "A",
+            "B",
+            "C",
+            "D"
+          ],
+          "apex": "S"
+        }
+      ]
+    }
+  },
+  {
+    "text": "Bài kiểm thử rổ cần-soát: đáp người nhập sai để công cụ phát hiện.",
+    "source": "ví dụ-offline",
+    "kind": "volume",
+    "expected": [
+      "100"
+    ],
+    "plan": {
+      "solidName": "S.ABCD",
+      "ops": [
+        {
+          "op": "oxyz_point",
+          "name": "A",
+          "at": [
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "op": "oxyz_point",
+          "name": "B",
+          "at": [
+            4,
+            0,
+            0
+          ]
+        },
+        {
+          "op": "oxyz_point",
+          "name": "C",
+          "at": [
+            4,
+            4,
+            0
+          ]
+        },
+        {
+          "op": "oxyz_point",
+          "name": "D",
+          "at": [
+            0,
+            4,
+            0
+          ]
+        },
+        {
+          "op": "oxyz_point",
+          "name": "S",
+          "at": [
+            0,
+            0,
+            4
+          ]
+        },
+        {
+          "op": "oxyz_plane",
+          "name": "ABCD",
+          "by": {
+            "form": "three_points",
+            "a": "A",
+            "b": "B",
+            "c": "C"
+          }
+        },
+        {
+          "op": "edge",
+          "from": "A",
+          "to": "B"
+        },
+        {
+          "op": "edge",
+          "from": "B",
+          "to": "C"
+        },
+        {
+          "op": "edge",
+          "from": "C",
+          "to": "D"
+        },
+        {
+          "op": "edge",
+          "from": "D",
+          "to": "A"
+        },
+        {
+          "op": "edge",
+          "from": "S",
+          "to": "A"
+        },
+        {
+          "op": "edge",
+          "from": "S",
+          "to": "B"
+        },
+        {
+          "op": "edge",
+          "from": "S",
+          "to": "C"
+        },
+        {
+          "op": "edge",
+          "from": "S",
+          "to": "D"
+        }
+      ],
+      "asserts": [
+        {
+          "relation": "perp",
+          "args": [
+            "SA",
+            "ABCD"
+          ]
+        },
+        {
+          "relation": "dist",
+          "args": [
+            "S",
+            "A"
+          ],
+          "value": 4
+        },
+        {
+          "relation": "dist",
+          "args": [
+            "A",
+            "B"
+          ],
+          "value": 4
+        }
+      ],
+      "queries": [
+        {
+          "kind": "volume",
+          "solid": "pyramid",
+          "points": [
+            "A",
+            "B",
+            "C",
+            "D"
+          ],
+          "apex": "S"
+        }
+      ]
+    }
+  },
+  {
+    "text": "Cho hình lập phương cạnh 5. Tính thể tích khối lập phương.",
+    "source": "ví dụ-offline",
+    "kind": "volume",
+    "expected": [
+      "125"
+    ]
+  }
+]

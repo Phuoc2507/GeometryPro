@@ -46,3 +46,6 @@ next-env.d.ts
 
 # Kết quả chạy tối ưu prompt (sinh ra được, có thể chứa dữ liệu chạy thật)
 docs/nghien-cuu/prompt-opt-runs/
+
+# Ca golden ứng viên (chờ người soát rồi --promote sang bench/golden/)
+bench/golden-staging/

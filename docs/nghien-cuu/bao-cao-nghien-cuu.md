@@ -190,6 +190,7 @@ Dự án đã có một **bộ đề mốc (golden)** và một **trình chạy 
 - **Gán nhãn:** mỗi bài gồm đề gốc, *plan* JSON, đáp số đúng (đã **xác minh thủ công**), dạng bài, độ khó, và nhãn "giải được / từ chối".
 - **Quy mô mục tiêu:** ⟦CHỜ CHỐT⟧ ~150–300 bài, đa dạng dạng (khoảng cách, góc, thể tích, thiết diện, tương giao, tròn xoay…).
 - **Công bố:** kèm tài liệu mô tả để tái sử dụng.
+- **Công cụ gán nhãn (đã hiện thực):** `scripts/label/` — người dùng chỉ nhập *đề + đáp đã xác minh*, công cụ chạy engine, đối chiếu, và đóng gói golden (staging → soát → promote). Quy trình chi tiết: `docs/nghien-cuu/du-lieu-benchmark.md`.
 
 ### 5.3. Các chỉ số
 - **Độ chính xác tuyệt đối** trên toàn tập và **theo dạng bài**.
