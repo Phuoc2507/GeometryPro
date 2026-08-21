@@ -82,6 +82,7 @@ export function UpgradeModal({ open, onOpenChange }: UpgradeModalProps) {
         setRefMsg(j.referrerName ? `Hợp lệ · được giới thiệu bởi ${j.referrerName}` : 'Mã hợp lệ · giảm 10%');
       } else {
         setRefApplied(null); setRefStatus('invalid'); setRefMsg(j.message || 'Mã không hợp lệ');
+        if (['not_found', 'self', 'not_first'].includes(j.reason)) { try { localStorage.removeItem('geo3d:ref'); } catch { /* bỏ qua */ } }
       }
     } catch {
       setRefApplied(null); setRefStatus('invalid'); setRefMsg('Không kiểm tra được mã, thử lại.');
