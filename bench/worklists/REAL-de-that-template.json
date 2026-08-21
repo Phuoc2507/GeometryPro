@@ -1,0 +1,35 @@
+[
+  {
+    "note": "CÁCH A — chỉ cần text + expected (cần chạy với --llm và API key để LLM dịch đề→plan). Thay nội dung bằng đề THẬT của bạn, ghi nguồn thật.",
+    "text": "「DÁN ĐỀ THẬT VÀO ĐÂY」 Ví dụ: Cho hình chóp S.ABCD, đáy ABCD là hình vuông cạnh a, SA vuông góc với đáy và SA = a. Tính khoảng cách từ A đến mặt phẳng (SBD).",
+    "source": "「NGUỒN THẬT — vd: Đề thi TN THPT 2021, mã 101, câu 41」",
+    "difficulty": "khó",
+    "kind": "distance",
+    "expected": ["「ĐÁP BẠN TỰ GIẢI — vd a/√3 hay a√3/3」"]
+  },
+  {
+    "note": "CÁCH B — có sẵn plan, chạy OFFLINE (không cần API). Đây là ca MẪU CHẠY THỬ thật: hình lập phương cạnh a, thể tích = a³. Chạy `npm run label -- --in bench/worklists/REAL-de-that-template.json` sẽ thấy ca này vào rổ ✅.",
+    "text": "Cho hình lập phương ABCD.A'B'C'D' cạnh a. Tính thể tích khối lập phương.",
+    "source": "template-mẫu-chạy-thử",
+    "difficulty": "TB",
+    "kind": "volume",
+    "expected": ["a³"],
+    "plan": {
+      "solidName": "cube",
+      "scaleSymbol": "a",
+      "ops": [
+        { "op": "oxyz_point", "name": "A",  "at": [0, 0, 0] },
+        { "op": "oxyz_point", "name": "B",  "at": [1, 0, 0] },
+        { "op": "oxyz_point", "name": "C",  "at": [1, 1, 0] },
+        { "op": "oxyz_point", "name": "D",  "at": [0, 1, 0] },
+        { "op": "oxyz_point", "name": "A2", "at": [0, 0, 1] },
+        { "op": "oxyz_point", "name": "B2", "at": [1, 0, 1] },
+        { "op": "oxyz_point", "name": "C2", "at": [1, 1, 1] },
+        { "op": "oxyz_point", "name": "D2", "at": [0, 1, 1] }
+      ],
+      "queries": [
+        { "kind": "volume", "solid": "prism", "base": ["A", "B", "C", "D"], "top": ["A2", "B2", "C2", "D2"] }
+      ]
+    }
+  }
+]
