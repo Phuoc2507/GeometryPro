@@ -670,19 +670,53 @@ Trục ngang: a = (F·cos30 − F_ms)/m = (10√3 − 5)/2. `subExact(10√3, 5)
 
 Thống nhất: triết lý dịch-tính-tự kiểm, Scalar/`trigOf`/solveQuadratic/recognize/certifyScalar, quy ước scene (t*t, landing_point, trục đứng → z, playback 3–15 s), hình dạng Result, hai ngưỡng EPS. Khác biệt CÓ CHỦ ĐÍCH: (1) đơn vị vào per-quantity + nội bộ SI cố định (v0 dùng hệ nhất quán tùy plan — dynamics buộc SI vì N = kg·m/s²); (2) `g` cấp plan optional-nhưng-bắt-lỗi (v0: per-op bắt buộc — dynamics nhiều op cùng cần g, đặt per-op sẽ trùng lặp); (3) thêm tầng ràng buộc vật lý (N ≥ 0, dây căng, ngưỡng trượt) không có ở động học; (4) sau-khi-dừng xử lý theo vật lý (kẹp/2-pha) thay vì parabol thô.
 
-## 17. Điểm còn phân vân cho phản biện (trung thực)
+## 17. Điểm phân vân — ĐÃ PHÁN QUYẾT TOÀN BỘ (phản biện đợt 2, 22/08)
 
-1. **Bài ngược "biết chuyển động tìm lực"** (lực hãm từ quãng đường dừng…) — lát cắt LỚN của đề VN đang ngoài v1. Kéo vào bằng op `observed` (§3.2) ngay v1 hay để v2? (Thiên về v2 để giữ "thà ít mà đúng", nhưng cần phản biện xác nhận độ phủ đề chấp nhận được.)
-2. **Dấu của `acceleration`:** đại số theo chiều chuyển động (D4 trả −3). Giáo viên VN hay đọc "gia tốc 3 m/s², ngược chiều chuyển động". Giữ đại số + để prompt trình bày (như F18), hay thêm query/field `magnitude`?
-3. **`min_force_to_move` với α ≠ 0:** mẫu số p + q√r làm đáp gần như luôn thập phân (recognize khó với 1/(p+q√r)). Giữ α tự do, hay v1 chỉ nhận α = 0 (D11) và α ≠ 0 để v2?
-4. **Kỳ vọng text của recognize cho D9c** ("-5/2 + 5√3"): đã đối chiếu không gian quét trên code recognize.ts hiện tại, nhưng CHƯA chạy máy — bản thi công phải chạy thật rồi khoá text cứng hoặc giữ mềm.
-5. **`mass`/`g` optional + bắt lỗi khi cần** (chống LLM bịa số đề không cho): quy ước lỗi runtime đã đủ rõ chưa, hay phản biện muốn 2 schema riêng (bài có lực ngoài ⇒ mass bắt buộc từ zod)?
-6. **Trường hợp "đứng yên" là ĐÁP hợp lệ:** đề hỏi "tính lực ma sát (nghỉ) khi kéo F = 5 N" hoặc Atwood m₁ = m₂ — v1 trả violation không-chuyển-động thay vì F_ms = F / a = 0, T = mg. Chấp nhận giới hạn này cho v1 (đề lớp 10 chương động lực học chủ yếu hỏi trường hợp có chuyển động), hay thêm nhánh tĩnh?
-7. **T_phys danh nghĩa 2 s cho bài thuần lực** (D6): số chọn theo cảm quan để scene có chuyển động; cần user thử canvas như phán quyết D2 của v0.
-8. **`meta.model`** (direction/config) là mở rộng nhẹ so PhysicsResult v0 — có cần giữ Result byte-tương-thích tuyệt đối thay vì thêm field?
-9. **Tái dùng compute.ts v0 cho 6 query động học** thay vì tự hiện thực ~60 dòng (§5.1): đợi P1 merge xong xem export thực tế rồi quyết ở phản biện — điều kiện là không sửa file v0.
-10. **Hệ 2 vật có v0 ≠ 0** (đang chuyển động sẵn): v1 chặn (superRefine) — có đề thực nào cần không?
+Mười điểm dưới giữ nguyên văn câu hỏi gốc (trace), mỗi điểm ghi phán quyết tại chỗ. Nguồn: `../reviews/2026-08-21-wave2-specs-review.md` §Findings DYNAMICS — không mở lại tranh luận.
+
+1. **Bài ngược "biết chuyển động tìm lực"** (lực hãm từ quãng đường dừng…) — lát cắt LỚN của đề VN đang ngoài v1. Kéo vào bằng op `observed` (§3.2) ngay v1 hay để v2?
+   **ĐÃ PHÁN QUYẾT: op `observed` để v2.** V1 giữ ngoài phạm vi (§3.2) + few-shot abstain ở phase tích hợp.
+2. **Dấu của `acceleration`:** đại số theo chiều chuyển động (B04 trả −3), hay thêm query/field `magnitude`?
+   **ĐÃ PHÁN QUYẾT: GIỮ đại số (có dấu).** Trình bày "độ lớn 3 m/s², ngược chiều chuyển động" là việc prompt lời giải (kiểu F18); KHÔNG thêm `magnitude`.
+3. **`min_force_to_move` với α ≠ 0:** giữ α tự do, hay v1 chỉ nhận α = 0 (B11) và α ≠ 0 để v2?
+   **ĐÃ PHÁN QUYẾT (= DY-1): v1 CHỈ α = 0, schema chặn bằng `z.literal(0)` (§6.2); α ≠ 0 → v2 kèm guard BẮT BUỘC mẫu (cosα + μ·sinα) > 0** — chặn đường serve lực âm mà thay-ngược vẫn pass.
+4. **Kỳ vọng text của recognize cho B09c** ("-5/2 + 5√3"): CHƯA chạy máy tại thời điểm viết spec — khoá cứng hay giữ mềm?
+   **ĐÃ PHÁN QUYẾT: KHOÁ CỨNG text.** Phản biện đã chạy máy recognize.ts thật và xác nhận trả đúng "-5/2 + 5√3" (reconstruct-check 1e-10 pass) — contract B09 + §15.1 đã cập nhật.
+5. **`mass`/`g` optional + bắt lỗi khi cần** — đủ rõ, hay tách 2 schema riêng?
+   **ĐÃ PHÁN QUYẾT: GIỮ schema mass/g optional + lỗi runtime tiếng Việt rõ.** Không tách schema.
+6. **Trường hợp "đứng yên" là ĐÁP hợp lệ** (ma sát nghỉ khi F nhỏ; Atwood m₁ = m₂): chấp nhận giới hạn v1 hay thêm nhánh tĩnh?
+   **ĐÃ PHÁN QUYẾT: chấp nhận giới hạn — KHÔNG thêm nhánh tĩnh ở v1.** Kèm ba việc đã áp: (a) "đứng yên"/ma-sát-nghỉ khai tường minh NGOÀI phạm vi (§3.2); (b) message violation nói rõ đứng-yên-là-kết-quả-hợp-lệ, không đổ đề sai (§9.2); (c) Atwood m₁ = m₂ có message RIÊNG "hệ cân bằng: a = 0, T = mg" (§9.2).
+7. **T_phys danh nghĩa 2 s cho bài thuần lực** (B06): **ĐÃ PHÁN QUYẾT: GIỮ 2 s.** (Vẫn nên cho user thử canvas ở phase tích hợp như phán quyết D2 của v0 — không blocker.)
+8. **`meta.model`** (direction/config): **ĐÃ PHÁN QUYẾT: GIỮ** — mở rộng field là hợp lệ, không cần byte-tương-thích tuyệt đối với PhysicsResult v0.
+9. **Tái dùng compute.ts v0 cho 6 query động học:** **ĐÃ PHÁN QUYẾT: TỰ HIỆN THỰC ~60 dòng** trên helper `kinematics.ts` (§5.1) — không chờ/ép v0 export per-query.
+10. **Hệ 2 vật có v0 ≠ 0:** **ĐÃ PHÁN QUYẾT: GIỮ CHẶN** (superRefine §6, bài VN hệ ròng rọc xuất phát từ nghỉ).
+
+## 18. Phán quyết chung đợt 2 (áp cho CẢ BA spec: dynamics · oscillation · dc-circuit)
+
+Ba luật chung ĐÃ DUYỆT tại `../reviews/2026-08-21-wave2-specs-review.md` (Kết luận):
+
+1. **Label trần:** scene KHÔNG nhúng giá trị engine tính vào bất kỳ label nào (đồng bộ F8) — mọi giá trị nằm ở `answers[]`. *Spec này đã tuân từ đầu (§10.1: label rỗng hoặc tên ngắn); luật ghi lại để đồng bộ chéo với oscillation (OS-1).*
+2. **Exact-first, thập phân ở bridge:** engine giữ text exact ("75/2 m", "14/5 m/s²", "5√2/2 m/s²"); mọi formatter thập phân kiểu VN ("37,5 m", "2,8 m/s²") là việc tầng bridge/UI lúc wiring — engine KHÔNG in số theo quy ước trình bày. *Các chú thích "= 37,5 m" trong lời tính tay §13 chỉ là đối chiếu ≈ cho người đọc, không phải text engine.*
+3. **Chính tả field query theo v0:** field dùng chung viết đúng chính tả planSchema v0 — `value`/`vUnit`/`component`. *Spec này đã áp: `time_when_velocity{value, vUnit}` (DY-3, §6.2); `component` không áp dụng vì dynamics 1 trục.*
+
+## 19. Changelog phản biện (22/08)
+
+Áp trọn kết luận `../reviews/2026-08-21-wave2-specs-review.md` (mọi finding + phán quyết ĐÃ DUYỆT). Không đổi bất kỳ giá trị số/đáp nào của 11 bài contract (phản biện xác nhận 31/31 số đúng toàn đợt) — chỉ sửa thiết kế/khai báo/tên.
+
+| Finding / phán quyết | Vị trí sửa trong spec |
+|---|---|
+| DY-1 (CAO) — min_force chỉ α = 0 | §3.1 (bảng dạng bài), §3.2 (bullet mới), §6.2 (schema `z.literal(0)` + comment), §7.3 dòng 9 (guard mẫu > 0 cho v2), test âm bản 6, B11, §17.3 |
+| DY-2 — hai vật cùng mặt ngang | §3.2 (bullet mới + few-shot abstain), superRefine §6 mục (3) |
+| DY-3 — field theo v0 (`value`/`vUnit`) | §2 (dòng F2/D1), §6.2 (`time_when_velocity`), §6.3 (bảng đơn vị), plan B04 |
+| DY-4 — `trigOf` là bề mặt thật, không phải bảng | §2 (dòng C8/F11), §4 (bảng dịch), §5.1 (import), §7.2, §16 |
+| DY-5 — time_when sau dừng vĩnh viễn | §8.1 (dòng `time_when`), §8.3 (error "không bao giờ đạt") |
+| DY-6 — định nghĩa check `static_threshold` | §9.1 (dòng đầu bảng — check mà B03 viện dẫn), §15.2 |
+| DY-7 — message "chiều khai không khớp" | §9.2 (dòng mới), §14 R2, test âm bản 7 |
+| DY-8 — chân trời ròng rọc + trùng ký hiệu | §8.2 (ghi chú chân trời); đổi toàn bộ ký hiệu bài contract D1–D11 → B01–B11 (ghi chú đầu §13; quét §6.2, §7.3, §7.5, §10.3, §13, §14, §15, §17) |
+| 10 phán quyết §17 | Ghi "ĐÃ PHÁN QUYẾT" từng điểm tại §17.1–§17.10; áp vào thân bài: §3.2 (1, 3, 6), §5.1 (9), §6 (3, 10), §9.2 (6), §13/B09 (4), §14 R3/R6 (4, 6), §15 (4) |
+| Phán quyết chung (a)(b)(c) | §18 (+ các mục nó trỏ tới) |
+| Sửa biên tập cùng loại CI-3 (lỗi đếm) | Độ phủ cuối §13: acceleration ×9 → ×10 (đếm lại 10 bài B01–B10 mỗi bài 1 query acceleration) |
 
 ---
 
-**Spec này sẽ được phản biện trước khi thi công.** Người phản biện nên kiểm lại: 11 bài tính tay (§13), tính khả thi exact một-căn của D6, không gian recognize của D9, và các quyết định §17.
+**Spec này ĐÃ qua phản biện đợt 2 (22/08).** Phản biện đã: tính lại tay + script độc lập 11 bài contract (không sai số nào), chạy máy xác nhận recognize cho B09c, đối chiếu mọi viện dẫn code (trigOf, displayExact, recognize.ts) với file thật, và chốt 10 phán quyết §17 + 3 phán quyết chung §18. Bước kế: thi công SAU merge P1, theo đúng ranh giới §5.
