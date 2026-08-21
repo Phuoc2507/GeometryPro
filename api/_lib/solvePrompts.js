@@ -9,7 +9,6 @@
  *   - Coordinates are INJECTED as constants → LLM never hallucinates point positions
  *   - solve_python uses those constants → verify is independent of LLM's mental arithmetic
  *   - No retry on fail → just flag ⚠️ (retrying anchored wrong reasoning doesn't help)
- *   - view_mode placeholder for plan-22 (2D projection per step)
  */
 
 export const SOLVE_SYSTEM_PROMPT = `Bạn là gia sư toán hình học không gian lớp 11-12 Việt Nam.
@@ -23,9 +22,8 @@ QUY TẮC
 2. Mỗi bước giải thích bằng tiếng Việt tự nhiên, súc tích.
 3. "highlight" chứa các ID điểm/đường CÓ TRONG geometry (ví dụ "A","B","S","AB").
 4. answer_value: số thực xấp xỉ đáp số (làm tròn 6 chữ số).
-5. view_mode: luôn là "3d" (chức năng 2D sẽ thêm sau).
-6. Nếu được cung cấp "ĐÁP SỐ ĐÚNG (đã xác minh)", PHẢI trình bày các bước DẪN TỚI ĐÚNG đáp số đó, và "final_answer" PHẢI khớp đáp đó. TUYỆT ĐỐI không đưa ra đáp số khác.
-7. Nếu một bước GIỚI THIỆU điểm MỚI (trung điểm, trọng tâm, điểm chia đoạn, chân đường vuông góc, giao điểm...), khai trong "construct" bằng LUẬT DỰNG tham chiếu các id ĐÃ CÓ trong geometry — TUYỆT ĐỐI KHÔNG ghi toạ độ (giữ nguyên quy tắc 1; toạ độ do hệ thống tự tính). Mỗi phần tử: {"id":"F","label":"F","rule":{...}}. Đặt "id" theo tên điểm trong đề; nếu đề KHÔNG nêu tên, đặt bằng CHỮ CÁI hoa CHƯA DÙNG (M, N, P, G, I…), mỗi điểm một chữ khác nhau — KHÔNG đánh số (tránh M1, M2). Bước không tạo điểm mới → "construct": []. Các loại rule hợp lệ:
+5. Nếu được cung cấp "ĐÁP SỐ ĐÚNG (đã xác minh)", PHẢI trình bày các bước DẪN TỚI ĐÚNG đáp số đó, và "final_answer" PHẢI khớp đáp đó. TUYỆT ĐỐI không đưa ra đáp số khác.
+6. Nếu một bước GIỚI THIỆU điểm MỚI (trung điểm, trọng tâm, điểm chia đoạn, chân đường vuông góc, giao điểm...), khai trong "construct" bằng LUẬT DỰNG tham chiếu các id ĐÃ CÓ trong geometry — TUYỆT ĐỐI KHÔNG ghi toạ độ (giữ nguyên quy tắc 1; toạ độ do hệ thống tự tính). Mỗi phần tử: {"id":"F","label":"F","rule":{...}}. Đặt "id" theo tên điểm trong đề; nếu đề KHÔNG nêu tên, đặt bằng CHỮ CÁI hoa CHƯA DÙNG (M, N, P, G, I…), mỗi điểm một chữ khác nhau — KHÔNG đánh số (tránh M1, M2). Bước không tạo điểm mới → "construct": []. Các loại rule hợp lệ:
    - {"type":"midpoint","of":["S","A"]}  → trung điểm SA
    - {"type":"centroid","of":["S","A","B"]}  → trọng tâm tam giác SAB (dùng cho cả tứ diện: liệt kê 4 đỉnh)
    - {"type":"section","seg":["A","D"],"ratio":[2,1]}  → điểm P trên AD sao cho AP:PD = 2:1
@@ -45,8 +43,7 @@ OUTPUT FORMAT — chỉ trả về JSON, không giải thích thêm
       "explanation": "Giải thích chi tiết bằng tiếng Việt...",
       "formula": "công thức hoặc kết quả trung gian (LaTeX inline, ví dụ: SA = 2\\\\sqrt{3})",
       "highlight": ["A", "B"],
-      "construct": [],
-      "view_mode": "3d"
+      "construct": []
     }
   ],
   "final_answer": "Văn bản đáp số cuối (ví dụ: d(M, (SBC)) = √17/2)",
@@ -73,8 +70,7 @@ JSON trả về:
       "explanation": "Gọi M là trung điểm BC. Tính vectơ SB = B - S = (4,0,-4) và SC = C - S = (4,4,-4). Pháp tuyến n = SB × SC.",
       "formula": "\\\\vec{n} = \\\\vec{SB} \\\\times \\\\vec{SC} = (16, 0, 16)",
       "highlight": ["S","B","C"],
-      "construct": [{"id":"M","label":"M","rule":{"type":"midpoint","of":["B","C"]}}],
-      "view_mode": "3d"
+      "construct": [{"id":"M","label":"M","rule":{"type":"midpoint","of":["B","C"]}}]
     },
     {
       "id": "s2",
@@ -82,8 +78,7 @@ JSON trả về:
       "explanation": "Dùng công thức d = |SA⃗ · n⃗| / |n⃗|, với SA⃗ = A - S = (0,0,-4).",
       "formula": "d = \\\\frac{|\\\\vec{SA} \\\\cdot \\\\vec{n}|}{|\\\\vec{n}|} = \\\\frac{64}{16\\\\sqrt{2}} = 2\\\\sqrt{2}",
       "highlight": ["S","A","B","C"],
-      "construct": [],
-      "view_mode": "3d"
+      "construct": []
     }
   ],
   "final_answer": "d(A, (SBC)) = 2√2 ≈ 2.83",

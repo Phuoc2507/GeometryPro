@@ -385,6 +385,9 @@ export interface GeometryData {
   /** TRỌN kết quả engine tất định từ bước VẼ (ok/answers/violations/tier). /api/solve tái dùng
    *  để bỏ HẲN lượt gọi translator LLM lần hai (tiết kiệm token cho bài THANG CHỮ, cạnh 'a'…). */
   engineSolve?: { ok: boolean; answers: unknown[]; violations: unknown[]; tier: unknown };
+  /** ĐỀ đã sinh ra engineAnswer/engineSolve ở bước VẼ. /api/solve chỉ tái dùng đáp engine khi đề
+   *  hiện tại KHỚP giá trị này (chống dùng đáp cũ cho câu hỏi đã bị sửa trên cùng một hình). */
+  engineProblem?: string;
   timeline?: AnimationTimeline;
   agents?: Agent3D[];
   tags?: string[];

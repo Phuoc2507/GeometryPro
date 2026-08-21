@@ -230,6 +230,9 @@ async function handler(req, res) {
           // Lưu TRỌN kết quả engine để /api/solve tái dùng — KHỎI dịch lại (bỏ 1 lượt LLM),
           // kể cả bài THANG CHỮ (approx=null) mà engineAnswer ở trên không bắt.
           geometry.engineSolve = { ok: !!k.ok, answers: k.answers || [], violations: k.violations || [], tier: k.tier || null };
+          // Đóng dấu ĐỀ đã sinh ra đáp engine này → /api/solve chỉ tái dùng khi đề khớp (chống dùng
+          // đáp cũ cho đề đã bị SỬA trên cùng một hình — xem guard trong solve.js).
+          geometry.engineProblem = trimmedPrompt;
           const answersLog = (k.answers || [])
             .map((a) => `${a.kind}: ${a.text}${a.approximate ? ' (xấp xỉ)' : ''}`)
             .join('; ');
@@ -457,6 +460,8 @@ Hãy:
               geometry.engineAnswer = { text: _ea.text, approx: _ea.approx, verified: true }; // engine đã tự kiểm ở nhánh phục vụ này
             }
             geometry.engineSolve = { ok: !!k.ok, answers: k.answers || [], violations: k.violations || [], tier: k.tier || null };
+            // Đóng dấu ĐỀ đã sinh ra đáp engine này → /api/solve chỉ tái dùng khi đề khớp (xem solve.js).
+            geometry.engineProblem = trimmedPrompt;
             const answersLog = (k.answers || [])
               .map((a) => `${a.kind}: ${a.text}${a.approximate ? ' (xấp xỉ)' : ''}`).join('; ');
             const enginePayload = {
