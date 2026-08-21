@@ -222,6 +222,7 @@ x(t) = x0 + (v0x·k)*t                    // với τ0=0 tại track.start
 z(t) = h0 + (v0y·k)*t + (−g/2·k²)*t*t
 ```
 
+- **Phát CẢ `params.equations = {x,y,z}` (object) LẪN `params.path` (chuỗi):** `AnimatedAgent` ưu tiên `equations` (không qua bước split dấu phẩy — an toàn hơn, theo khuyến nghị spec kiến trúc đa môn §6.1); `path` giữ làm dự phòng + debug (format module kinematic đã chứng minh render). `equations` chỉ chứa VẾ PHẢI (`"0 + 10*t"`), `path` là chuỗi đầy đủ `x(t) = …, y(t) = …, z(t) = …`.
 - **Bắt buộc `t*t`, KHÔNG `t^2`:** `AnimatedAgent` chỉ `.replace('t^2', ...)` MỘT lần xuất hiện đầu — phát `t*t` từ engine là an toàn tuyệt đối. Quirk `+ -5*t*t` là JS hợp lệ (kinematic đã kiểm).
 - **Bắt buộc `landing_point` trên MỌI track** = vị trí geo3d tại T_end (`[x_end, 0, y_end]`): AnimatedAgent sau track.end nếu thiếu landing_point sẽ NHẢY VỀ initialPosition.
 - Ghi `params.timeScale = k` + `GeometryData.tags = ['physics', 'timeScale:<k>']` để UI sau này hiển thị "tốc độ phát ×k" (v0 chỉ ghi dữ liệu).
@@ -277,6 +278,7 @@ T_phys = 2√3 ≈ 3.4641 s ∈ [3,15] ⇒ k=1, D_pb=3.4641. Đỉnh (10√3, 15
     "tracks": [
       { "id": "mv_bong", "start": 0, "end": 3.4641, "type": "parametric_path", "targetId": "bong",
         "params": {
+          "equations": { "x": "0 + 10*t", "y": "0", "z": "0 + 17.320508*t + -5*t*t" },
           "path": "x(t) = 0 + 10*t, y(t) = 0, z(t) = 0 + 17.320508*t + -5*t*t",
           "landing_point": [34.641016, 0, 0],
           "timeScale": 1
@@ -516,7 +518,19 @@ c) vx=5√3 (vx²=75 exact); vy=5−10·2.302776≈−18.027756 (float, trị đ
 3. Scene P6 khớp §8.4 (agent, path `t*t`, landing_point, curve quỹ đạo, k=1); P8 có k=0.15, track xe2 start=3.333s.
 4. Toàn suite: 1072 test cũ XANH nguyên + test physics mới xanh; KHÔNG file có sẵn nào đổi (git status chỉ thấy `physics/**`).
 
-## 14. Điểm mở cần phản biện (trước khi thi công)
+## 14. Đối chiếu với spec kiến trúc đa môn (viết SONG SONG cùng ngày)
+
+`docs/superpowers/specs/2026-08-21-engine-pack-architecture-design.md` (§7) phác pack physics ở tầng kiến trúc; spec này là bản CHI TIẾT. Hai bản THỐNG NHẤT về: pattern bọc-ngoài không đụng core, tái dùng scalar/solver1d/recognize, quy ước `t*t` + `landing_point` + trục z đứng, answers mang `unit`, contract `{ok, answers, violations, errors}`, LLM không được tính vx/vy hộ engine. Các điểm LỆCH cần phiên phản biện chốt một bản:
+
+| # | Điểm lệch | Spec kiến trúc §7 | Spec này | Đề nghị |
+|---|---|---|---|---|
+| 1 | Tên file | `schema.ts`, `motion.ts`, thêm `physics/index.ts` | `planSchema.ts`, `kinematics.ts`, không index pack | Theo spec này khi thi công v0 (đã ăn khớp plan); thêm `physics/index.ts` 3 dòng ở bước tích hợp P2 để giữ quy ước export của kiến trúc |
+| 2 | Hình dạng plan | `bodies:[{id, motion:{kind, from:[x,y,z], speed, angleDeg}}]`, `g` cấp plan, default 10 | ops phẳng `mover1d/free_fall/projectile`, `g` BẮT BUỘC theo từng op, KHÔNG default (chống hard-code) | Giữ ops phẳng + g bắt buộc (đề bài VN luôn cho g; thiếu g phải là lỗi dịch nhìn thấy được, không phải default im lặng) — cần chốt lại với tác giả spec kiến trúc |
+| 3 | Thời gian animation | "t là GIÂY THẬT của bài" | Quy tắc playback §8.2 (k=1 khi 3–15 s; nén/kéo về 10 s ngoài khoảng) | Giữ quy tắc §8.2 — "giây thật" chết với bài hai xe 1,5 GIỜ (AnimationContext không có timeScale); k=1 chính là "giây thật" cho ném/rơi |
+| 4 | Queries | `state_at{what}`, `flight_time`, `meet` (1 query 2 đáp) | `position_at`/`velocity_at` tách, `time_to_ground`, `meet_time`+`meet_position` tách (mỗi query MỘT số — dễ assert, khớp answers[] phẳng) | Giữ tách-một-số; map tên khi viết prompt P2 |
+| 5 | Taxonomy tags | plan mang `knowledgeTags` (`ly/10/dong-hoc/nem-xien`), bridge lọc rồi merge vào `scene.tags` (P0/P2) | v0 scene tự gắn `['physics', 'timeScale:…']` | Không xung đột: taxonomy là việc bridge P2 (ngoài v0); v0 giữ chỗ `tags` sẵn — bridge chỉ append |
+
+## 15. Điểm mở cần phản biện (trước khi thi công)
 
 1. **Đơn vị trộn:** quy ước hiện tại cho LLM đổi lượng nhỏ (30 phút → 0.5 h) — có nên thêm trường `given:{value,unit}` để engine tự đổi, triệt để chống LLM tính hộ?
 2. **Quy tắc playback** (3–15 s thật, ngoài đó nén về 10 s): ngưỡng lấy theo cảm quan — cần user thử trên canvas thật rồi chỉnh?
