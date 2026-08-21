@@ -7,7 +7,7 @@
 // giá-trị-trong-nhãn để dành v1. F9: mọi Curve3D phát `params: {}` (field bắt buộc của type).
 import type { GeometryData, Point3D, Line3D, Curve3D, Agent3D, AnimationTimeline } from '../../../../src/types/geometry';
 import { type Motion, type Quad, evalQuadN, derivQuad, mainAxis } from './kinematics';
-import { groundTau } from './compute';
+import { groundTau, EPS_T } from './compute';
 import type { PhysicsPlan } from './planSchema';
 
 const COLORS = ['#FFA500', '#38BDF8', '#F472B6', '#4ADE80'];
@@ -16,7 +16,7 @@ const fmt = (n: number): string => parseFloat(n.toFixed(6)).toString();
 export type PhysicsChart = {
   kind: 'x_t' | 'v_t'; tUnit: string; vUnit: string;
   series: { name: string; samples: [number, number][] }[];
-  events: { t: number; label: string }[];
+  events: { t: number; label: string; value?: number }[];   // VỪA-6: value = giá trị đáp (spec §8.3)
 };
 
 // Quy tắc playback (spec §8.2): giây thật khi units.time='s' và 3 ≤ T ≤ 15; ngoài ra nén/kéo về 10 s.
@@ -60,11 +60,12 @@ export function buildScene(
   const margin = Math.max(0.5, 0.05 * span);
   const radius = Math.max(0.12, 0.02 * span);
 
+  // THẤP(7): mốc scene prefix "__" — điểm xuất phát của vật là `${name}0`, vật tên "G" sẽ va id "G0".
   const points: Point3D[] = [
-    { id: 'G0', label: '', x: xMin - margin, y: 0, z: 0 },
-    { id: 'G1', label: '', x: xMax + margin, y: 0, z: 0 },
+    { id: '__G0', label: '', x: xMin - margin, y: 0, z: 0 },
+    { id: '__G1', label: '', x: xMax + margin, y: 0, z: 0 },
   ];
-  const lines: Line3D[] = [{ id: 'ground', from: 'G0', to: 'G1', style: 'solid', color: '#8B8B8B' }];
+  const lines: Line3D[] = [{ id: 'ground', from: '__G0', to: '__G1', style: 'solid', color: '#8B8B8B' }];
   const curves: Curve3D[] = [];
   const agents: Agent3D[] = [];
   const tracks: AnimationTimeline['tracks'] = [];
@@ -119,7 +120,7 @@ export function buildScene(
 }
 
 export function buildCharts(
-  plan: PhysicsPlan, motions: Map<string, Motion>, tPhys: number, events: { t: number; label: string }[],
+  plan: PhysicsPlan, motions: Map<string, Motion>, tPhys: number, events: { t: number; label: string; value?: number }[],
 ): PhysicsChart[] {
   const out: PhysicsChart[] = [];
   for (const ch of plan.charts) {
@@ -130,6 +131,9 @@ export function buildCharts(
       const base = mainAxis(m) === 'y' ? m.y : m.x;
       const q = ch.kind === 'x_t' ? base : derivQuad(base);
       const t0 = m.t0.approx;
+      // VỪA-2: cửa sổ vẽ kết thúc TRƯỚC khi vật xuất phát (tPhys ≤ t0) ⇒ bỏ series — nếu không,
+      // (tPhys − t0) < 0 làm samples đi LÙI ([[2,50],[1,54]]). Kẹp đoạn vẽ về [t0, max].
+      if (tPhys <= t0 + EPS_T) continue;
       const N = Math.abs(q.k2.approx) < 1e-15 ? 1 : 64;   // tuyến tính → 2 mẫu là đủ
       const samples: [number, number][] = [];
       for (let i = 0; i <= N; i++) {

@@ -38,7 +38,12 @@ const ProjectileOp = z.object({
   xUnit: LenUnit.optional(),        // đơn vị của x0/h0
   v0: Num.positive(),               // ĐỘ LỚN (>0) — chiều nằm ở angleDeg
   v0Unit: VelUnit.optional(),
-  angleDeg: Num,                    // LUÔN là ĐỘ. 0 = ném ngang; 90 = thẳng đứng LÊN; −90 = thẳng đứng XUỐNG (F11). Độ→radian là việc NỘI BỘ engine.
+  // LUÔN là ĐỘ. 0 = ném ngang; 90 = thẳng đứng LÊN; −90 = thẳng đứng XUỐNG (F11). Độ→radian là việc
+  // NỘI BỘ engine. THẤP(6): chặn |angleDeg| > 90 — "ném ngược chiều trục x" (vd 180°) không phải bài
+  // projectile lớp 10; mô tả bằng mover1d (v0 âm) hoặc đổi chiều dương của trục.
+  angleDeg: Num
+    .min(-90, 'angleDeg phải trong [−90, 90] — ném ngược chiều trục x hãy mô tả bằng mover1d (v0 âm) hoặc đổi chiều dương của trục')
+    .max(90, 'angleDeg phải trong [−90, 90] — ném ngược chiều trục x hãy mô tả bằng mover1d (v0 âm) hoặc đổi chiều dương của trục'),
   g: Num.positive(),                // BẮT BUỘC, như free_fall
 });
 export const PhysicsOpSchema = z.discriminatedUnion('op', [Mover1dOp, FreeFallOp, ProjectileOp]);

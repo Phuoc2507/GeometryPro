@@ -22,9 +22,13 @@ export type PhysicsResult = {
 export function runPhysics(raw: unknown): PhysicsResult {
   const parsed = PhysicsPlanSchema.safeParse(raw);
   if (!parsed.success) {
+    // THẤP(2): kèm PATH của issue ("ops.0.x0: Expected number…") — không bắt người đọc đoán field.
+    const iss = parsed.error.issues[0];
+    const detail = iss ? `${iss.path.length ? `${iss.path.join('.')}: ` : ''}${iss.message}` : 'schema';
     return { ok: false, answers: [], checks: [], violations: [],
-      errors: [{ message: `Invalid physics plan: ${parsed.error.issues[0]?.message ?? 'schema'}` }],
-      geometry: null, charts: [], meta: { tPhys: 0, playback: { durationSec: 0, timeScale: 0 }, units: { length: 'm', time: 's' } } };
+      errors: [{ message: `Invalid physics plan: ${detail}` }],
+      // THẤP(9): timeScale mặc định 1 (không phát 0 — phía dùng chia cho timeScale sẽ chia-0).
+      geometry: null, charts: [], meta: { tPhys: 0, playback: { durationSec: 0, timeScale: 1 }, units: { length: 'm', time: 's' } } };
   }
   const plan = parsed.data;
   // Chuẩn hoá units MỘT chỗ: zod đã điền default lúc parse; dòng ?? chỉ để hệ type có
@@ -42,14 +46,22 @@ export function runPhysics(raw: unknown): PhysicsResult {
   // 1) Queries — công thức đóng + tự kiểm thay-ngược; check fail cũng đổ vào errors (không serve-sai)
   const answers: PhysicsAnswer[] = [];
   const checks: Check[] = [];
-  const events: { t: number; label: string }[] = [];
-  for (const q of plan.queries) {
+  const events: { t: number; label: string; value?: number }[] = [];
+  for (const [qi, q] of plan.queries.entries()) {
     const r = computePhysicsQuery(motions, q, units);
     if (r.ok === false) { errors.push({ message: `query ${q.kind}: ${r.problem}` }); continue; }
-    answers.push(r.answer);
+    // VỪA-3: gắn queryIndex — khi query lỗi giữa chừng answers dồn chỉ số, cần map ngược về plan.queries.
+    answers.push({ ...r.answer, queryIndex: qi });
     checks.push(...r.checks);
-    if (r.tSolved !== undefined) events.push({ t: r.tSolved, label: ('label' in q && q.label) || q.kind });
-    for (const c of r.checks) if (!c.pass) errors.push({ message: `tự kiểm FAIL: ${c.detail} (residual ${c.residual.toExponential(2)})` });
+    if (r.tSolved !== undefined) {
+      // VỪA-6 (spec §8.3): event mang value = giá trị đáp (nếu là số) để frontend gắn nhãn mốc.
+      const ev: { t: number; label: string; value?: number } = { t: r.tSolved, label: ('label' in q && q.label) || q.kind };
+      if (Number.isFinite(r.answer.approx)) ev.value = r.answer.approx;
+      events.push(ev);
+    }
+    // CAO-1: severity 'warn' = cảnh báo miền tin cậy — HIỂN THỊ trong checks nhưng KHÔNG đổ vào
+    // errors, KHÔNG lật ok (quyết định thiết kế: đáp giữ tương thích, cảnh báo cho người dùng).
+    for (const c of r.checks) if (!c.pass && c.severity !== 'warn') errors.push({ message: `tự kiểm FAIL: ${c.detail} (residual ${c.residual.toExponential(2)})` });
   }
 
   // 2) Asserts khai báo (dữ kiện DƯ của đề) → lệch quá tol ⇒ violations (mô hình dịch sai đề)
@@ -57,6 +69,9 @@ export function runPhysics(raw: unknown): PhysicsResult {
   for (const a of plan.asserts) {
     const r = computePhysicsQuery(motions, a.query, units);
     if (r.ok === false) { errors.push({ message: `assert ${a.query.kind}: ${r.problem}` }); continue; }
+    // VỪA-1: quét r.checks như nhánh queries — assert "gặp" trên hai vật không gặp thật từng bị
+    // nuốt (chỉ đọc approx). Check fail (trừ warn miền tin cậy) ⇒ errors, không ok:true oan.
+    for (const c of r.checks) if (!c.pass && c.severity !== 'warn') errors.push({ message: `assert ${a.query.kind} tự kiểm FAIL: ${c.detail} (residual ${c.residual.toExponential(2)})` });
     const tol = (a.tol ?? TOL_ASSERT) * Math.max(1, Math.abs(a.equals));
     const delta = Math.abs(r.answer.approx - a.equals);
     if (delta > tol) violations.push({ assert: a.query.kind, expected: a.equals, got: r.answer.approx, delta });
