@@ -8,6 +8,8 @@ Toàn bộ quy trình dùng công cụ đã có sẵn: `scripts/label/label.mjs`
 
 ---
 
+> **Chọn bài nào?** Đọc **`huong-dan-chon-bai.md`** trước — bảng rõ ràng "lấy / bỏ" kèm ví dụ, để không mất công với bài máy không giải được.
+
 ## 0. Nguyên tắc liêm chính (đọc trước, bắt buộc)
 
 1. **Ghi nguồn thật:** mỗi đề phải ghi rõ nguồn ở trường `source` — ví dụ `"SGK Toán 12 Cánh Diều, tr.57, VD3"` hoặc `"Đề thi TN THPT 2023, mã 101, câu 44"`. Không chép nguyên văn cả kho đề (bản quyền) — chỉ lấy từng bài, ghi nguồn, dùng cho mục đích nghiên cứu/đánh giá.

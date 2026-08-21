@@ -11,6 +11,9 @@ VILAO_API_KEY=sk-... npm run label:studio
 ```
 Mở **http://localhost:5178**.
 
+## Chọn bài nào?
+Đọc **`docs/nghien-cuu/huong-dan-chon-bai.md`** — bảng "lấy / bỏ" kèm ví dụ, tránh mất công với bài máy không giải được.
+
 ## Dùng (mỗi ca ~20 giây)
 1. **Chụp đề**: Win+Shift+S khoanh vùng đề → ảnh vào clipboard.
 2. Bấm ô bên trái, **Ctrl+V** để dán ảnh → bấm **📖 Đọc đề từ ảnh**.
