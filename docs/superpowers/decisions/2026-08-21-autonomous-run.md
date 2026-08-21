@@ -104,6 +104,18 @@ Pipeline: spec (3 agent) → phản biện thiết kế (2 agent) → sửa spec
   3 spec chương mới (động lực học, dao động, mạch điện) + 1 agent viết lại spec
   Hóa-v1 bị mất trong sự cố. Tổng 4 agent — đúng trần an toàn D12.
 
+- **D16 · Phản biện 3 spec lớp 11-12: chấp nhận toàn bộ finding + phán quyết**
+  (báo cáo: `reviews/2026-08-21-wave2-specs-review.md`). 31/31 bài mẫu đúng.
+  Xếp hạng chín: mạch điện → động lực học → dao động. 3 phán quyết CHUNG cho
+  mọi pack từ nay: (a) label scene KHÔNG nhúng giá trị engine tính; (b) engine
+  exact-first, thập phân là việc bridge/UI; (c) field query dùng chính tả v0.
+  Giao 1 agent sửa 3 spec theo danh sách; thứ tự code đợt 2 (sau khi user duyệt):
+  mạch điện → động lực học → dao động.
+- **D17 · Physics pack v0 HOÀN THÀNH + commit afd58b3**: 66/66 test xanh, toàn
+  suite 1169 pass/0 fail, tsc kernel sạch, smoke end-to-end đúng đáp exact.
+  Đang phản biện code (phiên 2). Chem pack: snapshot WIP d1f811d, agent đang
+  viết tiếp.
+
 ## Quyết định chờ ghi tiếp (sẽ bổ sung trong đêm)
 
 - Phân xử 5 điểm lệch giữa spec kiến trúc và spec Lý (theo khuyến nghị phản biện).
