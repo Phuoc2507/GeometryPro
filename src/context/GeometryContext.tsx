@@ -1094,6 +1094,37 @@ export function GeometryProvider({ children }: { children: React.ReactNode }) {
           return;
         }
 
+        // Vẽ kỹ định tuyến sang Nâng cao cho đề ẢNH (Phase 2: splitProblem đọc ảnh + phân loại 1 lượt):
+        // server trả scene advance → nhúng vào geometry lịch sử (mở lại khôi phục stepper), SET_ADVANCE_SCENE.
+        // (mirror queueAnalyzeText — thiếu nhánh này thì đề ảnh nâng cao rơi về PYRAMID_MOCK_DATA.)
+        if (data?.mode === 'advance' && data.scene) {
+          const label = data.scene.base?.name || '📷 Đề nâng cao (từ ảnh)';
+          const geometryForHistory: GeometryData = {
+            name: label,
+            points: [], lines: [],
+            advanceScene: data.scene,
+            drawMode: 'advance',
+          };
+          dispatch({
+            type: 'QUEUE_UPDATE', id,
+            updates: { status: 'done', progress: 100, statusText: 'Hoàn thành!', geometry: geometryForHistory, completedAt: Date.now() },
+          });
+          const historyId = await addToHistory(geometryForHistory, label);
+          if (historyId) {
+            const url = new URL(window.location.href);
+            url.searchParams.set('id', historyId);
+            window.history.replaceState({}, '', url.toString());
+          }
+          refreshProfile();
+          toast({ title: '✅ Vẽ xong!', description: `${geometryForHistory.name} — Nhấn để xem`, duration: 8000 });
+          const st = stateRef.current;
+          if (!st.geometry && !st.isScanning) {
+            dispatch({ type: 'SET_ADVANCE_SCENE', scene: data.scene });
+            dispatch({ type: 'QUEUE_SET_ACTIVE', id });
+          }
+          return;
+        }
+
         const step2 = data?.step2;
         let geometry: GeometryData;
 
@@ -1152,7 +1183,7 @@ export function GeometryProvider({ children }: { children: React.ReactNode }) {
         toast({ title: "❌ Lỗi", description: "Không thể xử lý ảnh đề bài", variant: "destructive" });
       }
     })();
-  }, [addToHistory, openAuthModal, openUpgradeModal]);
+  }, [addToHistory, openAuthModal, openUpgradeModal, refreshProfile]);
 
   const viewQueueItem = useCallback((id: string) => {
     const item = stateRef.current.queue.find(q => q.id === id);
