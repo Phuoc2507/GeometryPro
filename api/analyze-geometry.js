@@ -321,31 +321,45 @@ Hãy:
       result._userMsgUsed = userMsg;
 
     } else if (drawMode === 'detailed') {
-      // ===== VẼ KỸ ⊇ VẼ NÂNG CAO: định tuyến bài VẬT THẬT tròn xoay / thiết diện / thể tích sang engine
-      // Nâng cao. CHỈ áp cho 'detailed' (Vẽ nhanh KHÔNG đụng — giữ nhẹ). Regex-gated (rẻ) nên chỉ tốn 1
-      // lượt Nâng cao khi đề đúng dạng; hỏng/không dựng được ⇒ rơi êm về luồng Vẽ kỹ thường bên dưới.
-      // Trả THẲNG scene advance (frontend queueAnalyzeText nhận diện mode:'advance'). Ảnh → bỏ qua (regex text).
-      if (!imageBase64 && trimmedPrompt && process.env.KERNEL_MODE !== 'off') {
+      // ===== VẼ KỸ ⊇ VẼ NÂNG CAO: định tuyến sang engine Nâng cao cho HAI dạng —
+      //   (1) calculus/khối tất định (tròn xoay / bình-lu / thiết diện / diện tích), và
+      //   (2) đề ĐA-CÂU (nhiều ý a/b/c…) → bóc lớp theo từng câu (buildAdvanceScene).
+      // CHỈ áp cho 'detailed' (Vẽ nhanh KHÔNG đụng — giữ nhẹ). Gate REGEX rẻ quyết định có ĐÁNG chạy
+      // pipeline nâng cao không (tránh tốn 1 lượt split-LLM cho MỌI đề Vẽ kỹ); runAdvance → assembleAdvance
+      // tự lo phần còn lại + fallback. Hỏng/không dựng được ⇒ rơi êm về luồng Vẽ kỹ thường bên dưới.
+      // Trả THẲNG scene advance (frontend queueAnalyzeText nhận diện mode:'advance'). Ảnh → bỏ qua (Phase 2
+      // sẽ mở). Cờ ENV DETAILED_ADVANCE=off tắt hẳn nhánh này (đường lui khi p95 xấu, không cần revert code).
+      const advanceOff = process.env.DETAILED_ADVANCE === 'off';
+      if (!advanceOff && !imageBase64 && trimmedPrompt && process.env.KERNEL_MODE !== 'off') {
         try {
           const advMod = await import('./analyze-advance.js');
           const isAdvance = advMod.looksLikeVessel(trimmedPrompt) || advMod.looksLikeRevolution(trimmedPrompt)
             || advMod.looksLikeCrossSection(trimmedPrompt) || advMod.looksLikeArea(trimmedPrompt)
-            || advMod.looksLikeSection(trimmedPrompt);
+            || advMod.looksLikeSection(trimmedPrompt) || advMod.looksLikeMultiQuestion(trimmedPrompt);
           if (isAdvance) {
             sendEvent('Đang thử engine nâng cao...', 30);
             const { runAdvance } = await import('./_lib/advance/runAdvance.js');
-            const adv = await runAdvance(trimmedPrompt, {});
-            if (adv && adv.mode === 'advance' && adv.scene && adv.scene.base
-                && Array.isArray(adv.scene.base.points)) {
+            // Deadline nội bộ: pipeline nâng cao (split + dịch base 1 lần + giải từng câu) có thể ~30-40s.
+            // Chạm mốc ⇒ rơi về Vẽ kỹ thường thay vì treo tới trần 60s Vercel (→ 504). 52s mặc định (chừa lằn).
+            const DEADLINE_MS = Number(process.env.ADVANCE_DEADLINE_MS) || 52000;
+            let _advTimer;
+            const _advDeadline = new Promise((r) => { _advTimer = setTimeout(() => r({ __deadline: true }), DEADLINE_MS); });
+            const adv = await Promise.race([runAdvance(trimmedPrompt, {}), _advDeadline]);
+            clearTimeout(_advTimer);
+            if (adv && adv.__deadline) {
+              console.warn('[detailed→advance] chạm deadline → Vẽ kỹ thường');
+            } else if (adv && adv.mode === 'advance' && adv.scene && adv.scene.base
+                && Array.isArray(adv.scene.base.points) && adv.scene.base.points.length > 0) {
               console.log('[detailed→advance] phục vụ:', trimmedPrompt.substring(0, 60));
               logEngineDecision({ mode: 'detailed', served: true, reason: 'advance-from-detailed', ms: 0, promptLen: trimmedPrompt.length });
               sendEvent('Hoàn tất (nâng cao)!', 100);
               const advPayload = withQuota({ mode: 'advance', scene: adv.scene, engine: 'advance' }, access);
               if (isStream) { res.write(`data: ${JSON.stringify({ status: 'done', data: advPayload })}\n\n`); return res.end(); }
               return res.json(advPayload);
+            } else {
+              // adv.revUnsupported / degraded ⇒ engine Nâng cao chưa dựng được ⇒ rơi về Vẽ kỹ thường (thử vẽ hình).
+              console.log('[detailed→advance] không dùng được → Vẽ kỹ thường');
             }
-            // adv.revUnsupported / degraded ⇒ engine Nâng cao chưa dựng được ⇒ rơi về Vẽ kỹ thường (thử vẽ hình).
-            console.log('[detailed→advance] không dùng được → Vẽ kỹ thường');
           }
         } catch (e) {
           console.warn('[detailed→advance] lỗi → Vẽ kỹ thường:', e?.message);

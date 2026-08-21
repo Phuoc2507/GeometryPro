@@ -115,6 +115,20 @@ export function looksLikeSection(text) {
   return hasSolid && hasCut;
 }
 
+// Nhận diện đề ĐA-CÂU (nhiều ý con a/b/c…) một cách TẤT ĐỊNH — gate RẺ để luồng "Vẽ kỹ" quyết định có
+// ĐÁNG chạy pipeline nâng cao (tốn 1 lượt split-LLM) hay không, thay vì split MỌI đề. Đây CHỈ là lưới
+// lọc thô: splitProblem + coverageCheck mới là lưới chốt (đề lọt vào nhưng không thực sự đa-câu ⇒ trả
+// 'single' ⇒ rơi êm về Vẽ kỹ thường). Cần ≥2 nhãn câu con cùng họ để tránh bắt nhầm toạ độ "A(1;2)".
+// Bắt: "a)" "b)"… | "1)" "2)"… | "câu a"/"câu 1"… (đứng sau ranh giới để né "A(" và số trong công thức).
+export function looksLikeMultiQuestion(text) {
+  const s = (text || '').toLowerCase();
+  if (!s) return false;
+  const paren = (s.match(/(?:^|\s)[a-e]\)/g) || []).length;      // a) b) c)… (đầu dòng / sau khoảng trắng)
+  const num   = (s.match(/(?:^|\n)\s*[1-9]\)/g) || []).length;   // 1) 2)… ĐẦU DÒNG (né toạ độ inline "A(1;2)")
+  const cau   = (s.match(/c[aâ]u\s*[1-9a-e]\b/g) || []).length;  // câu 1 / câu a
+  return paren >= 2 || num >= 2 || cau >= 2;
+}
+
 // ===== LÕI THUẦN (deps-injected) — test 3 nhánh KHÔNG cần mạng =====
 // deps = { splitProblem, buildAdvanceScene, solveProblem, buildRevolutionScene }. Xem test analyze-advance.test.js.
 export async function assembleAdvance(problem, deps, opts = {}) {
