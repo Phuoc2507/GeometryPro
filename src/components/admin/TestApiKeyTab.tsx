@@ -151,7 +151,9 @@ export function TestApiKeyTab() {
   }, []);
 
   const toggleKey = (id: string) => setSelected((s) => {
-    const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n;
+    const n = new Set(s);
+    if (n.has(id)) n.delete(id); else n.add(id);
+    return n;
   });
   // "Chọn tất cả": đang có chọn → bỏ HẾT; đang trống → chọn HẾT.
   // (Bỏ riêng từng key thì bấm vào key đó — vẫn giữ phần còn lại.)
@@ -326,7 +328,7 @@ export function TestApiKeyTab() {
                                 <ExternalLink className="w-3.5 h-3.5" /> Mở bài
                               </Button>
                               <Button size="sm" variant="ghost" className="h-7 gap-1.5 text-xs text-muted-foreground"
-                                onClick={() => setOpenJson((s) => { const n = new Set(s); n.has(jsonId) ? n.delete(jsonId) : n.add(jsonId); return n; })}>
+                                onClick={() => setOpenJson((s) => { const n = new Set(s); if (n.has(jsonId)) n.delete(jsonId); else n.add(jsonId); return n; })}>
                                 {jsonOpen ? 'Ẩn JSON' : 'Xem JSON'}
                               </Button>
                             </div>
