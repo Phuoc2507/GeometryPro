@@ -279,15 +279,15 @@
   <!-- SLIDE 8 -->
   <section class="slide" data-title="Kết quả đo thật">
     <div class="eyebrow">Kết quả đo thật</div>
-    <h2>bench:gate 159/159 pass · đáp căn / π chính xác 100%</h2>
+    <h2>bench:gate 210/210 pass · đáp căn / π chính xác 100%</h2>
     <div class="stats">
-      <div class="stat ok"><div class="n">159/159</div><div class="l">bench:gate pass (tất định)</div></div>
-      <div class="stat"><div class="n">159</div><div class="l">ca golden · 226 đáp</div></div>
+      <div class="stat ok"><div class="n">210/210</div><div class="l">bench:gate pass (tất định)</div></div>
+      <div class="stat"><div class="n">210</div><div class="l">ca golden · 279 đáp</div></div>
       <div class="stat ok"><div class="n">100%</div><div class="l">đáp dạng chính xác · 0 xấp xỉ</div></div>
       <div class="stat"><div class="n">~1085</div><div class="l">test đơn vị xanh</div></div>
     </div>
     <ul>
-      <li>Phủ dạng đáp (226 đáp): <span class="mono">49 chứa π</span> · <span class="mono">27 chứa √</span> · <span class="mono">105 hữu tỉ</span> · <span class="mono">45 nhãn / góc° / phương trình</span> — kernel ~5.000 dòng nhóm tự viết.</li>
+      <li>Phủ dạng đáp (279 đáp): <span class="mono">49 chứa π</span> · <span class="mono">27 chứa √</span> · <span class="mono">105 hữu tỉ</span> · <span class="mono">45 nhãn / góc° / phương trình</span> — kernel ~5.000 dòng nhóm tự viết.</li>
       <li>Phủ dạng truy vấn: thể tích 61, toạ độ/giao 56, diện tích 33, khoảng cách 15, góc 15, phương trình mặt phẳng 15, vị trí tương đối 15, mặt cầu 6, tỉ số thể tích 5, đường sinh 4.</li>
       <li>Demo đáp căn thật: khoảng cách <span class="mono">2√3/3</span>, thể tích <span class="mono">8√2π/3</span> và <span class="mono">52π</span> — chạy lại giống hệt mỗi lần, offline.</li>
     </ul>
@@ -296,11 +296,11 @@
   <!-- SLIDE 9 -->
   <section class="slide" data-title="Đọc đúng con số">
     <div class="eyebrow">Trung thực về phạm vi</div>
-    <h2>Con số 159/159 đo cái gì — và trung thực về cái nó chưa đo</h2>
+    <h2>Con số 210/210 đo cái gì — và trung thực về cái nó chưa đo</h2>
     <div class="grow"><ul>
-      <li><b>159/159</b> chứng minh <b>engine tính đúng khi đã có plan đúng</b> và <b>thực sự trả đáp dạng căn</b> — nó củng cố năng lực engine.</li>
+      <li><b>210/210</b> chứng minh <b>engine tính đúng khi đã có plan đúng</b> và <b>thực sự trả đáp dạng căn</b> — nó củng cố năng lực engine.</li>
       <li>Nó <b>chưa</b> đo khâu <b>LLM dịch đề → plan</b> (đầu-cuối); muốn đo phải chạy <span class="mono">--full</span> (gọi LLM, cần khoá API).</li>
-      <li>"100%" chỉ nghĩa <b>"chưa phát hiện hồi quy trên rổ 159 ca"</b>, không phải "hệ thống chính xác 100%".</li>
+      <li>"100%" chỉ nghĩa <b>"chưa phát hiện hồi quy trên rổ 210 ca"</b>, không phải "hệ thống chính xác 100%".</li>
       <li><span class="badge wait">⟦CHỜ ĐO⟧</span> baseline LLM thuần vs hệ của chúng em, và đặc biệt chỉ số <b>confidently-wrong</b> + <b>precision khi trả lời</b> (cần khoá API).</li>
     </ul></div>
   </section>
@@ -346,8 +346,8 @@
     <div class="eyebrow">Liêm chính &amp; hạn chế — tự nêu trước khi bị hỏi</div>
     <h2>Ranh giới rõ ràng, không tô vẽ</h2>
     <div class="split"><ul>
-      <li><span class="badge done">ĐÃ ĐO</span> engine bench:gate 159/159, ~1085 test. <span class="badge wait">⟦CHỜ ĐO⟧</span> end-to-end + baseline + confidently-wrong (cần khoá API).</li>
-      <li><b>Benchmark còn nhỏ (159 ca) và là máy-sinh</b> — <b>25 capture + 134 synthetic tự soạn</b> (kiểm hai chiều); chưa có đề từ SGK / đề thi thật — đang bổ sung.</li>
+      <li><span class="badge done">ĐÃ ĐO</span> engine bench:gate 210/210, ~1085 test. <span class="badge wait">⟦CHỜ ĐO⟧</span> end-to-end + baseline + confidently-wrong (cần khoá API).</li>
+      <li><b>Benchmark còn nhỏ (210 ca) và là máy-sinh</b> — <b>25 capture + 185 synthetic tự soạn</b> (kiểm hai chiều); chưa có đề từ SGK / đề thi thật — đang bổ sung.</li>
       <li><b>Phạm vi engine có giới hạn:</b> quỹ tích tổng quát, bất đẳng thức, biện luận tham số ⇒ engine <b>từ chối an toàn</b> thay vì giải — ranh giới rõ, không giấu.</li>
       <li><b>Ghi công minh bạch:</b> LLM hosted làm bộ dịch, three.js / React để vẽ; phần tự viết là engine, cổng từ chối, benchmark, phân tầng.</li>
     </ul></div>
@@ -356,7 +356,7 @@
   <!-- SLIDE 14 -->
   <section class="slide" data-title="Hướng phát triển">
     <div class="eyebrow">Hướng phát triển</div>
-    <h2>Từ 159 ca máy-sinh tới benchmark có nguồn và số đầu-cuối thật</h2>
+    <h2>Từ 210 ca máy-sinh tới benchmark có nguồn và số đầu-cuối thật</h2>
     <div class="grow"><ul>
       <li>Mở rộng benchmark tiếng Việt lên <b>~150–300 ca có nguồn SGK / đề thi</b>, tự giải tay xác minh, đủ dạng (thêm góc, thiết diện, giao tuyến).</li>
       <li>Chạy <b>đánh giá đầu-cuối + baseline thật</b> (accuracy, confidently-wrong, latency) khi có khoá API.</li>
@@ -371,7 +371,7 @@
     <h2>Một AI đáng tin cho hình học không gian — biết tính đúng và biết từ chối</h2>
     <div class="grow"><ul>
       <li><b>Đóng góp:</b> kiến trúc Neuro-Symbolic an toàn cho hình học <b>không gian</b> · cổng từ chối theo bất biến affine · engine trả đáp căn / π đúng · benchmark tiếng Việt đầu tiên.</li>
-      <li><b>Số thật làm nền:</b> engine bench:gate <b>159/159</b>, ~<b>1085</b> test; phần còn lại <span class="badge wait">⟦CHỜ ĐO⟧</span> một cách minh bạch.</li>
+      <li><b>Số thật làm nền:</b> engine bench:gate <b>210/210</b>, ~<b>1085</b> test; phần còn lại <span class="badge wait">⟦CHỜ ĐO⟧</span> một cách minh bạch.</li>
       <li><b>Giá trị giáo dục:</b> hình 3D để hiểu bằng mắt + đáp kiểm chứng được, và quan trọng nhất — <b>thà từ chối còn hơn dạy sai</b>.</li>
     </ul></div>
     <div class="thanks">Xin cảm ơn hội đồng và quý thầy cô — sẵn sàng chạy demo trực tiếp và trả lời chất vấn.</div>

@@ -156,18 +156,18 @@ Rổ đề mốc (`bench/golden/README.md`) ghi lại **cả những chỗ engin
 
 ### 4.4. Quy mô thực của "vùng an toàn"
 
-Rổ đề mốc đã cam kết gồm **159 ca / 226 đáp án**, đạt **100% đáp dạng chính xác (exact-form)** trên phần engine giải. Phân bố theo loại truy vấn cho thấy vùng năng lực thực, không phải danh mục lý thuyết:
+Rổ đề mốc đã cam kết gồm **210 ca / 279 đáp án**, đạt **100% đáp dạng chính xác (exact-form)** trên phần engine giải. Phân bố theo loại truy vấn cho thấy vùng năng lực thực, không phải danh mục lý thuyết:
 
 | Loại truy vấn | Số đáp | Loại truy vấn | Số đáp |
 |---|---|---|---|
-| `volume` | 61 | `distance` | 15 |
-| `point_coord` | 56 | `sphere_metric` | 6 |
-| `area` | 33 | `ratio` (volume_ratio) | 5 |
-| `angle` | 15 | `slant` | 4 |
+| `volume` | 72 | `distance` | 28 |
+| `point_coord` | 60 | `sphere_metric` | 9 |
+| `area` | 51 | `ratio` (volume_ratio) | 5 |
+| `angle` | 19 | `slant` | 4 |
 | `equation` | 15 | | |
 | `relative_position` | 15 | | |
 
-Nói cách khác: biên giới ở §2–§3 **không phải một tuyên bố suông** — nó được đóng cọc bằng 226 đáp án đã đối chiếu tay, chạy tất định (engine-replay, không gọi AI) qua `npm run bench:gate`. Đó là cái làm cho "hệ thống biết ranh giới của mình" trở thành một khẳng định **kiểm được**, chứ không phải một lời tự nhận.
+Nói cách khác: biên giới ở §2–§3 **không phải một tuyên bố suông** — nó được đóng cọc bằng 279 đáp án đã đối chiếu tay, chạy tất định (engine-replay, không gọi AI) qua `npm run bench:gate`. Đó là cái làm cho "hệ thống biết ranh giới của mình" trở thành một khẳng định **kiểm được**, chứ không phải một lời tự nhận.
 
 ---
 

@@ -332,14 +332,14 @@
     <div class="sec-head"><span class="sec-num">04</span><h2>Kết quả — số liệu đo thật</h2><span class="rule"></span></div>
     <div class="metrics">
       <div class="metric">
-        <div class="n v">159/159</div>
+        <div class="n v">210/210</div>
         <div class="k">bench:gate pass (100%)</div>
-        <div class="d">Engine‑replay tất định, không gọi AI · 159 ca golden (134 synthetic + 25 capture) · 0 lỗi</div>
+        <div class="d">Engine‑replay tất định, không gọi AI · 210 ca golden (185 synthetic + 25 capture) · 0 lỗi</div>
       </div>
       <div class="metric">
         <div class="n g">100%</div>
         <div class="k">Đáp ở dạng chính xác</div>
-        <div class="d">0/226 đáp xấp xỉ · engine trả căn thức / π / phân số hữu tỉ, KHÔNG làm tròn</div>
+        <div class="d">0/279 đáp xấp xỉ · engine trả căn thức / π / phân số hữu tỉ, KHÔNG làm tròn</div>
       </div>
       <div class="metric">
         <div class="n a">1085</div>
@@ -356,8 +356,8 @@
           <span class="ans">10−2√7</span><span class="ans">36π</span><span class="ans">8√2π/3</span>
           <span class="ans">52π</span><span class="ans">2√2/3</span>
         </div>
-        <p style="margin-top:12px"><b style="color:var(--gold)">226/226 đáp ở dạng chính xác, 0 làm tròn.</b> Phân bố dạng đáp: <b>49</b> chứa π · <b>27</b> chứa √ (căn) · <b>105</b> hữu tỉ · <b>45</b> nhãn/góc°/phương trình.</p>
-        <p style="margin-top:8px;font-size:.86rem;color:var(--faint)">Dạng truy vấn: thể tích 61 · toạ độ điểm/giao 56 · diện tích 33 · khoảng cách 15 · góc 15 · phương trình mặt phẳng 15 · vị trí tương đối 15 · mặt cầu 6 · tỉ số thể tích 5 · đường sinh 4.</p>
+        <p style="margin-top:12px"><b style="color:var(--gold)">279/279 đáp ở dạng chính xác, 0 làm tròn.</b> Phân bố dạng đáp: <b>55</b> chứa π · <b>53</b> chứa √ (căn) · <b>118</b> hữu tỉ · <b>53</b> nhãn/góc°/phương trình.</p>
+        <p style="margin-top:8px;font-size:.86rem;color:var(--faint)">Dạng truy vấn: thể tích 72 · toạ độ điểm/giao 60 · diện tích 51 · khoảng cách 28 · góc 19 · phương trình mặt phẳng 15 · vị trí tương đối 15 · mặt cầu 9 · tỉ số thể tích 5 · đường sinh 4.</p>
       </div>
       <div class="card">
         <span class="tag a">Khung so sánh baseline</span>
@@ -401,20 +401,20 @@
         <ul class="tight">
           <li>Công khai <b>báo cáo + mã + benchmark</b>.</li>
           <li>Chỉ dùng <b>số liệu đo thật</b>, tái lập được.</li>
-          <li>226 đáp <b>kiểm hai chiều</b> (công thức độc lập ↔ engine tính lại, chỉ nạp khi khớp).</li>
-          <li>Nguồn: 25 ca capture + 134 ca synthetic tự soạn; <b>chưa có đề SGK/đề thi thật</b> — nhóm sẽ bổ sung.</li>
+          <li>279 đáp <b>kiểm hai chiều</b> (công thức độc lập ↔ engine tính lại, chỉ nạp khi khớp).</li>
+          <li>Nguồn: 25 ca capture + 185 ca synthetic tự soạn; <b>chưa có đề SGK/đề thi thật</b> — nhóm sẽ bổ sung.</li>
         </ul>
       </div>
     </div>
   </section>
 
   <div class="note fade" style="margin-top:22px">
-    <b>Nguyên tắc trình bày:</b> mọi con số trên poster đến từ lần chạy thực tế và tái lập được (<span class="mono">npm run bench:gate</span> → 159/159; <span class="mono">npm test</span> → 1085 xanh). Các ô "đang đo" (accuracy đầu‑cuối) sẽ điền sau khi chạy trên LLM thật — <b>không dùng số minh hoạ</b>.
+    <b>Nguyên tắc trình bày:</b> mọi con số trên poster đến từ lần chạy thực tế và tái lập được (<span class="mono">npm run bench:gate</span> → 210/210; <span class="mono">npm test</span> → 1085 xanh). Các ô "đang đo" (accuracy đầu‑cuối) sẽ điền sau khi chạy trên LLM thật — <b>không dùng số minh hoạ</b>.
   </div>
 
   <footer class="fade">
     <span>Poster đề tài NCKH · Hệ thống Neuro‑Symbolic giải Hình học không gian</span>
-    <span class="mono">bench:gate 159/159 · 226 đáp · 1085 tests · v0.7</span>
+    <span class="mono">bench:gate 210/210 · 279 đáp · 1085 tests · v0.7</span>
   </footer>
 </div>
 
