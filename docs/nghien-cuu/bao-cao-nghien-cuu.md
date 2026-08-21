@@ -14,7 +14,7 @@ Hình học không gian là một trong những mạch kiến thức trừu tư�
 
 Hệ thống gồm ba khối: (1) **Khối thần kinh (Neural)** — một LLM đọc đề (văn bản/ảnh), chọn một hệ toạ độ và dịch đề thành một *Kế hoạch dựng hình* (Construction Plan) ở dạng JSON, kèm một **cổng từ chối (abstain gate)** buộc mô hình *thà từ chối còn hơn bịa* khi đề thiếu điều kiện; (2) **Khối ký hiệu (Symbolic)** — một engine hình học/giải tích **tất định, số học chính xác** (tự phát triển) tính ra đáp số ở **dạng căn đúng** (ví dụ `2√2/3`, `10−2√7`, `64/3`) và tự kiểm tính hợp lệ; (3) **Khối ứng dụng (Application)** — trực quan hoá 3D bằng React Three Fiber.
 
-Đóng góp chính: (i) một kiến trúc Neuro‑Symbolic **an toàn** cho hình học *không gian* (phần lớn công trình trước tập trung hình học *phẳng*); (ii) cơ chế **từ chối theo bất biến affine** giúp hệ thống không đưa đáp số khi không đủ căn cứ; (iii) một **bộ dữ liệu chuẩn (benchmark) tiếng Việt** đầu tiên cho dạng toán này cùng một quy trình đánh giá **tất định, tái lập được**; (iv) một phương pháp **tối ưu prompt tự động** cho khối dịch.
+Đóng góp chính: (i) một kiến trúc Neuro‑Symbolic **an toàn** cho hình học *không gian* (phần lớn công trình trước tập trung hình học *phẳng*); (ii) cơ chế **từ chối theo bất biến affine** giúp hệ thống không đưa đáp số khi không đủ căn cứ; (iii) một **bộ dữ liệu chuẩn (benchmark) tiếng Việt** cho dạng toán này cùng một quy trình đánh giá **tất định, tái lập được** (chúng tôi chưa tìm thấy benchmark tiếng Việt tương tự đã công bố); (iv) một phương pháp **tối ưu prompt tự động** cho khối dịch.
 
 **Từ khoá:** neuro‑symbolic, hình học không gian, mô hình ngôn ngữ lớn, suy luận ký hiệu, chống ảo giác, benchmark tiếng Việt, trực quan hoá 3D.
 
@@ -84,7 +84,7 @@ Hệ Neuro‑Symbolic + cổng từ chối sẽ (a) đạt độ chính xác cao
 
 Không công trình nào ở trên đồng thời có cả sáu đặc trưng của đề tài — **(3D) × (tính đại lượng) × (đáp kiểm chứng dạng căn) × (cổng từ chối) × (tiếng Việt) × (chi phí thấp)**: AlphaGeometry mạnh về chứng minh phẳng nhưng không định lượng/không 3D; SolidGeo/DynaSolidGeo chỉ ra khoảng trống 3D nhưng là bộ đo chứ không giải; nhóm tối ưu prompt và nhóm autoformalization cung cấp *phương pháp thành phần* mà chúng tôi kế thừa và ghép lại theo một cách mới.
 
-**Định vị một câu:** *Chúng tôi đưa tinh thần neuro‑symbolic của AlphaGeometry sang hình học KHÔNG GIAN, thay "huấn luyện khổng lồ" bằng "engine tất định tự viết + tối ưu prompt + từ chối an toàn", và công bố benchmark tiếng Việt đầu tiên cho dạng toán này.*
+**Định vị một câu:** *Chúng tôi áp dụng hướng neuro‑symbolic (như AlphaGeometry) cho hình học KHÔNG GIAN, thay việc "huấn luyện mô hình quy mô lớn" bằng "engine tất định tự viết + tối ưu prompt + cổng từ chối an toàn", kèm một benchmark tiếng Việt cho dạng toán này.*
 
 ---
 
@@ -137,7 +137,7 @@ Không công trình nào ở trên đồng thời có cả sáu đặc trưng c�
 - **Đầu ra khối dịch.** Một *Construction Plan* JSON gồm: khai báo toạ độ điểm, các ràng buộc (⊥/∥/khoảng cách…), và danh sách **truy vấn** (`queries`) nêu đại lượng cần tính; hoặc một đối tượng `{abstain:true, abstain_reason}`. Bước gọi LLM bật *JSON mode* (`response_format: json_object`), timeout dịch mặc định 25 giây.
 
 ### 4.3. Khối Symbolic — engine hình học/giải tích tất định
-Điểm khác biệt lớn nhất so với đề xuất "dùng SymPy": engine ở đây **tự phát triển**, với **số học chính xác (hữu tỉ + căn)** nên trả **đáp dạng căn đúng** thay vì số thập phân gần đúng — một đặc tính hiếm và đáng giá về mặt khoa học.
+Điểm khác so với đề xuất "dùng SymPy": engine ở đây **tự phát triển**, với **số học chính xác (hữu tỉ + căn)** nên trả **đáp dạng căn đúng** thay vì số thập phân gần đúng — ví dụ trả `2√3/3` chứ không phải `1.1547`.
 
 Thành phần (theo mã nguồn `api/_lib/kernel/**`):
 - **Số học chính xác:** biểu diễn hữu tỉ + một căn; đối chiếu bằng số khi cần và **nhận dạng lại dạng căn đẹp**.
@@ -346,10 +346,10 @@ Ngân sách mục tiêu **≤ 10 triệu VNĐ**, ưu tiên thuê tài nguyên th
 
 ## 9. Đóng góp dự kiến
 
-1. **Kiến trúc Neuro‑Symbolic an toàn cho hình học KHÔNG GIAN** — mở rộng tinh thần AlphaGeometry sang 3D + tính toán đại lượng + trực quan hoá.
-2. **Cổng từ chối theo bất biến affine** — giảm mạnh "confidently wrong", đúng chủ đề *AI đáng tin cậy*.
+1. **Kiến trúc Neuro‑Symbolic an toàn cho hình học KHÔNG GIAN** — áp dụng hướng AlphaGeometry cho 3D + tính đại lượng + trực quan hoá.
+2. **Cổng từ chối theo bất biến affine** — nhằm giảm "confidently wrong" (mức giảm cụ thể *đang đo*, cần khoá API), theo chủ đề *AI đáng tin cậy*.
 3. **Engine ký hiệu trả đáp dạng căn đúng** — chính xác, kiểm chứng được, không phụ thuộc CAS bên ngoài.
-4. **Bộ dữ liệu chuẩn tiếng Việt đầu tiên** cho hình học không gian + quy trình đánh giá tái lập.
+4. **Bộ dữ liệu chuẩn tiếng Việt** cho hình học không gian + quy trình đánh giá tái lập được.
 5. **Phương pháp tối ưu prompt** cho khâu dịch đề, có đo mức cải thiện.
 
 ---
