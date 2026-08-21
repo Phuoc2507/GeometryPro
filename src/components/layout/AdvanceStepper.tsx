@@ -5,10 +5,6 @@ import { safetyTierMeta, verifiedToLevel } from '@/lib/safetyTier';
 import { useGeometryOptional } from '@/context/GeometryContext';
 import AdvanceAnimControl from './AdvanceAnimControl';
 
-// Tạm ẨN badge "đã/chưa kiểm chứng" cho mode Advance (sẽ cải tiến phần kiểm chứng sau).
-// Đổi thành true để bật lại khi phần kiểm chứng hoàn thiện.
-const SHOW_VERIFY_BADGE = false;
-
 /**
  * AdvanceStepper — bộ chuyển câu cho bài "advance" đa-câu.
  *
@@ -89,17 +85,18 @@ export function AdvanceStepper() {
         </Button>
       </div>
 
-      {/* Đáp câu hiện tại. Badge "kiểm chứng" tạm ẩn (SHOW_VERIFY_BADGE) — sẽ cải tiến sau. */}
+      {/* Đáp câu hiện tại. CHỈ hiện badge "đã kiểm chứng" khi engine đã tự kiểm (verified) — câu chưa
+          kiểm chứng KHÔNG hiện badge âm (tránh làm người dùng hiểu là sai). */}
       {hasAnswer && (
         <div className="flex items-center gap-2 border-t border-border/40 pt-2 text-sm">
           <span className="flex-1 min-w-0 text-foreground">{answer!.text}</span>
-          {SHOW_VERIFY_BADGE && (() => {
-            const meta = safetyTierMeta(verifiedToLevel(!!answer!.verified));
+          {answer!.verified && (() => {
+            const meta = safetyTierMeta(verifiedToLevel(true));
             const Icon = meta.icon;
             return (
               <span className={cn('shrink-0 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium', meta.badgeClass)}>
                 <Icon className="w-3 h-3" />
-                {answer!.verified ? 'đã kiểm chứng' : 'chưa kiểm chứng'}
+                đã kiểm chứng
               </span>
             );
           })()}
