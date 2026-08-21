@@ -60,12 +60,29 @@ Hệ Neuro‑Symbolic + cổng từ chối sẽ (a) đạt độ chính xác cao
 
 ## 3. Tổng quan tình hình nghiên cứu (Related Work)
 
-> *Mục này trình bày định vị; các trích dẫn đầy đủ để ở §11.*
+> *Mục này trình bày định vị theo bốn cụm công trình; bản tổng quan đầy đủ và tình trạng xác minh từng trích dẫn để ở `docs/nghien-cuu/related-work.md`, danh mục trích dẫn ở §11.*
 
-- **AlphaGeometry / AlphaGeometry2 (DeepMind).** Kiến trúc neuro‑symbolic đạt trình độ huy chương IMO cho **hình học phẳng**, kết hợp một mô hình ngôn ngữ sinh "điểm phụ" với một engine suy diễn ký hiệu, huấn luyện trên khối dữ liệu tổng hợp khổng lồ. **Khác biệt của chúng tôi:** (i) mục tiêu là **hình học không gian 3D** và **tính toán đại lượng** (khoảng cách/góc/thể tích) + **trực quan hoá**, không phải chứng minh định lý phẳng; (ii) không huấn luyện lại mô hình trên trăm triệu mẫu, mà dùng LLM sẵn có + **tối ưu prompt**; (iii) hướng tới chi phí thấp, chạy được ở quy mô trường học.
-- **Benchmark hình học không gian gần đây (SolidGeo, DynaSolidGeo, GeoSense…).** Cho thấy hình học *không gian* là hướng đang nổi và còn thiếu dữ liệu — càng thiếu với **tiếng Việt**. Bộ dữ liệu của chúng tôi bổ khuyết đúng khoảng trống này.
-- **Tối ưu prompt tự động (APE, PromptBreeder, OPRO…).** Là nền tảng cho khối tối ưu prompt; chúng tôi áp dụng cho bài toán dịch đề → plan JSON và đo trên benchmark riêng.
-- **Công cụ hình học ký hiệu (CAS/GeoGebra).** Chính xác nhưng không đọc ngôn ngữ tự nhiên; chúng tôi bổ sung lớp "hiểu đề" và lớp "từ chối an toàn".
+**(a) Neuro‑symbolic cho hình học.** **AlphaGeometry** (Trinh và cộng sự, *Nature* 2024) là hệ neuro‑symbolic chứng minh định lý hình học **Euclid phẳng**: một LLM huấn luyện từ đầu trên ~100 triệu mẫu tổng hợp đề xuất điểm/đường phụ, còn engine suy diễn ký hiệu DDAR suy luận tất định — giải **25/30** bài IMO, xấp xỉ huy chương vàng. **AlphaGeometry2** (Google DeepMind, *arXiv:2502.03544*, 2025) mở rộng ngôn ngữ hình thức, thay bộ sinh bằng kiến trúc Gemini và chia sẻ tri thức giữa nhiều cây tìm kiếm, đạt **~84%** hình học IMO 2000–2024. **Khác biệt của chúng tôi:** cả hai đều **hình học phẳng 2D**, mục tiêu **chứng minh quan hệ** (không tính đại lượng), và đòi hỏi **huấn luyện quy mô lớn**; còn chúng tôi nhắm **hình học không gian 3D**, **tính đại lượng** (khoảng cách/góc/thể tích) trả **đáp dạng căn đúng**, **không huấn luyện lại** mà dùng LLM sẵn có + tối ưu prompt, thêm **cổng từ chối an toàn** và **trực quan hoá 3D**. Một phản biện củng cố tuyến này: **Sinha và cộng sự** (*arXiv:2404.06405*, 2024) cho thấy **phương pháp Wu** — thủ tục đại số tất định cổ điển — tự nó sánh huy chương bạc và khi ghép AlphaGeometry thì vượt huy chương vàng, xác nhận rằng **phần ký hiệu tất định mới là chỗ đảm bảo tính đúng đắn**, đúng tinh thần "LLM chỉ DỊCH, ENGINE TÍNH và TỰ KIỂM".
+
+**(b) Benchmark hình học không gian.** **SolidGeo** (*arXiv:2505.21177*; NeurIPS 2025 D&B) là benchmark quy mô lớn đầu tiên đo suy luận toán không gian của MLLM (**3.113** bài, 3 mức khó, 8 nhóm), kết luận rằng MLLM còn kém xa con người. **DynaSolidGeo** (*arXiv:2510.22340*, 2025) là benchmark **động** (503 câu hạt giống, sinh vô số biến thể, chấm cả quá trình suy luận), cho thấy VLM suy giảm nghiêm trọng ở năng lực không gian bậc cao. **Khác biệt của chúng tôi:** cả hai là *bộ đo* (đề + đáp để chấm mô hình) chứ **không phải hệ giải có kiểm chứng**, bằng tiếng Anh/Trung, không sinh đáp dạng căn đúng cũng không trực quan hoá 3D; benchmark của chúng tôi là **tiếng Việt**, mỗi ca kèm *plan JSON* + đáp đã xác minh, chạy đánh giá **engine‑replay tất định, offline, miễn phí**.
+
+**(c) Tối ưu prompt tự động.** Khối dịch của chúng tôi không fine‑tune mà tối ưu ở tầng prompt, kế thừa ba công trình nền: **APE** (Zhou và cộng sự, *arXiv:2211.01910*, ICLR 2023) tìm kiếm trên tập câu chỉ dẫn do LLM sinh, ngang/vượt người ở 19/24 tác vụ; **OPRO** (Yang và cộng sự, *arXiv:2309.03409*, 2023) coi LLM là bộ tối ưu, sinh lời giải mới từ lịch sử điểm số (vượt tới 8% GSM8K, 50% BBH); **PromptBreeder** (Fernando và cộng sự, *arXiv:2309.16797*, 2023) tiến hoá tự quy chiếu cả task‑prompt lẫn mutation‑prompt. **Khác biệt của chúng tôi:** các công trình này tối ưu accuracy NLP tổng quát, không gắn engine kiểm chứng; còn hàm thích nghi của chúng tôi là **tỉ lệ dịch đúng plan JSON + tỉ lệ engine giải được − phạt token** trên benchmark hình không gian tiếng Việt, không gian tìm kiếm bị **giới hạn an toàn** (GA chỉ bật/tắt và sắp thứ tự câu chỉ dẫn bổ sung, **không đụng cổng từ chối**), và tách train/test.
+
+**(d) Autoformalization và công cụ ký hiệu/CAS.** **Autoformalization with LLMs** (Wu và cộng sự, *arXiv:2205.12615*, NeurIPS 2022) cho thấy LLM dịch phát biểu toán sang Isabelle/HOL (dịch đúng 25,3% đề, nâng prover trên MiniF2F 29,6%→35,2%); **LeanEuclid** (Murphy và cộng sự, *arXiv:2405.17216*, ICML 2024) tự hình thức hoá **173** bài hình học Euclid vào Lean bằng khung neuro‑symbolic (tri thức miền + SMT + LLM), GPT‑4/4V chỉ đạt ~21%. Các hệ **CAS/GeoGebra** tính chính xác nhưng không đọc ngôn ngữ tự nhiên và không biết từ chối khi thiếu dữ kiện. **Khác biệt của chúng tôi:** các công trình trên nhắm **chứng minh định lý** (Isabelle/Lean, hình phẳng), còn chúng tôi nhắm **tính đại lượng không gian** trả đáp dạng căn/π đúng; chúng tôi **không dùng CAS ngoài hay proof assistant** mà **tự viết engine** số học chính xác (hữu tỉ + căn) có **chứng chỉ tự kiểm**, thêm **cổng từ chối theo bất biến affine** — điều các khung autoformalization và CAS không đặt ra — và hướng tới **giáo dục tiếng Việt, chi phí thấp**.
+
+**Bảng so sánh (định vị nhanh).**
+
+| Công trình | Phạm vi | Mục tiêu | Cần huấn luyện lớn? | Đáp kiểm chứng được? | Ngôn ngữ |
+|---|---|---|---|---|---|
+| AlphaGeometry / AG2 | Phẳng 2D | Chứng minh | Có | Có (engine tất định) | EN (hình thức) |
+| SolidGeo / DynaSolidGeo | Không gian 3D | *Benchmark* đo MLLM/VLM | — (bộ đo) | Không (chấm đáp) | EN/ZH |
+| APE / OPRO / PromptBreeder | Không phụ thuộc miền | Tối ưu prompt (NLP) | Không | Không (đo accuracy) | EN |
+| Autoformalization (Wu 2022) | Toán tổng quát | Dịch sang đặc tả hình thức | Không | Có (proof assistant) | EN (hình thức) |
+| LeanEuclid | Phẳng Euclid | Tự hình thức hoá vào Lean + SMT | Không | Có (Lean/SMT) | EN (hình thức) |
+| Phương pháp Wu (Sinha 2024) | Phẳng | Chứng minh (đại số tất định) | Không | Có (tất định) | — |
+| **Hệ của chúng tôi** | **Không gian 3D** | **Tính đại lượng** + trực quan hoá | **Không** (LLM dịch + tối ưu prompt) | **Có** (engine tự viết, đáp dạng căn/π, tự kiểm) | **Tiếng Việt** |
+
+Không công trình nào ở trên đồng thời có cả sáu đặc trưng của đề tài — **(3D) × (tính đại lượng) × (đáp kiểm chứng dạng căn) × (cổng từ chối) × (tiếng Việt) × (chi phí thấp)**: AlphaGeometry mạnh về chứng minh phẳng nhưng không định lượng/không 3D; SolidGeo/DynaSolidGeo chỉ ra khoảng trống 3D nhưng là bộ đo chứ không giải; nhóm tối ưu prompt và nhóm autoformalization cung cấp *phương pháp thành phần* mà chúng tôi kế thừa và ghép lại theo một cách mới.
 
 **Định vị một câu:** *Chúng tôi đưa tinh thần neuro‑symbolic của AlphaGeometry sang hình học KHÔNG GIAN, thay "huấn luyện khổng lồ" bằng "engine tất định tự viết + tối ưu prompt + từ chối an toàn", và công bố benchmark tiếng Việt đầu tiên cho dạng toán này.*
 
@@ -332,14 +349,33 @@ Ngân sách mục tiêu **≤ 10 triệu VNĐ**, ưu tiên thuê tài nguyên th
 
 ## 11. Tài liệu tham khảo
 
-1. Trinh, T. H., Wu, Y., Le, Q. V., He, H., Luong, T. *Solving olympiad geometry without human demonstrations.* **Nature**, 2024. DOI: 10.1038/s41586‑023‑06747‑5. (AlphaGeometry — neuro‑symbolic cho hình học **phẳng**.)
-2. Google DeepMind. *Gold‑medalist Performance in Solving Olympiad Geometry with AlphaGeometry2.* **arXiv:2502.03544**, 2025.
-3. *SolidGeo: Measuring Multimodal Spatial Math Reasoning in Solid Geometry.* **arXiv:2505.21177**; NeurIPS 2025 Datasets & Benchmarks. (3.113 bài hình học không gian — cho thấy khoảng trống dữ liệu, nhất là tiếng Việt.)
-4. Wu, C. et al. *DynaSolidGeo: A Dynamic Benchmark for Genuine Spatial Mathematical Reasoning of VLMs in Solid Geometry.* **arXiv:2510.22340**, 2025.
-5. Yang, C., Wang, X., Lu, Y., Liu, H., Le, Q. V., Zhou, D., Chen, X. *Large Language Models as Optimizers* (OPRO). **arXiv:2309.03409**, 2023.
-6. Fernando, C., Banarse, D., Michalewski, H., Osindero, S., Rocktäschel, T. *Promptbreeder: Self‑Referential Self‑Improvement via Prompt Evolution.* 2023.
-7. Zhou, Y. et al. *Large Language Models Are Human‑Level Prompt Engineers* (APE). **ICLR**, 2023.
-8. Bộ Giáo dục và Đào tạo. *Thông tư 06/2024/TT‑BGDĐT* — Quy chế Cuộc thi nghiên cứu khoa học, kỹ thuật cấp quốc gia (thang điểm & tiêu chí, Phụ lục 2), hiệu lực 27/5/2024.
+> *Các trích dẫn dưới đây đã được xác minh trực tuyến (arXiv/Nature/hội nghị) tại 08/2026. Ghi chú "cần xác minh" chỉ áp cho chi tiết phụ (danh sách tác giả đầy đủ hoặc nơi công bố hội nghị so với bản arXiv), không ảnh hưởng luận điểm. Tổng quan chi tiết: `docs/nghien-cuu/related-work.md`.*
+
+**Neuro‑symbolic cho hình học**
+
+1. Trinh, T. H., Wu, Y., Le, Q. V., He, H., Luong, T. *Solving olympiad geometry without human demonstrations.* **Nature** **625**, 476–482 (2024). DOI: 10.1038/s41586‑023‑06747‑5. (AlphaGeometry — neuro‑symbolic cho hình học **phẳng**; ~100 triệu mẫu tổng hợp; giải 25/30 IMO.)
+2. Chervonyi, Y., Trinh, T. H. và cộng sự (Google DeepMind). *Gold‑medalist Performance in Solving Olympiad Geometry with AlphaGeometry2.* **arXiv:2502.03544**, 2025. (~84% hình học IMO 2000–2024; kiến trúc Gemini. *Danh sách tác giả đầy đủ: cần xác minh trên bản arXiv.*)
+3. Sinha, S., Prabhu, A., Kumaraguru, P., Bhat, S., Bethge, M. *Wu's Method can Boost Symbolic AI to Rival Silver Medalists and AlphaGeometry to Outperform Gold Medalists at IMO Geometry.* **arXiv:2404.06405**, 2024. (Phản biện: thành phần ký hiệu tất định là chỗ đảm bảo tính đúng.)
+
+**Benchmark hình học không gian**
+
+4. Wang, P. và cộng sự. *SolidGeo: Measuring Multimodal Spatial Math Reasoning in Solid Geometry.* **arXiv:2505.21177**, 2025; **NeurIPS 2025** Datasets & Benchmarks. (3.113 bài hình học không gian — cho thấy khoảng trống dữ liệu, nhất là tiếng Việt.)
+5. Wu, C. và cộng sự. *DynaSolidGeo: A Dynamic Benchmark for Genuine Spatial Mathematical Reasoning of VLMs in Solid Geometry.* **arXiv:2510.22340**, 2025. (503 câu hạt giống, sinh động; chấm cả quá trình suy luận.)
+
+**Tối ưu prompt tự động**
+
+6. Zhou, Y., Muresanu, A. I., Han, Z., Paster, K., Pitis, S., Chan, H., Ba, J. *Large Language Models Are Human‑Level Prompt Engineers* (APE). **arXiv:2211.01910**, 2022; **ICLR 2023**. (Sinh + chọn câu chỉ dẫn tự động; ngang/vượt người ở 19/24 tác vụ.)
+7. Yang, C., Wang, X., Lu, Y., Liu, H., Le, Q. V., Zhou, D., Chen, X. *Large Language Models as Optimizers* (OPRO). **arXiv:2309.03409**, 2023. (*Nơi công bố hội nghị — nhiều khả năng ICLR 2024 — cần xác minh.*)
+8. Fernando, C., Banarse, D., Michalewski, H., Osindero, S., Rocktäschel, T. *Promptbreeder: Self‑Referential Self‑Improvement via Prompt Evolution.* **arXiv:2309.16797**, 2023. (Tiến hoá tự quy chiếu prompt + mutation‑prompt.)
+
+**Autoformalization và công cụ ký hiệu**
+
+9. Wu, Y., Jiang, A. Q., Li, W., Rabe, M. N., Staats, C., Jamnik, M., Szegedy, C. *Autoformalization with Large Language Models.* **arXiv:2205.12615**, 2022; **NeurIPS 2022**. (Dịch NN tự nhiên → Isabelle/HOL; MiniF2F 29,6%→35,2%.)
+10. Murphy, L., Yang, K., Sun, J., Gu, Z., Anandkumar, A., Si, X. *Autoformalizing Euclidean Geometry* (LeanEuclid). **arXiv:2405.17216**, 2024; **ICML 2024** (PMLR v235). (173 bài hình học Euclid → Lean; neuro‑symbolic LLM + SMT; ~21% với GPT‑4. *Danh sách tác giả đầy đủ: cần xác minh trên bản arXiv/PMLR.*)
+
+**Quy chế**
+
+11. Bộ Giáo dục và Đào tạo. *Thông tư 06/2024/TT‑BGDĐT* — Quy chế Cuộc thi nghiên cứu khoa học, kỹ thuật cấp quốc gia (thang điểm & tiêu chí, Phụ lục 2), hiệu lực 27/5/2024.
 
 ---
 
