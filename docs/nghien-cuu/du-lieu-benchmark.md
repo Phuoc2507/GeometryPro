@@ -4,7 +4,7 @@
 
 ## 1. Vì sao cần
 
-Benchmark hiện có **20 ca golden**. Đây là nút thắt lớn nhất của khâu đánh giá: số liệu chỉ có ý nghĩa thống kê khi tập đủ lớn và đa dạng. Mục tiêu: **~150–300 bài**, phủ nhiều dạng (khoảng cách, góc, thể tích, thiết diện, tương giao, tròn xoay…) và nhiều độ khó.
+Benchmark hiện có **22 ca golden**. Đây là nút thắt lớn nhất của khâu đánh giá: số liệu chỉ có ý nghĩa thống kê khi tập đủ lớn và đa dạng. Mục tiêu: **~150–300 bài**, phủ nhiều dạng (khoảng cách, góc, thể tích, thiết diện, tương giao, tròn xoay…) và nhiều độ khó.
 
 ## 2. Một ca golden gồm gì
 
@@ -62,9 +62,9 @@ npm run bench:gate                        # chốt: cả rổ phải PASS
 
 *(Thư mục `bench/golden-staging/` được `.gitignore` — chỉ ca đã promote mới vào rổ chính thức.)*
 
-## 5. Phân bố hiện tại (20 ca)
+## 5. Phân bố hiện tại (22 ca)
 
-- **14 thể tích, 6 khoảng cách** (một ca 2 câu hỏi).
+- **14 thể tích, 6 khoảng cách, 2 mặt cầu** (một ca 2 câu hỏi).
 - Cần bổ sung mạnh: **góc**, **thiết diện/diện tích**, **tương giao (giao điểm/giao tuyến)**, **mặt cầu**, **tròn xoay/giải tích**, và các bài **"thang chữ"** (kích thước bằng `a`).
 
 ## 6. Việc tiếp theo

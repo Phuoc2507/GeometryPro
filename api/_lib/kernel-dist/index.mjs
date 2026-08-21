@@ -5379,6 +5379,21 @@ function certifyScalar(kind, s, floatRef) {
   }
   return { kind, exact: null, approx: floatRef, text: floatRef.toFixed(4), approximate: true };
 }
+function piText(s) {
+  const d = displayScalar(s);
+  if (d === "1") return "\u03C0";
+  if (d === "-1") return "-\u03C0";
+  const slash = d.indexOf("/");
+  return slash >= 0 ? d.slice(0, slash) + "\u03C0" + d.slice(slash) : d + "\u03C0";
+}
+function piScalarAnswer(kind, coeff, floatRef) {
+  const val = coeff.approx * Math.PI;
+  const tol = 1e-6 * Math.max(1, Math.abs(floatRef));
+  if (coeff.exact !== null && Math.abs(val - floatRef) <= tol) {
+    return { kind, exact: null, approx: val, text: piText(coeff), approximate: false };
+  }
+  return { kind, exact: null, approx: floatRef, text: floatRef.toFixed(4), approximate: true };
+}
 function isZeroS(s) {
   return s.exact !== null ? s.exact.num === 0n : Math.abs(s.approx) < EPS3;
 }
@@ -6050,8 +6065,9 @@ function computePrismVolume(base, top) {
 }
 function computeSphereVolume(s) {
   const R = Math.sqrt(s.r2.approx);
-  const approx = 4 / 3 * Math.PI * R * R * R;
-  return { kind: "volume", exact: null, approx, text: `${approx.toFixed(4)}`, approximate: true };
+  const floatRef = 4 / 3 * Math.PI * R * R * R;
+  const coeff = mul(rat(4n, 3n), mul(s.r2, sqrt(s.r2)));
+  return piScalarAnswer("volume", coeff, floatRef);
 }
 function volumeRatio(a, b) {
   if (isZeroS(b)) return { ok: false, problem: "volume ratio: denominator volume is zero" };
@@ -6094,10 +6110,8 @@ function computePolygonArea(pts) {
   return { ok: true, answer: certifyScalar("area", polygonAreaScalar(pts), fPolygon(pts.map((p) => av4(p.p)))) };
 }
 function computeSphereArea(s) {
-  const r2 = s.r2.approx;
-  const approx = 4 * Math.PI * r2;
-  const text = s.r2.exact ? `4\u03C0\xB7${displayScalar(s.r2)}` : `${approx.toFixed(4)}`;
-  return { kind: "area", exact: null, approx, text, approximate: true };
+  const floatRef = 4 * Math.PI * s.r2.approx;
+  return piScalarAnswer("area", mul(rat(4n), s.r2), floatRef);
 }
 
 // api/_lib/kernel/compute/relative.ts
@@ -6288,7 +6302,7 @@ var QueryESchema = external_exports.union([
   external_exports.object({ kind: external_exports.literal("volume_ratio"), a: SolidSpec, b: SolidSpec }),
   external_exports.object({ kind: external_exports.literal("area"), shape: external_exports.literal("sphere"), target: Tok }),
   external_exports.object({ kind: external_exports.literal("area"), shape: external_exports.enum(["triangle", "polygon"]), points: external_exports.array(Tok).min(3) }),
-  external_exports.object({ kind: external_exports.literal("sphere_metric"), target: Tok, what: external_exports.enum(["radius", "top_z", "bottom_z"]) }),
+  external_exports.object({ kind: external_exports.literal("sphere_metric"), target: Tok, what: external_exports.enum(["radius", "diameter", "top_z", "bottom_z"]) }),
   external_exports.object({ kind: external_exports.literal("point_coord"), target: Tok, axis: external_exports.enum(["x", "y", "z"]) })
 ]);
 function asPoints(tokens, et) {
@@ -6370,9 +6384,12 @@ function computeQuery(query, et) {
       case "sphere_metric": {
         const e = resolveEntityE(query.target, et);
         if (e.kind !== "sphere") return { ok: false, problem: "sphere_metric needs a sphere" };
-        const R = Math.sqrt(e.r2.approx);
-        const val = query.what === "radius" ? R : query.what === "top_z" ? e.center.z.approx + R : e.center.z.approx - R;
-        return { ok: true, answer: { kind: "sphere_metric", exact: null, approx: val, text: val.toFixed(4), approximate: true } };
+        const R = sqrt(e.r2);
+        const Rf = Math.sqrt(e.r2.approx);
+        const zc = e.center.z;
+        const s = query.what === "radius" ? R : query.what === "diameter" ? mul(rat(2n), R) : query.what === "top_z" ? add2(zc, R) : sub2(zc, R);
+        const ref = query.what === "radius" ? Rf : query.what === "diameter" ? 2 * Rf : query.what === "top_z" ? zc.approx + Rf : zc.approx - Rf;
+        return { ok: true, answer: certifyScalar("sphere_metric", s, ref) };
       }
       case "point_coord": {
         const e = resolveEntityE(query.target, et);

@@ -4,7 +4,7 @@ import type { EntityTable } from '../entityTable';
 import type { Entity, PointE } from '../entities';
 import { resolveEntityE } from '../resolveE';
 import { type ComputeOutcome, type DistanceAnswer, type AngleAnswer, type ScalarAnswer, certifyScalar } from './answer';
-import type { Scalar } from '../scalar';
+import { type Scalar, sqrt, mul, add, sub, rat } from '../scalar';
 import { computeDistance } from './distance';
 import { computeAngle } from './angle';
 import { computeTetraVolume, computePyramidVolume, computePrismVolume, volumeRatio, computeSphereVolume } from './volume';
@@ -28,7 +28,7 @@ export const QueryESchema = z.union([
   z.object({ kind: z.literal('volume_ratio'), a: SolidSpec, b: SolidSpec }),
   z.object({ kind: z.literal('area'), shape: z.literal('sphere'), target: Tok }),
   z.object({ kind: z.literal('area'), shape: z.enum(['triangle', 'polygon']), points: z.array(Tok).min(3) }),
-  z.object({ kind: z.literal('sphere_metric'), target: Tok, what: z.enum(['radius', 'top_z', 'bottom_z']) }),
+  z.object({ kind: z.literal('sphere_metric'), target: Tok, what: z.enum(['radius', 'diameter', 'top_z', 'bottom_z']) }),
   z.object({ kind: z.literal('point_coord'), target: Tok, axis: z.enum(['x', 'y', 'z']) }),
 ]);
 
@@ -123,11 +123,20 @@ export function computeQuery(query: QueryE, et: EntityTable): ComputeOutcome<Que
       case 'sphere_metric': {
         const e = resolveEntityE(query.target, et);
         if (e.kind !== 'sphere') return { ok: false, problem: 'sphere_metric needs a sphere' };
-        const R = Math.sqrt(e.r2.approx);
-        const val = query.what === 'radius' ? R
-          : query.what === 'top_z' ? e.center.z.approx + R
-          : e.center.z.approx - R;
-        return { ok: true, answer: { kind: 'sphere_metric', exact: null, approx: val, text: val.toFixed(4), approximate: true } };
+        // R = √(r2) tính trong TRƯỜNG (rational×căn) ⇒ bán kính/đường kính/đỉnh-chỏm ra CĂN CHÍNH XÁC
+        // khi biểu diễn được (vd r2=2 → R=√2; r2=9 → R=3), thay vì số thập phân như trước.
+        const R = sqrt(e.r2);
+        const Rf = Math.sqrt(e.r2.approx);
+        const zc = e.center.z;
+        const s: Scalar = query.what === 'radius' ? R
+          : query.what === 'diameter' ? mul(rat(2n), R)
+          : query.what === 'top_z' ? add(zc, R)
+          : sub(zc, R);
+        const ref = query.what === 'radius' ? Rf
+          : query.what === 'diameter' ? 2 * Rf
+          : query.what === 'top_z' ? zc.approx + Rf
+          : zc.approx - Rf;
+        return { ok: true, answer: certifyScalar('sphere_metric', s, ref) };
       }
       case 'point_coord': {
         const e = resolveEntityE(query.target, et);

@@ -8,6 +8,16 @@
 function parseTerm(raw) {
   const t = raw.trim();
   if (!t) return null;
+  // Hạng π: [coef]π[/den] — vd 'π', '36π', '8π/3', '8√2π/3', '2√2π', '-π/3'. Gỡ 'π', parse hệ số
+  // còn lại (đệ quy) rồi nhân Math.PI. Hệ số rỗng/±/'/…' được chuẩn hoá thành 1/±1/1/… trước khi parse.
+  if (t.includes('π')) {
+    let c = t.replace('π', '');
+    c = c.replace(/^([+-]?)\//, '$11/');        // 'π/3'→'1/3' ; '-π/3'→'-1/3'
+    if (c === '' || c === '+') c = '1';
+    else if (c === '-') c = '-1';
+    const base = parseTerm(c);
+    return base === null ? null : base * Math.PI;
+  }
   // Hạng căn: [coef]√radicand[/den]
   const surd = t.match(/^([+-]?\d*(?:\.\d+)?)√(\d+)(?:\/(\d+))?$/);
   if (surd) {

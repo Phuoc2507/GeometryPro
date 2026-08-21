@@ -38,16 +38,46 @@ describe('diện tích mặt cầu / thể tích khối cầu qua run()', () => 
     { op: 'oxyz_point', name: 'A', at: [0, 0, 0] },
     { op: 'oxyz_sphere', name: 'S', by: { form: 'center_radius', center: 'A', radius: 2 } }, // R=2, R²=4
   ];
-  it('diện tích 4πR² ≈ 16π (gần đúng)', () => {
+  it('diện tích 4πR² = 16π (DẠNG π chính xác)', () => {
     const res = run({ solidName: 't', ops, queries: [{ kind: 'area', shape: 'sphere', target: 'S' }] });
     const a = res.answers.find((x) => x.kind === 'area');
     expect(a).toBeDefined();
-    if (a && a.kind === 'area') { expect(a.approx).toBeCloseTo(16 * Math.PI, 6); expect(a.approximate).toBe(true); }
+    if (a && a.kind === 'area') {
+      expect(a.approx).toBeCloseTo(16 * Math.PI, 6);
+      expect(a.text).toBe('16π');
+      expect(a.approximate).toBe(false);
+    }
   });
-  it('thể tích (4/3)πR³ ≈ (32/3)π (gần đúng)', () => {
+  it('thể tích (4/3)πR³ = 32π/3 (DẠNG π chính xác)', () => {
     const res = run({ solidName: 't', ops, queries: [{ kind: 'volume', solid: 'sphere', target: 'S' }] });
     const v = res.answers.find((x) => x.kind === 'volume');
     expect(v).toBeDefined();
-    if (v && v.kind === 'volume') expect(v.approx).toBeCloseTo((32 / 3) * Math.PI, 6);
+    if (v && v.kind === 'volume') {
+      expect(v.approx).toBeCloseTo((32 / 3) * Math.PI, 6);
+      expect(v.text).toBe('32π/3');
+      expect(v.approximate).toBe(false);
+    }
+  });
+  it('bán kính = 2 và đường kính = 4 (căn chính xác)', () => {
+    const res = run({ solidName: 't', ops, queries: [
+      { kind: 'sphere_metric', target: 'S', what: 'radius' },
+      { kind: 'sphere_metric', target: 'S', what: 'diameter' },
+    ] });
+    expect(res.answers[0]?.text).toBe('2');
+    expect(res.answers[1]?.text).toBe('4');
+  });
+  it('R²=2 ⇒ diện tích 8π, thể tích 8√2π/3, bán kính √2', () => {
+    const ops2 = [
+      { op: 'oxyz_point', name: 'A', at: [0, 0, 0] },
+      { op: 'oxyz_sphere', name: 'S', by: { form: 'center_radius', center: 'A', radius: 'sqrt(2)' } },
+    ];
+    const res = run({ solidName: 't', ops: ops2, queries: [
+      { kind: 'area', shape: 'sphere', target: 'S' },
+      { kind: 'volume', solid: 'sphere', target: 'S' },
+      { kind: 'sphere_metric', target: 'S', what: 'radius' },
+    ] });
+    expect(res.answers.find((x) => x.kind === 'area')?.text).toBe('8π');
+    expect(res.answers.find((x) => x.kind === 'volume')?.text).toBe('8√2π/3');
+    expect(res.answers.find((x) => x.kind === 'sphere_metric')?.text).toBe('√2');
   });
 });

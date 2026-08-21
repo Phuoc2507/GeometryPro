@@ -1,9 +1,9 @@
 // api/_lib/kernel/compute/area.ts
-import { type Scalar, mul, sqrt, rat, displayScalar } from '../scalar';
+import { type Scalar, mul, sqrt, rat } from '../scalar';
 import { subV, crossV, lenSqV, addV, ratVec, toApproxVec } from '../vec3s';
 import type { PointE, SphereE } from '../entities';
 import { sub, cross, length, type Vec3 } from '../vecMath';
-import { type ComputeOutcome, type ScalarAnswer, certifyScalar, coplanarityProblem } from './answer';
+import { type ComputeOutcome, type ScalarAnswer, certifyScalar, coplanarityProblem, piScalarAnswer } from './answer';
 
 const av = toApproxVec;
 
@@ -46,8 +46,7 @@ export function computePolygonArea(pts: PointE[]): ComputeOutcome<ScalarAnswer> 
 }
 
 export function computeSphereArea(s: SphereE): ScalarAnswer {
-  const r2 = s.r2.approx;
-  const approx = 4 * Math.PI * r2;
-  const text = s.r2.exact ? `4π·${displayScalar(s.r2)}` : `${approx.toFixed(4)}`;
-  return { kind: 'area', exact: null, approx, text, approximate: true };
+  // S = 4π·R² = 4·r2·π. Hệ số 4·r2 luôn nằm trong trường ⇒ đáp DẠNG π chính xác (vd r2=9 → 36π; r2=2 → 8π).
+  const floatRef = 4 * Math.PI * s.r2.approx;
+  return piScalarAnswer('area', mul(rat(4n), s.r2), floatRef);
 }

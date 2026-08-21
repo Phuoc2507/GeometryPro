@@ -1,9 +1,9 @@
 // api/_lib/kernel/compute/volume.ts
-import { type Scalar, div, neg, rat, add } from '../scalar';
+import { type Scalar, div, neg, rat, add, mul, sqrt } from '../scalar';
 import { type Vec3S, subV, dotV, crossV, toApproxVec } from '../vec3s';
 import type { PointE, SphereE } from '../entities';
 import { sub, scalarTriple, tetrahedronVolume, type Vec3 } from '../vecMath';
-import { type ComputeOutcome, type ScalarAnswer, certifyScalar, coplanarityProblem, isZeroS } from './answer';
+import { type ComputeOutcome, type ScalarAnswer, certifyScalar, coplanarityProblem, isZeroS, piScalarAnswer } from './answer';
 
 const av = toApproxVec;
 
@@ -99,9 +99,12 @@ export function computePrismVolume(base: PointE[], top: PointE[]): ComputeOutcom
 }
 
 export function computeSphereVolume(s: SphereE): ScalarAnswer {
+  // V = (4/3)·π·R³, với R³ = R²·√(R²) = r2·√r2. Hệ số (4/3)·r2·√r2 nằm trong trường (rational×căn) khi
+  // √r2 biểu diễn được (thường gặp: r2 hữu tỉ) ⇒ đáp DẠNG π chính xác (vd r2=9 → 36π; r2=2 → 8√2π/3).
   const R = Math.sqrt(s.r2.approx);
-  const approx = (4 / 3) * Math.PI * R * R * R;
-  return { kind: 'volume', exact: null, approx, text: `${approx.toFixed(4)}`, approximate: true };
+  const floatRef = (4 / 3) * Math.PI * R * R * R;
+  const coeff = mul(rat(4n, 3n), mul(s.r2, sqrt(s.r2)));
+  return piScalarAnswer('volume', coeff, floatRef);
 }
 
 export function volumeRatio(a: Scalar, b: Scalar): ComputeOutcome<ScalarAnswer> {

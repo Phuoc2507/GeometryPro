@@ -75,11 +75,11 @@ Trích/tóm lược trung thực từ `api/_lib/kernel-bridge/translatorPrompt.j
 Theo khung *Datasheets for Datasets* (rút gọn).
 
 - **Động cơ:** chưa có benchmark hình học không gian **tiếng Việt** có đáp kiểm chứng được; bộ này lấp khoảng trống đó và phục vụ đánh giá tất định.
-- **Thành phần:** mỗi ca `{ id, source, text, plan, expect:{ ok, answers:[{kind,text}] } }`. Hiện **20 ca** (14 thể tích, 6 khoảng cách; một ca 2 câu hỏi). Đáp lưu ở **dạng căn chính xác** (vd `2√3/3`, `64/3`).
+- **Thành phần:** mỗi ca `{ id, source, text, plan, expect:{ ok, answers:[{kind,text}] } }`. Hiện **22 ca** (14 thể tích, 6 khoảng cách, 2 mặt cầu; một ca 2 câu hỏi). Đáp lưu ở **dạng căn chính xác** (vd `2√3/3`, `64/3`).
 - **Thu thập & gán nhãn:** đề từ SGK/đề thi (**ghi nguồn**); plan do LLM dịch hoặc dán tay; đáp **do người xác minh**, engine đối chiếu bằng số. Công cụ: `scripts/label/` (xem `du-lieu-benchmark.md`).
 - **Kiểm định chất lượng:** mọi ca phải **PASS** `npm run bench:gate` (engine‑replay tất định). Ca engine giải sai/lệch **không** được nạp làm golden.
 - **Phân phối & bảo trì:** công bố kèm mã nguồn & tài liệu; mở rộng dần theo các dạng còn thiếu (góc, thiết diện, tương giao, mặt cầu, tròn xoay, bài "thang chữ").
-- **Hạn chế:** cỡ hiện tại nhỏ (20) — đang mở rộng; phân bố dạng bài chưa cân bằng.
+- **Hạn chế:** cỡ hiện tại nhỏ (22) — đang mở rộng; phân bố dạng bài chưa cân bằng.
 
 ---
 

@@ -2,7 +2,7 @@
 
 *A Neuro‑Symbolic System for Solid Geometry Problem Solving with Prompt Optimization and a Vietnamese Benchmark Dataset*
 
-> **Trạng thái bản thảo:** v0.3 — khung đầy đủ; **Phương pháp & Kiến trúc** đã điền chi tiết đối chiếu mã nguồn; **§5.6 có kết quả đo thật đầu tiên** (engine‑replay 20/20). Còn lại: số liệu end‑to‑end/baseline (cần khoá API) và bộ dữ liệu mở rộng — vẫn giữ nguyên tắc không dùng số bịa.
+> **Trạng thái bản thảo:** v0.4 — khung đầy đủ; **Phương pháp & Kiến trúc** đã điền chi tiết đối chiếu mã nguồn; Phụ lục A–E + trích dẫn thật; **§5.7 có kết quả đo thật** (engine‑replay 22/22). Còn lại: số liệu end‑to‑end/baseline (cần khoá API) và bộ dữ liệu mở rộng — vẫn giữ nguyên tắc không dùng số bịa.
 > **Lĩnh vực dự thi (đề xuất):** Phần mềm hệ thống / Robot và máy thông minh (Hệ thống thông minh).
 > **Nguyên tắc biên tập:** chỉ ghi những gì đã hiện thực trong mã nguồn hoặc sẽ đo được; **không dùng con số minh hoạ chưa kiểm chứng**. Phần dự kiến luôn ghi rõ là dự kiến.
 
@@ -136,6 +136,8 @@ Thành phần (theo mã nguồn `api/_lib/kernel/**`):
 
 **Ví dụ đáp dạng căn thật (trích từ bench/test):** `2√2/3` (thể tích tứ diện đều cạnh 2), `4√5/5` và `6√5/5` (khoảng cách điểm–mặt), `64/3` (thể tích chóp), và các đáp giải tích như `10 − 2√7`, `16/3`, `64√2/15`, `64π/9 − 512/9 + 24√3`.
 
+**Mở rộng thực hiện trong quá trình nghiên cứu (2026‑08):** trước đây các đại lượng mặt cầu trả *số thập phân* (vd `113.0973`); nhóm đã mở rộng engine để trả **dạng π chính xác** — diện tích `36π`, `8π`; thể tích `36π`, `8√2π/3`; bán kính/đường kính căn chính xác (`√2`, `2√2`) — và cho **bộ so đáp benchmark hiểu π** để kiểm được. (Kèm 2 golden mặt cầu + cập nhật test; toàn bộ 1073 test đơn vị vẫn xanh.)
+
 **Cơ chế tự kiểm (chi tiết).** Engine phát một **"chứng chỉ tự kiểm"** cho mỗi đáp: so **giá trị dạng chính xác** với một số thực được tính **độc lập**; nếu lệch quá dung sai (cỡ `1e-6·|giá trị|`) thì **loại bỏ dạng exact, hạ về số gần đúng** và đánh dấu `approximate` — tức hệ thống *thà báo gần đúng còn hơn khẳng định sai một dạng căn*. Với tích phân/khối tròn xoay, kết quả chỉ được gắn cờ `verified` khi sai số ước lượng đủ nhỏ. Ràng buộc hình (⊥, ∥, đồng phẳng, thuộc, khoảng cách, góc) được kiểm bằng `verify.ts`; nếu mô hình vi phạm điều kiện đề ⇒ trả **violation** thay vì đáp số.
 *(Mã: `api/_lib/kernel/compute/answer.ts` — `certifyDistance/certifyScalar/certifyAngle`; `analysis/quadrature.ts`, `analysis/revolution.ts`; `verify.ts`.)*
 
@@ -179,7 +181,7 @@ Prompt của khối dịch được **tối ưu tự động** bằng vòng lặ
 Dự án đã có một **bộ đề mốc (golden)** và một **trình chạy đánh giá tất định**:
 - Mỗi ca là một JSON `{ id, source, text?, plan, expect }`; chạy `plan` qua engine bằng chế độ **engine‑replay** (không gọi AI, miễn phí, offline) hoặc `--full` (chạy cả bước dịch, có gọi LLM).
 - So đáp **theo giá trị số** với dung sai `≤ 1e-3·max(1,|đáp|)` (parse được `a√b/c`, `p/q`, thập phân) ⇒ chấp nhận nhiều cách viết cùng một đáp (ví dụ `√2` khớp `1.4142…`). Kết luận mỗi ca: `pass` / `regress-status` / `regress-answer` / `error`.
-- **Hiện có 20 ca golden.** Đã có sẵn công cụ **thu ca tự động** (`npm run bench:capture`): chạy toàn luồng trên tập đề hạt giống, chỉ giữ những ca giải gọn và đáp so‑được bằng số rồi đóng gói thành golden mới — hạ tầng này giúp **mở rộng benchmark nhanh** khi có thêm đề đã xác minh.
+- **Hiện có 22 ca golden (thêm 2 ca mặt cầu, đáp dạng π).** Đã có sẵn công cụ **thu ca tự động** (`npm run bench:capture`): chạy toàn luồng trên tập đề hạt giống, chỉ giữ những ca giải gọn và đáp so‑được bằng số rồi đóng gói thành golden mới — hạ tầng này giúp **mở rộng benchmark nhanh** khi có thêm đề đã xác minh.
 - Bài engine bó tay/từ chối được ghi vào bảng `problem_reports` kèm Plan JSON ⇒ nguồn "ca known‑gap" để bổ sung dữ liệu.
 *(Mã: `api/_lib/bench/**` — `runGate.js`, `compareCase.js`, `captureCase.js`; `bench/golden/**`.)*
 
@@ -232,17 +234,17 @@ Mời giáo viên Toán chấm **chất lượng lời giải/annotation** và *
 ### 5.7. Kết quả bước đầu (số ĐO THẬT, cập nhật liên tục)
 
 **Thí nghiệm 1 — Tính đúng đắn của engine ký hiệu (engine‑replay).**
-Chạy `npm run bench:gate` (chế độ engine‑replay: đưa *plan đã đúng* qua engine, **tất định, không gọi AI**) trên toàn bộ **20 ca golden** hiện có:
+Chạy `npm run bench:gate` (chế độ engine‑replay: đưa *plan đã đúng* qua engine, **tất định, không gọi AI**) trên toàn bộ **22 ca golden** hiện có:
 
 | Chỉ số | Kết quả |
 |---|---|
-| Tổng số ca | 20 |
-| Pass | **20 / 20 (100%)** |
+| Tổng số ca | 22 |
+| Pass | **22 / 22 (100%)** |
 | Sai đáp (regress‑answer) | 0 |
 | Sai trạng thái (regress‑status) | 0 |
 | Lỗi (error) | 0 |
 
-Phân bố dạng truy vấn: **14 thể tích, 6 khoảng cách** (một ca `pyramid‑scd` có 2 truy vấn: khoảng cách + thể tích). Trong đó engine trả **đáp dạng căn chính xác** ở nhiều ca — ví dụ thật từ rổ: khoảng cách `6√5/5`, `2√3/3`, `4√5/5`, `3√2/2`; thể tích `2√2/3`, `16√2/3`, `5√3`, `64/3`; và các đáp hữu tỉ `24`, `42`, `27`, `8/3`, `√2`.
+Phân bố dạng truy vấn: **14 thể tích, 6 khoảng cách, 2 mặt cầu (diện tích/thể tích/bán kính dạng π)** (một ca `pyramid‑scd` có 2 truy vấn: khoảng cách + thể tích). Trong đó engine trả **đáp dạng căn chính xác** ở nhiều ca — ví dụ thật từ rổ: khoảng cách `6√5/5`, `2√3/3`, `4√5/5`, `3√2/2`; thể tích `2√2/3`, `16√2/3`, `5√3`, `64/3`; và các đáp hữu tỉ `24`, `42`, `27`, `8/3`, `√2`.
 
 > **Diễn giải trung thực — phép đo này đo cái gì và KHÔNG đo cái gì:**
 > - ✅ Nó chứng minh **engine tất định tính đúng** trên tập ca mốc, và **thực sự trả đáp dạng căn** (không phải số thập phân gần đúng) — củng cố CH4.
@@ -287,7 +289,7 @@ Ngân sách mục tiêu **≤ 10 triệu VNĐ**, ưu tiên thuê tài nguyên th
 - ✅ Engine ký hiệu (hình học + giải tích), số học chính xác — ~5.256 dòng, 868 test.
 - ✅ Khối dịch LLM + cổng từ chối + phân tầng an toàn — đã nối chạy.
 - ✅ Ứng dụng 3D (React Three Fiber) — 17 trang, 136 component.
-- ◻️ Benchmark tiếng Việt — mới 20 ca (cần mở rộng).
+- ◻️ Benchmark tiếng Việt — mới 22 ca (cần mở rộng).
 - ◑ Đánh giá định lượng — engine‑replay 20/20 (§5.7); **harness so baseline + tách train/test đã hiện thực** (`scripts/eval/`, kiểm thử mock); còn số end‑to‑end thật (cần API key).
 - ◑ Tối ưu prompt tiến hoá — **đã hiện thực & chạy được** (`scripts/prompt-opt/`); mock 75%→100% tái lập; còn chạy LLM thật.
 - ◻️ Báo cáo khoa học — đang viết (bản này).

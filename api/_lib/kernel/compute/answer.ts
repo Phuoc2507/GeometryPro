@@ -129,6 +129,27 @@ export function certifyScalar(kind: string, s: Scalar, floatRef: number): Scalar
   return { kind, exact: null, approx: floatRef, text: floatRef.toFixed(4), approximate: true };
 }
 
+// Ghép hệ số (rational×căn) với π thành chuỗi gọn: '8'→'8π', '8/3'→'8π/3', '2√2/3'→'2√2π/3', '1'→'π'.
+function piText(s: Scalar): string {
+  const d = displayScalar(s);
+  if (d === '1') return 'π';
+  if (d === '-1') return '-π';
+  const slash = d.indexOf('/');
+  return slash >= 0 ? d.slice(0, slash) + 'π' + d.slice(slash) : d + 'π';
+}
+
+// Đáp số dạng (hệ số)·π — cho thể tích/diện tích mặt cầu. `coeff` là hệ số ĐÚNG (rational×căn); nếu
+// coeff là exact và giá trị coeff·π khớp float tham chiếu (self-check) ⇒ trả DẠNG π CHÍNH XÁC (vd '36π',
+// '8√2π/3'); ngược lại rơi về số thập phân. Trường `exact` giữ null vì π không nằm trong trường (num/den/căn).
+export function piScalarAnswer(kind: string, coeff: Scalar, floatRef: number): ScalarAnswer {
+  const val = coeff.approx * Math.PI;
+  const tol = 1e-6 * Math.max(1, Math.abs(floatRef));
+  if (coeff.exact !== null && Math.abs(val - floatRef) <= tol) {
+    return { kind, exact: null, approx: val, text: piText(coeff), approximate: false };
+  }
+  return { kind, exact: null, approx: floatRef, text: floatRef.toFixed(4), approximate: true };
+}
+
 // Kiểm một Scalar bằng 0 (exact chính xác khi có, ngược lại ngưỡng float).
 export function isZeroS(s: Scalar): boolean {
   return s.exact !== null ? s.exact.num === 0n : Math.abs(s.approx) < EPS;

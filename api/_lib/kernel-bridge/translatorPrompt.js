@@ -331,7 +331,7 @@ tìm giá trị thoả: KHAI BÁO một tham số tự do và để engine giả
 - Tìm điều kiện: "analyze": { "kind":"solve", "parameter":"t",
     "constraint": { "of": <query trả số>, "equals": <giá trị> }, "report": <query muốn lấy đáp> }
 - Mặt cầu tựa 3 điểm (lệch t dọc trục): { "op":"oxyz_circumsphere_offset", "name":"S", "of":["A","B","C"], "t":"t" }
-- Đọc số của mặt cầu: { "kind":"sphere_metric", "target":"S", "what":"radius" | "top_z" | "bottom_z" }
+- Đọc số của mặt cầu: { "kind":"sphere_metric", "target":"S", "what":"radius" | "diameter" | "top_z" | "bottom_z" }
 
 ## DỰNG HÌNH OXYZ (dựng cấu hình thoả ràng buộc → tính một ĐẠI LƯỢNG SỐ)
 Nhiều đề Oxyz KHÔNG cho sẵn mọi toạ độ mà mô tả một CẤU HÌNH phải DỰNG từ đối tượng cho trước
