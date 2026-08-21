@@ -2,7 +2,7 @@
 
 *A Neuro‑Symbolic System for Solid Geometry Problem Solving with Prompt Optimization and a Vietnamese Benchmark Dataset*
 
-> **Trạng thái bản thảo:** v0.2 — khung đầy đủ; phần **Phương pháp & Kiến trúc đã điền chi tiết kỹ thuật** đối chiếu trực tiếp từ mã nguồn (có dẫn `file`); còn lại là **số liệu đo thật** (các ô `⟦CHỜ ĐO⟧` điền sau khi chạy thí nghiệm) và bộ dữ liệu mở rộng.
+> **Trạng thái bản thảo:** v0.3 — khung đầy đủ; **Phương pháp & Kiến trúc** đã điền chi tiết đối chiếu mã nguồn; **§5.6 có kết quả đo thật đầu tiên** (engine‑replay 20/20). Còn lại: số liệu end‑to‑end/baseline (cần khoá API) và bộ dữ liệu mở rộng — vẫn giữ nguyên tắc không dùng số bịa.
 > **Lĩnh vực dự thi (đề xuất):** Phần mềm hệ thống / Robot và máy thông minh (Hệ thống thông minh).
 > **Nguyên tắc biên tập:** chỉ ghi những gì đã hiện thực trong mã nguồn hoặc sẽ đo được; **không dùng con số minh hoạ chưa kiểm chứng**. Phần dự kiến luôn ghi rõ là dự kiến.
 
@@ -217,6 +217,28 @@ Dự án đã có một **bộ đề mốc (golden)** và một **trình chạy 
 ### 5.5. Đánh giá bởi chuyên gia (human evaluation)
 Mời giáo viên Toán chấm **chất lượng lời giải/annotation** và **giá trị sư phạm của trực quan hoá 3D** trên một mẫu bài; báo cáo mức đồng thuận.
 
+### 5.6. Kết quả bước đầu (số ĐO THẬT, cập nhật liên tục)
+
+**Thí nghiệm 1 — Tính đúng đắn của engine ký hiệu (engine‑replay).**
+Chạy `npm run bench:gate` (chế độ engine‑replay: đưa *plan đã đúng* qua engine, **tất định, không gọi AI**) trên toàn bộ **20 ca golden** hiện có:
+
+| Chỉ số | Kết quả |
+|---|---|
+| Tổng số ca | 20 |
+| Pass | **20 / 20 (100%)** |
+| Sai đáp (regress‑answer) | 0 |
+| Sai trạng thái (regress‑status) | 0 |
+| Lỗi (error) | 0 |
+
+Phân bố dạng truy vấn: **14 thể tích, 6 khoảng cách** (một ca `pyramid‑scd` có 2 truy vấn: khoảng cách + thể tích). Trong đó engine trả **đáp dạng căn chính xác** ở nhiều ca — ví dụ thật từ rổ: khoảng cách `6√5/5`, `2√3/3`, `4√5/5`, `3√2/2`; thể tích `2√2/3`, `16√2/3`, `5√3`, `64/3`; và các đáp hữu tỉ `24`, `42`, `27`, `8/3`, `√2`.
+
+> **Diễn giải trung thực — phép đo này đo cái gì và KHÔNG đo cái gì:**
+> - ✅ Nó chứng minh **engine tất định tính đúng** trên tập ca mốc, và **thực sự trả đáp dạng căn** (không phải số thập phân gần đúng) — củng cố CH4.
+> - ⚠️ Nó **chưa** đo khâu **LLM dịch đề → plan** (end‑to‑end). Muốn đo đầu‑cuối phải chạy `npm run bench:gate -- --full` (có gọi LLM, cần khoá API — *phần của bạn*).
+> - ⚠️ Cỡ mẫu 20 còn nhỏ; con số 100% chỉ nói "chưa phát hiện hồi quy trên rổ hiện tại", **không** phải "độ chính xác hệ thống 100%".
+
+**Các thí nghiệm còn lại (⟦CHỜ CHẠY⟧):** (2) end‑to‑end `--full` để đo tỉ lệ dịch đúng; (3) so baseline LLM thuần; (4) đo *confidently‑wrong* và tỉ lệ từ chối; (5) latency. Các mục này cần khoá API và bộ dữ liệu mở rộng.
+
 ---
 
 ## 6. Đạo đức nghiên cứu và liêm chính học thuật
@@ -254,7 +276,7 @@ Ngân sách mục tiêu **≤ 10 triệu VNĐ**, ưu tiên thuê tài nguyên th
 - ✅ Khối dịch LLM + cổng từ chối + phân tầng an toàn — đã nối chạy.
 - ✅ Ứng dụng 3D (React Three Fiber) — 17 trang, 136 component.
 - ◻️ Benchmark tiếng Việt — mới 20 ca (cần mở rộng).
-- ◻️ Đánh giá định lượng (accuracy/baseline/latency) — **chưa đo**.
+- ◑ Đánh giá định lượng — **đã chạy engine‑replay: 20/20 pass** (xem §5.6); còn end‑to‑end/baseline/latency.
 - ◻️ Tối ưu prompt tiến hoá — **chưa hiện thực**.
 - ◻️ Báo cáo khoa học — đang viết (bản này).
 
