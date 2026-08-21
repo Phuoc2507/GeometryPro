@@ -4,6 +4,8 @@
 
 Toàn bộ quy trình dùng công cụ đã có sẵn: `scripts/label/label.mjs`. Bạn **không cần viết code**.
 
+> **Nhanh nhất — dán ẢNH thay vì gõ đề:** chạy `VILAO_API_KEY=sk-... npm run label:studio` rồi mở http://localhost:5178. Chụp đề (Win+Shift+S) → Ctrl+V → máy đọc chữ + dịch + đối chiếu đáp bạn giải → lưu. Xem `scripts/label-studio/README.md`. (Phần dưới là cách nhập bằng file worklist, dùng khi không có ảnh.)
+
 ---
 
 ## 0. Nguyên tắc liêm chính (đọc trước, bắt buộc)
