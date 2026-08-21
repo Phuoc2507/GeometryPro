@@ -4,7 +4,7 @@
 
 ## 1. Vì sao cần
 
-Benchmark hiện có **66 ca golden** (40 synthetic tự soạn + 25 capture; CHƯA có đề SGK/đề thi thật). Đây là nút thắt lớn nhất của khâu đánh giá: số liệu chỉ có ý nghĩa thống kê khi tập đủ lớn và đa dạng. Mục tiêu: **~150–300 bài**, phủ nhiều dạng (khoảng cách, góc, thể tích, thiết diện, tương giao, tròn xoay…) và nhiều độ khó.
+Benchmark hiện có **105 ca golden / 158 đáp** (80 synthetic tự soạn + 25 capture; CHƯA có đề SGK/đề thi thật). **100% đáp ở dạng chính xác** (căn/π/hữu tỉ), 0 đáp làm tròn. Đây là nút thắt lớn nhất của khâu đánh giá: số liệu chỉ có ý nghĩa thống kê khi tập đủ lớn và đa dạng. Mục tiêu: **~150–300 bài**, phủ nhiều dạng (khoảng cách, góc, thể tích, thiết diện, tương giao, tròn xoay…) và nhiều độ khó.
 
 ## 2. Một ca golden gồm gì
 
@@ -62,9 +62,10 @@ npm run bench:gate                        # chốt: cả rổ phải PASS
 
 *(Thư mục `bench/golden-staging/` được `.gitignore` — chỉ ca đã promote mới vào rổ chính thức.)*
 
-## 5. Phân bố hiện tại (66 ca)
+## 5. Phân bố hiện tại (105 ca / 158 đáp)
 
-- **38 thể tích, 15 diện tích, 10 khoảng cách, 28 toạ độ/giao điểm, 5 tỉ số thể tích, 2 mặt cầu, 1 đường sinh** (nhiều ca đa truy vấn). Nguồn: 40 synthetic + 25 capture.
+- **Theo dạng truy vấn:** thể tích 46, toạ độ điểm/giao 43, diện tích 22, khoảng cách 13, góc 8, phương trình mặt phẳng 8, vị trí tương đối 8, tỉ số thể tích 5, mặt cầu 3, đường sinh 1 (nhiều ca đa truy vấn). Nguồn: 80 synthetic + 25 capture.
+- **Theo dạng đáp (158 đáp):** 36 chứa π · 23 chứa căn √ · 86 hữu tỉ · 13 nhãn/phương trình — **100% ở dạng chính xác, 0 đáp làm tròn thập phân**.
 - Cần bổ sung mạnh: **góc**, **thiết diện/diện tích**, **tương giao (giao điểm/giao tuyến)**, **mặt cầu**, **tròn xoay/giải tích**, và các bài **"thang chữ"** (kích thước bằng `a`).
 
 ## 6. Việc tiếp theo

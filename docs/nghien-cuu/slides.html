@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ViSEF · Neuro-Symbolic Hình học không gian</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#eef1f6;
+    --stage:#ffffff;
+    --ink:#0f1729;
+    --ink-soft:#3a4256;
+    --muted:#6b7280;
+    --accent:#3730a3;
+    --accent-2:#4f46e5;
+    --accent-soft:#eef0ff;
+    --line:#e2e6ee;
+    --ok:#0f766e;
+    --ok-soft:#e6f4f1;
+    --warn:#b45309;
+    --warn-soft:#fdf2e0;
+    --mono:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+    --sans:"Be Vietnam Pro",system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{
+    font-family:var(--sans);
+    background:var(--bg);
+    color:var(--ink);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    min-height:100vh;
+    overflow:hidden;
+    -webkit-font-smoothing:antialiased;
+  }
+
+  /* progress bar */
+  #progress{
+    position:fixed;top:0;left:0;height:4px;width:0%;
+    background:linear-gradient(90deg,var(--accent),var(--accent-2));
+    z-index:50;transition:width .35s cubic-bezier(.4,0,.2,1);
+  }
+
+  /* stage: 16:9, scales with viewport, drives cq units */
+  .stage{
+    position:relative;
+    width:min(95vw, calc(94vh * 16 / 9));
+    aspect-ratio:16/9;
+    background:var(--stage);
+    border-radius:14px;
+    box-shadow:0 24px 70px -22px rgba(15,23,41,.45),0 2px 8px rgba(15,23,41,.06);
+    overflow:hidden;
+    container-type:size;
+  }
+
+  .slide{
+    position:absolute;inset:0;
+    padding:6.2cqw 7cqw 5.4cqw;
+    display:flex;flex-direction:column;
+    opacity:0;visibility:hidden;
+    transform:translateY(14px);
+    transition:opacity .4s ease,transform .4s ease,visibility .4s;
+    pointer-events:none;
+  }
+  .slide.active{opacity:1;visibility:visible;transform:none;pointer-events:auto;}
+
+  .eyebrow{
+    font-size:1.55cqw;font-weight:700;letter-spacing:.16em;text-transform:uppercase;
+    color:var(--accent-2);margin-bottom:2cqh;display:flex;align-items:center;gap:1.1cqw;
+  }
+  .eyebrow::before{content:"";width:2.4cqw;height:2px;background:var(--accent-2);display:inline-block;}
+
+  h1{font-size:5.1cqw;line-height:1.06;font-weight:800;letter-spacing:-.01em;}
+  h2{font-size:3.55cqw;line-height:1.12;font-weight:700;letter-spacing:-.005em;margin-bottom:3.4cqh;max-width:80%;}
+
+  ul{list-style:none;display:flex;flex-direction:column;gap:2.35cqh;margin-top:.5cqh;}
+  li{
+    position:relative;padding-left:3.1cqw;
+    font-size:2.06cqw;line-height:1.34;color:var(--ink-soft);font-weight:400;
+  }
+  li::before{
+    content:"";position:absolute;left:0;top:.52em;
+    width:1.05cqw;height:1.05cqw;border-radius:3px;
+    background:var(--accent-2);transform:rotate(45deg);
+  }
+  li b,li strong{color:var(--ink);font-weight:700;}
+  .mono{font-family:var(--mono);font-weight:500;background:var(--accent-soft);color:var(--accent);
+    padding:.06em .38em;border-radius:5px;font-size:.9em;white-space:nowrap;}
+
+  .grow{flex:1 1 auto;display:flex;flex-direction:column;justify-content:center;}
+
+  /* ---- title slide ---- */
+  .title-slide{justify-content:center;}
+  .title-slide h1{max-width:92%;margin-bottom:0;}
+  .principle{
+    margin-top:4cqh;padding:3cqh 3.2cqw;border-left:5px solid var(--accent-2);
+    background:var(--accent-soft);border-radius:0 12px 12px 0;
+  }
+  .principle .q{font-size:2.55cqw;line-height:1.32;font-weight:600;color:var(--accent);font-style:italic;}
+  .pillars{display:flex;gap:1.6cqw;margin-top:4.2cqh;flex-wrap:wrap;}
+  .pillars span{
+    font-size:1.62cqw;font-weight:600;color:var(--ink);
+    background:#f5f6fa;border:1px solid var(--line);border-radius:999px;padding:1.1cqh 1.8cqw;
+  }
+  .credit{margin-top:4cqh;font-size:1.6cqw;color:var(--muted);font-weight:500;}
+  .credit b{color:var(--ink-soft);}
+
+  /* ---- architecture 3 columns ---- */
+  .cols{display:grid;grid-template-columns:1fr 1fr 1fr;gap:2cqw;margin-top:1cqh;flex:1;align-content:center;}
+  .card{
+    border:1px solid var(--line);border-radius:12px;padding:3cqh 1.9cqw;display:flex;flex-direction:column;gap:1.4cqh;
+    background:#fbfcfe;
+  }
+  .card .k{font-size:1.4cqw;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--accent-2);}
+  .card h3{font-size:2.15cqw;font-weight:700;line-height:1.1;}
+  .card p{font-size:1.56cqw;line-height:1.32;color:var(--ink-soft);}
+  .contract{
+    margin-top:2.4cqh;text-align:center;font-size:1.68cqw;color:var(--muted);font-weight:500;
+  }
+  .contract .mono{font-size:.94em;}
+
+  /* ---- stat grid ---- */
+  .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:1.5cqw;margin:1cqh 0 3cqh;}
+  .stat{border:1px solid var(--line);border-radius:12px;padding:2.4cqh 1.4cqw;background:#fbfcfe;text-align:center;}
+  .stat .n{font-size:3.4cqw;font-weight:800;color:var(--accent);line-height:1;font-family:var(--mono);}
+  .stat .l{font-size:1.34cqw;color:var(--muted);margin-top:1.1cqh;font-weight:500;line-height:1.25;}
+  .stat.ok .n{color:var(--ok);}
+
+  .chips{display:flex;gap:1.1cqw;flex-wrap:wrap;margin-top:.5cqh;}
+  .chip{font-family:var(--mono);font-size:1.45cqw;font-weight:500;background:var(--accent-soft);color:var(--accent);
+    border-radius:7px;padding:.9cqh 1.3cqw;}
+
+  /* badges for measured / pending */
+  .badge{display:inline-flex;align-items:center;gap:.5cqw;font-size:.86em;font-weight:700;
+    font-family:var(--mono);border-radius:6px;padding:.05em .5em;white-space:nowrap;}
+  .badge.wait{background:var(--warn-soft);color:var(--warn);}
+  .badge.done{background:var(--ok-soft);color:var(--ok);}
+
+  /* two-column list for dense slides */
+  .split{display:grid;grid-template-columns:1fr 1fr;gap:2.2cqh 3.5cqw;flex:1;align-content:center;}
+  .split li{font-size:1.9cqw;}
+
+  /* closing slide */
+  .thanks{margin-top:auto;font-size:2.35cqw;font-weight:700;color:var(--accent);}
+
+  /* chrome */
+  #counter{
+    position:absolute;bottom:3.4cqh;right:3.4cqw;
+    font-family:var(--mono);font-size:1.5cqw;font-weight:500;color:var(--muted);
+    letter-spacing:.04em;
+  }
+  #counter b{color:var(--accent);font-weight:700;}
+  .nav{
+    position:absolute;bottom:3.1cqh;left:3.4cqw;display:flex;gap:.9cqw;
+  }
+  .nav button{
+    font-family:var(--sans);font-size:1.5cqw;font-weight:600;
+    width:3.1cqw;height:3.1cqw;min-width:26px;min-height:26px;border-radius:8px;
+    border:1px solid var(--line);background:#fff;color:var(--accent);cursor:pointer;
+    display:flex;align-items:center;justify-content:center;transition:.15s;
+  }
+  .nav button:hover{background:var(--accent-soft);border-color:var(--accent-2);}
+  .nav button:disabled{opacity:.3;cursor:default;background:#fff;border-color:var(--line);}
+
+  .hint{position:fixed;bottom:10px;left:50%;transform:translateX(-50%);
+    font-size:12px;color:#9aa2b1;letter-spacing:.04em;z-index:40;}
+  @media (max-width:640px){ .hint{display:none} }
+</style>
+</head>
+<body>
+<div id="progress"></div>
+
+<div class="stage" id="stage">
+
+  <!-- SLIDE 1 -->
+  <section class="slide title-slide" data-title="Mở đầu">
+    <div class="eyebrow">ViSEF · Phần mềm hệ thống / Hệ thống thông minh</div>
+    <h1>LLM dịch — engine tính &amp; tự kiểm:<br>một AI biết từ chối thay vì bịa</h1>
+    <div class="principle">
+      <div class="q">"LLM chỉ DỊCH đề thành mô hình hình thức; một ENGINE tất định TÍNH và TỰ KIỂM."</div>
+    </div>
+    <div class="pillars">
+      <span>Cổng từ chối an toàn</span>
+      <span>Engine trả đáp căn / π đúng</span>
+      <span>Benchmark tiếng Việt đầu tiên</span>
+    </div>
+    <div class="credit">Hệ thống Neuro-Symbolic giải &amp; trực quan hoá toán hình học không gian THPT · <b>Nhóm thực hiện · GVHD</b></div>
+  </section>
+
+  <!-- SLIDE 2 -->
+  <section class="slide" data-title="Vấn đề">
+    <div class="eyebrow">Vấn đề</div>
+    <h2>Hỏi thẳng một AI bài hình không gian: nó bịa toạ độ, tính sai, và không biết dừng</h2>
+    <div class="grow"><ul>
+      <li>Hình học không gian là mạch <b>trừu tượng và khó nhất</b> ở THPT: phải dựng hình trong đầu, phối hợp vuông góc – song song – khoảng cách – góc – thể tích.</li>
+      <li>LLM giải trực tiếp thường <b>ảo giác</b>: bịa toạ độ, tính sai số học dài, đưa đáp "nghe hợp lý" mà không kiểm được.</li>
+      <li>Nguy hiểm nhất: AI <b>không biết từ chối</b> — đề thiếu dữ kiện, nó vẫn cho ra một con số tự tin.</li>
+      <li>Với giáo dục, lỗi <b>"sai một cách tự tin"</b> (confidently wrong) là lỗi tệ nhất: học sinh tin vào đáp sai.</li>
+    </ul></div>
+  </section>
+
+  <!-- SLIDE 3 -->
+  <section class="slide" data-title="Ý tưởng cốt lõi">
+    <div class="eyebrow">Ý tưởng cốt lõi</div>
+    <h2>Cô lập LLM khỏi khâu dễ sai nhất là tính toán</h2>
+    <div class="grow"><ul>
+      <li>Tách bạch vai trò: <b>LLM lo ngôn ngữ</b> (đọc đề, toạ-độ-hoá) — <b>engine lo con số</b> (tính, kiểm chứng).</li>
+      <li>Tận dụng điểm mạnh ngôn ngữ của LLM, đồng thời <b>cô lập</b> nó khỏi khâu nó hay sai nhất.</li>
+      <li>Đưa <b>tính kiểm chứng được</b> vào lõi hệ thống: mọi đáp số đều phải qua engine tất định.</li>
+      <li>Hệ quả: hệ thống có thể <b>từ chối có kiểm soát</b> thay vì bịa — nền tảng cho một AI đáng tin.</li>
+    </ul></div>
+  </section>
+
+  <!-- SLIDE 4 -->
+  <section class="slide" data-title="Kiến trúc">
+    <div class="eyebrow">Kiến trúc</div>
+    <h2>Ba khối: Neural dịch → Symbolic tính &amp; kiểm → Application dựng 3D</h2>
+    <div class="cols">
+      <div class="card">
+        <div class="k">Neural</div>
+        <h3>LLM dịch</h3>
+        <p>Đọc đề văn bản / ảnh, tự chọn hệ toạ độ Oxyz, xuất <b>Construction Plan</b> JSON (điểm, ràng buộc, câu hỏi). Có <b>cổng từ chối</b>. Không tự tính.</p>
+      </div>
+      <div class="card">
+        <div class="k">Symbolic</div>
+        <h3>Engine tất định</h3>
+        <p>Số học chính xác, dựng hình, tính khoảng cách / góc / thể tích, tự kiểm. Vi phạm điều kiện ⇒ trả <b>violation</b> chứ không bịa.</p>
+      </div>
+      <div class="card">
+        <div class="k">Application</div>
+        <h3>Trực quan hoá 3D</h3>
+        <p>React Three Fiber dựng điểm / đường / mặt / khối, <b>xoay – zoom</b> tương tác.</p>
+      </div>
+    </div>
+    <div class="contract">Hai khối giao tiếp qua <b>một JSON Schema chung</b> — <span class="mono">"hợp đồng dữ liệu"</span> giữa LLM và engine.</div>
+  </section>
+
+  <!-- SLIDE 5 -->
+  <section class="slide" data-title="Điểm mới 1">
+    <div class="eyebrow">Điểm mới 1 — Cổng từ chối</div>
+    <h2>Cổng từ chối theo bất biến affine: "thà từ chối còn hơn bịa"</h2>
+    <div class="grow"><ul>
+      <li>Trước khi dịch, LLM chạy <b>3 câu hỏi cổng dựa trên tính chất toán học, không dựa từ khoá</b>:
+        góc &amp; tỉ số bất biến theo cỡ ⇒ luôn qua; quan hệ có <b>bất biến affine</b> / hình <b>xác định tới đồng dạng</b>?; engine có <b>kiểm được</b> (quy về một truy vấn trả số / đối tượng)?</li>
+      <li>Dính "ô cấm" — hỏi đại lượng tuyệt đối nhưng chỉ cho tỉ số; bài quỹ tích / biện luận / bất đẳng thức ⇒ trả <span class="mono">{abstain:true}</span>.</li>
+      <li>Đây là cơ chế trực tiếp kéo <b>"confidently-wrong"</b> — chỉ số an toàn cốt lõi — xuống thấp.</li>
+    </ul></div>
+  </section>
+
+  <!-- SLIDE 6 -->
+  <section class="slide" data-title="Điểm mới 2">
+    <div class="eyebrow">Điểm mới 2 — Engine số học chính xác</div>
+    <h2>Trả đáp dạng căn / π đúng, không phải số thập phân</h2>
+    <div class="grow"><ul>
+      <li>Kiểu số lõi tự viết: <span class="mono">Exact = (num/den)·√radicand</span> — một hữu tỉ nhân một căn không chính phương; <b>không phụ thuộc CAS / SymPy bên ngoài</b>.</li>
+      <li>Đáp ra <b>đúng như sách</b>: khoảng cách <span class="mono">2√3/3</span>, <span class="mono">√6/3</span>, <span class="mono">12/5</span>; thể tích <span class="mono">12π</span>, <span class="mono">8√2π/3</span>, <span class="mono">52π</span>, <span class="mono">9√2/4</span>; tỉ số <span class="mono">1/24</span>, <span class="mono">1/6</span>.</li>
+      <li>Giữ mọi công thức ở <b>dạng bình phương</b> (khoảng cách điểm–mặt = <span class="mono">|n·x+d|²/|n|²</span>) rồi mới khai căn — cộng/trừ chỉ đóng khi cùng <span class="mono">radicand</span>.</li>
+      <li><b>Tự kiểm:</b> so dạng exact với số thực tính độc lập; lệch quá <span class="mono">1e-6</span> ⇒ bỏ exact, hạ về gần đúng thay vì khẳng định sai.</li>
+    </ul></div>
+  </section>
+
+  <!-- SLIDE 7 -->
+  <section class="slide" data-title="Điểm mới 3">
+    <div class="eyebrow">Điểm mới 3 — Benchmark + tối ưu prompt</div>
+    <h2>Benchmark tiếng Việt tất định + tiến hoá prompt không phá cổng an toàn</h2>
+    <div class="grow"><ul>
+      <li><b>Benchmark tái lập được:</b> mỗi ca là JSON <span class="mono">{id, source, plan, expect}</span>, chạy engine-replay <b>offline, không gọi AI</b>; so đáp bằng số (parse <span class="mono">a√b/c</span>, hiểu cả π).</li>
+      <li>Chống overfit: <b>tách train/test tất định</b> (<span class="mono">seed 42</span>, 70/30) — tối ưu chỉ trên TRAIN, báo cáo accuracy trên TEST.</li>
+      <li><b>Tối ưu prompt bằng thuật toán tiến hoá (GA):</b> genome = bật/tắt + sắp thứ tự các câu chỉ dẫn phụ; <span class="mono">fitness = accuracy − λ·token</span>.</li>
+      <li>An toàn theo thiết kế: GA <b>không đụng phần lõi prompt</b>, đặc biệt là cổng từ chối — tệ nhất chỉ chọn tổ hợp gợi ý dở, không bao giờ chạm cổng an toàn.</li>
+    </ul></div>
+  </section>
+
+  <!-- SLIDE 8 -->
+  <section class="slide" data-title="Kết quả đo thật">
+    <div class="eyebrow">Kết quả đo thật</div>
+    <h2>bench:gate 105/105 pass · đáp căn / π chính xác 100%</h2>
+    <div class="stats">
+      <div class="stat ok"><div class="n">105/105</div><div class="l">bench:gate pass (tất định)</div></div>
+      <div class="stat"><div class="n">105</div><div class="l">ca golden · 158 đáp</div></div>
+      <div class="stat ok"><div class="n">100%</div><div class="l">đáp dạng chính xác · 0 xấp xỉ</div></div>
+      <div class="stat"><div class="n">~1082</div><div class="l">test đơn vị xanh</div></div>
+    </div>
+    <ul>
+      <li>Phủ dạng đáp (158 đáp): <span class="mono">36 chứa π</span> · <span class="mono">23 chứa √</span> · <span class="mono">86 hữu tỉ</span> · <span class="mono">13 nhãn / phương trình</span> — kernel ~5.000 dòng nhóm tự viết.</li>
+      <li>Phủ dạng truy vấn: đa diện, khoảng cách điểm–mặt, mặt cầu, nón / trụ, nón cụt / chóp cụt, tỉ số thể tích, giao điểm.</li>
+      <li>Demo đáp căn thật: khoảng cách <span class="mono">2√3/3</span>, thể tích <span class="mono">8√2π/3</span> và <span class="mono">52π</span> — chạy lại giống hệt mỗi lần, offline.</li>
+    </ul>
+  </section>
+
+  <!-- SLIDE 9 -->
+  <section class="slide" data-title="Đọc đúng con số">
+    <div class="eyebrow">Trung thực về phạm vi</div>
+    <h2>Con số 105/105 đo cái gì — và trung thực về cái nó chưa đo</h2>
+    <div class="grow"><ul>
+      <li><b>105/105</b> chứng minh <b>engine tính đúng khi đã có plan đúng</b> và <b>thực sự trả đáp dạng căn</b> — nó củng cố năng lực engine.</li>
+      <li>Nó <b>chưa</b> đo khâu <b>LLM dịch đề → plan</b> (đầu-cuối); muốn đo phải chạy <span class="mono">--full</span> (gọi LLM, cần khoá API).</li>
+      <li>"100%" chỉ nghĩa <b>"chưa phát hiện hồi quy trên rổ 105 ca"</b>, không phải "hệ thống chính xác 100%".</li>
+      <li><span class="badge wait">⟦CHỜ ĐO⟧</span> baseline LLM thuần vs hệ của chúng em, và đặc biệt chỉ số <b>confidently-wrong</b> + <b>precision khi trả lời</b> (cần khoá API).</li>
+    </ul></div>
+  </section>
+
+  <!-- SLIDE 10 -->
+  <section class="slide" data-title="Khung đánh giá">
+    <div class="eyebrow">Khung đánh giá lấy an toàn làm trung tâm</div>
+    <h2>Confidently-wrong và precision khi trả lời</h2>
+    <div class="grow"><ul>
+      <li>So trên <b>cùng tập test</b>: <span class="mono">system</span> (hệ của chúng em) vs <span class="mono">llm-direct</span> (LLM giải thẳng) — harness <span class="mono">scripts/eval/baseline.mjs</span> đã dựng.</li>
+      <li>Ba cột đo cốt lõi: <b>accuracy</b> · <b>confidently-wrong</b> (đáp SAI một cách tự tin — càng thấp càng tốt) · <b>precision</b> = <span class="mono">correct/(correct+wrong)</span>.</li>
+      <li>Giả thuyết: hệ Neuro-Symbolic có <b>confidently-wrong rất thấp</b> và <b>precision cao</b> nhờ engine tự kiểm + cổng từ chối, đổi lại <b>từ chối nhiều hơn</b> trên bài ngoài năng lực.</li>
+      <li>Trung thực: đường ống <b>đã kiểm thử ở chế độ mock</b>; số thật <span class="badge wait">⟦CHỜ ĐO⟧</span> — không đưa số mock vào deck như kết quả.</li>
+    </ul></div>
+  </section>
+
+  <!-- SLIDE 11 -->
+  <section class="slide" data-title="So với AlphaGeometry">
+    <div class="eyebrow">Định vị</div>
+    <h2>So với AlphaGeometry: cùng triết lý, khác bài toán, khác quy mô</h2>
+    <div class="grow"><ul>
+      <li><b>AlphaGeometry</b> chứng minh định lý hình học <b>phẳng</b>, huấn luyện một mô hình chuyên biệt trên <b>~100 triệu mẫu</b> tổng hợp.</li>
+      <li>Chúng em làm hình học <b>không gian 3D</b> và <b>tính đại lượng</b> (khoảng cách / góc / thể tích) + <b>trực quan hoá</b> — không phải chứng minh định lý phẳng.</li>
+      <li>Chúng em <b>không huấn luyện lại mô hình nào</b>: dùng LLM sẵn có chỉ để dịch, cộng engine tự viết + cổng từ chối + tối ưu prompt.</li>
+      <li>Điểm chung duy nhất là <b>triết lý neuro-symbolic</b> — nguồn cảm hứng, không phải bản sao; và thêm <b>benchmark tiếng Việt đầu tiên</b>.</li>
+    </ul></div>
+  </section>
+
+  <!-- SLIDE 12 -->
+  <section class="slide" data-title="Khả thi">
+    <div class="eyebrow">Khả thi ở quy mô trường học</div>
+    <h2>Chi phí ≤ 10 triệu, mã nguồn mở, chạy tất định</h2>
+    <div class="grow"><ul>
+      <li>Cố tình <b>không train mô hình khổng lồ</b>: dùng LLM rẻ, sẵn có, rồi làm cho nó đáng tin bằng engine — hợp túi tiền học sinh.</li>
+      <li>Ngân sách mục tiêu <b>≤ 10 triệu VNĐ</b>: chủ yếu API baseline (<span class="mono">1–3 triệu</span>) và GPU thuê giờ (<span class="mono">2–6 triệu</span>); benchmark engine-replay chạy <b>offline miễn phí</b>.</li>
+      <li><b>Công bố toàn bộ</b> báo cáo, mã nguồn và benchmark để cộng đồng đối chiếu, tái lập.</li>
+      <li>Ứng dụng 3D thật: <b>17 trang, 136 component</b>; đầu vào bằng chữ hoặc ảnh, đầu ra là hình xoay-zoom + đáp kiểm chứng được.</li>
+    </ul></div>
+  </section>
+
+  <!-- SLIDE 13 -->
+  <section class="slide" data-title="Liêm chính">
+    <div class="eyebrow">Liêm chính &amp; hạn chế — tự nêu trước khi bị hỏi</div>
+    <h2>Ranh giới rõ ràng, không tô vẽ</h2>
+    <div class="split"><ul>
+      <li><span class="badge done">ĐÃ ĐO</span> engine bench:gate 105/105, ~1082 test. <span class="badge wait">⟦CHỜ ĐO⟧</span> end-to-end + baseline + confidently-wrong (cần khoá API).</li>
+      <li><b>Benchmark còn nhỏ (105 ca) và là máy-sinh</b> — <b>25 capture + 80 synthetic tự soạn</b> (kiểm hai chiều); chưa có đề từ SGK / đề thi thật — đang bổ sung.</li>
+      <li><b>Phạm vi engine có giới hạn:</b> quỹ tích tổng quát, bất đẳng thức, biện luận tham số ⇒ engine <b>từ chối an toàn</b> thay vì giải — ranh giới rõ, không giấu.</li>
+      <li><b>Ghi công minh bạch:</b> LLM hosted làm bộ dịch, three.js / React để vẽ; phần tự viết là engine, cổng từ chối, benchmark, phân tầng.</li>
+    </ul></div>
+  </section>
+
+  <!-- SLIDE 14 -->
+  <section class="slide" data-title="Hướng phát triển">
+    <div class="eyebrow">Hướng phát triển</div>
+    <h2>Từ 105 ca máy-sinh tới benchmark có nguồn và số đầu-cuối thật</h2>
+    <div class="grow"><ul>
+      <li>Mở rộng benchmark tiếng Việt lên <b>~150–300 ca có nguồn SGK / đề thi</b>, tự giải tay xác minh, đủ dạng (thêm góc, thiết diện, giao tuyến).</li>
+      <li>Chạy <b>đánh giá đầu-cuối + baseline thật</b> (accuracy, confidently-wrong, latency) khi có khoá API.</li>
+      <li>Chạy <b>tối ưu prompt tiến hoá trên LLM thật</b> để có đường cong fitness và so prompt-tối-ưu vs prompt-tay.</li>
+      <li><b>Human evaluation</b> với giáo viên Toán về giá trị sư phạm; thử <b>mô hình mã nguồn mở chạy offline</b> để giảm phụ thuộc LLM đóng.</li>
+    </ul></div>
+  </section>
+
+  <!-- SLIDE 15 -->
+  <section class="slide" data-title="Kết luận">
+    <div class="eyebrow">Kết luận</div>
+    <h2>Một AI đáng tin cho hình học không gian — biết tính đúng và biết từ chối</h2>
+    <div class="grow"><ul>
+      <li><b>Đóng góp:</b> kiến trúc Neuro-Symbolic an toàn cho hình học <b>không gian</b> · cổng từ chối theo bất biến affine · engine trả đáp căn / π đúng · benchmark tiếng Việt đầu tiên.</li>
+      <li><b>Số thật làm nền:</b> engine bench:gate <b>105/105</b>, ~<b>1082</b> test; phần còn lại <span class="badge wait">⟦CHỜ ĐO⟧</span> một cách minh bạch.</li>
+      <li><b>Giá trị giáo dục:</b> hình 3D để hiểu bằng mắt + đáp kiểm chứng được, và quan trọng nhất — <b>thà từ chối còn hơn dạy sai</b>.</li>
+    </ul></div>
+    <div class="thanks">Xin cảm ơn hội đồng và quý thầy cô — sẵn sàng chạy demo trực tiếp và trả lời chất vấn.</div>
+  </section>
+
+  <div id="counter"><b id="cur">1</b> / 15</div>
+  <div class="nav">
+    <button id="prev" aria-label="Slide trước">‹</button>
+    <button id="next" aria-label="Slide sau">›</button>
+  </div>
+</div>
+
+<div class="hint">← → hoặc Space để chuyển slide</div>
+
+<script>
+(function(){
+  var slides = Array.prototype.slice.call(document.querySelectorAll('.slide'));
+  var total = slides.length;
+  var i = 0;
+  var progress = document.getElementById('progress');
+  var cur = document.getElementById('cur');
+  var prevBtn = document.getElementById('prev');
+  var nextBtn = document.getElementById('next');
+
+  function render(){
+    slides.forEach(function(s,idx){ s.classList.toggle('active', idx===i); });
+    cur.textContent = (i+1);
+    progress.style.width = ((i+1)/total*100) + '%';
+    prevBtn.disabled = (i===0);
+    nextBtn.disabled = (i===total-1);
+  }
+  function go(n){
+    i = Math.max(0, Math.min(total-1, n));
+    render();
+  }
+  function next(){ go(i+1); }
+  function prev(){ go(i-1); }
+
+  document.addEventListener('keydown', function(e){
+    var k = e.key;
+    if(k==='ArrowRight' || k==='PageDown' || (k===' ' && !e.shiftKey)){ e.preventDefault(); next(); }
+    else if(k==='ArrowLeft' || k==='PageUp' || (k===' ' && e.shiftKey)){ e.preventDefault(); prev(); }
+    else if(k==='Home'){ e.preventDefault(); go(0); }
+    else if(k==='End'){ e.preventDefault(); go(total-1); }
+  });
+  nextBtn.addEventListener('click', next);
+  prevBtn.addEventListener('click', prev);
+
+  render();
+})();
+</script>
+</body>
+</html>

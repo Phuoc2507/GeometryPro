@@ -127,7 +127,7 @@
   @media(max-width:820px){.metrics{grid-template-columns:1fr}}
   .metric{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:20px;box-shadow:var(--shadow)}
   .metric .n{font-family:"Archivo",sans-serif;font-weight:800;font-size:2.4rem;letter-spacing:-.02em;line-height:1;font-variant-numeric:tabular-nums}
-  .metric .n.v{color:var(--verified)} .metric .n.a{color:var(--accent)}
+  .metric .n.v{color:var(--verified)} .metric .n.a{color:var(--accent)} .metric .n.g{color:var(--gold)}
   .metric .k{margin-top:8px;font-family:"Archivo",sans-serif;font-weight:600;font-size:.95rem}
   .metric .d{margin-top:4px;color:var(--muted);font-size:.85rem}
 
@@ -332,19 +332,19 @@
     <div class="sec-head"><span class="sec-num">04</span><h2>Kết quả — số liệu đo thật</h2><span class="rule"></span></div>
     <div class="metrics">
       <div class="metric">
-        <div class="n v">66/66</div>
-        <div class="k">Engine giải đúng (engine‑replay)</div>
-        <div class="d">Tất định, không gọi AI · 66 ca (40 synthetic + 25 capture) · 0 lỗi</div>
+        <div class="n v">105/105</div>
+        <div class="k">bench:gate pass (100%)</div>
+        <div class="d">Engine‑replay tất định, không gọi AI · 105 ca golden (80 synthetic + 25 capture) · 0 lỗi</div>
+      </div>
+      <div class="metric">
+        <div class="n g">100%</div>
+        <div class="k">Đáp ở dạng chính xác</div>
+        <div class="d">0/158 đáp xấp xỉ · engine trả căn thức / π / phân số hữu tỉ, KHÔNG làm tròn</div>
       </div>
       <div class="metric">
         <div class="n a">1082</div>
         <div class="k">Test đơn vị xanh</div>
-        <div class="d">Kernel hình học + giải tích tự phát triển</div>
-      </div>
-      <div class="metric">
-        <div class="n">≈ 0đ</div>
-        <div class="k">Chi phí đánh giá lõi</div>
-        <div class="d">Benchmark chạy offline, tái lập được</div>
+        <div class="d">Kernel hình học + giải tích tự viết · ~5.256 dòng · chạy offline, tái lập được</div>
       </div>
     </div>
 
@@ -356,7 +356,8 @@
           <span class="ans">10−2√7</span><span class="ans">36π</span><span class="ans">8√2π/3</span>
           <span class="ans">52π</span><span class="ans">2√2/3</span>
         </div>
-        <p style="margin-top:12px">Phủ khoảng cách · góc · thể tích · diện tích · mặt cầu · nón/trụ · nón cụt/chóp cụt.</p>
+        <p style="margin-top:12px"><b style="color:var(--gold)">158/158 đáp ở dạng chính xác, 0 làm tròn.</b> Phân bố dạng đáp: <b>36</b> chứa π · <b>23</b> chứa √ (căn) · <b>86</b> hữu tỉ · <b>13</b> nhãn/phương trình.</p>
+        <p style="margin-top:8px;font-size:.86rem;color:var(--faint)">Dạng truy vấn: thể tích 46 · toạ độ điểm/giao 43 · diện tích 22 · khoảng cách 13 · góc 8 · phương trình mặt phẳng 8 · vị trí tương đối 8 · tỉ số thể tích 5 · mặt cầu 3 · đường sinh 1.</p>
       </div>
       <div class="card">
         <span class="tag a">Khung so sánh baseline</span>
@@ -400,19 +401,20 @@
         <ul class="tight">
           <li>Công khai <b>báo cáo + mã + benchmark</b>.</li>
           <li>Chỉ dùng <b>số liệu đo thật</b>, tái lập được.</li>
-          <li>Đề trích nguồn; đáp do người xác minh.</li>
+          <li>158 đáp <b>kiểm hai chiều</b> (công thức độc lập ↔ engine tính lại, chỉ nạp khi khớp).</li>
+          <li>Nguồn: 25 ca capture + 80 ca synthetic tự soạn; <b>chưa có đề SGK/đề thi thật</b> — nhóm sẽ bổ sung.</li>
         </ul>
       </div>
     </div>
   </section>
 
   <div class="note fade" style="margin-top:22px">
-    <b>Nguyên tắc trình bày:</b> mọi con số trên poster đến từ lần chạy thực tế và tái lập được (<span class="mono">npm run bench:gate</span> → 66/66; <span class="mono">npm test</span> → 1082 xanh). Các ô "đang đo" sẽ điền sau khi chạy trên LLM thật — <b>không dùng số minh hoạ</b>.
+    <b>Nguyên tắc trình bày:</b> mọi con số trên poster đến từ lần chạy thực tế và tái lập được (<span class="mono">npm run bench:gate</span> → 105/105; <span class="mono">npm test</span> → 1082 xanh). Các ô "đang đo" (accuracy đầu‑cuối) sẽ điền sau khi chạy trên LLM thật — <b>không dùng số minh hoạ</b>.
   </div>
 
   <footer class="fade">
     <span>Poster đề tài NCKH · Hệ thống Neuro‑Symbolic giải Hình học không gian</span>
-    <span class="mono">bench:gate 66/66 · 1082 tests · v0.5</span>
+    <span class="mono">bench:gate 105/105 · 158 đáp · 1082 tests · v0.5</span>
   </footer>
 </div>
 
