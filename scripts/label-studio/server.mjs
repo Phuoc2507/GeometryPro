@@ -98,6 +98,19 @@ app.post('/api/save', (req, res) => {
   } catch (e) { res.status(500).json({ error: String(e && e.message || e) }); }
 });
 
+// 4) GHI KNOWN-GAP (ca engine chưa giải / lệch — để báo cáo ranh giới & vá engine sau) ----
+const GAPS = path.resolve('bench/worklists/de-that/known-gaps.jsonl');
+app.post('/api/gap', (req, res) => {
+  try {
+    const { text, expected, got, verdict, source } = req.body || {};
+    if (!text) return res.status(400).json({ error: 'thiếu đề' });
+    fs.mkdirSync(path.dirname(GAPS), { recursive: true });
+    const rec = { text, expected, got: got || null, verdict: verdict || 'gap', source: source || '', at: new Date().toISOString() };
+    fs.appendFileSync(GAPS, JSON.stringify(rec) + '\n');
+    res.json({ ok: true, file: 'bench/worklists/de-that/known-gaps.jsonl' });
+  } catch (e) { res.status(500).json({ error: String(e && e.message || e) }); }
+});
+
 app.listen(PORT, () => {
   if (!process.env.VILAO_API_KEY) console.log('⚠️  Chưa có VILAO_API_KEY — /api/ocr và /api/check sẽ lỗi. Chạy: VILAO_API_KEY=sk-... npm run label:studio');
   console.log(`\n  Xưởng gán nhãn bằng ảnh: http://localhost:${PORT}\n  (dừng: Ctrl+C · ca đã lưu nằm ở bench/golden-staging/)\n`);
