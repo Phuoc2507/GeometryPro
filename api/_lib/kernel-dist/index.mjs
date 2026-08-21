@@ -6114,6 +6114,37 @@ function computeSphereArea(s) {
   return piScalarAnswer("area", mul(rat(4n), s.r2), floatRef);
 }
 
+// api/_lib/kernel/compute/roundSolids.ts
+var S = (x) => parseScalar(x);
+function slantScalar(r, h) {
+  return sqrt(add2(mul(r, r), mul(h, h)));
+}
+function coneVolume(rIn, hIn) {
+  const r = S(rIn), h = S(hIn);
+  const coeff = mul(rat(1n, 3n), mul(mul(r, r), h));
+  return piScalarAnswer("volume", coeff, 1 / 3 * Math.PI * r.approx * r.approx * h.approx);
+}
+function cylinderVolume(rIn, hIn) {
+  const r = S(rIn), h = S(hIn);
+  return piScalarAnswer("volume", mul(mul(r, r), h), Math.PI * r.approx * r.approx * h.approx);
+}
+function coneSlant(rIn, hIn) {
+  const r = S(rIn), h = S(hIn);
+  return certifyScalar("slant", slantScalar(r, h), Math.hypot(r.approx, h.approx));
+}
+function coneArea(rIn, hIn, part) {
+  const r = S(rIn), h = S(hIn);
+  const l = slantScalar(r, h);
+  const lf = Math.hypot(r.approx, h.approx);
+  if (part === "lateral") return piScalarAnswer("area", mul(r, l), Math.PI * r.approx * lf);
+  return piScalarAnswer("area", mul(r, add2(l, r)), Math.PI * r.approx * (lf + r.approx));
+}
+function cylinderArea(rIn, hIn, part) {
+  const r = S(rIn), h = S(hIn);
+  if (part === "lateral") return piScalarAnswer("area", mul(rat(2n), mul(r, h)), 2 * Math.PI * r.approx * h.approx);
+  return piScalarAnswer("area", mul(rat(2n), mul(r, add2(h, r))), 2 * Math.PI * r.approx * (h.approx + r.approx));
+}
+
 // api/_lib/kernel/compute/relative.ts
 var rel = (relation) => ({ kind: "relative_position", relation });
 var isZeroVec = (v) => isZeroS(lenSqV(v));
@@ -6289,6 +6320,7 @@ function lineEquationText(l) {
 
 // api/_lib/kernel/compute/query.ts
 var Tok = external_exports.string().min(1);
+var ScalarInput = external_exports.union([external_exports.number(), external_exports.string().min(1)]);
 var SolidSpec = external_exports.object({ solid: external_exports.enum(["tetrahedron", "pyramid"]), points: external_exports.array(Tok).min(3), apex: Tok.optional() });
 var QueryESchema = external_exports.union([
   external_exports.object({ kind: external_exports.literal("distance"), a: Tok, b: Tok }),
@@ -6299,9 +6331,12 @@ var QueryESchema = external_exports.union([
   external_exports.object({ kind: external_exports.literal("volume"), solid: external_exports.literal("sphere"), target: Tok }),
   external_exports.object({ kind: external_exports.literal("volume"), solid: external_exports.enum(["tetrahedron", "pyramid"]), points: external_exports.array(Tok).min(3), apex: Tok.optional() }),
   external_exports.object({ kind: external_exports.literal("volume"), solid: external_exports.literal("prism"), base: external_exports.array(Tok).min(3), top: external_exports.array(Tok).min(3) }),
+  external_exports.object({ kind: external_exports.literal("volume"), solid: external_exports.enum(["cone", "cylinder"]), r: ScalarInput, h: ScalarInput }),
   external_exports.object({ kind: external_exports.literal("volume_ratio"), a: SolidSpec, b: SolidSpec }),
   external_exports.object({ kind: external_exports.literal("area"), shape: external_exports.literal("sphere"), target: Tok }),
   external_exports.object({ kind: external_exports.literal("area"), shape: external_exports.enum(["triangle", "polygon"]), points: external_exports.array(Tok).min(3) }),
+  external_exports.object({ kind: external_exports.literal("area"), shape: external_exports.enum(["cone", "cylinder"]), part: external_exports.enum(["lateral", "total"]), r: ScalarInput, h: ScalarInput }),
+  external_exports.object({ kind: external_exports.literal("slant"), r: ScalarInput, h: ScalarInput }),
   external_exports.object({ kind: external_exports.literal("sphere_metric"), target: Tok, what: external_exports.enum(["radius", "diameter", "top_z", "bottom_z"]) }),
   external_exports.object({ kind: external_exports.literal("point_coord"), target: Tok, axis: external_exports.enum(["x", "y", "z"]) })
 ]);
@@ -6358,6 +6393,8 @@ function computeQuery(query, et) {
         if (query.solid === "prism") {
           return computePrismVolume(asPoints(query.base, et), asPoints(query.top, et));
         }
+        if (query.solid === "cone") return { ok: true, answer: coneVolume(query.r, query.h) };
+        if (query.solid === "cylinder") return { ok: true, answer: cylinderVolume(query.r, query.h) };
         const pts = asPoints(query.points, et);
         if (query.solid === "tetrahedron") {
           if (pts.length !== 4) return { ok: false, problem: "tetrahedron needs exactly 4 points" };
@@ -6374,6 +6411,8 @@ function computeQuery(query, et) {
           if (e.kind !== "sphere") return { ok: false, problem: "area(sphere) needs a sphere" };
           return { ok: true, answer: computeSphereArea(e) };
         }
+        if (query.shape === "cone") return { ok: true, answer: coneArea(query.r, query.h, query.part) };
+        if (query.shape === "cylinder") return { ok: true, answer: cylinderArea(query.r, query.h, query.part) };
         const pts = asPoints(query.points, et);
         if (query.shape === "triangle") {
           if (pts.length !== 3) return { ok: false, problem: "triangle area needs exactly 3 points" };
@@ -6391,6 +6430,8 @@ function computeQuery(query, et) {
         const ref = query.what === "radius" ? Rf : query.what === "diameter" ? 2 * Rf : query.what === "top_z" ? zc.approx + Rf : zc.approx - Rf;
         return { ok: true, answer: certifyScalar("sphere_metric", s, ref) };
       }
+      case "slant":
+        return { ok: true, answer: coneSlant(query.r, query.h) };
       case "point_coord": {
         const e = resolveEntityE(query.target, et);
         if (e.kind !== "point") return { ok: false, problem: "point_coord needs a point" };

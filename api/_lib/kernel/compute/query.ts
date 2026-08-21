@@ -9,11 +9,13 @@ import { computeDistance } from './distance';
 import { computeAngle } from './angle';
 import { computeTetraVolume, computePyramidVolume, computePrismVolume, volumeRatio, computeSphereVolume } from './volume';
 import { computeTriangleArea, computePolygonArea, computeSphereArea } from './area';
+import { coneVolume, cylinderVolume, coneArea, cylinderArea, coneSlant } from './roundSolids';
 import { computeRelativePosition, type RelPosAnswer } from './relative';
 import { computeIntersection, type IntersectionAnswer } from './intersect';
 import { planeEquationText, sphereEquationText, lineEquationText } from './equation';
 
 const Tok = z.string().min(1);
+const ScalarInput = z.union([z.number(), z.string().min(1)]); // r, h cho nón/trụ: số / "p/q" / "sqrt(3)"
 const SolidSpec = z.object({ solid: z.enum(['tetrahedron', 'pyramid']), points: z.array(Tok).min(3), apex: Tok.optional() });
 
 export const QueryESchema = z.union([
@@ -25,9 +27,12 @@ export const QueryESchema = z.union([
   z.object({ kind: z.literal('volume'), solid: z.literal('sphere'), target: Tok }),
   z.object({ kind: z.literal('volume'), solid: z.enum(['tetrahedron', 'pyramid']), points: z.array(Tok).min(3), apex: Tok.optional() }),
   z.object({ kind: z.literal('volume'), solid: z.literal('prism'), base: z.array(Tok).min(3), top: z.array(Tok).min(3) }),
+  z.object({ kind: z.literal('volume'), solid: z.enum(['cone', 'cylinder']), r: ScalarInput, h: ScalarInput }),
   z.object({ kind: z.literal('volume_ratio'), a: SolidSpec, b: SolidSpec }),
   z.object({ kind: z.literal('area'), shape: z.literal('sphere'), target: Tok }),
   z.object({ kind: z.literal('area'), shape: z.enum(['triangle', 'polygon']), points: z.array(Tok).min(3) }),
+  z.object({ kind: z.literal('area'), shape: z.enum(['cone', 'cylinder']), part: z.enum(['lateral', 'total']), r: ScalarInput, h: ScalarInput }),
+  z.object({ kind: z.literal('slant'), r: ScalarInput, h: ScalarInput }),
   z.object({ kind: z.literal('sphere_metric'), target: Tok, what: z.enum(['radius', 'diameter', 'top_z', 'bottom_z']) }),
   z.object({ kind: z.literal('point_coord'), target: Tok, axis: z.enum(['x', 'y', 'z']) }),
 ]);
@@ -97,6 +102,8 @@ export function computeQuery(query: QueryE, et: EntityTable): ComputeOutcome<Que
         if (query.solid === 'prism') {
           return computePrismVolume(asPoints(query.base, et), asPoints(query.top, et));
         }
+        if (query.solid === 'cone') return { ok: true, answer: coneVolume(query.r, query.h) };
+        if (query.solid === 'cylinder') return { ok: true, answer: cylinderVolume(query.r, query.h) };
         const pts = asPoints(query.points, et);
         if (query.solid === 'tetrahedron') {
           if (pts.length !== 4) return { ok: false, problem: 'tetrahedron needs exactly 4 points' };
@@ -113,6 +120,8 @@ export function computeQuery(query: QueryE, et: EntityTable): ComputeOutcome<Que
           if (e.kind !== 'sphere') return { ok: false, problem: 'area(sphere) needs a sphere' };
           return { ok: true, answer: computeSphereArea(e) };
         }
+        if (query.shape === 'cone') return { ok: true, answer: coneArea(query.r, query.h, query.part) };
+        if (query.shape === 'cylinder') return { ok: true, answer: cylinderArea(query.r, query.h, query.part) };
         const pts = asPoints(query.points, et);
         if (query.shape === 'triangle') {
           if (pts.length !== 3) return { ok: false, problem: 'triangle area needs exactly 3 points' };
@@ -138,6 +147,7 @@ export function computeQuery(query: QueryE, et: EntityTable): ComputeOutcome<Que
           : zc.approx - Rf;
         return { ok: true, answer: certifyScalar('sphere_metric', s, ref) };
       }
+      case 'slant': return { ok: true, answer: coneSlant(query.r, query.h) };
       case 'point_coord': {
         const e = resolveEntityE(query.target, et);
         if (e.kind !== 'point') return { ok: false, problem: 'point_coord needs a point' };

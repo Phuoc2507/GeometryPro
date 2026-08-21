@@ -1,0 +1,47 @@
+{
+  "id": "cap-non-r3-h4",
+  "source": "capture",
+  "text": "Cho hình nón có bán kính đáy r = 3 và chiều cao h = 4. Tính thể tích khối nón và diện tích xung quanh của hình nón.",
+  "plan": {
+    "solidName": "X",
+    "ops": [
+      {
+        "op": "oxyz_point",
+        "name": "O",
+        "at": [
+          0,
+          0,
+          0
+        ]
+      }
+    ],
+    "queries": [
+      {
+        "kind": "volume",
+        "solid": "cone",
+        "r": 3,
+        "h": 4
+      },
+      {
+        "kind": "area",
+        "shape": "cone",
+        "part": "lateral",
+        "r": 3,
+        "h": 4
+      }
+    ]
+  },
+  "expect": {
+    "ok": true,
+    "answers": [
+      {
+        "kind": "volume",
+        "text": "12π"
+      },
+      {
+        "kind": "area",
+        "text": "15π"
+      }
+    ]
+  }
+}

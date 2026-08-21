@@ -332,6 +332,10 @@ tìm giá trị thoả: KHAI BÁO một tham số tự do và để engine giả
     "constraint": { "of": <query trả số>, "equals": <giá trị> }, "report": <query muốn lấy đáp> }
 - Mặt cầu tựa 3 điểm (lệch t dọc trục): { "op":"oxyz_circumsphere_offset", "name":"S", "of":["A","B","C"], "t":"t" }
 - Đọc số của mặt cầu: { "kind":"sphere_metric", "target":"S", "what":"radius" | "diameter" | "top_z" | "bottom_z" }
+- NÓN / TRỤ (cho trực tiếp bán kính đáy r & chiều cao h — KHÔNG cần dựng điểm; đáp ra dạng π/căn):
+  + Thể tích:     { "kind":"volume", "solid":"cone"|"cylinder", "r":<số/"sqrt(..)">, "h":<...> }
+  + Diện tích:    { "kind":"area", "shape":"cone"|"cylinder", "part":"lateral"|"total", "r":<...>, "h":<...> }  (lateral=xung quanh, total=toàn phần)
+  + Đường sinh nón: { "kind":"slant", "r":<...>, "h":<...> }   (l = √(r²+h²))
 
 ## DỰNG HÌNH OXYZ (dựng cấu hình thoả ràng buộc → tính một ĐẠI LƯỢNG SỐ)
 Nhiều đề Oxyz KHÔNG cho sẵn mọi toạ độ mà mô tả một CẤU HÌNH phải DỰNG từ đối tượng cho trước
