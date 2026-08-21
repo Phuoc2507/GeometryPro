@@ -53,4 +53,13 @@ describe('compareCase', () => {
     expect(compareCase(g, { ok: true, answers: [{ text: '60°' }] }).verdict).toBe('pass');
     expect(compareCase(g, { ok: true, answers: [{ text: '45°' }] }).verdict).toBe('regress-answer');
   });
+
+  it('đáp "thang chữ" (a³·√2/12): khớp bất kể số mũ trên/^ và dấu nhân', () => {
+    const g = { id: 't', expect: { ok: true, answers: [{ text: 'a^3·√2/12' }] } };
+    expect(compareCase(g, { ok: true, answers: [{ text: 'a³·√2/12' }] }).verdict).toBe('pass');
+    expect(compareCase(g, { ok: true, answers: [{ text: 'a³√2/12' }] }).verdict).toBe('pass'); // engine bỏ dấu ·
+    const g2 = { id: 't', expect: { ok: true, answers: [{ text: 'a√3' }] } };
+    expect(compareCase(g2, { ok: true, answers: [{ text: 'a·√3' }] }).verdict).toBe('pass');
+    expect(compareCase(g2, { ok: true, answers: [{ text: 'a·√2' }] }).verdict).toBe('regress-answer'); // vẫn phân biệt √3≠√2
+  });
 });

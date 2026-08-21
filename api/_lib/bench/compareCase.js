@@ -3,11 +3,17 @@
 // So đáp bằng SỐ (answerCompare) — √2 khớp 1.4142…, KHÔNG so chuỗi thô.
 import { answersAgree, toNumeric } from '../answerCompare.js';
 
-// Chuẩn hoá chuỗi để so đáp phi-số (nhãn/phương trình): gộp khoảng trắng, bỏ dấu, thường hoá,
-// chuẩn hoá dấu trừ unicode. KHÔNG dùng cho đáp số (đã có answersAgree lo).
+// Chuẩn hoá chuỗi để so đáp phi-số (nhãn/phương trình/đáp "thang chữ" a³·√2/12):
+// gộp khoảng trắng, bỏ dấu, thường hoá, chuẩn hoá dấu trừ unicode; đồng thời gỡ khác biệt
+// HÌNH THỨC của đáp ký hiệu — số mũ trên (²³…) ↔ ^n, và dấu nhân ·/*/× — để `a√3`, `a·√3`,
+// `a^3√2/12`, `a³·√2/12` được coi là một. KHÔNG dùng cho đáp số (đã có answersAgree lo).
+const SUP = { '⁰': '0', '¹': '1', '²': '2', '³': '3', '⁴': '4', '⁵': '5', '⁶': '6', '⁷': '7', '⁸': '8', '⁹': '9' };
 function normText(s) {
   return String(s == null ? '' : s)
     .replace(/[−–—]/g, '-')
+    .replace(/[⁰¹²³⁴⁵⁶⁷⁸⁹]/g, (c) => SUP[c])   // số mũ trên → chữ số thường (a³ → a3)
+    .replace(/\^/g, '')                          // a^3 → a3  (khớp a³ → a3)
+    .replace(/[·*×]/g, '')                       // gỡ dấu nhân hiển thị (a·√3 → a√3)
     .replace(/\s+/g, '')
     .toLowerCase();
 }
