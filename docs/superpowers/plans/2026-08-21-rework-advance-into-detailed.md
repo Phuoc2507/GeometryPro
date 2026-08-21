@@ -1,5 +1,24 @@
 # Làm lại chế độ vẽ: gộp "Advance" vào "Vẽ kỹ" — còn 2 chế độ (Nhanh / Kỹ)
 
+## ✅ Trạng thái thực thi (cập nhật 2026-08-21)
+
+| Phase | Trạng thái | Ghi chú |
+|---|---|---|
+| 1 — Vẽ kỹ tự bóc lớp đề đa-câu | ✅ Xong | `looksLikeMultiQuestion` + gate `[detailed→advance]` |
+| 2 — Vẽ kỹ nhận đề ẢNH (đọc ảnh 1 lần, tái dùng bản chép) | ✅ Xong | `trimmedPrompt` const→let; hoàn credit + báo sạch khi ảnh hỏng |
+| 3 — `analyze-advance.js` → SHIM; `runAdvance` là nguồn deps duy nhất | ✅ Xong | gỡ admin-gate; gỡ dead `analyzeAdvance` (frontend) |
+| 4 — Bỏ chế độ Advance khỏi UI (còn 2 nút) | ✅ Xong | `DrawMode='quick'\|'detailed'`; `queueAnalyzeImage` xử `mode:'advance'` |
+| 5 — Bỏ credit `draw_advance` | ✅ Xong | mọi bài nâng cao tính `draw_detailed=20` |
+| 6 — Verify badge + đo p95 | 🟡 Code xong | Badge "đã kiểm chứng" (positive-only) đã bật; **đo p95 cần môi trường thật** — đã cắm `logEngineDecision.ms` (reason `advance-from-detailed*`, `advance-miss`, `advance-*-deadline`) |
+| 7 — Golden + smoke + docs | 🟡 Code/docs xong | Golden cũ phục vụ qua shim (không migrate DB); **smoke e2e cần chạy app thật**; docs cập nhật |
+
+**Cờ an toàn còn lại:** `DETAILED_ADVANCE=off` (tắt nhánh nâng cao trong Vẽ kỹ), `ADVANCE_DEADLINE_MS`
+(mặc định 52000). Hai việc CẦN MÔI TRƯỜNG THẬT (không làm được trong repo): (1) đo p95 độ trễ nhánh
+`advance-from-detailed` trên đề thật/deploy — số liệu nằm ở `logEngineDecision.ms`; (2) smoke e2e 4 ca
+(1 câu tĩnh / tròn xoay / đa-câu / ảnh nâng cao) qua một nút "Vẽ kỹ".
+
+---
+
 > **Bối cảnh:** Chế độ `advance` đang bị KHOÁ (chỉ admin, `DrawModeSelector.tsx:148`,
 > `analyze-advance.js:281`). Đánh giá kiến trúc kết luận: "Advance" thực chất gồm 2 năng lực,
 > trong đó phần đắt giá (builder calculus tất định + animation) **đã nằm trong Vẽ kỹ** qua cầu

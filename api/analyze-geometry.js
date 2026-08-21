@@ -359,18 +359,22 @@ Hãy:
             let _advTimer;
             const _advDeadline = new Promise((r) => { _advTimer = setTimeout(() => r({ __deadline: true }), DEADLINE_MS); });
             // ẢNH: đẩy ảnh xuống (problem='' → splitProblem tự đọc ảnh). CHỮ: đẩy chữ, không ảnh.
+            // Đo thời gian THẬT của pipeline nâng cao → logEngineDecision.ms để tính p95 từ log production
+            // (Phase 6). Trước đây log ms:0 ⇒ không quan sát được độ trễ nhánh này.
+            const _advT0 = Date.now();
             const adv = await Promise.race([
               runAdvance(imageBase64 ? '' : trimmedPrompt, imageBase64 ? { imageBase64 } : {}),
               _advDeadline,
             ]);
             clearTimeout(_advTimer);
+            const _advMs = Date.now() - _advT0;
 
             const usableScene = adv && adv.mode === 'advance' && adv.scene && adv.scene.base
               && Array.isArray(adv.scene.base.points) && adv.scene.base.points.length > 0;
 
             if (usableScene) {
-              console.log('[detailed→advance] phục vụ:', (trimmedPrompt || '📷 ảnh').substring(0, 60));
-              logEngineDecision({ mode: 'detailed', served: true, reason: imageBase64 ? 'advance-from-detailed-image' : 'advance-from-detailed', ms: 0, promptLen: trimmedPrompt.length });
+              console.log(`[detailed→advance] phục vụ (${_advMs}ms):`, (trimmedPrompt || '📷 ảnh').substring(0, 60));
+              logEngineDecision({ mode: 'detailed', served: true, reason: imageBase64 ? 'advance-from-detailed-image' : 'advance-from-detailed', ms: _advMs, promptLen: trimmedPrompt.length });
               sendEvent('Hoàn tất (nâng cao)!', 100);
               const advPayload = withQuota({ mode: 'advance', scene: adv.scene, engine: 'advance' }, access);
               if (isStream) { res.write(`data: ${JSON.stringify({ status: 'done', data: advPayload })}\n\n`); return res.end(); }
@@ -381,15 +385,16 @@ Hãy:
             const transcript = imageBase64 && !(adv && adv.__deadline) ? String(adv?.split?.setup || '').trim() : '';
             if (imageBase64 && transcript) {
               // ẢNH có bản chép → tái dùng: chạy tiếp luồng Vẽ kỹ trên CHỮ (kernel bật được), KHÔNG đọc ảnh lần 2.
-              console.log('[detailed→advance] ảnh không phải nâng cao → tái dùng bản chép, chạy Vẽ kỹ trên chữ');
-              logEngineDecision({ mode: 'detailed', served: false, reason: 'image-transcript-reuse', ms: 0, promptLen: transcript.length });
+              console.log(`[detailed→advance] ảnh không phải nâng cao (${_advMs}ms) → tái dùng bản chép, chạy Vẽ kỹ trên chữ`);
+              logEngineDecision({ mode: 'detailed', served: false, reason: 'image-transcript-reuse', ms: _advMs, promptLen: transcript.length });
               trimmedPrompt = transcript;
               imageBase64 = null;
               // rơi xuống luồng Vẽ kỹ thường (giờ là bài CHỮ).
             } else if (imageBase64) {
               // ẢNH nhưng KHÔNG có bản chép (đọc ảnh hỏng / chạm deadline). KHÔNG chạy vision lần 2.
               // Hoàn credit + quota rồi báo sạch (mô phỏng route Advance: ảnh khó → mời gõ chữ).
-              console.warn('[detailed→advance] ảnh không đọc/không dựng được → báo sạch, KHÔNG LLM-vision lần 2');
+              console.warn(`[detailed→advance] ảnh không đọc/không dựng được (${_advMs}ms) → báo sạch, KHÔNG LLM-vision lần 2`);
+              logEngineDecision({ mode: 'detailed', served: false, reason: adv?.__deadline ? 'advance-image-deadline' : 'advance-image-fail', ms: _advMs, promptLen: 0 });
               if (creditCharge && userId) {
                 try { await refund(userId, creditCharge.cost, creditCharge.reqId); } catch (e) { console.warn('refund (advance-image-fail) lỗi:', e?.message); }
                 creditCharge = null;
@@ -402,7 +407,8 @@ Hãy:
               return res.status(200).json({ error: msg });
             } else {
               // CHỮ: engine nâng cao chưa dựng được ⇒ rơi về Vẽ kỹ thường (không có vision, an toàn).
-              console.log('[detailed→advance] không dùng được → Vẽ kỹ thường');
+              console.log(`[detailed→advance] không dùng được (${_advMs}ms) → Vẽ kỹ thường`);
+              logEngineDecision({ mode: 'detailed', served: false, reason: adv?.__deadline ? 'advance-deadline' : 'advance-miss', ms: _advMs, promptLen: trimmedPrompt.length });
             }
           }
         } catch (e) {
