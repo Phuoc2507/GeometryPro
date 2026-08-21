@@ -13,6 +13,8 @@ import {
   classifyNoMatch,
 } from '../reactionDB';
 import { balance } from '../balance';
+import { molarMass } from '../formula';
+import { rat, addR, mulR, cmpR, ratToString } from '../rat';
 
 describe('Reaction DB — tự kiểm bằng balancer (CHỐT AN TOÀN)', () => {
   it('đúng 58 record (50 spec + 8 review F18), id R01…R58 không trùng', () => {
@@ -30,6 +32,15 @@ describe('Reaction DB — tự kiểm bằng balancer (CHỐT AN TOÀN)', () => 
         ok: true,
         coefficients: [...r.reactants.map((x) => x.coeff), ...r.products.map((x) => x.coeff)],
       });
+    }
+  });
+  it('TỪNG record: bảo toàn khối lượng EXACT (Σ coeff·M hai vế bằng nhau, cmpR = 0)', () => {
+    for (const rec of REACTIONS) {
+      let lhs = rat(0n);
+      for (const x of rec.reactants) lhs = addR(lhs, mulR(rat(BigInt(x.coeff)), molarMass(x.formula)));
+      let rhs = rat(0n);
+      for (const x of rec.products) rhs = addR(rhs, mulR(rat(BigInt(x.coeff)), molarMass(x.formula)));
+      expect(cmpR(lhs, rhs), `${rec.id}: ${ratToString(lhs)} vs ${ratToString(rhs)}`).toBe(0);
     }
   });
   it('mỗi record có phenomena tiếng Việt và ≥1 tag ĐÚNG FORMAT 4 tầng hoa/<lop>/<chuong>/<skill> (F14)', () => {

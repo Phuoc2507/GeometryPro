@@ -264,12 +264,14 @@ describe('F1+F2 — guard G2 viết lại (4 ca bắt buộc của review)', () 
     expect(r.ok).toBe(false);
     expect(r.errors[0].message).toMatch(/ngoài phạm vi/);
     expect(r.errors[0].message).toMatch(/Fe³⁺|FeCl3/);
+    expect(r.answers).toEqual([]);
   });
   it('Fe + FeCl3: KHÔNG "không phản ứng" → error ngoài phạm vi', () => {
     const r = mk('Fe', 'FeCl3');
     expect(r.noReaction).toBeUndefined();
     expect(r.ok).toBe(false);
     expect(r.errors[0].message).toMatch(/ngoài phạm vi/);
+    expect(r.answers).toEqual([]);
   });
   it('K + CuSO4: "kim loại kiềm phản ứng với nước trước — ngoài phạm vi v0"', () => {
     const r = mk('K', 'CuSO4');
@@ -277,6 +279,7 @@ describe('F1+F2 — guard G2 viết lại (4 ca bắt buộc của review)', () 
     expect(r.ok).toBe(false);
     expect(r.errors[0].message).toMatch(/nước trước/);
     expect(r.errors[0].message).toMatch(/ngoài phạm vi/);
+    expect(r.answers).toEqual([]);
   });
   it('Cu + FeSO4: ĐƯỢC trả "không phản ứng" đúng (muối Fe²⁺ hóa trị thấp nhất)', () => {
     const r = mk('Cu', 'FeSO4');
@@ -559,6 +562,18 @@ describe('F21–F27 — lưới lỗi chuẩn', () => {
     });
     expect(conv.ok).toBe(true);
     expect(conv.answers[0].exact).toBe('1/10'); // M = 250
+  });
+  it('F20: muối tan khai EXCESS thiếu state → suy "dung dịch dư" (nghĩa duy nhất hợp lý), không chặn oan', () => {
+    const r = runChem({
+      ops: [
+        { op: 'species', formula: 'Fe', amount: { grams: '5,6' } },
+        { op: 'species', formula: 'CuSO4', amount: { excess: true } }, // thiếu state
+        { op: 'mix' },
+      ],
+      queries: [{ kind: 'mass', of: 'Cu' }],
+    });
+    expect(r.ok).toBe(true);
+    expect(r.answers[0].exact).toBe('32/5');
   });
   it('F20: muối tan cân GAM đổ vào mix có dung dịch mà không khai state → error bắt LLM khai', () => {
     const r = runChem({
