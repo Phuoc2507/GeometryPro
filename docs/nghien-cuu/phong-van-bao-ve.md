@@ -174,4 +174,4 @@ Nếu chưa nắm mục nào, **học ngay hôm nay**. Mỗi mục em phải nó
 - **Luôn quy về câu thần chú** khi bị dồn: mọi câu hỏi khó đều có thể neo lại vào "LLM dịch — engine tính — tự kiểm".
 - **Chuẩn bị sẵn để MỞ MÃ.** Mở laptop, biết đường tới `compute/answer.ts`, `translatorPrompt.js`, `classifyTier.js` — chỉ được vào và giải thích là đòn hạ gục nghi ngờ "không tự làm".
 - **Khi không biết, nói "em chưa đo/chưa làm phần đó".** Không bao giờ bịa. Một câu "cái đó em chưa chạy vì cần API key" **mạnh hơn** một câu chế số — nhất là mùa hậu kiểm này.
-- **Số duy nhất được khẳng định chắc:** engine‑replay **210/210**, ~1085 test đơn vị xanh. Mọi số khác đều kèm "đang đo".
+- **Số duy nhất được khẳng định chắc:** engine‑replay **210/210**, ~1086 test đơn vị xanh. Mọi số khác đều kèm "đang đo".
