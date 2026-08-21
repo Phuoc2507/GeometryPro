@@ -1,0 +1,92 @@
+{
+  "id": "case-angle-0f9aa569",
+  "source": "synthetic",
+  "difficulty": "khó",
+  "text": "Cho hình chóp S.ABCD có đáy ABCD là hình vuông cạnh a, cạnh bên SA vuông góc với mặt phẳng đáy và SA = a√6. Tính số đo góc giữa đường thẳng SC và mặt phẳng đáy (ABCD).",
+  "plan": {
+    "solidName": "S.ABCD",
+    "scaleSymbol": "a",
+    "ops": [
+      {
+        "op": "oxyz_point",
+        "name": "A",
+        "at": [
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "B",
+        "at": [
+          1,
+          0,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "C",
+        "at": [
+          1,
+          1,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "D",
+        "at": [
+          0,
+          1,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "S",
+        "at": [
+          0,
+          0,
+          "sqrt(6)"
+        ]
+      },
+      {
+        "op": "oxyz_plane",
+        "name": "ABCD",
+        "by": {
+          "form": "three_points",
+          "a": "A",
+          "b": "B",
+          "c": "C"
+        }
+      },
+      {
+        "op": "oxyz_line",
+        "name": "SC",
+        "by": {
+          "form": "two_points",
+          "a": "S",
+          "b": "C"
+        }
+      }
+    ],
+    "queries": [
+      {
+        "kind": "angle",
+        "a": "SC",
+        "b": "ABCD"
+      }
+    ]
+  },
+  "expect": {
+    "ok": true,
+    "answers": [
+      {
+        "kind": "angle",
+        "text": "60°"
+      }
+    ]
+  }
+}

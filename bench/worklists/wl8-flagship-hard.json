@@ -1,0 +1,319 @@
+[
+  {
+    "text": "Cho hình chóp S.ABCD có đáy ABCD là hình vuông cạnh a, cạnh bên SA vuông góc với mặt phẳng đáy và SA = a. Tính khoảng cách từ điểm A đến mặt phẳng (SBD).",
+    "source": "synthetic",
+    "difficulty": "khó",
+    "kind": "distance",
+    "expected": ["a√3/3"],
+    "plan": {
+      "solidName": "S.ABCD",
+      "scaleSymbol": "a",
+      "ops": [
+        { "op": "oxyz_point", "name": "A", "at": [0, 0, 0] },
+        { "op": "oxyz_point", "name": "B", "at": [1, 0, 0] },
+        { "op": "oxyz_point", "name": "C", "at": [1, 1, 0] },
+        { "op": "oxyz_point", "name": "D", "at": [0, 1, 0] },
+        { "op": "oxyz_point", "name": "S", "at": [0, 0, 1] },
+        { "op": "oxyz_plane", "name": "ABCD", "by": { "form": "three_points", "a": "A", "b": "B", "c": "C" } },
+        { "op": "oxyz_plane", "name": "SBD", "by": { "form": "three_points", "a": "S", "b": "B", "c": "D" } }
+      ],
+      "queries": [
+        { "kind": "distance", "a": "A", "b": "SBD" }
+      ]
+    }
+  },
+  {
+    "text": "Cho hình lập phương ABCD.A'B'C'D' cạnh a. Tính khoảng cách từ đỉnh A đến mặt phẳng (CB'D').",
+    "source": "synthetic",
+    "difficulty": "khó",
+    "kind": "distance",
+    "expected": ["2a√3/3"],
+    "plan": {
+      "solidName": "ABCD.A'B'C'D'",
+      "scaleSymbol": "a",
+      "ops": [
+        { "op": "oxyz_point", "name": "A", "at": [0, 0, 0] },
+        { "op": "oxyz_point", "name": "B", "at": [1, 0, 0] },
+        { "op": "oxyz_point", "name": "C", "at": [1, 1, 0] },
+        { "op": "oxyz_point", "name": "D", "at": [0, 1, 0] },
+        { "op": "oxyz_point", "name": "B1", "at": [1, 0, 1] },
+        { "op": "oxyz_point", "name": "C1", "at": [1, 1, 1] },
+        { "op": "oxyz_point", "name": "D1", "at": [0, 1, 1] },
+        { "op": "oxyz_plane", "name": "ABCD", "by": { "form": "three_points", "a": "A", "b": "B", "c": "C" } },
+        { "op": "oxyz_plane", "name": "CB1D1", "by": { "form": "three_points", "a": "C", "b": "B1", "c": "D1" } }
+      ],
+      "queries": [
+        { "kind": "distance", "a": "A", "b": "CB1D1" }
+      ]
+    }
+  },
+  {
+    "text": "Cho tứ diện đều ABCD cạnh a. Tính khoảng cách giữa hai đường thẳng chéo nhau AB và CD.",
+    "source": "synthetic",
+    "difficulty": "khó",
+    "kind": "distance",
+    "expected": ["a√2/2"],
+    "plan": {
+      "solidName": "ABCD",
+      "scaleSymbol": "a",
+      "ops": [
+        { "op": "oxyz_point", "name": "A", "at": [0, 0, 0] },
+        { "op": "oxyz_point", "name": "B", "at": [1, 0, 0] },
+        { "op": "oxyz_point", "name": "C", "at": ["1/2", "sqrt(3)/2", 0] },
+        { "op": "oxyz_point", "name": "D", "at": ["1/2", "sqrt(3)/6", "sqrt(6)/3"] },
+        { "op": "oxyz_line", "name": "AB", "by": { "form": "two_points", "a": "A", "b": "B" } },
+        { "op": "oxyz_line", "name": "CD", "by": { "form": "two_points", "a": "C", "b": "D" } }
+      ],
+      "queries": [
+        { "kind": "distance", "a": "AB", "b": "CD" }
+      ]
+    }
+  },
+  {
+    "text": "Cho hình lập phương ABCD.A'B'C'D' cạnh a. Tính khoảng cách giữa hai đường thẳng chéo nhau AB' và BC'.",
+    "source": "synthetic",
+    "difficulty": "khó",
+    "kind": "distance",
+    "expected": ["a√3/3"],
+    "plan": {
+      "solidName": "ABCD.A'B'C'D'",
+      "scaleSymbol": "a",
+      "ops": [
+        { "op": "oxyz_point", "name": "A", "at": [0, 0, 0] },
+        { "op": "oxyz_point", "name": "B", "at": [1, 0, 0] },
+        { "op": "oxyz_point", "name": "B1", "at": [1, 0, 1] },
+        { "op": "oxyz_point", "name": "C1", "at": [1, 1, 1] },
+        { "op": "oxyz_line", "name": "AB1", "by": { "form": "two_points", "a": "A", "b": "B1" } },
+        { "op": "oxyz_line", "name": "BC1", "by": { "form": "two_points", "a": "B", "b": "C1" } }
+      ],
+      "queries": [
+        { "kind": "distance", "a": "AB1", "b": "BC1" }
+      ]
+    }
+  },
+  {
+    "text": "Cho hình chóp S.ABCD có đáy ABCD là hình vuông cạnh a, cạnh bên SA vuông góc với mặt phẳng đáy và SA = a. Tính số đo góc nhị diện giữa mặt phẳng (SBC) và mặt phẳng đáy (ABCD).",
+    "source": "synthetic",
+    "difficulty": "khó",
+    "kind": "angle",
+    "expected": ["45°"],
+    "plan": {
+      "solidName": "S.ABCD",
+      "scaleSymbol": "a",
+      "ops": [
+        { "op": "oxyz_point", "name": "A", "at": [0, 0, 0] },
+        { "op": "oxyz_point", "name": "B", "at": [1, 0, 0] },
+        { "op": "oxyz_point", "name": "C", "at": [1, 1, 0] },
+        { "op": "oxyz_point", "name": "D", "at": [0, 1, 0] },
+        { "op": "oxyz_point", "name": "S", "at": [0, 0, 1] },
+        { "op": "oxyz_plane", "name": "ABCD", "by": { "form": "three_points", "a": "A", "b": "B", "c": "C" } },
+        { "op": "oxyz_plane", "name": "SBC", "by": { "form": "three_points", "a": "S", "b": "B", "c": "C" } }
+      ],
+      "queries": [
+        { "kind": "angle", "a": "SBC", "b": "ABCD" }
+      ]
+    }
+  },
+  {
+    "text": "Cho hình chóp S.ABCD có đáy ABCD là hình vuông cạnh a, cạnh bên SA vuông góc với mặt phẳng đáy và SA = a. Tính thể tích khối chóp S.ABCD theo a.",
+    "source": "synthetic",
+    "difficulty": "khó",
+    "kind": "volume",
+    "expected": ["a³/3"],
+    "plan": {
+      "solidName": "S.ABCD",
+      "scaleSymbol": "a",
+      "ops": [
+        { "op": "oxyz_point", "name": "A", "at": [0, 0, 0] },
+        { "op": "oxyz_point", "name": "B", "at": [1, 0, 0] },
+        { "op": "oxyz_point", "name": "C", "at": [1, 1, 0] },
+        { "op": "oxyz_point", "name": "D", "at": [0, 1, 0] },
+        { "op": "oxyz_point", "name": "S", "at": [0, 0, 1] },
+        { "op": "oxyz_plane", "name": "ABCD", "by": { "form": "three_points", "a": "A", "b": "B", "c": "C" } }
+      ],
+      "queries": [
+        { "kind": "volume", "solid": "pyramid", "points": ["A", "B", "C", "D"], "apex": "S" }
+      ]
+    }
+  },
+  {
+    "text": "Cho tứ diện đều ABCD cạnh a. Tính thể tích khối tứ diện ABCD theo a.",
+    "source": "synthetic",
+    "difficulty": "khó",
+    "kind": "volume",
+    "expected": ["a³√2/12"],
+    "plan": {
+      "solidName": "ABCD",
+      "scaleSymbol": "a",
+      "ops": [
+        { "op": "oxyz_point", "name": "A", "at": [0, 0, 0] },
+        { "op": "oxyz_point", "name": "B", "at": [1, 0, 0] },
+        { "op": "oxyz_point", "name": "C", "at": ["1/2", "sqrt(3)/2", 0] },
+        { "op": "oxyz_point", "name": "D", "at": ["1/2", "sqrt(3)/6", "sqrt(6)/3"] }
+      ],
+      "queries": [
+        { "kind": "volume", "solid": "tetrahedron", "points": ["A", "B", "C", "D"] }
+      ]
+    }
+  },
+  {
+    "text": "Cho hình chóp tứ giác đều S.ABCD có tất cả các cạnh (cạnh đáy và cạnh bên) đều bằng a. Tính thể tích khối chóp S.ABCD theo a.",
+    "source": "synthetic",
+    "difficulty": "khó",
+    "kind": "volume",
+    "expected": ["a³√2/6"],
+    "plan": {
+      "solidName": "S.ABCD",
+      "scaleSymbol": "a",
+      "ops": [
+        { "op": "oxyz_point", "name": "A", "at": [0, 0, 0] },
+        { "op": "oxyz_point", "name": "B", "at": [1, 0, 0] },
+        { "op": "oxyz_point", "name": "C", "at": [1, 1, 0] },
+        { "op": "oxyz_point", "name": "D", "at": [0, 1, 0] },
+        { "op": "oxyz_point", "name": "S", "at": ["1/2", "1/2", "sqrt(2)/2"] },
+        { "op": "oxyz_plane", "name": "ABCD", "by": { "form": "three_points", "a": "A", "b": "B", "c": "C" } }
+      ],
+      "queries": [
+        { "kind": "volume", "solid": "pyramid", "points": ["A", "B", "C", "D"], "apex": "S" }
+      ]
+    }
+  },
+  {
+    "text": "Cho hình chóp S.ABCD có đáy ABCD là hình vuông cạnh a, cạnh bên SA vuông góc với mặt phẳng đáy và SA = 2a. Tính khoảng cách từ điểm A đến mặt phẳng (SBD).",
+    "source": "synthetic",
+    "difficulty": "khó",
+    "kind": "distance",
+    "expected": ["2a/3"],
+    "plan": {
+      "solidName": "S.ABCD",
+      "scaleSymbol": "a",
+      "ops": [
+        { "op": "oxyz_point", "name": "A", "at": [0, 0, 0] },
+        { "op": "oxyz_point", "name": "B", "at": [1, 0, 0] },
+        { "op": "oxyz_point", "name": "C", "at": [1, 1, 0] },
+        { "op": "oxyz_point", "name": "D", "at": [0, 1, 0] },
+        { "op": "oxyz_point", "name": "S", "at": [0, 0, 2] },
+        { "op": "oxyz_plane", "name": "ABCD", "by": { "form": "three_points", "a": "A", "b": "B", "c": "C" } },
+        { "op": "oxyz_plane", "name": "SBD", "by": { "form": "three_points", "a": "S", "b": "B", "c": "D" } }
+      ],
+      "queries": [
+        { "kind": "distance", "a": "A", "b": "SBD" }
+      ]
+    }
+  },
+  {
+    "text": "Cho hình chóp S.ABCD có đáy ABCD là hình vuông cạnh a, cạnh bên SA vuông góc với mặt phẳng đáy và SA = a. Tính khoảng cách từ điểm A đến mặt phẳng (SBC).",
+    "source": "synthetic",
+    "difficulty": "khó",
+    "kind": "distance",
+    "expected": ["a√2/2"],
+    "plan": {
+      "solidName": "S.ABCD",
+      "scaleSymbol": "a",
+      "ops": [
+        { "op": "oxyz_point", "name": "A", "at": [0, 0, 0] },
+        { "op": "oxyz_point", "name": "B", "at": [1, 0, 0] },
+        { "op": "oxyz_point", "name": "C", "at": [1, 1, 0] },
+        { "op": "oxyz_point", "name": "D", "at": [0, 1, 0] },
+        { "op": "oxyz_point", "name": "S", "at": [0, 0, 1] },
+        { "op": "oxyz_plane", "name": "ABCD", "by": { "form": "three_points", "a": "A", "b": "B", "c": "C" } },
+        { "op": "oxyz_plane", "name": "SBC", "by": { "form": "three_points", "a": "S", "b": "B", "c": "C" } }
+      ],
+      "queries": [
+        { "kind": "distance", "a": "A", "b": "SBC" }
+      ]
+    }
+  },
+  {
+    "text": "Cho hình lập phương ABCD.A'B'C'D' cạnh a. Tính số đo góc giữa hai đường thẳng A'B và B'C.",
+    "source": "synthetic",
+    "difficulty": "khó",
+    "kind": "angle",
+    "expected": ["60°"],
+    "plan": {
+      "solidName": "ABCD.A'B'C'D'",
+      "scaleSymbol": "a",
+      "ops": [
+        { "op": "oxyz_point", "name": "A", "at": [0, 0, 0] },
+        { "op": "oxyz_point", "name": "B", "at": [1, 0, 0] },
+        { "op": "oxyz_point", "name": "C", "at": [1, 1, 0] },
+        { "op": "oxyz_point", "name": "A1", "at": [0, 0, 1] },
+        { "op": "oxyz_point", "name": "B1", "at": [1, 0, 1] },
+        { "op": "oxyz_line", "name": "A1B", "by": { "form": "two_points", "a": "A1", "b": "B" } },
+        { "op": "oxyz_line", "name": "B1C", "by": { "form": "two_points", "a": "B1", "b": "C" } }
+      ],
+      "queries": [
+        { "kind": "angle", "a": "A1B", "b": "B1C" }
+      ]
+    }
+  },
+  {
+    "text": "Cho hình chóp S.ABCD có đáy ABCD là hình vuông cạnh a, cạnh bên SA vuông góc với mặt phẳng đáy và SA = a√6/3. Tính số đo góc giữa đường thẳng SC và mặt phẳng đáy (ABCD).",
+    "source": "synthetic",
+    "difficulty": "khó",
+    "kind": "angle",
+    "expected": ["30°"],
+    "plan": {
+      "solidName": "S.ABCD",
+      "scaleSymbol": "a",
+      "ops": [
+        { "op": "oxyz_point", "name": "A", "at": [0, 0, 0] },
+        { "op": "oxyz_point", "name": "B", "at": [1, 0, 0] },
+        { "op": "oxyz_point", "name": "C", "at": [1, 1, 0] },
+        { "op": "oxyz_point", "name": "D", "at": [0, 1, 0] },
+        { "op": "oxyz_point", "name": "S", "at": [0, 0, "sqrt(6)/3"] },
+        { "op": "oxyz_plane", "name": "ABCD", "by": { "form": "three_points", "a": "A", "b": "B", "c": "C" } },
+        { "op": "oxyz_line", "name": "SC", "by": { "form": "two_points", "a": "S", "b": "C" } }
+      ],
+      "queries": [
+        { "kind": "angle", "a": "SC", "b": "ABCD" }
+      ]
+    }
+  },
+  {
+    "text": "Cho hình lập phương ABCD.A'B'C'D' cạnh a. Tính khoảng cách giữa hai đường thẳng chéo nhau BD và A'C.",
+    "source": "synthetic",
+    "difficulty": "khó",
+    "kind": "distance",
+    "expected": ["a√6/6"],
+    "plan": {
+      "solidName": "ABCD.A'B'C'D'",
+      "scaleSymbol": "a",
+      "ops": [
+        { "op": "oxyz_point", "name": "A", "at": [0, 0, 0] },
+        { "op": "oxyz_point", "name": "B", "at": [1, 0, 0] },
+        { "op": "oxyz_point", "name": "C", "at": [1, 1, 0] },
+        { "op": "oxyz_point", "name": "D", "at": [0, 1, 0] },
+        { "op": "oxyz_point", "name": "A1", "at": [0, 0, 1] },
+        { "op": "oxyz_line", "name": "BD", "by": { "form": "two_points", "a": "B", "b": "D" } },
+        { "op": "oxyz_line", "name": "A1C", "by": { "form": "two_points", "a": "A1", "b": "C" } }
+      ],
+      "queries": [
+        { "kind": "distance", "a": "BD", "b": "A1C" }
+      ]
+    }
+  },
+  {
+    "text": "Cho hình chóp S.ABCD có đáy ABCD là hình vuông cạnh a, cạnh bên SA vuông góc với mặt phẳng đáy và SA = a√6. Tính số đo góc giữa đường thẳng SC và mặt phẳng đáy (ABCD).",
+    "source": "synthetic",
+    "difficulty": "khó",
+    "kind": "angle",
+    "expected": ["60°"],
+    "plan": {
+      "solidName": "S.ABCD",
+      "scaleSymbol": "a",
+      "ops": [
+        { "op": "oxyz_point", "name": "A", "at": [0, 0, 0] },
+        { "op": "oxyz_point", "name": "B", "at": [1, 0, 0] },
+        { "op": "oxyz_point", "name": "C", "at": [1, 1, 0] },
+        { "op": "oxyz_point", "name": "D", "at": [0, 1, 0] },
+        { "op": "oxyz_point", "name": "S", "at": [0, 0, "sqrt(6)"] },
+        { "op": "oxyz_plane", "name": "ABCD", "by": { "form": "three_points", "a": "A", "b": "B", "c": "C" } },
+        { "op": "oxyz_line", "name": "SC", "by": { "form": "two_points", "a": "S", "b": "C" } }
+      ],
+      "queries": [
+        { "kind": "angle", "a": "SC", "b": "ABCD" }
+      ]
+    }
+  }
+]

@@ -1,0 +1,74 @@
+{
+  "id": "case-sphere-metric-bf41809b",
+  "source": "synthetic",
+  "difficulty": "khó",
+  "text": "Trong không gian Oxyz cho tứ diện OABC với O(0;0;0), A(1;0;0), B(0;2;0), C(0;0;3). Tính bán kính mặt cầu ngoại tiếp tứ diện OABC.",
+  "plan": {
+    "solidName": "OABC",
+    "ops": [
+      {
+        "op": "oxyz_point",
+        "name": "O",
+        "at": [
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "A",
+        "at": [
+          1,
+          0,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "B",
+        "at": [
+          0,
+          2,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "C",
+        "at": [
+          0,
+          0,
+          3
+        ]
+      },
+      {
+        "op": "oxyz_sphere",
+        "name": "S",
+        "by": {
+          "form": "four_points",
+          "a": "O",
+          "b": "A",
+          "c": "B",
+          "d": "C"
+        }
+      }
+    ],
+    "queries": [
+      {
+        "kind": "sphere_metric",
+        "target": "S",
+        "what": "radius"
+      }
+    ]
+  },
+  "expect": {
+    "ok": true,
+    "answers": [
+      {
+        "kind": "sphere_metric",
+        "text": "√14/2"
+      }
+    ]
+  }
+}

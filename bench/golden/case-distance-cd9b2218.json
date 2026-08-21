@@ -1,0 +1,93 @@
+{
+  "id": "case-distance-cd9b2218",
+  "source": "synthetic",
+  "difficulty": "khó",
+  "text": "Cho hình chóp S.ABCD có đáy ABCD là hình vuông cạnh a, cạnh bên SA vuông góc với mặt phẳng đáy và SA = a. Tính khoảng cách từ điểm A đến mặt phẳng (SBC).",
+  "plan": {
+    "solidName": "S.ABCD",
+    "scaleSymbol": "a",
+    "ops": [
+      {
+        "op": "oxyz_point",
+        "name": "A",
+        "at": [
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "B",
+        "at": [
+          1,
+          0,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "C",
+        "at": [
+          1,
+          1,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "D",
+        "at": [
+          0,
+          1,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "S",
+        "at": [
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "op": "oxyz_plane",
+        "name": "ABCD",
+        "by": {
+          "form": "three_points",
+          "a": "A",
+          "b": "B",
+          "c": "C"
+        }
+      },
+      {
+        "op": "oxyz_plane",
+        "name": "SBC",
+        "by": {
+          "form": "three_points",
+          "a": "S",
+          "b": "B",
+          "c": "C"
+        }
+      }
+    ],
+    "queries": [
+      {
+        "kind": "distance",
+        "a": "A",
+        "b": "SBC"
+      }
+    ]
+  },
+  "expect": {
+    "ok": true,
+    "answers": [
+      {
+        "kind": "distance",
+        "text": "a·√2/2"
+      }
+    ]
+  }
+}

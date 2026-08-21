@@ -1,0 +1,89 @@
+{
+  "id": "case-volume-71388b83",
+  "source": "synthetic",
+  "difficulty": "khó",
+  "text": "Cho hình chóp tứ giác đều S.ABCD có tất cả các cạnh (cạnh đáy và cạnh bên) đều bằng a. Tính thể tích khối chóp S.ABCD theo a.",
+  "plan": {
+    "solidName": "S.ABCD",
+    "scaleSymbol": "a",
+    "ops": [
+      {
+        "op": "oxyz_point",
+        "name": "A",
+        "at": [
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "B",
+        "at": [
+          1,
+          0,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "C",
+        "at": [
+          1,
+          1,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "D",
+        "at": [
+          0,
+          1,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "S",
+        "at": [
+          "1/2",
+          "1/2",
+          "sqrt(2)/2"
+        ]
+      },
+      {
+        "op": "oxyz_plane",
+        "name": "ABCD",
+        "by": {
+          "form": "three_points",
+          "a": "A",
+          "b": "B",
+          "c": "C"
+        }
+      }
+    ],
+    "queries": [
+      {
+        "kind": "volume",
+        "solid": "pyramid",
+        "points": [
+          "A",
+          "B",
+          "C",
+          "D"
+        ],
+        "apex": "S"
+      }
+    ]
+  },
+  "expect": {
+    "ok": true,
+    "answers": [
+      {
+        "kind": "volume",
+        "text": "a³·√2/6"
+      }
+    ]
+  }
+}

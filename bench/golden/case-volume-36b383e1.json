@@ -1,0 +1,74 @@
+{
+  "id": "case-volume-36b383e1",
+  "source": "synthetic",
+  "difficulty": "khó",
+  "text": "Trong không gian Oxyz cho tứ diện OABC với O(0;0;0), A(1;0;0), B(0;1;0), C(0;0;1). Tính thể tích khối cầu ngoại tiếp tứ diện OABC.",
+  "plan": {
+    "solidName": "OABC",
+    "ops": [
+      {
+        "op": "oxyz_point",
+        "name": "O",
+        "at": [
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "A",
+        "at": [
+          1,
+          0,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "B",
+        "at": [
+          0,
+          1,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "C",
+        "at": [
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "op": "oxyz_sphere",
+        "name": "S",
+        "by": {
+          "form": "four_points",
+          "a": "O",
+          "b": "A",
+          "c": "B",
+          "d": "C"
+        }
+      }
+    ],
+    "queries": [
+      {
+        "kind": "volume",
+        "solid": "sphere",
+        "target": "S"
+      }
+    ]
+  },
+  "expect": {
+    "ok": true,
+    "answers": [
+      {
+        "kind": "volume",
+        "text": "√3π/2"
+      }
+    ]
+  }
+}

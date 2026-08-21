@@ -1,0 +1,74 @@
+{
+  "id": "case-area-cebde51d",
+  "source": "synthetic",
+  "difficulty": "khó",
+  "text": "Trong không gian Oxyz cho hình chóp tứ giác đều S.ABCD có đáy là hình vuông tâm gốc tọa độ với A(1;1;0), B(-1;1;0), C(-1;-1;0), D(1;-1;0) và đỉnh S(0;0;2). Tính diện tích mặt cầu ngoại tiếp hình chóp S.ABCD.",
+  "plan": {
+    "solidName": "S.ABCD",
+    "ops": [
+      {
+        "op": "oxyz_point",
+        "name": "A",
+        "at": [
+          1,
+          1,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "B",
+        "at": [
+          -1,
+          1,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "C",
+        "at": [
+          -1,
+          -1,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "S",
+        "at": [
+          0,
+          0,
+          2
+        ]
+      },
+      {
+        "op": "oxyz_sphere",
+        "name": "SP",
+        "by": {
+          "form": "four_points",
+          "a": "A",
+          "b": "B",
+          "c": "C",
+          "d": "S"
+        }
+      }
+    ],
+    "queries": [
+      {
+        "kind": "area",
+        "shape": "sphere",
+        "target": "SP"
+      }
+    ]
+  },
+  "expect": {
+    "ok": true,
+    "answers": [
+      {
+        "kind": "area",
+        "text": "9π"
+      }
+    ]
+  }
+}

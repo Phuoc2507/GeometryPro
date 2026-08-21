@@ -1,0 +1,82 @@
+{
+  "id": "case-distance-75a688e9",
+  "source": "synthetic",
+  "difficulty": "khó",
+  "text": "Cho hình lập phương ABCD.A'B'C'D' cạnh a. Tính khoảng cách giữa hai đường thẳng chéo nhau AB' và BC'.",
+  "plan": {
+    "solidName": "ABCD.A'B'C'D'",
+    "scaleSymbol": "a",
+    "ops": [
+      {
+        "op": "oxyz_point",
+        "name": "A",
+        "at": [
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "B",
+        "at": [
+          1,
+          0,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "B1",
+        "at": [
+          1,
+          0,
+          1
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "C1",
+        "at": [
+          1,
+          1,
+          1
+        ]
+      },
+      {
+        "op": "oxyz_line",
+        "name": "AB1",
+        "by": {
+          "form": "two_points",
+          "a": "A",
+          "b": "B1"
+        }
+      },
+      {
+        "op": "oxyz_line",
+        "name": "BC1",
+        "by": {
+          "form": "two_points",
+          "a": "B",
+          "b": "C1"
+        }
+      }
+    ],
+    "queries": [
+      {
+        "kind": "distance",
+        "a": "AB1",
+        "b": "BC1"
+      }
+    ]
+  },
+  "expect": {
+    "ok": true,
+    "answers": [
+      {
+        "kind": "distance",
+        "text": "a·√3/3"
+      }
+    ]
+  }
+}

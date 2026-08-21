@@ -1,0 +1,257 @@
+[
+  {
+    "text": "Trong không gian Oxyz cho tứ diện OABC với O(0;0;0), A(4;0;0), B(0;4;0), C(0;0;4). Tính bán kính mặt cầu ngoại tiếp tứ diện OABC.",
+    "source": "synthetic",
+    "difficulty": "khó",
+    "kind": "sphere_metric",
+    "expected": ["2√3"],
+    "plan": {
+      "solidName": "OABC",
+      "ops": [
+        {"op": "oxyz_point", "name": "O", "at": [0, 0, 0]},
+        {"op": "oxyz_point", "name": "A", "at": [4, 0, 0]},
+        {"op": "oxyz_point", "name": "B", "at": [0, 4, 0]},
+        {"op": "oxyz_point", "name": "C", "at": [0, 0, 4]},
+        {"op": "oxyz_sphere", "name": "S", "by": {"form": "four_points", "a": "O", "b": "A", "c": "B", "d": "C"}}
+      ],
+      "queries": [{"kind": "sphere_metric", "target": "S", "what": "radius"}]
+    }
+  },
+  {
+    "text": "Trong không gian Oxyz cho tứ diện OABC với O(0;0;0), A(1;0;0), B(0;2;0), C(0;0;3). Tính bán kính mặt cầu ngoại tiếp tứ diện OABC.",
+    "source": "synthetic",
+    "difficulty": "khó",
+    "kind": "sphere_metric",
+    "expected": ["√14/2"],
+    "plan": {
+      "solidName": "OABC",
+      "ops": [
+        {"op": "oxyz_point", "name": "O", "at": [0, 0, 0]},
+        {"op": "oxyz_point", "name": "A", "at": [1, 0, 0]},
+        {"op": "oxyz_point", "name": "B", "at": [0, 2, 0]},
+        {"op": "oxyz_point", "name": "C", "at": [0, 0, 3]},
+        {"op": "oxyz_sphere", "name": "S", "by": {"form": "four_points", "a": "O", "b": "A", "c": "B", "d": "C"}}
+      ],
+      "queries": [{"kind": "sphere_metric", "target": "S", "what": "radius"}]
+    }
+  },
+  {
+    "text": "Trong không gian Oxyz cho tứ diện OABC với O(0;0;0), A(4;0;0), B(0;4;0), C(0;0;2). Tính đường kính mặt cầu ngoại tiếp tứ diện OABC.",
+    "source": "synthetic",
+    "difficulty": "khó",
+    "kind": "sphere_metric",
+    "expected": ["6"],
+    "plan": {
+      "solidName": "OABC",
+      "ops": [
+        {"op": "oxyz_point", "name": "O", "at": [0, 0, 0]},
+        {"op": "oxyz_point", "name": "A", "at": [4, 0, 0]},
+        {"op": "oxyz_point", "name": "B", "at": [0, 4, 0]},
+        {"op": "oxyz_point", "name": "C", "at": [0, 0, 2]},
+        {"op": "oxyz_sphere", "name": "S", "by": {"form": "four_points", "a": "O", "b": "A", "c": "B", "d": "C"}}
+      ],
+      "queries": [{"kind": "sphere_metric", "target": "S", "what": "diameter"}]
+    }
+  },
+  {
+    "text": "Cho hình lập phương ABCD.A'B'C'D' cạnh a. Tính bán kính mặt cầu ngoại tiếp hình lập phương theo a.",
+    "source": "synthetic",
+    "difficulty": "khó",
+    "kind": "sphere_metric",
+    "expected": ["a·√3/2"],
+    "plan": {
+      "solidName": "ABCD.A'B'C'D'",
+      "scaleSymbol": "a",
+      "ops": [
+        {"op": "oxyz_point", "name": "A", "at": [0, 0, 0]},
+        {"op": "oxyz_point", "name": "B", "at": [1, 0, 0]},
+        {"op": "oxyz_point", "name": "D", "at": [0, 1, 0]},
+        {"op": "oxyz_point", "name": "AA", "at": [0, 0, 1]},
+        {"op": "oxyz_sphere", "name": "S", "by": {"form": "four_points", "a": "A", "b": "B", "c": "D", "d": "AA"}}
+      ],
+      "queries": [{"kind": "sphere_metric", "target": "S", "what": "radius"}]
+    }
+  },
+  {
+    "text": "Cho tứ diện đều ABCD cạnh a. Tính bán kính mặt cầu ngoại tiếp tứ diện đều theo a.",
+    "source": "synthetic",
+    "difficulty": "khó",
+    "kind": "sphere_metric",
+    "expected": ["a·√6/4"],
+    "plan": {
+      "solidName": "ABCD",
+      "scaleSymbol": "a",
+      "ops": [
+        {"op": "oxyz_point", "name": "A", "at": [0, 0, 0]},
+        {"op": "oxyz_point", "name": "B", "at": [1, 0, 0]},
+        {"op": "oxyz_point", "name": "C", "at": ["1/2", "sqrt(3)/2", 0]},
+        {"op": "oxyz_point", "name": "D", "at": ["1/2", "sqrt(3)/6", "sqrt(6)/3"]},
+        {"op": "oxyz_sphere", "name": "S", "by": {"form": "four_points", "a": "A", "b": "B", "c": "C", "d": "D"}}
+      ],
+      "queries": [{"kind": "sphere_metric", "target": "S", "what": "radius"}]
+    }
+  },
+  {
+    "text": "Cho hình lập phương cạnh a. Bốn đỉnh P(0;0;0), Q, R, T của một tứ diện đều nội tiếp trong hình lập phương lần lượt là các đỉnh xen kẽ của hình lập phương. Tính đường kính mặt cầu ngoại tiếp hình lập phương theo a.",
+    "source": "synthetic",
+    "difficulty": "khó",
+    "kind": "sphere_metric",
+    "expected": ["a·√3"],
+    "plan": {
+      "solidName": "cube",
+      "scaleSymbol": "a",
+      "ops": [
+        {"op": "oxyz_point", "name": "P", "at": [0, 0, 0]},
+        {"op": "oxyz_point", "name": "Q", "at": [1, 1, 0]},
+        {"op": "oxyz_point", "name": "R", "at": [1, 0, 1]},
+        {"op": "oxyz_point", "name": "T", "at": [0, 1, 1]},
+        {"op": "oxyz_sphere", "name": "S", "by": {"form": "four_points", "a": "P", "b": "Q", "c": "R", "d": "T"}}
+      ],
+      "queries": [{"kind": "sphere_metric", "target": "S", "what": "diameter"}]
+    }
+  },
+  {
+    "text": "Trong không gian Oxyz cho tứ diện OABC với O(0;0;0), A(2;0;0), B(0;4;0), C(0;0;4). Tính diện tích mặt cầu ngoại tiếp tứ diện OABC.",
+    "source": "synthetic",
+    "difficulty": "khó",
+    "kind": "area",
+    "expected": ["36π"],
+    "plan": {
+      "solidName": "OABC",
+      "ops": [
+        {"op": "oxyz_point", "name": "O", "at": [0, 0, 0]},
+        {"op": "oxyz_point", "name": "A", "at": [2, 0, 0]},
+        {"op": "oxyz_point", "name": "B", "at": [0, 4, 0]},
+        {"op": "oxyz_point", "name": "C", "at": [0, 0, 4]},
+        {"op": "oxyz_sphere", "name": "S", "by": {"form": "four_points", "a": "O", "b": "A", "c": "B", "d": "C"}}
+      ],
+      "queries": [{"kind": "area", "shape": "sphere", "target": "S"}]
+    }
+  },
+  {
+    "text": "Trong không gian Oxyz cho tứ diện OABC với O(0;0;0), A(2;0;0), B(0;2;0), C(0;0;3). Tính diện tích mặt cầu ngoại tiếp tứ diện OABC.",
+    "source": "synthetic",
+    "difficulty": "khó",
+    "kind": "area",
+    "expected": ["17π"],
+    "plan": {
+      "solidName": "OABC",
+      "ops": [
+        {"op": "oxyz_point", "name": "O", "at": [0, 0, 0]},
+        {"op": "oxyz_point", "name": "A", "at": [2, 0, 0]},
+        {"op": "oxyz_point", "name": "B", "at": [0, 2, 0]},
+        {"op": "oxyz_point", "name": "C", "at": [0, 0, 3]},
+        {"op": "oxyz_sphere", "name": "S", "by": {"form": "four_points", "a": "O", "b": "A", "c": "B", "d": "C"}}
+      ],
+      "queries": [{"kind": "area", "shape": "sphere", "target": "S"}]
+    }
+  },
+  {
+    "text": "Trong không gian Oxyz cho hình hộp chữ nhật với các đỉnh A(0;0;0), B(2;0;0), D(0;3;0) và A'(0;0;6) (kích thước 2×3×6). Tính diện tích mặt cầu ngoại tiếp hình hộp chữ nhật đó.",
+    "source": "synthetic",
+    "difficulty": "khó",
+    "kind": "area",
+    "expected": ["49π"],
+    "plan": {
+      "solidName": "hop",
+      "ops": [
+        {"op": "oxyz_point", "name": "A", "at": [0, 0, 0]},
+        {"op": "oxyz_point", "name": "B", "at": [2, 0, 0]},
+        {"op": "oxyz_point", "name": "D", "at": [0, 3, 0]},
+        {"op": "oxyz_point", "name": "AA", "at": [0, 0, 6]},
+        {"op": "oxyz_sphere", "name": "S", "by": {"form": "four_points", "a": "A", "b": "B", "c": "D", "d": "AA"}}
+      ],
+      "queries": [{"kind": "area", "shape": "sphere", "target": "S"}]
+    }
+  },
+  {
+    "text": "Trong không gian Oxyz cho hình chóp tứ giác đều S.ABCD có đáy là hình vuông tâm gốc tọa độ với A(1;1;0), B(-1;1;0), C(-1;-1;0), D(1;-1;0) và đỉnh S(0;0;2). Tính diện tích mặt cầu ngoại tiếp hình chóp S.ABCD.",
+    "source": "synthetic",
+    "difficulty": "khó",
+    "kind": "area",
+    "expected": ["9π"],
+    "plan": {
+      "solidName": "S.ABCD",
+      "ops": [
+        {"op": "oxyz_point", "name": "A", "at": [1, 1, 0]},
+        {"op": "oxyz_point", "name": "B", "at": [-1, 1, 0]},
+        {"op": "oxyz_point", "name": "C", "at": [-1, -1, 0]},
+        {"op": "oxyz_point", "name": "S", "at": [0, 0, 2]},
+        {"op": "oxyz_sphere", "name": "SP", "by": {"form": "four_points", "a": "A", "b": "B", "c": "C", "d": "S"}}
+      ],
+      "queries": [{"kind": "area", "shape": "sphere", "target": "SP"}]
+    }
+  },
+  {
+    "text": "Trong không gian Oxyz cho tứ diện đều với các đỉnh A(0;0;0), B(2;2;0), C(2;0;2), D(0;2;2). Tính thể tích khối cầu ngoại tiếp tứ diện đều đó.",
+    "source": "synthetic",
+    "difficulty": "khó",
+    "kind": "volume",
+    "expected": ["4√3π"],
+    "plan": {
+      "solidName": "ABCD",
+      "ops": [
+        {"op": "oxyz_point", "name": "A", "at": [0, 0, 0]},
+        {"op": "oxyz_point", "name": "B", "at": [2, 2, 0]},
+        {"op": "oxyz_point", "name": "C", "at": [2, 0, 2]},
+        {"op": "oxyz_point", "name": "D", "at": [0, 2, 2]},
+        {"op": "oxyz_sphere", "name": "S", "by": {"form": "four_points", "a": "A", "b": "B", "c": "C", "d": "D"}}
+      ],
+      "queries": [{"kind": "volume", "solid": "sphere", "target": "S"}]
+    }
+  },
+  {
+    "text": "Trong không gian Oxyz cho tứ diện OABC với O(0;0;0), A(4;0;0), B(0;4;0), C(0;0;4). Tính thể tích khối cầu ngoại tiếp tứ diện OABC.",
+    "source": "synthetic",
+    "difficulty": "khó",
+    "kind": "volume",
+    "expected": ["32√3π"],
+    "plan": {
+      "solidName": "OABC",
+      "ops": [
+        {"op": "oxyz_point", "name": "O", "at": [0, 0, 0]},
+        {"op": "oxyz_point", "name": "A", "at": [4, 0, 0]},
+        {"op": "oxyz_point", "name": "B", "at": [0, 4, 0]},
+        {"op": "oxyz_point", "name": "C", "at": [0, 0, 4]},
+        {"op": "oxyz_sphere", "name": "S", "by": {"form": "four_points", "a": "O", "b": "A", "c": "B", "d": "C"}}
+      ],
+      "queries": [{"kind": "volume", "solid": "sphere", "target": "S"}]
+    }
+  },
+  {
+    "text": "Trong không gian Oxyz cho hình hộp chữ nhật kích thước 1×2×2 với các đỉnh A(0;0;0), B(1;0;0), D(0;2;0), A'(0;0;2). Tính thể tích khối cầu ngoại tiếp hình hộp chữ nhật đó.",
+    "source": "synthetic",
+    "difficulty": "khó",
+    "kind": "volume",
+    "expected": ["9π/2"],
+    "plan": {
+      "solidName": "hop",
+      "ops": [
+        {"op": "oxyz_point", "name": "A", "at": [0, 0, 0]},
+        {"op": "oxyz_point", "name": "B", "at": [1, 0, 0]},
+        {"op": "oxyz_point", "name": "D", "at": [0, 2, 0]},
+        {"op": "oxyz_point", "name": "AA", "at": [0, 0, 2]},
+        {"op": "oxyz_sphere", "name": "S", "by": {"form": "four_points", "a": "A", "b": "B", "c": "D", "d": "AA"}}
+      ],
+      "queries": [{"kind": "volume", "solid": "sphere", "target": "S"}]
+    }
+  },
+  {
+    "text": "Trong không gian Oxyz cho tứ diện OABC với O(0;0;0), A(1;0;0), B(0;1;0), C(0;0;1). Tính thể tích khối cầu ngoại tiếp tứ diện OABC.",
+    "source": "synthetic",
+    "difficulty": "khó",
+    "kind": "volume",
+    "expected": ["√3π/2"],
+    "plan": {
+      "solidName": "OABC",
+      "ops": [
+        {"op": "oxyz_point", "name": "O", "at": [0, 0, 0]},
+        {"op": "oxyz_point", "name": "A", "at": [1, 0, 0]},
+        {"op": "oxyz_point", "name": "B", "at": [0, 1, 0]},
+        {"op": "oxyz_point", "name": "C", "at": [0, 0, 1]},
+        {"op": "oxyz_sphere", "name": "S", "by": {"form": "four_points", "a": "O", "b": "A", "c": "B", "d": "C"}}
+      ],
+      "queries": [{"kind": "volume", "solid": "sphere", "target": "S"}]
+    }
+  }
+]

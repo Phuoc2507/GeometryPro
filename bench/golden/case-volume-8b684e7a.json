@@ -1,0 +1,74 @@
+{
+  "id": "case-volume-8b684e7a",
+  "source": "synthetic",
+  "difficulty": "khó",
+  "text": "Trong không gian Oxyz cho tứ diện đều với các đỉnh A(0;0;0), B(2;2;0), C(2;0;2), D(0;2;2). Tính thể tích khối cầu ngoại tiếp tứ diện đều đó.",
+  "plan": {
+    "solidName": "ABCD",
+    "ops": [
+      {
+        "op": "oxyz_point",
+        "name": "A",
+        "at": [
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "B",
+        "at": [
+          2,
+          2,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "C",
+        "at": [
+          2,
+          0,
+          2
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "D",
+        "at": [
+          0,
+          2,
+          2
+        ]
+      },
+      {
+        "op": "oxyz_sphere",
+        "name": "S",
+        "by": {
+          "form": "four_points",
+          "a": "A",
+          "b": "B",
+          "c": "C",
+          "d": "D"
+        }
+      }
+    ],
+    "queries": [
+      {
+        "kind": "volume",
+        "solid": "sphere",
+        "target": "S"
+      }
+    ]
+  },
+  "expect": {
+    "ok": true,
+    "answers": [
+      {
+        "kind": "volume",
+        "text": "4√3π"
+      }
+    ]
+  }
+}

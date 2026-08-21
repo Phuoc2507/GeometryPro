@@ -1,0 +1,69 @@
+{
+  "id": "case-volume-b08b41f2",
+  "source": "synthetic",
+  "difficulty": "khó",
+  "text": "Cho tứ diện đều ABCD cạnh a. Tính thể tích khối tứ diện ABCD theo a.",
+  "plan": {
+    "solidName": "ABCD",
+    "scaleSymbol": "a",
+    "ops": [
+      {
+        "op": "oxyz_point",
+        "name": "A",
+        "at": [
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "B",
+        "at": [
+          1,
+          0,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "C",
+        "at": [
+          "1/2",
+          "sqrt(3)/2",
+          0
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "D",
+        "at": [
+          "1/2",
+          "sqrt(3)/6",
+          "sqrt(6)/3"
+        ]
+      }
+    ],
+    "queries": [
+      {
+        "kind": "volume",
+        "solid": "tetrahedron",
+        "points": [
+          "A",
+          "B",
+          "C",
+          "D"
+        ]
+      }
+    ]
+  },
+  "expect": {
+    "ok": true,
+    "answers": [
+      {
+        "kind": "volume",
+        "text": "a³·√2/12"
+      }
+    ]
+  }
+}

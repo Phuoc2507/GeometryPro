@@ -1,0 +1,91 @@
+{
+  "id": "case-angle-37eb4a1b",
+  "source": "synthetic",
+  "difficulty": "khó",
+  "text": "Cho hình lập phương ABCD.A'B'C'D' cạnh a. Tính số đo góc giữa hai đường thẳng A'B và B'C.",
+  "plan": {
+    "solidName": "ABCD.A'B'C'D'",
+    "scaleSymbol": "a",
+    "ops": [
+      {
+        "op": "oxyz_point",
+        "name": "A",
+        "at": [
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "B",
+        "at": [
+          1,
+          0,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "C",
+        "at": [
+          1,
+          1,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "A1",
+        "at": [
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "B1",
+        "at": [
+          1,
+          0,
+          1
+        ]
+      },
+      {
+        "op": "oxyz_line",
+        "name": "A1B",
+        "by": {
+          "form": "two_points",
+          "a": "A1",
+          "b": "B"
+        }
+      },
+      {
+        "op": "oxyz_line",
+        "name": "B1C",
+        "by": {
+          "form": "two_points",
+          "a": "B1",
+          "b": "C"
+        }
+      }
+    ],
+    "queries": [
+      {
+        "kind": "angle",
+        "a": "A1B",
+        "b": "B1C"
+      }
+    ]
+  },
+  "expect": {
+    "ok": true,
+    "answers": [
+      {
+        "kind": "angle",
+        "text": "60°"
+      }
+    ]
+  }
+}

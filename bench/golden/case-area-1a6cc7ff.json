@@ -1,0 +1,74 @@
+{
+  "id": "case-area-1a6cc7ff",
+  "source": "synthetic",
+  "difficulty": "khó",
+  "text": "Trong không gian Oxyz cho tứ diện OABC với O(0;0;0), A(2;0;0), B(0;2;0), C(0;0;3). Tính diện tích mặt cầu ngoại tiếp tứ diện OABC.",
+  "plan": {
+    "solidName": "OABC",
+    "ops": [
+      {
+        "op": "oxyz_point",
+        "name": "O",
+        "at": [
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "A",
+        "at": [
+          2,
+          0,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "B",
+        "at": [
+          0,
+          2,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "C",
+        "at": [
+          0,
+          0,
+          3
+        ]
+      },
+      {
+        "op": "oxyz_sphere",
+        "name": "S",
+        "by": {
+          "form": "four_points",
+          "a": "O",
+          "b": "A",
+          "c": "B",
+          "d": "C"
+        }
+      }
+    ],
+    "queries": [
+      {
+        "kind": "area",
+        "shape": "sphere",
+        "target": "S"
+      }
+    ]
+  },
+  "expect": {
+    "ok": true,
+    "answers": [
+      {
+        "kind": "area",
+        "text": "17π"
+      }
+    ]
+  }
+}
