@@ -34,6 +34,17 @@ Pipeline: spec (3 agent) → phản biện thiết kế (2 agent) → sửa spec
   chờ phản biện duyệt mới vào v1. Engine gặp chất ngoài DB trả "ngoài phạm vi",
   không bao giờ bịa.
 
+- **D6 · Phản biện Hóa phiên 1 kết luận "chưa đủ chín" → cho sửa spec TRƯỚC khi
+  thi công, không bỏ qua.** Báo cáo đầy đủ: `docs/superpowers/reviews/2026-08-21-chem-review-phien1.md`.
+  Điểm chính: 50/50 phương trình đúng nhưng 4 record (R19/R23/R29/R39) thiếu guard
+  miền áp dụng → sẽ trả đáp sai cho bài kinh điển (Fe+AgNO3 dư, CO2 dư, nhỏ từ từ
+  axit); công thức C% sai khi có rắn dư; thiếu tầng ion cho guard trao đổi. Tôi
+  chấp nhận TOÀN BỘ khuyến nghị của phản biện (kể cả bổ sung 8 phản ứng canon:
+  K+H2O, Mg+CuSO4, BaCl2+H2SO4, AgNO3+HCl, Ba(OH)2+Na2SO4, NaHCO3+HCl,
+  NaHCO3+NaOH, Ca(OH)2+Na2CO3 → DB lên ~58 record) vì mỗi finding đều kèm phép
+  tính chứng minh. Giao agent sửa 2 tài liệu chem ngay, không đợi phản biện
+  kiến trúc (độc lập nhau; điểm giao F13 đã được chốt "chem-pack thắng").
+
 ## Quyết định chờ ghi tiếp (sẽ bổ sung trong đêm)
 
 - Phân xử 5 điểm lệch giữa spec kiến trúc và spec Lý (theo khuyến nghị phản biện).
