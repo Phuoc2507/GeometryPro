@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Check, Minus, ChevronLeft, ShieldCheck, Loader2 } from 'lucide-react';
+import { Check, Minus, ChevronLeft, ShieldCheck, Loader2, Ticket } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useCheckout } from '@/hooks/useCheckout';
+import { supabase } from '@/integrations/supabase/client';
 import { fmtVnd } from '@/lib/plans';
 import { cn } from '@/lib/utils';
 
@@ -70,6 +71,28 @@ export default function Pricing() {
   const [aud, setAud] = useState<Aud>(lockedRole ?? 'student');
   const [bill, setBill] = useState<Bill>('month');
 
+  // Mã mời — giảm 10% cho người được mời.
+  const [refInput, setRefInput] = useState(() => { try { return localStorage.getItem('geo3d:ref') || ''; } catch { return ''; } });
+  const [refApplied, setRefApplied] = useState<string | null>(null);
+  const [refStatus, setRefStatus] = useState<'idle' | 'checking' | 'valid' | 'invalid'>('idle');
+  const [refMsg, setRefMsg] = useState('');
+
+  const applyRef = async () => {
+    const code = refInput.trim().toUpperCase();
+    if (!code) return;
+    setRefStatus('checking'); setRefMsg('');
+    try {
+      const { data: sd } = await supabase.auth.getSession();
+      const token = sd.session?.access_token;
+      if (!token) { setRefStatus('invalid'); setRefMsg('Bạn cần đăng nhập để dùng mã.'); return; }
+      const res = await fetch(`/api/referral?validate=${encodeURIComponent(code)}`, { headers: { Authorization: `Bearer ${token}` } });
+      const j = await res.json();
+      if (j.valid) { setRefApplied(code); setRefStatus('valid'); setRefMsg(j.referrerName ? `Hợp lệ · được giới thiệu bởi ${j.referrerName}` : 'Mã hợp lệ · giảm 10%'); }
+      else { setRefApplied(null); setRefStatus('invalid'); setRefMsg(j.message || 'Mã không hợp lệ'); }
+    } catch { setRefApplied(null); setRefStatus('invalid'); setRefMsg('Không kiểm tra được mã, thử lại.'); }
+  };
+  const clearRef = () => { setRefApplied(null); setRefInput(''); setRefStatus('idle'); setRefMsg(''); try { localStorage.removeItem('geo3d:ref'); } catch { /* bỏ qua */ } };
+
   const byCode = new Map(plans.map((p) => [p.code, p]));
   const codeFor = (c: CardDef) => (c.yearOnly ? c.codes?.year : (bill === 'month' ? c.codes?.month : c.codes?.year));
 
@@ -87,24 +110,34 @@ export default function Pricing() {
     const code = codeFor(c);
     if (!code) return;
     try { localStorage.setItem('geo3d:last-mode', aud); } catch { /* bỏ qua */ }
-    startCheckout({ planCode: code }, code);
+    startCheckout({ planCode: code, referralCode: refApplied || undefined }, code);
   };
 
   // Số tiền LUÔN một dòng (nowrap); kỳ hạn + ghi chú xuống dòng phụ → mọi thẻ cao bằng nhau.
   const priceBlock = (c: CardDef) => {
     let amount = '', sub = '';
+    let paidValue = 0;
     if (c.contact) { amount = 'Liên hệ'; sub = 'Báo giá theo quy mô trường'; }
     else if (priceOf(c) === 0) { amount = '0đ'; sub = 'Miễn phí mãi mãi'; }
     else {
       const v = byCode.get(codeFor(c) ?? '')?.price_vnd ?? 0;
+      paidValue = v;
       amount = fmtVnd(v);
       if (c.yearOnly) sub = '/năm học · trọn năm';
       else if (bill === 'month') sub = '/tháng · gia hạn hằng tháng';
       else sub = `/năm · ≈ ${fmtVnd(Math.round(v / 12 / 1000) * 1000)}/tháng`;
     }
+    const showDiscount = !!refApplied && paidValue > 0;
     return (
       <div className="min-h-[60px]">
-        <div className="text-[30px] font-extrabold leading-none tracking-tight whitespace-nowrap">{amount}</div>
+        {showDiscount ? (
+          <div className="flex items-end gap-2 whitespace-nowrap">
+            <span className="text-[30px] font-extrabold leading-none tracking-tight text-emerald-400">{fmtVnd(Math.round(paidValue * 0.9))}</span>
+            <span className="text-[15px] line-through text-[#6B7E99]">{amount}</span>
+          </div>
+        ) : (
+          <div className="text-[30px] font-extrabold leading-none tracking-tight whitespace-nowrap">{amount}</div>
+        )}
         <div className="text-[#6B7E99] text-[12.5px] mt-2">{sub}</div>
       </div>
     );
@@ -127,6 +160,36 @@ export default function Pricing() {
           <div className="text-[#4C8DFF] font-bold tracking-[3px] text-[13px] uppercase">Bảng giá geo3d</div>
           <h1 className="text-[40px] max-[520px]:text-[30px] font-extrabold my-2 tracking-tight">Hình học không gian <span className="text-[#4C8DFF]">bằng mắt</span></h1>
           <div className="text-[#9FB2CC] text-[17px]">Chọn gói phù hợp — huỷ bất cứ lúc nào.</div>
+        </div>
+
+        {/* Mã mời — giảm 10% cho người được mời */}
+        <div className="max-w-[520px] mx-auto mb-7 rounded-2xl border border-[#22344F] bg-[#0E1A2C]/60 p-4">
+          <div className="flex items-center gap-2 text-[14px] font-semibold text-[#EAF2FF] mb-2.5">
+            <Ticket className="w-4 h-4 text-[#4C8DFF]" /> Mã mời
+            <span className="text-[12px] font-normal text-[#6B7E99]">(nếu có — giảm 10%)</span>
+          </div>
+          <div className="flex gap-2">
+            <input
+              value={refInput}
+              onChange={(e) => { setRefInput(e.target.value.toUpperCase()); if (refStatus !== 'idle') { setRefStatus('idle'); setRefMsg(''); } }}
+              placeholder="VD: GEO7X9A"
+              maxLength={16}
+              disabled={refStatus === 'valid'}
+              className="flex-1 h-10 rounded-lg bg-[#0A121F] border border-[#22344F] px-3 text-[15px] font-mono tracking-wider uppercase text-white placeholder:text-[#4A5A72] focus:outline-none focus:border-[#4C8DFF] disabled:opacity-70"
+            />
+            {refApplied ? (
+              <button type="button" onClick={clearRef} className="px-4 rounded-lg border border-[#22344F] text-[#9FB2CC] hover:text-white text-sm font-medium">Bỏ</button>
+            ) : (
+              <button type="button" onClick={applyRef} disabled={refStatus === 'checking' || !refInput.trim()} className="px-4 rounded-lg bg-[#2E6BF2] text-white text-sm font-semibold disabled:opacity-40 inline-flex items-center justify-center min-w-[84px]">
+                {refStatus === 'checking' ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Áp dụng'}
+              </button>
+            )}
+          </div>
+          {refMsg && (
+            <div className={cn('text-[13px] mt-2 flex items-center gap-1', refStatus === 'valid' ? 'text-emerald-400' : 'text-red-400')}>
+              {refStatus === 'valid' && <Check className="w-3.5 h-3.5" />}{refMsg}
+            </div>
+          )}
         </div>
 
         {/* Controls — cả 2 toggle CĂN GIỮA độc lập; badge tiết kiệm là DÒNG RIÊNG (không đẩy lệch) */}
