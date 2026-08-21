@@ -1,0 +1,135 @@
+{
+  "id": "case-relative-position-33422e0e",
+  "source": "goc-vitri",
+  "difficulty": "TB",
+  "text": "Cho hình lập phương ABCD.A1B1C1D1. Xét vị trí tương đối của các cặp đường thẳng sau: a) AB và DC; b) AB và AD; c) AB và B1C1; d) đường thẳng AB và đường thẳng BE với E là điểm sao cho B là trung điểm của AE.",
+  "plan": {
+    "solidName": "ABCD.A1B1C1D1",
+    "ops": [
+      {
+        "op": "oxyz_point",
+        "name": "A",
+        "at": [
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "B",
+        "at": [
+          2,
+          0,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "C",
+        "at": [
+          2,
+          2,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "D",
+        "at": [
+          0,
+          2,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "A1",
+        "at": [
+          0,
+          0,
+          2
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "B1",
+        "at": [
+          2,
+          0,
+          2
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "C1",
+        "at": [
+          2,
+          2,
+          2
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "D1",
+        "at": [
+          0,
+          2,
+          2
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "E",
+        "at": [
+          4,
+          0,
+          0
+        ]
+      }
+    ],
+    "queries": [
+      {
+        "kind": "relative_position",
+        "a": "AB",
+        "b": "DC"
+      },
+      {
+        "kind": "relative_position",
+        "a": "AB",
+        "b": "AD"
+      },
+      {
+        "kind": "relative_position",
+        "a": "AB",
+        "b": "B1C1"
+      },
+      {
+        "kind": "relative_position",
+        "a": "AB",
+        "b": "BE"
+      }
+    ]
+  },
+  "expect": {
+    "ok": true,
+    "answers": [
+      {
+        "kind": "relative_position",
+        "text": "song song"
+      },
+      {
+        "kind": "relative_position",
+        "text": "cắt nhau"
+      },
+      {
+        "kind": "relative_position",
+        "text": "chéo nhau"
+      },
+      {
+        "kind": "relative_position",
+        "text": "trùng nhau"
+      }
+    ]
+  }
+}

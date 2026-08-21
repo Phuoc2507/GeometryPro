@@ -1,0 +1,72 @@
+{
+  "id": "case-point-coord-d2920101",
+  "source": "synthetic",
+  "difficulty": "trung bình",
+  "text": "Trong không gian Oxyz, cho điểm A(2;3;3) và mặt phẳng (P): x + 2y + 2z - 5 = 0. Gọi H là hình chiếu vuông góc của A lên (P). Tìm tọa độ điểm H.",
+  "plan": {
+    "solidName": "A-P-foot",
+    "ops": [
+      {
+        "op": "oxyz_point",
+        "name": "A",
+        "at": [
+          2,
+          3,
+          3
+        ]
+      },
+      {
+        "op": "oxyz_plane",
+        "name": "P",
+        "by": {
+          "form": "coeffs",
+          "a": 1,
+          "b": 2,
+          "c": 2,
+          "d": -5
+        }
+      },
+      {
+        "op": "oxyz_foot",
+        "name": "H",
+        "from": "A",
+        "onto": "plane",
+        "target": "P"
+      }
+    ],
+    "queries": [
+      {
+        "kind": "point_coord",
+        "target": "H",
+        "axis": "x"
+      },
+      {
+        "kind": "point_coord",
+        "target": "H",
+        "axis": "y"
+      },
+      {
+        "kind": "point_coord",
+        "target": "H",
+        "axis": "z"
+      }
+    ]
+  },
+  "expect": {
+    "ok": true,
+    "answers": [
+      {
+        "kind": "point_coord",
+        "text": "1"
+      },
+      {
+        "kind": "point_coord",
+        "text": "1"
+      },
+      {
+        "kind": "point_coord",
+        "text": "1"
+      }
+    ]
+  }
+}

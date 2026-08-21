@@ -36,15 +36,19 @@ export function compareCase(golden, result) {
     return { id, verdict: 'regress-answer', detail: `số/thứ tự đáp khác: kỳ vọng ${want.length}, nay ${answers.length}` };
   }
   for (let i = 0; i < want.length; i++) {
-    const wantNum = toNumeric(want[i]?.text);
-    let agree = answersAgree(answers[i]?.text, wantNum);
+    // Nhãn CHỮ của đáp: query relative_position trả nhãn ở trường `.relation` (KHÔNG có `.text`).
+    // Đọc `.text ?? .relation` để cả đáp-số (text) lẫn đáp-nhãn (relation) đều so được.
+    const gotText = answers[i]?.text ?? answers[i]?.relation;
+    const wantText = want[i]?.text ?? want[i]?.relation;
+    const wantNum = toNumeric(wantText);
+    let agree = answersAgree(gotText, wantNum);
     // Đáp KHÔNG phải số (nhãn vị trí tương đối "chéo nhau", phương trình "2x−y+z−3=0"…):
     // answersAgree trả null ⇒ fallback so CHUỖI CHUẨN HOÁ (khi cả hai bên đều không parse ra số).
-    if (agree !== true && wantNum === null && toNumeric(answers[i]?.text) === null) {
-      agree = normText(answers[i]?.text) === normText(want[i]?.text);
+    if (agree !== true && wantNum === null && toNumeric(gotText) === null) {
+      agree = normText(gotText) === normText(wantText);
     }
     if (agree !== true) {
-      return { id, verdict: 'regress-answer', detail: `đáp #${i + 1} lệch: kỳ vọng "${want[i]?.text}" nay "${answers[i]?.text}"` };
+      return { id, verdict: 'regress-answer', detail: `đáp #${i + 1} lệch: kỳ vọng "${wantText}" nay "${gotText}"` };
     }
   }
   return { id, verdict: 'pass', detail: `${want.length} đáp khớp` };

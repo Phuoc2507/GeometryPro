@@ -1,0 +1,68 @@
+{
+  "id": "case-volume-2bab6eba",
+  "source": "synthetic",
+  "difficulty": "trung bình",
+  "text": "Cho tứ diện đều ABCD có cạnh bằng 6. Tính thể tích khối tứ diện ABCD.",
+  "plan": {
+    "solidName": "ABCD",
+    "ops": [
+      {
+        "op": "oxyz_point",
+        "name": "B",
+        "at": [
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "C",
+        "at": [
+          6,
+          0,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "D",
+        "at": [
+          3,
+          "3*sqrt(3)",
+          0
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "A",
+        "at": [
+          3,
+          "sqrt(3)",
+          "2*sqrt(6)"
+        ]
+      }
+    ],
+    "queries": [
+      {
+        "kind": "volume",
+        "solid": "tetrahedron",
+        "points": [
+          "A",
+          "B",
+          "C",
+          "D"
+        ]
+      }
+    ]
+  },
+  "expect": {
+    "ok": true,
+    "answers": [
+      {
+        "kind": "volume",
+        "text": "18√2"
+      }
+    ]
+  }
+}

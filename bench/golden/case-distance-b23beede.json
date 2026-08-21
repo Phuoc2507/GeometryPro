@@ -1,0 +1,97 @@
+{
+  "id": "case-distance-b23beede",
+  "source": "synthetic",
+  "difficulty": "khó",
+  "text": "Cho hình chóp S.ABCD có đáy ABCD là hình vuông cạnh 6, SA vuông góc với mặt phẳng đáy và SA = 3. Tính khoảng cách từ A đến mặt phẳng (SBD).",
+  "plan": {
+    "solidName": "S.ABCD",
+    "ops": [
+      {
+        "op": "oxyz_point",
+        "name": "A",
+        "at": [
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "B",
+        "at": [
+          6,
+          0,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "C",
+        "at": [
+          6,
+          6,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "D",
+        "at": [
+          0,
+          6,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "S",
+        "at": [
+          0,
+          0,
+          3
+        ]
+      },
+      {
+        "op": "oxyz_plane",
+        "name": "ABCD",
+        "by": {
+          "form": "three_points",
+          "a": "A",
+          "b": "B",
+          "c": "C"
+        }
+      },
+      {
+        "op": "oxyz_plane",
+        "name": "SBD",
+        "by": {
+          "form": "three_points",
+          "a": "S",
+          "b": "B",
+          "c": "D"
+        }
+      },
+      {
+        "op": "edge",
+        "from": "S",
+        "to": "A"
+      }
+    ],
+    "queries": [
+      {
+        "kind": "distance",
+        "a": "A",
+        "b": "SBD"
+      }
+    ]
+  },
+  "expect": {
+    "ok": true,
+    "answers": [
+      {
+        "kind": "distance",
+        "text": "√6"
+      }
+    ]
+  }
+}

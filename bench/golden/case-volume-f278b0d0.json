@@ -1,0 +1,88 @@
+{
+  "id": "case-volume-f278b0d0",
+  "source": "synthetic",
+  "difficulty": "khó",
+  "text": "Cho hình chóp S.ABC có đáy ABC là tam giác đều cạnh 2√3, SA vuông góc với mặt phẳng đáy và SA = 4. Tính thể tích khối chóp S.ABC.",
+  "plan": {
+    "solidName": "S.ABC",
+    "ops": [
+      {
+        "op": "oxyz_point",
+        "name": "A",
+        "at": [
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "B",
+        "at": [
+          "2*sqrt(3)",
+          0,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "C",
+        "at": [
+          "sqrt(3)",
+          3,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "S",
+        "at": [
+          0,
+          0,
+          4
+        ]
+      },
+      {
+        "op": "edge",
+        "from": "A",
+        "to": "B"
+      },
+      {
+        "op": "edge",
+        "from": "B",
+        "to": "C"
+      },
+      {
+        "op": "edge",
+        "from": "C",
+        "to": "A"
+      },
+      {
+        "op": "edge",
+        "from": "S",
+        "to": "A"
+      }
+    ],
+    "queries": [
+      {
+        "kind": "volume",
+        "solid": "pyramid",
+        "points": [
+          "A",
+          "B",
+          "C"
+        ],
+        "apex": "S"
+      }
+    ]
+  },
+  "expect": {
+    "ok": true,
+    "answers": [
+      {
+        "kind": "volume",
+        "text": "4√3"
+      }
+    ]
+  }
+}

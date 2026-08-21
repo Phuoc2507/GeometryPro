@@ -1,0 +1,53 @@
+{
+  "id": "case-equation-96d92907",
+  "source": "synthetic",
+  "difficulty": "easy",
+  "text": "Trong không gian Oxyz, viết phương trình tham số của đường thẳng đi qua hai điểm A(1, -1, 2) và B(3, 2, 2).",
+  "plan": {
+    "solidName": "d",
+    "ops": [
+      {
+        "op": "oxyz_point",
+        "name": "A",
+        "at": [
+          1,
+          -1,
+          2
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "B",
+        "at": [
+          3,
+          2,
+          2
+        ]
+      },
+      {
+        "op": "oxyz_line",
+        "name": "d",
+        "by": {
+          "form": "two_points",
+          "a": "A",
+          "b": "B"
+        }
+      }
+    ],
+    "queries": [
+      {
+        "kind": "equation",
+        "target": "d"
+      }
+    ]
+  },
+  "expect": {
+    "ok": true,
+    "answers": [
+      {
+        "kind": "equation",
+        "text": "x = 1 + 2t, y = -1 + 3t, z = 2 + 0t"
+      }
+    ]
+  }
+}

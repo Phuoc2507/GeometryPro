@@ -1,0 +1,73 @@
+{
+  "id": "case-equation-0c629b5e",
+  "source": "synthetic",
+  "difficulty": "medium",
+  "text": "Trong không gian Oxyz, cho tứ diện OABC với O(0, 0, 0), A(4, 0, 0), B(0, 4, 0), C(0, 0, 4). Viết phương trình mặt cầu ngoại tiếp tứ diện OABC.",
+  "plan": {
+    "solidName": "OABC",
+    "ops": [
+      {
+        "op": "oxyz_point",
+        "name": "O",
+        "at": [
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "A",
+        "at": [
+          4,
+          0,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "B",
+        "at": [
+          0,
+          4,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "C",
+        "at": [
+          0,
+          0,
+          4
+        ]
+      },
+      {
+        "op": "oxyz_sphere",
+        "name": "S",
+        "by": {
+          "form": "four_points",
+          "a": "O",
+          "b": "A",
+          "c": "B",
+          "d": "C"
+        }
+      }
+    ],
+    "queries": [
+      {
+        "kind": "equation",
+        "target": "S"
+      }
+    ]
+  },
+  "expect": {
+    "ok": true,
+    "answers": [
+      {
+        "kind": "equation",
+        "text": "(x - 2)² + (y - 2)² + (z - 2)² = 12"
+      }
+    ]
+  }
+}

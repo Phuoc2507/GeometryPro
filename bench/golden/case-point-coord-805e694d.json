@@ -1,0 +1,79 @@
+{
+  "id": "case-point-coord-805e694d",
+  "source": "synthetic",
+  "difficulty": "trung bình",
+  "text": "Trong không gian Oxyz, cho đường thẳng d đi qua O(0;0;0) với vectơ chỉ phương u=(1;2;3) và mặt phẳng (P): x+y+z-12=0. Tìm tọa độ giao điểm I của d và (P).",
+  "plan": {
+    "solidName": "d-P-int",
+    "ops": [
+      {
+        "op": "oxyz_line",
+        "name": "d",
+        "by": {
+          "form": "point_dir",
+          "base": [
+            0,
+            0,
+            0
+          ],
+          "dir": [
+            1,
+            2,
+            3
+          ]
+        }
+      },
+      {
+        "op": "oxyz_plane",
+        "name": "P",
+        "by": {
+          "form": "coeffs",
+          "a": 1,
+          "b": 1,
+          "c": 1,
+          "d": -12
+        }
+      },
+      {
+        "op": "oxyz_intersect",
+        "name": "I",
+        "a": "d",
+        "b": "P"
+      }
+    ],
+    "queries": [
+      {
+        "kind": "point_coord",
+        "target": "I",
+        "axis": "x"
+      },
+      {
+        "kind": "point_coord",
+        "target": "I",
+        "axis": "y"
+      },
+      {
+        "kind": "point_coord",
+        "target": "I",
+        "axis": "z"
+      }
+    ]
+  },
+  "expect": {
+    "ok": true,
+    "answers": [
+      {
+        "kind": "point_coord",
+        "text": "2"
+      },
+      {
+        "kind": "point_coord",
+        "text": "4"
+      },
+      {
+        "kind": "point_coord",
+        "text": "6"
+      }
+    ]
+  }
+}

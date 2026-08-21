@@ -1,0 +1,53 @@
+{
+  "id": "case-distance-e7fb8f44",
+  "source": "synthetic",
+  "difficulty": "trung bình",
+  "text": "Trong không gian Oxyz, cho điểm A(3;1;2) và đường thẳng d là trục Ox. Tính khoảng cách từ điểm A đến đường thẳng d.",
+  "plan": {
+    "solidName": "A-Ox",
+    "ops": [
+      {
+        "op": "oxyz_point",
+        "name": "A",
+        "at": [
+          3,
+          1,
+          2
+        ]
+      },
+      {
+        "op": "oxyz_line",
+        "name": "d",
+        "by": {
+          "form": "point_dir",
+          "base": [
+            0,
+            0,
+            0
+          ],
+          "dir": [
+            1,
+            0,
+            0
+          ]
+        }
+      }
+    ],
+    "queries": [
+      {
+        "kind": "distance",
+        "a": "A",
+        "b": "d"
+      }
+    ]
+  },
+  "expect": {
+    "ok": true,
+    "answers": [
+      {
+        "kind": "distance",
+        "text": "√5"
+      }
+    ]
+  }
+}

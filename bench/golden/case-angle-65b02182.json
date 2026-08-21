@@ -1,0 +1,49 @@
+{
+  "id": "case-angle-65b02182",
+  "source": "synthetic",
+  "difficulty": "hard",
+  "text": "Trong không gian Oxyz, cho hai mặt phẳng (P): z=0 và (Q): √3·x + z - 2 = 0. Tính góc giữa hai mặt phẳng (P) và (Q).",
+  "plan": {
+    "solidName": "figure",
+    "ops": [
+      {
+        "op": "oxyz_plane",
+        "name": "P",
+        "by": {
+          "form": "coeffs",
+          "a": 0,
+          "b": 0,
+          "c": 1,
+          "d": 0
+        }
+      },
+      {
+        "op": "oxyz_plane",
+        "name": "Q",
+        "by": {
+          "form": "coeffs",
+          "a": "sqrt(3)",
+          "b": 0,
+          "c": 1,
+          "d": -2
+        }
+      }
+    ],
+    "queries": [
+      {
+        "kind": "angle",
+        "a": "P",
+        "b": "Q"
+      }
+    ]
+  },
+  "expect": {
+    "ok": true,
+    "answers": [
+      {
+        "kind": "angle",
+        "text": "60°"
+      }
+    ]
+  }
+}

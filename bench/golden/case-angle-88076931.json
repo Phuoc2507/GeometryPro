@@ -1,0 +1,72 @@
+{
+  "id": "case-angle-88076931",
+  "source": "synthetic",
+  "difficulty": "easy",
+  "text": "Trong không gian Oxyz, cho ba điểm A(0;0;0), B(1;0;0), C(1;1;0). Tính góc giữa hai đường thẳng AB và AC.",
+  "plan": {
+    "solidName": "figure",
+    "ops": [
+      {
+        "op": "oxyz_point",
+        "name": "A",
+        "at": [
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "B",
+        "at": [
+          1,
+          0,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "C",
+        "at": [
+          1,
+          1,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_line",
+        "name": "AB",
+        "by": {
+          "form": "two_points",
+          "a": "A",
+          "b": "B"
+        }
+      },
+      {
+        "op": "oxyz_line",
+        "name": "AC",
+        "by": {
+          "form": "two_points",
+          "a": "A",
+          "b": "C"
+        }
+      }
+    ],
+    "queries": [
+      {
+        "kind": "angle",
+        "a": "AB",
+        "b": "AC"
+      }
+    ]
+  },
+  "expect": {
+    "ok": true,
+    "answers": [
+      {
+        "kind": "angle",
+        "text": "45°"
+      }
+    ]
+  }
+}

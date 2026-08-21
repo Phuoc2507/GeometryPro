@@ -1,0 +1,55 @@
+{
+  "id": "case-angle-9957b09f",
+  "source": "synthetic",
+  "difficulty": "medium",
+  "text": "Trong không gian Oxyz, cho mặt phẳng (P): z=0 và đường thẳng d có vectơ chỉ phương u=(1;0;1). Tính góc giữa đường thẳng d và mặt phẳng (P).",
+  "plan": {
+    "solidName": "figure",
+    "ops": [
+      {
+        "op": "oxyz_plane",
+        "name": "P",
+        "by": {
+          "form": "coeffs",
+          "a": 0,
+          "b": 0,
+          "c": 1,
+          "d": 0
+        }
+      },
+      {
+        "op": "oxyz_line",
+        "name": "d",
+        "by": {
+          "form": "point_dir",
+          "base": [
+            0,
+            0,
+            0
+          ],
+          "dir": [
+            1,
+            0,
+            1
+          ]
+        }
+      }
+    ],
+    "queries": [
+      {
+        "kind": "angle",
+        "a": "d",
+        "b": "P"
+      }
+    ]
+  },
+  "expect": {
+    "ok": true,
+    "answers": [
+      {
+        "kind": "angle",
+        "text": "45°"
+      }
+    ]
+  }
+}

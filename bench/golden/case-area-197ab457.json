@@ -1,0 +1,177 @@
+{
+  "id": "case-area-197ab457",
+  "source": "goc-thietdien",
+  "difficulty": "TB",
+  "text": "Cho hình chóp S.ABCD có đáy ABCD là hình vuông cạnh 4, SA vuông góc với mặt đáy và SA = 4. Mặt phẳng (P) song song với mặt đáy và đi qua trung điểm của cạnh SA, cắt các cạnh bên SA, SB, SC, SD lần lượt tại M, N, P, Q. Tính diện tích thiết diện MNPQ.",
+  "plan": {
+    "solidName": "S.ABCD",
+    "ops": [
+      {
+        "op": "oxyz_point",
+        "name": "A",
+        "at": [
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "B",
+        "at": [
+          4,
+          0,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "C",
+        "at": [
+          4,
+          4,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "D",
+        "at": [
+          0,
+          4,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "S",
+        "at": [
+          0,
+          0,
+          4
+        ]
+      },
+      {
+        "op": "oxyz_plane",
+        "name": "P",
+        "by": {
+          "form": "coeffs",
+          "a": 0,
+          "b": 0,
+          "c": 1,
+          "d": -2
+        }
+      },
+      {
+        "op": "oxyz_intersect",
+        "name": "M",
+        "a": "SA",
+        "b": "P"
+      },
+      {
+        "op": "oxyz_intersect",
+        "name": "N",
+        "a": "SB",
+        "b": "P"
+      },
+      {
+        "op": "oxyz_intersect",
+        "name": "Q",
+        "a": "SC",
+        "b": "P"
+      },
+      {
+        "op": "oxyz_intersect",
+        "name": "K",
+        "a": "SD",
+        "b": "P"
+      },
+      {
+        "op": "edge",
+        "from": "A",
+        "to": "B"
+      },
+      {
+        "op": "edge",
+        "from": "B",
+        "to": "C"
+      },
+      {
+        "op": "edge",
+        "from": "C",
+        "to": "D"
+      },
+      {
+        "op": "edge",
+        "from": "D",
+        "to": "A"
+      },
+      {
+        "op": "edge",
+        "from": "S",
+        "to": "A"
+      },
+      {
+        "op": "edge",
+        "from": "S",
+        "to": "B"
+      },
+      {
+        "op": "edge",
+        "from": "S",
+        "to": "C"
+      },
+      {
+        "op": "edge",
+        "from": "S",
+        "to": "D"
+      }
+    ],
+    "asserts": [
+      {
+        "relation": "perp",
+        "args": [
+          "SA",
+          "ABCD"
+        ]
+      },
+      {
+        "relation": "dist",
+        "args": [
+          "S",
+          "A"
+        ],
+        "value": 4
+      },
+      {
+        "relation": "dist",
+        "args": [
+          "A",
+          "B"
+        ],
+        "value": 4
+      }
+    ],
+    "queries": [
+      {
+        "kind": "area",
+        "shape": "polygon",
+        "points": [
+          "M",
+          "N",
+          "Q",
+          "K"
+        ]
+      }
+    ]
+  },
+  "expect": {
+    "ok": true,
+    "answers": [
+      {
+        "kind": "area",
+        "text": "4"
+      }
+    ]
+  }
+}

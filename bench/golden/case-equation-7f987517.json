@@ -1,0 +1,48 @@
+{
+  "id": "case-equation-7f987517",
+  "source": "synthetic",
+  "difficulty": "medium",
+  "text": "Trong không gian Oxyz, viết phương trình mặt phẳng (P) đi qua điểm A(1, 1, 1) và song song với mặt phẳng (Q): 2x - y + 2z - 5 = 0.",
+  "plan": {
+    "solidName": "P",
+    "ops": [
+      {
+        "op": "oxyz_point",
+        "name": "A",
+        "at": [
+          1,
+          1,
+          1
+        ]
+      },
+      {
+        "op": "oxyz_plane",
+        "name": "P",
+        "by": {
+          "form": "point_normal",
+          "point": "A",
+          "normal": [
+            2,
+            -1,
+            2
+          ]
+        }
+      }
+    ],
+    "queries": [
+      {
+        "kind": "equation",
+        "target": "P"
+      }
+    ]
+  },
+  "expect": {
+    "ok": true,
+    "answers": [
+      {
+        "kind": "equation",
+        "text": "2x - y + 2z - 3 = 0"
+      }
+    ]
+  }
+}

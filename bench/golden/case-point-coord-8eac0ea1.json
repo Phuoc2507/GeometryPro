@@ -1,0 +1,81 @@
+{
+  "id": "case-point-coord-8eac0ea1",
+  "source": "synthetic",
+  "difficulty": "trung bình",
+  "text": "Trong không gian Oxyz, cho tam giác ABC có A(0;0;0), B(6;0;0), C(0;8;0). Gọi O là tâm đường tròn ngoại tiếp tam giác ABC. Tìm tọa độ điểm O.",
+  "plan": {
+    "solidName": "ABC-circum",
+    "ops": [
+      {
+        "op": "oxyz_point",
+        "name": "A",
+        "at": [
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "B",
+        "at": [
+          6,
+          0,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "C",
+        "at": [
+          0,
+          8,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_circumcenter",
+        "name": "O",
+        "of": [
+          "A",
+          "B",
+          "C"
+        ]
+      }
+    ],
+    "queries": [
+      {
+        "kind": "point_coord",
+        "target": "O",
+        "axis": "x"
+      },
+      {
+        "kind": "point_coord",
+        "target": "O",
+        "axis": "y"
+      },
+      {
+        "kind": "point_coord",
+        "target": "O",
+        "axis": "z"
+      }
+    ]
+  },
+  "expect": {
+    "ok": true,
+    "answers": [
+      {
+        "kind": "point_coord",
+        "text": "3"
+      },
+      {
+        "kind": "point_coord",
+        "text": "4"
+      },
+      {
+        "kind": "point_coord",
+        "text": "0"
+      }
+    ]
+  }
+}

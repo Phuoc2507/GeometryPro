@@ -1,0 +1,144 @@
+{
+  "id": "case-area-c323591d",
+  "source": "goc-thietdien",
+  "difficulty": "TB",
+  "text": "Cho lăng trụ đứng tam giác ABC.A1B1C1 có đáy ABC vuông tại A với AB = AC = 2, chiều cao lăng trụ bằng 2. Mặt phẳng (P) song song với mặt đáy và đi qua trung điểm của cạnh bên AA1, cắt lăng trụ theo một thiết diện. Tính diện tích thiết diện.",
+  "plan": {
+    "solidName": "ABC.A1B1C1",
+    "ops": [
+      {
+        "op": "oxyz_point",
+        "name": "A",
+        "at": [
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "B",
+        "at": [
+          2,
+          0,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "C",
+        "at": [
+          0,
+          2,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "A1",
+        "at": [
+          0,
+          0,
+          2
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "B1",
+        "at": [
+          2,
+          0,
+          2
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "C1",
+        "at": [
+          0,
+          2,
+          2
+        ]
+      },
+      {
+        "op": "oxyz_plane",
+        "name": "P",
+        "by": {
+          "form": "coeffs",
+          "a": 0,
+          "b": 0,
+          "c": 1,
+          "d": -1
+        }
+      },
+      {
+        "op": "oxyz_intersect",
+        "name": "M",
+        "a": "AA1",
+        "b": "P"
+      },
+      {
+        "op": "oxyz_intersect",
+        "name": "N",
+        "a": "BB1",
+        "b": "P"
+      },
+      {
+        "op": "oxyz_intersect",
+        "name": "K",
+        "a": "CC1",
+        "b": "P"
+      },
+      {
+        "op": "edge",
+        "from": "A",
+        "to": "B"
+      },
+      {
+        "op": "edge",
+        "from": "B",
+        "to": "C"
+      },
+      {
+        "op": "edge",
+        "from": "C",
+        "to": "A"
+      },
+      {
+        "op": "edge",
+        "from": "A",
+        "to": "A1"
+      },
+      {
+        "op": "edge",
+        "from": "B",
+        "to": "B1"
+      },
+      {
+        "op": "edge",
+        "from": "C",
+        "to": "C1"
+      }
+    ],
+    "queries": [
+      {
+        "kind": "area",
+        "shape": "polygon",
+        "points": [
+          "M",
+          "N",
+          "K"
+        ]
+      }
+    ]
+  },
+  "expect": {
+    "ok": true,
+    "answers": [
+      {
+        "kind": "area",
+        "text": "2"
+      }
+    ]
+  }
+}

@@ -1,0 +1,83 @@
+{
+  "id": "case-volume-2f064492",
+  "source": "synthetic",
+  "difficulty": "trung bình",
+  "text": "Cho hình chóp S.ABC có SA vuông góc với mặt phẳng đáy, SA = 5, tam giác ABC vuông tại A với AB = 3 và AC = 4. Tính thể tích khối chóp S.ABC.",
+  "plan": {
+    "solidName": "S.ABC",
+    "ops": [
+      {
+        "op": "oxyz_point",
+        "name": "A",
+        "at": [
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "B",
+        "at": [
+          3,
+          0,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "C",
+        "at": [
+          0,
+          4,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "S",
+        "at": [
+          0,
+          0,
+          5
+        ]
+      },
+      {
+        "op": "edge",
+        "from": "A",
+        "to": "B"
+      },
+      {
+        "op": "edge",
+        "from": "A",
+        "to": "C"
+      },
+      {
+        "op": "edge",
+        "from": "S",
+        "to": "A"
+      }
+    ],
+    "queries": [
+      {
+        "kind": "volume",
+        "solid": "pyramid",
+        "points": [
+          "A",
+          "B",
+          "C"
+        ],
+        "apex": "S"
+      }
+    ]
+  },
+  "expect": {
+    "ok": true,
+    "answers": [
+      {
+        "kind": "volume",
+        "text": "10"
+      }
+    ]
+  }
+}

@@ -1,0 +1,63 @@
+{
+  "id": "case-area-6ad172a1",
+  "source": "synthetic",
+  "difficulty": "trung bình",
+  "text": "Cho mặt cầu (S) có bán kính R = √3. Tính diện tích mặt cầu, thể tích khối cầu và đường kính mặt cầu (S).",
+  "plan": {
+    "solidName": "S",
+    "ops": [
+      {
+        "op": "oxyz_point",
+        "name": "O",
+        "at": [
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_sphere",
+        "name": "S",
+        "by": {
+          "form": "center_radius",
+          "center": "O",
+          "radius": "sqrt(3)"
+        }
+      }
+    ],
+    "queries": [
+      {
+        "kind": "area",
+        "shape": "sphere",
+        "target": "S"
+      },
+      {
+        "kind": "volume",
+        "solid": "sphere",
+        "target": "S"
+      },
+      {
+        "kind": "sphere_metric",
+        "target": "S",
+        "what": "diameter"
+      }
+    ]
+  },
+  "expect": {
+    "ok": true,
+    "answers": [
+      {
+        "kind": "area",
+        "text": "12π"
+      },
+      {
+        "kind": "volume",
+        "text": "4√3π"
+      },
+      {
+        "kind": "sphere_metric",
+        "text": "2√3"
+      }
+    ]
+  }
+}

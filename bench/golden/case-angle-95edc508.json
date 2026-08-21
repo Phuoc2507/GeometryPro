@@ -1,0 +1,72 @@
+{
+  "id": "case-angle-95edc508",
+  "source": "synthetic",
+  "difficulty": "easy",
+  "text": "Trong không gian Oxyz, cho bốn điểm A(0;0;0), B(1;0;0), C(0;0;0) và D(0;1;0). Tính góc giữa hai đường thẳng AB và CD.",
+  "plan": {
+    "solidName": "figure",
+    "ops": [
+      {
+        "op": "oxyz_point",
+        "name": "A",
+        "at": [
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "B",
+        "at": [
+          1,
+          0,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "D",
+        "at": [
+          0,
+          1,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_line",
+        "name": "AB",
+        "by": {
+          "form": "two_points",
+          "a": "A",
+          "b": "B"
+        }
+      },
+      {
+        "op": "oxyz_line",
+        "name": "AD",
+        "by": {
+          "form": "two_points",
+          "a": "A",
+          "b": "D"
+        }
+      }
+    ],
+    "queries": [
+      {
+        "kind": "angle",
+        "a": "AB",
+        "b": "AD"
+      }
+    ]
+  },
+  "expect": {
+    "ok": true,
+    "answers": [
+      {
+        "kind": "angle",
+        "text": "90°"
+      }
+    ]
+  }
+}

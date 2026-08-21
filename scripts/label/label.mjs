@@ -128,14 +128,14 @@ async function main() {
         difficulty: entry.difficulty || undefined,
         text: entry.text,
         plan: planInfo.plan,
-        expect: { ok: true, answers: result.answers.map((a) => ({ kind: a.kind, text: a.text })) },
+        expect: { ok: true, answers: result.answers.map((a) => ({ kind: a.kind, text: a.text ?? a.relation })) },
       };
       fs.writeFileSync(path.join(STAGING_DIR, id + '.json'), JSON.stringify(golden, null, 2));
       accepted.push({ id, kind, engine: golden.expect.answers.map((a) => a.text).join(' | '), planSource: planInfo.planSource });
     } else if (cmp.verdict === 'error' || !result.ok) {
       gap.push({ entry, reason: cmp.detail });
     } else {
-      const got = (result.answers || []).map((a) => a.text).join(' | ');
+      const got = (result.answers || []).map((a) => a.text ?? a.relation).join(' | ');
       review.push({ entry, reason: `LỆCH — người: "${expected.join(' | ')}"  ≠  máy: "${got}"` });
     }
   }

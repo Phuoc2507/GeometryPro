@@ -1,0 +1,72 @@
+{
+  "id": "case-point-coord-35665600",
+  "source": "synthetic",
+  "difficulty": "khó",
+  "text": "Trong không gian Oxyz, cho điểm A(2;3;3) và mặt phẳng (P): x + 2y + 2z - 5 = 0. Gọi A' là điểm đối xứng của A qua mặt phẳng (P). Tìm tọa độ điểm A'.",
+  "plan": {
+    "solidName": "A-P-reflect",
+    "ops": [
+      {
+        "op": "oxyz_point",
+        "name": "A",
+        "at": [
+          2,
+          3,
+          3
+        ]
+      },
+      {
+        "op": "oxyz_plane",
+        "name": "P",
+        "by": {
+          "form": "coeffs",
+          "a": 1,
+          "b": 2,
+          "c": 2,
+          "d": -5
+        }
+      },
+      {
+        "op": "oxyz_reflect_across",
+        "name": "K",
+        "point": "A",
+        "across": "plane",
+        "target": "P"
+      }
+    ],
+    "queries": [
+      {
+        "kind": "point_coord",
+        "target": "K",
+        "axis": "x"
+      },
+      {
+        "kind": "point_coord",
+        "target": "K",
+        "axis": "y"
+      },
+      {
+        "kind": "point_coord",
+        "target": "K",
+        "axis": "z"
+      }
+    ]
+  },
+  "expect": {
+    "ok": true,
+    "answers": [
+      {
+        "kind": "point_coord",
+        "text": "0"
+      },
+      {
+        "kind": "point_coord",
+        "text": "-1"
+      },
+      {
+        "kind": "point_coord",
+        "text": "-1"
+      }
+    ]
+  }
+}

@@ -1,0 +1,221 @@
+{
+  "id": "case-area-3e2bdd80",
+  "source": "goc-thietdien",
+  "difficulty": "Kho",
+  "text": "Cho hình lập phương ABCD.A1B1C1D1 cạnh 2. Gọi (P) là mặt phẳng đi qua tâm hình lập phương và vuông góc với đường chéo AC1. Mặt phẳng (P) cắt hình lập phương theo một thiết diện. Tính diện tích thiết diện đó.",
+  "plan": {
+    "solidName": "ABCD.A1B1C1D1",
+    "ops": [
+      {
+        "op": "oxyz_point",
+        "name": "A",
+        "at": [
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "B",
+        "at": [
+          2,
+          0,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "C",
+        "at": [
+          2,
+          2,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "D",
+        "at": [
+          0,
+          2,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "A1",
+        "at": [
+          0,
+          0,
+          2
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "B1",
+        "at": [
+          2,
+          0,
+          2
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "C1",
+        "at": [
+          2,
+          2,
+          2
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "D1",
+        "at": [
+          0,
+          2,
+          2
+        ]
+      },
+      {
+        "op": "oxyz_midpoint",
+        "name": "O",
+        "a": "A",
+        "b": "C1"
+      },
+      {
+        "op": "oxyz_plane",
+        "name": "P",
+        "by": {
+          "form": "point_normal",
+          "point": "O",
+          "normal": [
+            1,
+            1,
+            1
+          ]
+        }
+      },
+      {
+        "op": "oxyz_intersect",
+        "name": "M",
+        "a": "BC",
+        "b": "P"
+      },
+      {
+        "op": "oxyz_intersect",
+        "name": "N",
+        "a": "CD",
+        "b": "P"
+      },
+      {
+        "op": "oxyz_intersect",
+        "name": "K",
+        "a": "DD1",
+        "b": "P"
+      },
+      {
+        "op": "oxyz_intersect",
+        "name": "L",
+        "a": "D1A1",
+        "b": "P"
+      },
+      {
+        "op": "oxyz_intersect",
+        "name": "E",
+        "a": "A1B1",
+        "b": "P"
+      },
+      {
+        "op": "oxyz_intersect",
+        "name": "F",
+        "a": "BB1",
+        "b": "P"
+      },
+      {
+        "op": "edge",
+        "from": "A",
+        "to": "B"
+      },
+      {
+        "op": "edge",
+        "from": "B",
+        "to": "C"
+      },
+      {
+        "op": "edge",
+        "from": "C",
+        "to": "D"
+      },
+      {
+        "op": "edge",
+        "from": "D",
+        "to": "A"
+      },
+      {
+        "op": "edge",
+        "from": "A1",
+        "to": "B1"
+      },
+      {
+        "op": "edge",
+        "from": "B1",
+        "to": "C1"
+      },
+      {
+        "op": "edge",
+        "from": "C1",
+        "to": "D1"
+      },
+      {
+        "op": "edge",
+        "from": "D1",
+        "to": "A1"
+      },
+      {
+        "op": "edge",
+        "from": "A",
+        "to": "A1"
+      },
+      {
+        "op": "edge",
+        "from": "B",
+        "to": "B1"
+      },
+      {
+        "op": "edge",
+        "from": "C",
+        "to": "C1"
+      },
+      {
+        "op": "edge",
+        "from": "D",
+        "to": "D1"
+      }
+    ],
+    "queries": [
+      {
+        "kind": "area",
+        "shape": "polygon",
+        "points": [
+          "M",
+          "N",
+          "K",
+          "L",
+          "E",
+          "F"
+        ]
+      }
+    ]
+  },
+  "expect": {
+    "ok": true,
+    "answers": [
+      {
+        "kind": "area",
+        "text": "3√3"
+      }
+    ]
+  }
+}

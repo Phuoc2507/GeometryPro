@@ -1,0 +1,69 @@
+{
+  "id": "case-equation-a7da6c93",
+  "source": "synthetic",
+  "difficulty": "medium",
+  "text": "Trong không gian Oxyz, cho hai điểm A(1, 0, -1) và B(3, 4, 5). Viết phương trình mặt cầu (S) có đường kính AB.",
+  "plan": {
+    "solidName": "S",
+    "ops": [
+      {
+        "op": "oxyz_point",
+        "name": "A",
+        "at": [
+          1,
+          0,
+          -1
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "B",
+        "at": [
+          3,
+          4,
+          5
+        ]
+      },
+      {
+        "op": "oxyz_midpoint",
+        "name": "I",
+        "a": "A",
+        "b": "B"
+      },
+      {
+        "op": "oxyz_sphere",
+        "name": "S",
+        "by": {
+          "form": "center_radius",
+          "center": "I",
+          "radius": "sqrt(14)"
+        }
+      }
+    ],
+    "asserts": [
+      {
+        "relation": "dist",
+        "args": [
+          "A",
+          "B"
+        ],
+        "value": "2*sqrt(14)"
+      }
+    ],
+    "queries": [
+      {
+        "kind": "equation",
+        "target": "S"
+      }
+    ]
+  },
+  "expect": {
+    "ok": true,
+    "answers": [
+      {
+        "kind": "equation",
+        "text": "(x - 2)² + (y - 2)² + (z - 2)² = 14"
+      }
+    ]
+  }
+}

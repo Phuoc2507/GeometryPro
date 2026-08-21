@@ -1,0 +1,44 @@
+{
+  "id": "case-equation-da4b93bd",
+  "source": "synthetic",
+  "difficulty": "easy",
+  "text": "Trong không gian Oxyz, viết phương trình mặt cầu (S) có tâm I(1, -2, 3) và bán kính R = 4.",
+  "plan": {
+    "solidName": "S",
+    "ops": [
+      {
+        "op": "oxyz_point",
+        "name": "I",
+        "at": [
+          1,
+          -2,
+          3
+        ]
+      },
+      {
+        "op": "oxyz_sphere",
+        "name": "S",
+        "by": {
+          "form": "center_radius",
+          "center": "I",
+          "radius": 4
+        }
+      }
+    ],
+    "queries": [
+      {
+        "kind": "equation",
+        "target": "S"
+      }
+    ]
+  },
+  "expect": {
+    "ok": true,
+    "answers": [
+      {
+        "kind": "equation",
+        "text": "(x - 1)² + (y + 2)² + (z - 3)² = 16"
+      }
+    ]
+  }
+}

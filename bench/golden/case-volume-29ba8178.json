@@ -1,0 +1,48 @@
+{
+  "id": "case-volume-29ba8178",
+  "source": "synthetic",
+  "difficulty": "trung bình",
+  "text": "Cho hình trụ có bán kính đáy r = 3 và chiều cao h = 4. Tính thể tích khối trụ và diện tích toàn phần của hình trụ.",
+  "plan": {
+    "solidName": "X",
+    "ops": [
+      {
+        "op": "oxyz_point",
+        "name": "O",
+        "at": [
+          0,
+          0,
+          0
+        ]
+      }
+    ],
+    "queries": [
+      {
+        "kind": "volume",
+        "solid": "cylinder",
+        "r": 3,
+        "h": 4
+      },
+      {
+        "kind": "area",
+        "shape": "cylinder",
+        "part": "total",
+        "r": 3,
+        "h": 4
+      }
+    ]
+  },
+  "expect": {
+    "ok": true,
+    "answers": [
+      {
+        "kind": "volume",
+        "text": "36π"
+      },
+      {
+        "kind": "area",
+        "text": "42π"
+      }
+    ]
+  }
+}

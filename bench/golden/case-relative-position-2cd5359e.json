@@ -1,0 +1,118 @@
+{
+  "id": "case-relative-position-2cd5359e",
+  "source": "goc-vitri",
+  "difficulty": "TB",
+  "text": "Cho hình lập phương ABCD.A1B1C1D1. Xét vị trí tương đối: a) đường thẳng A1B1 và mặt phẳng (ABCD); b) đường thẳng AB và mặt phẳng (ABCD).",
+  "plan": {
+    "solidName": "ABCD.A1B1C1D1",
+    "ops": [
+      {
+        "op": "oxyz_point",
+        "name": "A",
+        "at": [
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "B",
+        "at": [
+          2,
+          0,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "C",
+        "at": [
+          2,
+          2,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "D",
+        "at": [
+          0,
+          2,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "A1",
+        "at": [
+          0,
+          0,
+          2
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "B1",
+        "at": [
+          2,
+          0,
+          2
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "C1",
+        "at": [
+          2,
+          2,
+          2
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "D1",
+        "at": [
+          0,
+          2,
+          2
+        ]
+      },
+      {
+        "op": "oxyz_plane",
+        "name": "ABCD",
+        "by": {
+          "form": "three_points",
+          "a": "A",
+          "b": "B",
+          "c": "C"
+        }
+      }
+    ],
+    "queries": [
+      {
+        "kind": "relative_position",
+        "a": "A1B1",
+        "b": "ABCD"
+      },
+      {
+        "kind": "relative_position",
+        "a": "AB",
+        "b": "ABCD"
+      }
+    ]
+  },
+  "expect": {
+    "ok": true,
+    "answers": [
+      {
+        "kind": "relative_position",
+        "text": "song song"
+      },
+      {
+        "kind": "relative_position",
+        "text": "đường nằm trên mặt"
+      }
+    ]
+  }
+}
