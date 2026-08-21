@@ -5,5 +5,11 @@ Allow: /
 Disallow: /auth
 Disallow: /settings
 Disallow: /saved
+Disallow: /admin
+Disallow: /gioi-thieu
+Disallow: /quan-ly-to
+
+# Ảnh xem trước của link chia sẻ: để mở cho bot mạng xã hội đọc được og:image.
+Allow: /og/
 
 Sitemap: https://geo3d.io.vn/sitemap.xml

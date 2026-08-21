@@ -17,6 +17,8 @@ import adminRedrawHandler from './api/admin-redraw.js';
 import referralHandler from './api/referral.js';
 import payoutAccountHandler from './api/payout-account.js';
 import withdrawHandler from './api/withdraw.js';
+import shareHandler from './api/share.js';
+import ogHandler from './api/og.js';
 
 export function createApp() {
 const app = express();
@@ -143,6 +145,43 @@ app.post('/api/payout-account', async (req, res) => {
     await payoutAccountHandler(req, res);
   } catch (error) {
     console.error('Error in /api/payout-account:', error);
+    if (!res.headersSent) {
+      res.status(500).json({ error: error.message || 'Internal Server Error' });
+    }
+  }
+});
+
+// Link chia sẻ có thẻ OG riêng. Trên Vercel hai đường này do rewrite trong vercel.json
+// trỏ vào /api/share và /api/og (id tới dưới dạng query thật); ở local phải tự nhét
+// tham số tuyến vào req.query cho khớp.
+// Express 5 định nghĩa `query` là getter trên prototype ⇒ gán thẳng sẽ ném TypeError.
+// Định nghĩa một thuộc tính riêng trên chính instance để che getter đó.
+function withQueryId(req, id) {
+  Object.defineProperty(req, 'query', {
+    value: { ...req.query, id },
+    configurable: true,
+    enumerable: true,
+  });
+}
+
+app.get('/s/:id', async (req, res) => {
+  withQueryId(req, req.params.id);
+  try {
+    await shareHandler(req, res);
+  } catch (error) {
+    console.error('Error in /s/:id:', error);
+    if (!res.headersSent) {
+      res.status(500).json({ error: error.message || 'Internal Server Error' });
+    }
+  }
+});
+
+app.get('/og/s/:id.png', async (req, res) => {
+  withQueryId(req, String(req.params.id || '').replace(/\.png$/i, ''));
+  try {
+    await ogHandler(req, res);
+  } catch (error) {
+    console.error('Error in /og/s/:id.png:', error);
     if (!res.headersSent) {
       res.status(500).json({ error: error.message || 'Internal Server Error' });
     }

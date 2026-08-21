@@ -1,6 +1,21 @@
 {
   "outputDirectory": "dist",
   "rewrites": [
-    { "source": "/((?!api/).*)", "destination": "/index.html" }
+    {
+      "source": "/og/s/:id.png",
+      "destination": "/api/og?id=:id"
+    },
+    {
+      "source": "/og/s/:id",
+      "destination": "/api/og?id=:id"
+    },
+    {
+      "source": "/s/:id",
+      "destination": "/api/share?id=:id"
+    },
+    {
+      "source": "/((?!api/).*)",
+      "destination": "/index.html"
+    }
   ]
 }
