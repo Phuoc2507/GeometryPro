@@ -6144,6 +6144,37 @@ function cylinderArea(rIn, hIn, part) {
   if (part === "lateral") return piScalarAnswer("area", mul(rat(2n), mul(r, h)), 2 * Math.PI * r.approx * h.approx);
   return piScalarAnswer("area", mul(rat(2n), mul(r, add2(h, r))), 2 * Math.PI * r.approx * (h.approx + r.approx));
 }
+function frustumSlantScalar(R, r, h) {
+  const d = sub2(R, r);
+  return sqrt(add2(mul(h, h), mul(d, d)));
+}
+function coneFrustumVolume(RIn, rIn, hIn) {
+  const R = S(RIn), r = S(rIn), h = S(hIn);
+  const coeff = mul(rat(1n, 3n), mul(h, add2(add2(mul(R, R), mul(R, r)), mul(r, r))));
+  const rf = 1 / 3 * Math.PI * h.approx * (R.approx * R.approx + R.approx * r.approx + r.approx * r.approx);
+  return piScalarAnswer("volume", coeff, rf);
+}
+function coneFrustumSlant(RIn, rIn, hIn) {
+  const R = S(RIn), r = S(rIn), h = S(hIn);
+  return certifyScalar("slant", frustumSlantScalar(R, r, h), Math.hypot(h.approx, R.approx - r.approx));
+}
+function coneFrustumArea(RIn, rIn, hIn, part) {
+  const R = S(RIn), r = S(rIn), h = S(hIn);
+  const l = frustumSlantScalar(R, r, h);
+  const lf = Math.hypot(h.approx, R.approx - r.approx);
+  const lateralCoeff = mul(add2(R, r), l);
+  const latRf = Math.PI * (R.approx + r.approx) * lf;
+  if (part === "lateral") return piScalarAnswer("area", lateralCoeff, latRf);
+  const coeff = add2(lateralCoeff, add2(mul(R, R), mul(r, r)));
+  const rf = latRf + Math.PI * (R.approx * R.approx + r.approx * r.approx);
+  return piScalarAnswer("area", coeff, rf);
+}
+function pyramidFrustumVolume(s1In, s2In, hIn) {
+  const s1 = S(s1In), s2 = S(s2In), h = S(hIn);
+  const coeff = mul(rat(1n, 3n), mul(h, add2(add2(s1, s2), sqrt(mul(s1, s2)))));
+  const rf = 1 / 3 * h.approx * (s1.approx + s2.approx + Math.sqrt(s1.approx * s2.approx));
+  return certifyScalar("volume", coeff, rf);
+}
 
 // api/_lib/kernel/compute/relative.ts
 var rel = (relation) => ({ kind: "relative_position", relation });
@@ -6332,11 +6363,14 @@ var QueryESchema = external_exports.union([
   external_exports.object({ kind: external_exports.literal("volume"), solid: external_exports.enum(["tetrahedron", "pyramid"]), points: external_exports.array(Tok).min(3), apex: Tok.optional() }),
   external_exports.object({ kind: external_exports.literal("volume"), solid: external_exports.literal("prism"), base: external_exports.array(Tok).min(3), top: external_exports.array(Tok).min(3) }),
   external_exports.object({ kind: external_exports.literal("volume"), solid: external_exports.enum(["cone", "cylinder"]), r: ScalarInput, h: ScalarInput }),
+  external_exports.object({ kind: external_exports.literal("volume"), solid: external_exports.literal("cone_frustum"), R: ScalarInput, r: ScalarInput, h: ScalarInput }),
+  external_exports.object({ kind: external_exports.literal("volume"), solid: external_exports.literal("pyramid_frustum"), s1: ScalarInput, s2: ScalarInput, h: ScalarInput }),
   external_exports.object({ kind: external_exports.literal("volume_ratio"), a: SolidSpec, b: SolidSpec }),
   external_exports.object({ kind: external_exports.literal("area"), shape: external_exports.literal("sphere"), target: Tok }),
   external_exports.object({ kind: external_exports.literal("area"), shape: external_exports.enum(["triangle", "polygon"]), points: external_exports.array(Tok).min(3) }),
   external_exports.object({ kind: external_exports.literal("area"), shape: external_exports.enum(["cone", "cylinder"]), part: external_exports.enum(["lateral", "total"]), r: ScalarInput, h: ScalarInput }),
-  external_exports.object({ kind: external_exports.literal("slant"), r: ScalarInput, h: ScalarInput }),
+  external_exports.object({ kind: external_exports.literal("area"), shape: external_exports.literal("cone_frustum"), part: external_exports.enum(["lateral", "total"]), R: ScalarInput, r: ScalarInput, h: ScalarInput }),
+  external_exports.object({ kind: external_exports.literal("slant"), r: ScalarInput, h: ScalarInput, R: ScalarInput.optional() }),
   external_exports.object({ kind: external_exports.literal("sphere_metric"), target: Tok, what: external_exports.enum(["radius", "diameter", "top_z", "bottom_z"]) }),
   external_exports.object({ kind: external_exports.literal("point_coord"), target: Tok, axis: external_exports.enum(["x", "y", "z"]) })
 ]);
@@ -6395,6 +6429,8 @@ function computeQuery(query, et) {
         }
         if (query.solid === "cone") return { ok: true, answer: coneVolume(query.r, query.h) };
         if (query.solid === "cylinder") return { ok: true, answer: cylinderVolume(query.r, query.h) };
+        if (query.solid === "cone_frustum") return { ok: true, answer: coneFrustumVolume(query.R, query.r, query.h) };
+        if (query.solid === "pyramid_frustum") return { ok: true, answer: pyramidFrustumVolume(query.s1, query.s2, query.h) };
         const pts = asPoints(query.points, et);
         if (query.solid === "tetrahedron") {
           if (pts.length !== 4) return { ok: false, problem: "tetrahedron needs exactly 4 points" };
@@ -6413,6 +6449,7 @@ function computeQuery(query, et) {
         }
         if (query.shape === "cone") return { ok: true, answer: coneArea(query.r, query.h, query.part) };
         if (query.shape === "cylinder") return { ok: true, answer: cylinderArea(query.r, query.h, query.part) };
+        if (query.shape === "cone_frustum") return { ok: true, answer: coneFrustumArea(query.R, query.r, query.h, query.part) };
         const pts = asPoints(query.points, et);
         if (query.shape === "triangle") {
           if (pts.length !== 3) return { ok: false, problem: "triangle area needs exactly 3 points" };
@@ -6431,7 +6468,7 @@ function computeQuery(query, et) {
         return { ok: true, answer: certifyScalar("sphere_metric", s, ref) };
       }
       case "slant":
-        return { ok: true, answer: coneSlant(query.r, query.h) };
+        return { ok: true, answer: query.R != null ? coneFrustumSlant(query.R, query.r, query.h) : coneSlant(query.r, query.h) };
       case "point_coord": {
         const e = resolveEntityE(query.target, et);
         if (e.kind !== "point") return { ok: false, problem: "point_coord needs a point" };

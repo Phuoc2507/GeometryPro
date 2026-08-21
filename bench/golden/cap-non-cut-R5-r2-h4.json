@@ -1,0 +1,49 @@
+{
+  "id": "cap-non-cut-R5-r2-h4",
+  "source": "capture",
+  "text": "Cho hình nón cụt có bán kính hai đáy R = 5, r = 2 và chiều cao h = 4. Tính thể tích khối nón cụt và diện tích xung quanh của hình nón cụt.",
+  "plan": {
+    "solidName": "X",
+    "ops": [
+      {
+        "op": "oxyz_point",
+        "name": "O",
+        "at": [
+          0,
+          0,
+          0
+        ]
+      }
+    ],
+    "queries": [
+      {
+        "kind": "volume",
+        "solid": "cone_frustum",
+        "R": 5,
+        "r": 2,
+        "h": 4
+      },
+      {
+        "kind": "area",
+        "shape": "cone_frustum",
+        "part": "lateral",
+        "R": 5,
+        "r": 2,
+        "h": 4
+      }
+    ]
+  },
+  "expect": {
+    "ok": true,
+    "answers": [
+      {
+        "kind": "volume",
+        "text": "52π"
+      },
+      {
+        "kind": "area",
+        "text": "35π"
+      }
+    ]
+  }
+}

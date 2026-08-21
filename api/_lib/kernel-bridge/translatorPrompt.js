@@ -336,6 +336,10 @@ tìm giá trị thoả: KHAI BÁO một tham số tự do và để engine giả
   + Thể tích:     { "kind":"volume", "solid":"cone"|"cylinder", "r":<số/"sqrt(..)">, "h":<...> }
   + Diện tích:    { "kind":"area", "shape":"cone"|"cylinder", "part":"lateral"|"total", "r":<...>, "h":<...> }  (lateral=xung quanh, total=toàn phần)
   + Đường sinh nón: { "kind":"slant", "r":<...>, "h":<...> }   (l = √(r²+h²))
+- NÓN CỤT (bán kính hai đáy R>r, chiều cao h): { "kind":"volume", "solid":"cone_frustum", "R":<...>, "r":<...>, "h":<...> };
+  diện tích { "kind":"area", "shape":"cone_frustum", "part":"lateral"|"total", "R":<...>, "r":<...>, "h":<...> };
+  đường sinh { "kind":"slant", "R":<...>, "r":<...>, "h":<...> }  (l = √(h²+(R−r)²))
+- CHÓP CỤT (diện tích hai đáy S1, S2, chiều cao h): { "kind":"volume", "solid":"pyramid_frustum", "s1":<...>, "s2":<...>, "h":<...> }  (V = (1/3)h(S1+S2+√(S1·S2)))
 
 ## DỰNG HÌNH OXYZ (dựng cấu hình thoả ràng buộc → tính một ĐẠI LƯỢNG SỐ)
 Nhiều đề Oxyz KHÔNG cho sẵn mọi toạ độ mà mô tả một CẤU HÌNH phải DỰNG từ đối tượng cho trước
