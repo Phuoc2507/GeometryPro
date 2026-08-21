@@ -120,6 +120,15 @@ Pipeline: spec (3 agent) → phản biện thiết kế (2 agent) → sửa spec
   reasoning effort high.** Các agent đợt trước chạy model mặc định của phiên;
   từ giờ mọi agent mới spawn với opus 4.8 để tăng chất lượng phản biện/thi công.
 
+- **D19 · Phản biện code cả 2 pack: mỗi pack lộ đúng loại lỗi "dạy sai có dấu
+  kiểm chứng" — chấp nhận vá TRƯỚC khi tích hợp.** Physics: 1 CAO (miền sau
+  dừng/chạm đất) + 6 VỪA (báo cáo `reviews/2026-08-21-physics-code-review.md`) —
+  agent vá đang chạy. Chem: 2 CAO (spectator ẩn Al+Fe+CuSO4 → 6,4g thay 16g;
+  phán bừa "không phản ứng" cho NaCl+H2SO4 đặc) + 3 VỪA (báo cáo
+  `reviews/2026-08-21-chem-code-review.md`) — giao agent vá (opus 4.8 theo D18).
+  Cả 2 pack DB/lõi toán được xác nhận SẠCH; lỗi nằm ở tầng guard/miền — đúng
+  chỗ khó thấy nhất, đúng lý do cần phản biện code.
+
 ## Quyết định chờ ghi tiếp (sẽ bổ sung trong đêm)
 
 - Phân xử 5 điểm lệch giữa spec kiến trúc và spec Lý (theo khuyến nghị phản biện).
