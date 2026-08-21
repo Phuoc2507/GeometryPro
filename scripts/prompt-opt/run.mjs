@@ -49,6 +49,16 @@ async function main() {
   const limit = args.limit ? Number(args.limit) : null;
 
   let dataset = loadDataset(dataDir);
+  // Tối ưu prompt PHẢI học trên tập TRAIN, không đụng tập test (tránh overfit). Mặc định 'train'.
+  if (args.split) {
+    const { loadSplit } = await import('../eval/split.mjs');
+    const sp = loadSplit(String(args.split));
+    if (!sp) { console.error('Không thấy split:', args.split); process.exit(1); }
+    const use = args.use === 'test' ? sp.test : sp.train;
+    const set = new Set(use);
+    dataset = dataset.filter((it) => set.has(it.id));
+    console.log(`[split '${args.split}' / ${args.use || 'train'}] dùng ${dataset.length} ca để tối ưu.`);
+  }
   if (limit) dataset = dataset.slice(0, limit);
   if (dataset.length === 0) { console.error('Không có ca nào (cần golden có field text).'); process.exit(1); }
 

@@ -49,3 +49,6 @@ docs/nghien-cuu/prompt-opt-runs/
 
 # Ca golden ứng viên (chờ người soát rồi --promote sang bench/golden/)
 bench/golden-staging/
+
+# Kết quả chạy đánh giá baseline (sinh ra được)
+docs/nghien-cuu/eval-runs/

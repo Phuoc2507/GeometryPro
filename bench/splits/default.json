@@ -1,0 +1,28 @@
+{
+  "seed": 42,
+  "ratio": 0.3,
+  "train": [
+    "cap-dist-A-SCD-canh2-SA2",
+    "cap-dist-A-SCD-canh2-SA4",
+    "cap-dist-A-SCD-canh3-SA3",
+    "cap-vol-chop-chunhat-4x5-h3",
+    "cap-vol-chop-vuong-3",
+    "cap-vol-chop-vuong-4",
+    "cap-vol-chop-vuong-6-8",
+    "cap-vol-hop-2x3x4",
+    "cap-vol-hop-3x3x5",
+    "cap-vol-lang-tru-tamgiac-vuong-346-h7",
+    "cap-vol-lap-phuong-3",
+    "cap-vol-tu-dien-deu-4",
+    "pyramid-scd-01"
+  ],
+  "test": [
+    "cap-dist-A-SBC-345-SA6",
+    "cap-dist-A-SBC-vuong-B",
+    "cap-vol-chop-chunhat-3x6-h5",
+    "cap-vol-chop-tamgiac-vuong-B",
+    "cap-vol-chop-vuong-5-6",
+    "cap-vol-lang-tru-tamgiac-deu-2-5",
+    "cap-vol-tu-dien-deu-2"
+  ]
+}

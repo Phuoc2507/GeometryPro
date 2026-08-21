@@ -199,28 +199,37 @@ Dự án đã có một **bộ đề mốc (golden)** và một **trình chạy 
 - **Độ trễ (latency)** trung bình & phân vị.
 - **Độ tin cậy vận hành:** tỉ lệ không lỗi (crash/timeout/JSON sai) trên lô lớn.
 
-### 5.4. So sánh baseline
-| Phương pháp | Vai trò trong so sánh |
+### 5.4. Tách train/test (giữ tính khách quan)
+Để tránh chỉ trích *"tối ưu prompt ngay trên tập test"*, benchmark được **tách train/test tất định, phân tầng theo dạng bài** (`scripts/eval/split.mjs`): **tối ưu prompt chỉ trên TRAIN**, còn **accuracy báo cáo đo trên TEST giữ riêng**. Split hiện tại (`bench/splits/default.json`, seed 42): train/test theo tỉ lệ 70/30.
+
+### 5.5. So sánh baseline
+Harness so sánh (`scripts/eval/baseline.mjs`) chạy các phương pháp trên **cùng** tập test:
+
+| Phương pháp | Vai trò |
 |---|---|
-| LLM thuần (Gemini / GPT / Claude) giải trực tiếp | Baseline "AI tự giải" |
-| CAS thuần (ví dụ SymPy) trên bài đã hình thức hoá | Baseline "ký hiệu thuần", cho thấy giới hạn khi thiếu lớp hiểu đề |
+| LLM thuần (Gemini/GPT/Claude) giải trực tiếp | Baseline "AI tự giải", không engine, không tự kiểm |
+| CAS thuần (SymPy) trên bài đã hình thức hoá | Baseline "ký hiệu thuần" (giới hạn khi thiếu lớp hiểu đề) |
 | Hệ của chúng tôi — prompt viết tay | Ablation trước tối ưu |
 | Hệ của chúng tôi — prompt tối ưu | Cấu hình đề xuất |
 
-> **Bảng kết quả (⟦CHỜ ĐO⟧ — chỉ điền số ĐO THẬT):**
->
-> | Phương pháp | Độ chính xác | Confidently‑wrong | Latency TB |
-> |---|---|---|---|
-> | LLM thuần | ⟦…⟧ | ⟦…⟧ | ⟦…⟧ |
-> | Hệ (prompt tay) | ⟦…⟧ | ⟦…⟧ | ⟦…⟧ |
-> | Hệ (prompt tối ưu) | ⟦…⟧ | ⟦…⟧ | ⟦…⟧ |
->
-> *Không điền số minh hoạ. Mọi con số phải đến từ lần chạy thực tế và tái lập được.*
+Chỉ số đo — ngoài **accuracy**, nhấn mạnh hai chỉ số AN TOÀN:
+- **Confidently‑wrong** = tỉ lệ đưa đáp số SAI một cách tự tin (càng thấp càng tốt).
+- **Precision khi trả lời** = correct/(correct+wrong): khi hệ CÓ trả đáp thì đúng bao nhiêu %. Hệ Neuro‑Symbolic kỳ vọng CAO nhờ engine tự kiểm + từ chối an toàn.
 
-### 5.5. Đánh giá bởi chuyên gia (human evaluation)
+> **Bảng kết quả (⟦CHỜ ĐO — chạy `--provider vilao`/không `--mock`, cần API key⟧):**
+>
+> | Phương pháp | Accuracy | Confidently‑wrong | Precision khi trả lời | Latency TB |
+> |---|---|---|---|---|
+> | LLM thuần | ⟦…⟧ | ⟦…⟧ | ⟦…⟧ | ⟦…⟧ |
+> | Hệ (prompt tay) | ⟦…⟧ | ⟦…⟧ | ⟦…⟧ | ⟦…⟧ |
+> | Hệ (prompt tối ưu) | ⟦…⟧ | ⟦…⟧ | ⟦…⟧ | ⟦…⟧ |
+>
+> *Chỉ điền số ĐO THẬT, tái lập được. (Harness đã kiểm thử ở chế độ mock; xem `docs/nghien-cuu/danh-gia.md`.)*
+
+### 5.6. Đánh giá bởi chuyên gia (human evaluation)
 Mời giáo viên Toán chấm **chất lượng lời giải/annotation** và **giá trị sư phạm của trực quan hoá 3D** trên một mẫu bài; báo cáo mức đồng thuận.
 
-### 5.6. Kết quả bước đầu (số ĐO THẬT, cập nhật liên tục)
+### 5.7. Kết quả bước đầu (số ĐO THẬT, cập nhật liên tục)
 
 **Thí nghiệm 1 — Tính đúng đắn của engine ký hiệu (engine‑replay).**
 Chạy `npm run bench:gate` (chế độ engine‑replay: đưa *plan đã đúng* qua engine, **tất định, không gọi AI**) trên toàn bộ **20 ca golden** hiện có:
@@ -279,7 +288,7 @@ Ngân sách mục tiêu **≤ 10 triệu VNĐ**, ưu tiên thuê tài nguyên th
 - ✅ Khối dịch LLM + cổng từ chối + phân tầng an toàn — đã nối chạy.
 - ✅ Ứng dụng 3D (React Three Fiber) — 17 trang, 136 component.
 - ◻️ Benchmark tiếng Việt — mới 20 ca (cần mở rộng).
-- ◑ Đánh giá định lượng — **đã chạy engine‑replay: 20/20 pass** (xem §5.6); còn end‑to‑end/baseline/latency.
+- ◑ Đánh giá định lượng — engine‑replay 20/20 (§5.7); **harness so baseline + tách train/test đã hiện thực** (`scripts/eval/`, kiểm thử mock); còn số end‑to‑end thật (cần API key).
 - ◑ Tối ưu prompt tiến hoá — **đã hiện thực & chạy được** (`scripts/prompt-opt/`); mock 75%→100% tái lập; còn chạy LLM thật.
 - ◻️ Báo cáo khoa học — đang viết (bản này).
 
