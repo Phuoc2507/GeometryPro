@@ -1,3 +1,8 @@
+> ⚠️ **SUPERSEDED (2026-08-21):** "Advance" không còn là chế độ UI riêng — đã GỘP vào "Vẽ kỹ"
+> (xem `2026-08-21-rework-advance-into-detailed.md`). Các thành phần UI đa-câu (Stepper,
+> AdvanceSolutionPanel, projectScene) VẪN dùng — nay được kích hoạt tự động khi "Vẽ kỹ" trả
+> `mode:'advance'`, thay vì qua một nút "Advance" riêng.
+
 # Advance Mode — Frontend (Plan B) Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development. Steps use checkbox (`- [ ]`).

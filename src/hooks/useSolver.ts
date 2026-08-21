@@ -19,7 +19,6 @@ export interface SolveStep {
   explanation: string;
   formula?: string | null;
   highlight: string[];
-  view_mode: '3d' | '2d';
   /** Điểm mới bước này giới thiệu (luật dựng; toạ độ do frontend tính từ hình). */
   construct?: ConstructSpec[];
 }

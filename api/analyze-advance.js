@@ -1,29 +1,22 @@
 // api/analyze-advance.js
-// Route "Advance mode" — RÁP pipeline đa-câu thành một endpoint.
-// Luồng: auth Bearer (Supabase) → trừ credit `draw_advance` → splitProblem (Pass 0) → phân nhánh:
-//   - multi_question   → buildAdvanceScene → scene≠null ⇒ { mode:'advance', scene }
-//   - continuous_animation → solveProblem (engine bài đơn, kinematic chảy qua đây) → gói 1-step timeline
-//   - single / build-fail / animation-fail → FALLBACK bài đơn (solveProblem) + HOÀN chênh lệch credit
-//     xuống mức "Vẽ kỹ" (draw_detailed) ⇒ { mode:'kernel', degraded:true, ...out }
+// SHIM tương thích ngược. Chế độ "Advance" đã GỘP vào "Vẽ kỹ" (analyze-geometry.js, mode 'detailed'):
+// Vẽ kỹ tự bóc lớp đề đa-câu + dựng khối tròn xoay/thiết diện, cho cả đề chữ lẫn ảnh. UI KHÔNG còn gọi
+// endpoint này nữa. Giữ lại để client CŨ (bản build đã cache) còn POST thẳng vào đây vẫn chạy được:
+// phục vụ bằng CHÍNH pipeline nâng cao (runAdvance — nguồn chân lý deps duy nhất), tính giá "Vẽ kỹ"
+// (draw_detailed). KHÔNG còn admin-gate, KHÔNG còn tầng credit draw_advance / logic tụt-hạng.
 //
-// LƯU Ý (giống analyze-geometry.js): các mảnh advance/kernel-bridge được nạp ĐỘNG trong handler,
-// KHÔNG import tĩnh — vì solveWithKernel.js kéo theo api/_lib/kernel-dist/ (BỊ GITIGNORE, chỉ sinh
-// bởi `npm run build:kernel`). Import tĩnh sẽ giết route lúc load nếu kernel chưa build; nạp động ⇒
-// lỗi rơi vào try/catch và trả lỗi sạch (đồng thời hoàn credit).
+// FILE NÀY VẪN export các HÀM THUẦN dùng chung: assembleAdvance (runAdvance ráp deps rồi gọi), các
+// looksLike* (analyze-geometry + redrawProblem regex-gate), *_UNSUPPORTED_MSG. ĐỪNG đổi chữ ký chúng.
+//
+// LƯU Ý: runAdvance nạp ĐỘNG các builder/kernel-bridge (kéo theo api/_lib/kernel-dist/ bị gitignore,
+// chỉ sinh bởi `npm run build:kernel`) — import tĩnh sẽ giết route lúc load nếu kernel chưa build.
 import crypto from 'crypto';
-import { refund, creditCostFor } from './_lib/credits.js';
+import { refund } from './_lib/credits.js';
 import { accessError, resolveAiAccess, withQuota, refundAiUsage } from './_lib/aiAccess.js';
 import { withSentry, reportServerError } from './_lib/sentry.js';
 import { logBrokenProblem } from './_lib/brokenProblemLog.js';
 import { createClient } from '@supabase/supabase-js';
 import { findGolden } from './_lib/goldenStore.js';
-import { requireAdmin } from './_lib/adminAuth.js';
-
-// KHOÁ Advance (đang nâng cấp): tạm thời CHỈ quản trị viên được dùng chế độ Advance.
-// Thông điệp trả về cho người dùng thường khi họ (hoặc client cũ) gọi thẳng endpoint.
-export const ADVANCE_ADMIN_ONLY_MSG =
-  'Chế độ Advance đang được nâng cấp, tạm thời chỉ dành cho quản trị viên. ' +
-  'Bạn hãy dùng Vẽ nhanh hoặc Vẽ kỹ nhé.';
 
 // Client service-role để tra "hình chuẩn" (golden). Thiếu env ⇒ null ⇒ bỏ qua golden (luồng cũ chạy y nguyên).
 const _supaUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -113,6 +106,20 @@ export function looksLikeSection(text) {
   const hasSolid = /(ch[oó]p|l[aă]ng tr[uụ]|h[iì]nh h[oộ]p|l[aậ]p\s*ph[uư][ơo]?ng|t[uứ] di[eệ]n)/.test(s);
   const hasCut = /(thi[eế]t di[eệ]n|c[aắ]t b[oở]i|m[aặ]t ph[aẳ]ng|mp\s*\()/.test(s);
   return hasSolid && hasCut;
+}
+
+// Nhận diện đề ĐA-CÂU (nhiều ý con a/b/c…) một cách TẤT ĐỊNH — gate RẺ để luồng "Vẽ kỹ" quyết định có
+// ĐÁNG chạy pipeline nâng cao (tốn 1 lượt split-LLM) hay không, thay vì split MỌI đề. Đây CHỈ là lưới
+// lọc thô: splitProblem + coverageCheck mới là lưới chốt (đề lọt vào nhưng không thực sự đa-câu ⇒ trả
+// 'single' ⇒ rơi êm về Vẽ kỹ thường). Cần ≥2 nhãn câu con cùng họ để tránh bắt nhầm toạ độ "A(1;2)".
+// Bắt: "a)" "b)"… | "1)" "2)"… | "câu a"/"câu 1"… (đứng sau ranh giới để né "A(" và số trong công thức).
+export function looksLikeMultiQuestion(text) {
+  const s = (text || '').toLowerCase();
+  if (!s) return false;
+  const paren = (s.match(/(?:^|\s)[a-e]\)/g) || []).length;      // a) b) c)… (đầu dòng / sau khoảng trắng)
+  const num   = (s.match(/(?:^|\n)\s*[1-9]\)/g) || []).length;   // 1) 2)… ĐẦU DÒNG (né toạ độ inline "A(1;2)")
+  const cau   = (s.match(/c[aâ]u\s*[1-9a-e]\b/g) || []).length;  // câu 1 / câu a
+  return paren >= 2 || num >= 2 || cau >= 2;
 }
 
 // ===== LÕI THUẦN (deps-injected) — test 3 nhánh KHÔNG cần mạng =====
@@ -250,6 +257,8 @@ export async function assembleAdvance(problem, deps, opts = {}) {
   }
 }
 
+// SHIM handler — phục vụ client cũ bằng pipeline nâng cao (runAdvance), tính giá Vẽ kỹ (draw_detailed).
+// KHÔNG admin-gate, KHÔNG draw_advance, KHÔNG logic tụt-hạng (đã tính đúng mức Vẽ kỹ ngay từ đầu).
 async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method Not Allowed' });
@@ -261,7 +270,7 @@ async function handler(req, res) {
   const startedAt = Date.now();          // đo thời gian (log bài lỗi)
   let dbgPrompt = null, dbgImage = false; // ngữ cảnh cho log lỗi ở catch
   try {
-    // ---- Đề bài ---- (Advance nhận CHỮ hoặc ẢNH: có ảnh thì Pass -1 CHÉP đề ảnh ra chữ trong lõi)
+    // ---- Đề bài ---- (nhận CHỮ hoặc ẢNH; có ảnh thì splitProblem CHÉP đề ảnh ra chữ trong lõi)
     const { prompt, imageBase64 } = req.body || {};
     dbgImage = !!imageBase64;
     const hasText = typeof prompt === 'string' && prompt.trim().length >= 1;
@@ -275,20 +284,10 @@ async function handler(req, res) {
     const problemSeed = hasText ? prompt.trim() : '';
     dbgPrompt = problemSeed || null;
 
-    // ---- KHOÁ Advance: CHỈ quản trị viên ---- (chặn TRƯỚC khi trừ credit/quota)
-    // Đọc role='admin' TỪ DB (không tin client). Người dùng thường / khách nhận 403 với thông điệp
-    // "đang nâng cấp"; chưa đăng nhập (không có Bearer) nhận 401 để client mời đăng nhập.
-    const adminGate = await requireAdmin(req);
-    if (!adminGate.ok) {
-      if (adminGate.status === 403) {
-        return res.status(403).json({ error: ADVANCE_ADMIN_ONLY_MSG, code: 'advance_admin_only' });
-      }
-      return res.status(adminGate.status).json({ error: adminGate.error });
-    }
-
+    // Tính giá "Vẽ kỹ" (draw_detailed) — endpoint đã GỘP vào Vẽ kỹ, không còn tầng draw_advance riêng.
     access = await resolveAiAccess(req, res, {
       feature: 'draw',
-      action: 'draw_advance',
+      action: 'draw_detailed',
       allowGuest: false,
     });
     if (!access.ok) return accessError(res, access);
@@ -298,84 +297,50 @@ async function handler(req, res) {
     }
 
     // ---- HÌNH CHUẨN (GOLDEN) — phục vụ THẲNG nếu đề này đã có hình admin duyệt (chỉ CHỮ) ----
-    // Bình/lu/chậu (hoặc bài Nâng cao khác) từng vẽ sai, admin đã "Nhờ AI vẽ lại" + duyệt ⇒ lần sau ra
-    // ngay, không tốn engine. Không gọi pipeline ⇒ HOÀN credit như nhánh cache. Fail-safe: findGolden nuốt
-    // mọi lỗi/DB thiếu và trả null ⇒ rơi êm về luồng Nâng cao bình thường.
+    // Không gọi pipeline ⇒ HOÀN credit như nhánh cache. Fail-safe: findGolden nuốt mọi lỗi/DB thiếu → null.
     if (problemSeed && supabase) {
       const golden = await findGolden(supabase, problemSeed);
       if (golden) {
         if (creditCharge && userId) {
           try { await refund(userId, creditCharge.cost, creditCharge.reqId); }
-          catch (e) { console.warn('Hoàn credit golden-hit (advance) lỗi:', e?.message); }
+          catch (e) { console.warn('Hoàn credit golden-hit (advance shim) lỗi:', e?.message); }
           creditCharge = null;
         }
-        console.log('[golden] phục vụ (advance):', problemSeed.substring(0, 60));
+        console.log('[golden] phục vụ (advance shim):', problemSeed.substring(0, 60));
         return res.json(withQuota(golden.response, access));
       }
     }
 
-    // ---- Nạp ĐỘNG các mảnh pipeline (lỗi import ⇒ rơi vào catch, hoàn credit) ----
-    const [{ splitProblem }, { buildAdvanceScene }, { solveProblem }, { buildRevolutionScene }, { buildSliceScene }, { buildAreaScene }, { buildSectionScene }, { buildVesselScene }] = await Promise.all([
-      import('./_lib/advance/splitProblem.js'),
-      import('./_lib/advance/buildAdvanceScene.js'),
-      import('./_lib/kernel-bridge/solveWithKernel.js'),
-      import('./_lib/advance/buildRevolutionScene.js'),
-      import('./_lib/advance/buildSliceScene.js'),
-      import('./_lib/advance/buildAreaScene.js'),
-      import('./_lib/advance/buildSectionScene.js'),
-      import('./_lib/advance/buildVesselScene.js'),
-    ]);
-
-    // Có ảnh → splitProblem GỘP đọc-ảnh + tách-đề trong 1 lượt vision (chép đề vào split.setup rồi phân
-    // loại). assembleAdvance lấy split.setup làm `effectiveText` cho nhận-diện tròn-xoay + fallback bài đơn.
-    //
-    // DEADLINE tổng (~52s): chặn TRƯỚC lằn 60s của Vercel để trả JSON sạch thay vì 504 thô (non-JSON,
-    // frontend chỉ hiện "Lỗi Advance"). Chạm deadline ⇒ coi như revUnsupported (hoàn TOÀN BỘ, vẽ được gì
-    // đâu) + thông điệp thân thiện. Dù chống chồng thời gian ở các tầng dưới rồi, đây là lưới an toàn cuối.
+    // ---- Chạy pipeline nâng cao qua runAdvance (nguồn chân lý deps) — deadline ~52s chống 504 ----
+    const { runAdvance } = await import('./_lib/advance/runAdvance.js');
     const DEADLINE_MS = Number(process.env.ADVANCE_DEADLINE_MS) || 52000;
     let deadlineTimer;
     const deadline = new Promise((resolve) => { deadlineTimer = setTimeout(() => resolve({ __deadline: true }), DEADLINE_MS); });
-    let result = await Promise.race([
-      assembleAdvance(problemSeed, { splitProblem, buildAdvanceScene, solveProblem, buildRevolutionScene, buildSliceScene, buildAreaScene, buildSectionScene, buildVesselScene }, { imageBase64 }),
-      deadline,
-    ]);
+    const result = await Promise.race([runAdvance(problemSeed, { imageBase64 }), deadline]);
     clearTimeout(deadlineTimer);
-    if (result && result.__deadline) {
-      result = { mode: 'kernel', degraded: true, ok: false, revUnsupported: true, error: ADVANCE_DEADLINE_MSG };
+
+    const usable = result && result.mode === 'advance' && result.scene?.base
+      && Array.isArray(result.scene.base.points) && result.scene.base.points.length > 0;
+    if (usable) {
+      return res.json(withQuota({ mode: 'advance', scene: result.scene, engine: 'advance' }, access));
     }
 
-    // ---- Fallback tụt-hạng: đã trừ mức Advance nhưng chỉ xử bài đơn ⇒ HOÀN chênh lệch xuống Vẽ kỹ ----
-    // Công bằng: user chỉ bị tính bằng mức "Vẽ kỹ" (draw_detailed) khi không được phục vụ đa-cảnh.
-    if (result?.degraded && creditCharge && userId) {
-      if (result.revUnsupported) {
-        // KHÔNG vẽ được gì (đề tròn xoay không dựng nổi) ⇒ HOÀN TOÀN BỘ, không tính tiền.
-        try { await refund(userId, creditCharge.cost, creditCharge.reqId + ':rev-unsupported'); }
-        catch (e) { console.warn('Hoàn credit rev-unsupported lỗi:', e?.message); }
-        creditCharge.cost = 0;
-      } else {
-        const target = creditCostFor('draw_detailed');
-        const diff = creditCharge.cost - target;
-        if (diff > 0) {
-          try { await refund(userId, diff, creditCharge.reqId + ':downgrade'); }
-          catch (e) { console.warn('Hoàn credit tụt-hạng lỗi:', e?.message); }
-          creditCharge.cost = target; // còn lại = mức Vẽ kỹ (phòng lỗi phát sinh sau vẫn hoàn đúng)
-        }
-      }
+    // KHÔNG dựng được scene nâng cao ⇒ HOÀN TOÀN BỘ (vẽ được gì đâu) + báo sạch (mời dùng Vẽ kỹ / gõ rõ hơn).
+    if (creditCharge && userId) {
+      try { await refund(userId, creditCharge.cost, creditCharge.reqId + ':advance-shim-fail'); }
+      catch (e) { console.warn('Hoàn credit advance-shim lỗi:', e?.message); }
+      creditCharge = null;
     }
+    await refundAiUsage(access);
 
-    // Soft-failure Advance (trả 200 kèm error) — máy KHÔNG dựng được cảnh; ghi cho admin.
-    // KHÔNG log nhánh `degraded` thuần (vẫn vẽ được bài đơn) — chỉ log khi thực sự hỏng.
-    if (result && (result.ok === false || result.revUnsupported || result.imageReadFailed || result.abstained)) {
+    // Ghi bài lỗi cho admin ("nộp cả bài": split/plan bản máy đã hiểu đề). Bỏ nhánh chạm-deadline (chưa có split).
+    if (result && !result.__deadline) {
       await logBrokenProblem({
         endpoint: 'analyze-advance', userId, mode: 'advance', prompt: problemSeed || null,
         imageProvided: !!imageBase64,
-        // "Nộp cả bài": scene (nếu dựng được rồi vẫn hỏng) → else BẢN MÁY HIỂU ĐỀ: split (phân loại +
-        // bản chép đề) + plan (Plan translator ở nhánh bài-đơn, nếu có). Trước đây luôn là null.
         aiJson: result.scene
-          || (result.split || result.plan
-                ? { split: result.split ?? null, plan: result.plan ?? null }
-                : null),
-        errorMessage: result.error || 'advance không dựng được cảnh',
+          || (result.split || result.plan ? { split: result.split ?? null, plan: result.plan ?? null } : null),
+        errorMessage: result.error || 'advance shim không dựng được cảnh',
         errorStage: result.revUnsupported ? 'unsupported'
           : result.imageReadFailed ? 'image_read'
           : result.abstained ? 'abstain' : 'degraded',
@@ -383,10 +348,12 @@ async function handler(req, res) {
       });
     }
 
-    return res.json(withQuota(result, access));
+    const msg = result?.__deadline ? ADVANCE_DEADLINE_MSG
+      : (result?.error || 'Chế độ nâng cao chưa dựng được hình cho đề này. Bạn thử dùng Vẽ kỹ, hoặc gõ đề rõ hơn nhé.');
+    return res.status(200).json({ error: msg });
   } catch (error) {
     await reportServerError(error, { route: 'analyze-advance' });
-    console.error('Error in analyze-advance:', error);
+    console.error('Error in analyze-advance (shim):', error);
     // Lỗi sau khi đã trừ ⇒ HOÀN credit đã trừ (nếu có) VÀ lượt quota free/khách.
     await refundAiUsage(access);
     if (creditCharge && userId) {
@@ -394,7 +361,6 @@ async function handler(req, res) {
       catch (e) { console.warn('refund credit lỗi:', e?.message); }
     }
     const isAbort = error?.name === 'AbortError' || (error?.message || '').includes('aborted');
-    // Ghi bài lỗi (ngoại lệ/timeout) cho trang admin — không chặn phản hồi.
     await logBrokenProblem({
       endpoint: 'analyze-advance', userId, mode: 'advance', prompt: dbgPrompt,
       imageProvided: dbgImage, errorMessage: error?.message || String(error),

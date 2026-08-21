@@ -55,12 +55,10 @@ export function DropZone() {
         if (ctx) {
           ctx.drawImage(img, 0, 0, width, height);
           const compressedBase64 = canvas.toDataURL('image/jpeg', 0.8);
-          // Advance + ảnh → analyzeAdvance (Pass -1 chép đề ra chữ); còn lại → luồng ảnh thường.
-          if (drawMode === 'advance') context.analyzeAdvance('', compressedBase64);
-          else context.queueAnalyzeImage(compressedBase64, drawMode);
+          // 2 chế độ (Nhanh/Kỹ) đi chung luồng ảnh; Vẽ kỹ tự định tuyến nâng cao (kể cả đề ảnh) ở server.
+          context.queueAnalyzeImage(compressedBase64, drawMode);
         } else {
-          if (drawMode === 'advance') context.analyzeAdvance('', base64);
-          else context.queueAnalyzeImage(base64, drawMode);
+          context.queueAnalyzeImage(base64, drawMode);
         }
       };
       img.src = base64;
@@ -136,12 +134,8 @@ export function DropZone() {
       // Not a valid JSON, continue normal flow
     }
 
-    // Instead of opening modal, directly call context
-    if (drawMode === 'advance') {
-      context.analyzeAdvance(textPrompt.trim());
-    } else {
-      context.queueAnalyzeText(textPrompt.trim(), drawMode);
-    }
+    // 2 chế độ (Nhanh/Kỹ) đi chung luồng chữ; Vẽ kỹ tự định tuyến nâng cao (đa-câu/tròn xoay) ở server.
+    context.queueAnalyzeText(textPrompt.trim(), drawMode);
     setTextPrompt('');
   }, [textPrompt, context, drawMode]);
 

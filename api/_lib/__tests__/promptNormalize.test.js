@@ -28,4 +28,19 @@ describe('normalizePrompt', () => {
     const p = 'Tính THỂ TÍCH khối chóp   đều';
     expect(normalizePrompt(p)).toBe(normalizePrompt(p));
   });
+
+  // Fix #1 (/api/solve): guard tái dùng đáp engine dùng đúng normalizePrompt để so khớp
+  // geometry.engineProblem với đề hiện tại. Test khoá HAI đầu của hợp đồng đó:
+  describe('hợp đồng guard tái dùng đáp engine ở /api/solve', () => {
+    it('CÙNG một hình, ĐỔI câu hỏi → khoá KHÁC ⇒ guard phải giải lại (không dùng đáp cũ)', () => {
+      const drawn = 'Cho hình chóp S.ABCD. Tính khoảng cách từ A đến mặt phẳng (SBC).';
+      const edited = 'Cho hình chóp S.ABCD. Tính thể tích khối chóp.';
+      expect(normalizePrompt(drawn)).not.toBe(normalizePrompt(edited));
+    });
+    it('đề GIỐNG (chỉ khác hoa/thường/khoảng trắng) → khoá TRÙNG ⇒ guard cho tái dùng (không dịch lại)', () => {
+      const drawn = 'Cho hình chóp S.ABCD. Tính khoảng cách từ A đến (SBC).';
+      const resent = '  cho hình chóp s.abcd.  tính khoảng cách từ a đến (SBC). ';
+      expect(normalizePrompt(drawn)).toBe(normalizePrompt(resent));
+    });
+  });
 });

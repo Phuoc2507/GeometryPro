@@ -10,6 +10,7 @@ import crypto from 'crypto';
 import { withSentry } from './_lib/sentry.js';
 import { logBrokenProblem } from './_lib/brokenProblemLog.js';
 import { persistSolveResult } from './_lib/persistSolve.js';
+import { normalizePrompt } from './_lib/promptNormalize.js';
 
 async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -56,11 +57,17 @@ async function handler(req, res) {
   let engTier = null; // tier khi solveProblem NÉM (hiếm: import kernel-dist hỏng / runAny nổ bất ngờ).
   const es = geometry.engineSolve;
   const ea = geometry.engineAnswer;
-  if (es && typeof es === 'object' && Array.isArray(es.answers)) {
+  // Fix #1 — CHỈ tái dùng đáp engine từ bước VẼ khi ĐỀ hiện tại KHỚP đề đã sinh ra đáp đó
+  // (đóng dấu geometry.engineProblem lúc vẽ). Ô đề trong SolverPanel SỬA được: nếu người dùng đổi
+  // câu hỏi trên cùng một hình, đáp cũ KHÔNG còn đúng → tuyệt đối không được gắn "đã kiểm chứng" cho
+  // nó. engineProblem VẮNG (hình vẽ trước bản vá) ⇒ giữ hành vi tái dùng (tránh hồi quy chi phí dịch).
+  const engineProblemMatches = geometry.engineProblem == null
+    || normalizePrompt(geometry.engineProblem) === normalizePrompt(problem.trim());
+  if (engineProblemMatches && es && typeof es === 'object' && Array.isArray(es.answers)) {
     // Tái dùng TRỌN kết quả engine từ bước VẼ (engine tất định ⇒ chạy lại cũng y hệt) — bỏ HẲN
     // lượt gọi translator LLM lần hai. Áp cho cả bài THANG CHỮ (approx=null) mà engineAnswer bỏ sót.
     eng = { ok: !!es.ok, answers: es.answers, violations: es.violations || [], tier: es.tier || null };
-  } else if (ea && typeof ea.approx === 'number' && Number.isFinite(ea.approx)) {
+  } else if (engineProblemMatches && ea && typeof ea.approx === 'number' && Number.isFinite(ea.approx)) {
     // Tái dùng đáp engine từ bước VẼ — KHÔNG chạy engine lại (bỏ dịch+giải trùng)
     eng = { ok: !!ea.verified, answers: [{ text: ea.text, approx: ea.approx }], violations: [] };
   } else {

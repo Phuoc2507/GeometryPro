@@ -14,8 +14,7 @@
 // Đi kèm migration ×10 credits_per_cycle ở bảng `plans` + ×10 số dư người dùng cũ.
 export const CREDIT_COST = {
   draw_quick: 10,
-  draw_detailed: 20,
-  draw_advance: 30,   // mode "Advance": tách đề đa-câu + ráp cảnh bóc lớp (nặng hơn Vẽ kỹ)
+  draw_detailed: 20,  // Vẽ kỹ — nay bao gồm cả pipeline nâng cao (bóc lớp đa-câu / tròn xoay / thiết diện)
   modify: 2,          // sửa hình bằng AI (chat tự do) — rẻ vì thao tác nhỏ
   solve: 20,
   export_video: 50,

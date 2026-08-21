@@ -1,3 +1,8 @@
+> ⚠️ **SUPERSEDED (2026-08-21):** Chế độ "Advance" đã được GỘP vào "Vẽ kỹ" — xem
+> `2026-08-21-rework-advance-into-detailed.md`. Endpoint `/api/analyze-advance` nay chỉ còn là SHIM
+> tương thích; pipeline chạy qua `runAdvance` bên trong luồng `detailed` của `analyze-geometry.js`.
+> Tài liệu này giữ làm lịch sử thiết kế pipeline nâng cao (vẫn đúng về mặt engine).
+
 # Advance Mode — Backend Pipeline (Plan A) Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax.
