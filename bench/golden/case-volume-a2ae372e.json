@@ -1,0 +1,54 @@
+{
+  "id": "case-volume-a2ae372e",
+  "source": "synthetic",
+  "difficulty": "medium",
+  "text": "Cho khối cầu (S) có bán kính R = √6. Tính thể tích khối cầu và diện tích mặt cầu (S).",
+  "plan": {
+    "solidName": "S",
+    "ops": [
+      {
+        "op": "oxyz_point",
+        "name": "O",
+        "at": [
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_sphere",
+        "name": "S",
+        "by": {
+          "form": "center_radius",
+          "center": "O",
+          "radius": "sqrt(6)"
+        }
+      }
+    ],
+    "queries": [
+      {
+        "kind": "volume",
+        "solid": "sphere",
+        "target": "S"
+      },
+      {
+        "kind": "area",
+        "shape": "sphere",
+        "target": "S"
+      }
+    ]
+  },
+  "expect": {
+    "ok": true,
+    "answers": [
+      {
+        "kind": "volume",
+        "text": "8√6π"
+      },
+      {
+        "kind": "area",
+        "text": "24π"
+      }
+    ]
+  }
+}

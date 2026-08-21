@@ -1,0 +1,63 @@
+{
+  "id": "case-point-coord-2df130d3",
+  "source": "synthetic",
+  "difficulty": "medium",
+  "text": "Trong không gian Oxyz, cho tam giác ABC với A(1;2;0), B(2;3;1), C(1;1;1). Gọi G là trọng tâm tam giác ABC. Tìm hoành độ (tọa độ x) của điểm G.",
+  "plan": {
+    "solidName": "trong-tam",
+    "ops": [
+      {
+        "op": "oxyz_point",
+        "name": "A",
+        "at": [
+          1,
+          2,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "B",
+        "at": [
+          2,
+          3,
+          1
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "C",
+        "at": [
+          1,
+          1,
+          1
+        ]
+      },
+      {
+        "op": "oxyz_centroid",
+        "name": "G",
+        "of": [
+          "A",
+          "B",
+          "C"
+        ]
+      }
+    ],
+    "queries": [
+      {
+        "kind": "point_coord",
+        "target": "G",
+        "axis": "x"
+      }
+    ]
+  },
+  "expect": {
+    "ok": true,
+    "answers": [
+      {
+        "kind": "point_coord",
+        "text": "4/3"
+      }
+    ]
+  }
+}

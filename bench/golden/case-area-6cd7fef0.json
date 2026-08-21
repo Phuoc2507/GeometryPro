@@ -1,0 +1,47 @@
+{
+  "id": "case-area-6cd7fef0",
+  "source": "synthetic",
+  "difficulty": "medium",
+  "text": "Cho hình nón có bán kính đáy r = 5 và chiều cao h = 12. Tính diện tích toàn phần của hình nón và độ dài đường sinh.",
+  "plan": {
+    "solidName": "X",
+    "ops": [
+      {
+        "op": "oxyz_point",
+        "name": "O",
+        "at": [
+          0,
+          0,
+          0
+        ]
+      }
+    ],
+    "queries": [
+      {
+        "kind": "area",
+        "shape": "cone",
+        "part": "total",
+        "r": 5,
+        "h": 12
+      },
+      {
+        "kind": "slant",
+        "r": 5,
+        "h": 12
+      }
+    ]
+  },
+  "expect": {
+    "ok": true,
+    "answers": [
+      {
+        "kind": "area",
+        "text": "90π"
+      },
+      {
+        "kind": "slant",
+        "text": "13"
+      }
+    ]
+  }
+}

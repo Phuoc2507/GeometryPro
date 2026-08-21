@@ -1,0 +1,63 @@
+{
+  "id": "case-equation-9d3eb9b8",
+  "source": "synthetic",
+  "difficulty": "medium",
+  "text": "Trong không gian Oxyz, cho hai điểm A(0;0;0) và B(4;2;6). Gọi M là trung điểm của AB. Viết phương trình mặt phẳng trung trực của đoạn AB (mặt phẳng đi qua M và vuông góc với AB).",
+  "plan": {
+    "solidName": "trung-truc-AB",
+    "ops": [
+      {
+        "op": "oxyz_point",
+        "name": "A",
+        "at": [
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "B",
+        "at": [
+          4,
+          2,
+          6
+        ]
+      },
+      {
+        "op": "oxyz_midpoint",
+        "name": "M",
+        "a": "A",
+        "b": "B"
+      },
+      {
+        "op": "oxyz_plane",
+        "name": "P",
+        "by": {
+          "form": "point_normal",
+          "point": "M",
+          "normal": [
+            4,
+            2,
+            6
+          ]
+        }
+      }
+    ],
+    "queries": [
+      {
+        "kind": "equation",
+        "target": "P"
+      }
+    ]
+  },
+  "expect": {
+    "ok": true,
+    "answers": [
+      {
+        "kind": "equation",
+        "text": "2x + y + 3z - 14 = 0"
+      }
+    ]
+  }
+}

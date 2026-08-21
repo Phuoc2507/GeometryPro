@@ -1,0 +1,54 @@
+{
+  "id": "case-point-coord-4efbc83d",
+  "source": "synthetic",
+  "difficulty": "medium",
+  "text": "Trong không gian Oxyz, cho điểm A(4;3;1) và mặt phẳng (P): x+2y+2z-9=0. Tìm hoành độ (tọa độ x) của điểm A' là điểm đối xứng của A qua mặt phẳng (P).",
+  "plan": {
+    "solidName": "doi-xung-mp",
+    "ops": [
+      {
+        "op": "oxyz_point",
+        "name": "A",
+        "at": [
+          4,
+          3,
+          1
+        ]
+      },
+      {
+        "op": "oxyz_plane",
+        "name": "P",
+        "by": {
+          "form": "coeffs",
+          "a": 1,
+          "b": 2,
+          "c": 2,
+          "d": -9
+        }
+      },
+      {
+        "op": "oxyz_reflect_across",
+        "name": "A2",
+        "point": "A",
+        "across": "plane",
+        "target": "P"
+      }
+    ],
+    "queries": [
+      {
+        "kind": "point_coord",
+        "target": "A2",
+        "axis": "x"
+      }
+    ]
+  },
+  "expect": {
+    "ok": true,
+    "answers": [
+      {
+        "kind": "point_coord",
+        "text": "10/3"
+      }
+    ]
+  }
+}

@@ -1,0 +1,61 @@
+{
+  "id": "case-point-coord-788be931",
+  "source": "synthetic",
+  "difficulty": "medium",
+  "text": "Trong không gian Oxyz, cho đường thẳng d đi qua điểm M(0;1;2) với vectơ chỉ phương u=(1;2;2) và mặt phẳng (P): x+y+z-9=0. Tìm hoành độ (tọa độ x) của giao điểm I của d và (P).",
+  "plan": {
+    "solidName": "giao-diem",
+    "ops": [
+      {
+        "op": "oxyz_line",
+        "name": "d",
+        "by": {
+          "form": "point_dir",
+          "base": [
+            0,
+            1,
+            2
+          ],
+          "dir": [
+            1,
+            2,
+            2
+          ]
+        }
+      },
+      {
+        "op": "oxyz_plane",
+        "name": "P",
+        "by": {
+          "form": "coeffs",
+          "a": 1,
+          "b": 1,
+          "c": 1,
+          "d": -9
+        }
+      },
+      {
+        "op": "oxyz_intersect",
+        "name": "I",
+        "a": "d",
+        "b": "P"
+      }
+    ],
+    "queries": [
+      {
+        "kind": "point_coord",
+        "target": "I",
+        "axis": "x"
+      }
+    ]
+  },
+  "expect": {
+    "ok": true,
+    "answers": [
+      {
+        "kind": "point_coord",
+        "text": "6/5"
+      }
+    ]
+  }
+}

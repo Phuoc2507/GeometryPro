@@ -1,0 +1,61 @@
+{
+  "id": "case-relative-position-fefb0db7",
+  "source": "synthetic",
+  "difficulty": "medium",
+  "text": "Trong không gian Oxyz, cho đường thẳng d1 đi qua điểm (0;0;0) có vectơ chỉ phương (1;0;0) và đường thẳng d2 đi qua điểm (2;0;0) có vectơ chỉ phương (0;1;0). Xét vị trí tương đối của hai đường thẳng d1 và d2.",
+  "plan": {
+    "solidName": "figure",
+    "ops": [
+      {
+        "op": "oxyz_line",
+        "name": "d1",
+        "by": {
+          "form": "point_dir",
+          "base": [
+            0,
+            0,
+            0
+          ],
+          "dir": [
+            1,
+            0,
+            0
+          ]
+        }
+      },
+      {
+        "op": "oxyz_line",
+        "name": "d2",
+        "by": {
+          "form": "point_dir",
+          "base": [
+            2,
+            0,
+            0
+          ],
+          "dir": [
+            0,
+            1,
+            0
+          ]
+        }
+      }
+    ],
+    "queries": [
+      {
+        "kind": "relative_position",
+        "a": "d1",
+        "b": "d2"
+      }
+    ]
+  },
+  "expect": {
+    "ok": true,
+    "answers": [
+      {
+        "kind": "relative_position",
+        "text": "cắt nhau"
+      }
+    ]
+  }
+}

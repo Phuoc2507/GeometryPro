@@ -1,0 +1,49 @@
+{
+  "id": "case-angle-552c0d9c",
+  "source": "synthetic",
+  "difficulty": "medium",
+  "text": "Trong không gian Oxyz, cho mặt phẳng (P) đi qua điểm (0;0;0) có vectơ pháp tuyến (0;0;1) và mặt phẳng (Q) đi qua điểm (1;0;0) có vectơ pháp tuyến (0;1;1). Tính góc giữa hai mặt phẳng (P) và (Q).",
+  "plan": {
+    "solidName": "figure",
+    "ops": [
+      {
+        "op": "oxyz_plane",
+        "name": "P",
+        "by": {
+          "form": "coeffs",
+          "a": 0,
+          "b": 0,
+          "c": 1,
+          "d": 0
+        }
+      },
+      {
+        "op": "oxyz_plane",
+        "name": "Q",
+        "by": {
+          "form": "coeffs",
+          "a": 0,
+          "b": 1,
+          "c": 1,
+          "d": 0
+        }
+      }
+    ],
+    "queries": [
+      {
+        "kind": "angle",
+        "a": "P",
+        "b": "Q"
+      }
+    ]
+  },
+  "expect": {
+    "ok": true,
+    "answers": [
+      {
+        "kind": "angle",
+        "text": "45°"
+      }
+    ]
+  }
+}

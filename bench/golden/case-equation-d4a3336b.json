@@ -1,0 +1,63 @@
+{
+  "id": "case-equation-d4a3336b",
+  "source": "synthetic",
+  "difficulty": "medium",
+  "text": "Trong không gian Oxyz, cho ba điểm A(1;0;2), B(2;1;0), C(0;3;1). Viết phương trình mặt phẳng (ABC).",
+  "plan": {
+    "solidName": "ABC",
+    "ops": [
+      {
+        "op": "oxyz_point",
+        "name": "A",
+        "at": [
+          1,
+          0,
+          2
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "B",
+        "at": [
+          2,
+          1,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "C",
+        "at": [
+          0,
+          3,
+          1
+        ]
+      },
+      {
+        "op": "oxyz_plane",
+        "name": "P",
+        "by": {
+          "form": "three_points",
+          "a": "A",
+          "b": "B",
+          "c": "C"
+        }
+      }
+    ],
+    "queries": [
+      {
+        "kind": "equation",
+        "target": "P"
+      }
+    ]
+  },
+  "expect": {
+    "ok": true,
+    "answers": [
+      {
+        "kind": "equation",
+        "text": "5x + 3y + 4z - 13 = 0"
+      }
+    ]
+  }
+}

@@ -1,0 +1,38 @@
+{
+  "id": "case-volume-064aa9fd",
+  "source": "synthetic",
+  "difficulty": "medium",
+  "text": "Cho hình chóp cụt có diện tích hai đáy lần lượt là 16 và 4, chiều cao h = 3. Tính thể tích khối chóp cụt.",
+  "plan": {
+    "solidName": "X",
+    "ops": [
+      {
+        "op": "oxyz_point",
+        "name": "O",
+        "at": [
+          0,
+          0,
+          0
+        ]
+      }
+    ],
+    "queries": [
+      {
+        "kind": "volume",
+        "solid": "pyramid_frustum",
+        "s1": 16,
+        "s2": 4,
+        "h": 3
+      }
+    ]
+  },
+  "expect": {
+    "ok": true,
+    "answers": [
+      {
+        "kind": "volume",
+        "text": "28"
+      }
+    ]
+  }
+}

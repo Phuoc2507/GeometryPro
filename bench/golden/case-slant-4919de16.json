@@ -1,0 +1,46 @@
+{
+  "id": "case-slant-4919de16",
+  "source": "synthetic",
+  "difficulty": "medium",
+  "text": "Cho hình nón có bán kính đáy r = 9 và chiều cao h = 12. Tính độ dài đường sinh và thể tích khối nón.",
+  "plan": {
+    "solidName": "X",
+    "ops": [
+      {
+        "op": "oxyz_point",
+        "name": "O",
+        "at": [
+          0,
+          0,
+          0
+        ]
+      }
+    ],
+    "queries": [
+      {
+        "kind": "slant",
+        "r": 9,
+        "h": 12
+      },
+      {
+        "kind": "volume",
+        "solid": "cone",
+        "r": 9,
+        "h": 12
+      }
+    ]
+  },
+  "expect": {
+    "ok": true,
+    "answers": [
+      {
+        "kind": "slant",
+        "text": "15"
+      },
+      {
+        "kind": "volume",
+        "text": "324π"
+      }
+    ]
+  }
+}

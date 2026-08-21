@@ -1,0 +1,51 @@
+{
+  "id": "case-point-coord-33ad5611",
+  "source": "synthetic",
+  "difficulty": "medium",
+  "text": "Trong không gian Oxyz, cho hai điểm A(1;3;5) và B(4;-2;2). Gọi M là trung điểm của đoạn thẳng AB. Tìm hoành độ (tọa độ x) của điểm M.",
+  "plan": {
+    "solidName": "trung-diem",
+    "ops": [
+      {
+        "op": "oxyz_point",
+        "name": "A",
+        "at": [
+          1,
+          3,
+          5
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "B",
+        "at": [
+          4,
+          -2,
+          2
+        ]
+      },
+      {
+        "op": "oxyz_midpoint",
+        "name": "M",
+        "a": "A",
+        "b": "B"
+      }
+    ],
+    "queries": [
+      {
+        "kind": "point_coord",
+        "target": "M",
+        "axis": "x"
+      }
+    ]
+  },
+  "expect": {
+    "ok": true,
+    "answers": [
+      {
+        "kind": "point_coord",
+        "text": "5/2"
+      }
+    ]
+  }
+}

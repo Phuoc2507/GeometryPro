@@ -1,0 +1,48 @@
+{
+  "id": "case-equation-3628c7ad",
+  "source": "synthetic",
+  "difficulty": "medium",
+  "text": "Trong không gian Oxyz, viết phương trình mặt phẳng đi qua điểm M(2;2;-3) và nhận vectơ n=(3;0;-1) làm vectơ pháp tuyến.",
+  "plan": {
+    "solidName": "P",
+    "ops": [
+      {
+        "op": "oxyz_point",
+        "name": "M",
+        "at": [
+          2,
+          2,
+          -3
+        ]
+      },
+      {
+        "op": "oxyz_plane",
+        "name": "P",
+        "by": {
+          "form": "point_normal",
+          "point": "M",
+          "normal": [
+            3,
+            0,
+            -1
+          ]
+        }
+      }
+    ],
+    "queries": [
+      {
+        "kind": "equation",
+        "target": "P"
+      }
+    ]
+  },
+  "expect": {
+    "ok": true,
+    "answers": [
+      {
+        "kind": "equation",
+        "text": "3x - z - 9 = 0"
+      }
+    ]
+  }
+}

@@ -1,0 +1,718 @@
+[
+  {
+    "text": "Trong không gian Oxyz, cho đường thẳng d1 đi qua điểm M(0;0;0) có vectơ chỉ phương u1=(1;0;0) và đường thẳng d2 đi qua điểm N(1;1;1) có vectơ chỉ phương u2=(1;√3;0). Tính góc giữa hai đường thẳng d1 và d2.",
+    "source": "synthetic",
+    "difficulty": "easy",
+    "kind": "angle",
+    "expected": [
+      "60°"
+    ],
+    "plan": {
+      "solidName": "figure",
+      "ops": [
+        {
+          "op": "oxyz_line",
+          "name": "d1",
+          "by": {
+            "form": "point_dir",
+            "base": [
+              0,
+              0,
+              0
+            ],
+            "dir": [
+              1,
+              0,
+              0
+            ]
+          }
+        },
+        {
+          "op": "oxyz_line",
+          "name": "d2",
+          "by": {
+            "form": "point_dir",
+            "base": [
+              1,
+              1,
+              1
+            ],
+            "dir": [
+              1,
+              "sqrt(3)",
+              0
+            ]
+          }
+        }
+      ],
+      "queries": [
+        {
+          "kind": "angle",
+          "a": "d1",
+          "b": "d2"
+        }
+      ]
+    }
+  },
+  {
+    "text": "Trong không gian Oxyz, cho đường thẳng a đi qua điểm A(0;0;0) với vectơ chỉ phương (1;0;0) và đường thẳng b đi qua điểm B(2;0;3) với vectơ chỉ phương (1;1;0). Tính góc giữa hai đường thẳng a và b.",
+    "source": "synthetic",
+    "difficulty": "easy",
+    "kind": "angle",
+    "expected": [
+      "45°"
+    ],
+    "plan": {
+      "solidName": "figure",
+      "ops": [
+        {
+          "op": "oxyz_line",
+          "name": "a",
+          "by": {
+            "form": "point_dir",
+            "base": [
+              0,
+              0,
+              0
+            ],
+            "dir": [
+              1,
+              0,
+              0
+            ]
+          }
+        },
+        {
+          "op": "oxyz_line",
+          "name": "b",
+          "by": {
+            "form": "point_dir",
+            "base": [
+              2,
+              0,
+              3
+            ],
+            "dir": [
+              1,
+              1,
+              0
+            ]
+          }
+        }
+      ],
+      "queries": [
+        {
+          "kind": "angle",
+          "a": "a",
+          "b": "b"
+        }
+      ]
+    }
+  },
+  {
+    "text": "Trong không gian Oxyz, cho đường thẳng d đi qua điểm P(1;2;3) có vectơ chỉ phương (1;0;0) và đường thẳng d' đi qua gốc tọa độ O có vectơ chỉ phương (0;1;1). Tính góc giữa hai đường thẳng d và d'.",
+    "source": "synthetic",
+    "difficulty": "easy",
+    "kind": "angle",
+    "expected": [
+      "90°"
+    ],
+    "plan": {
+      "solidName": "figure",
+      "ops": [
+        {
+          "op": "oxyz_line",
+          "name": "d",
+          "by": {
+            "form": "point_dir",
+            "base": [
+              1,
+              2,
+              3
+            ],
+            "dir": [
+              1,
+              0,
+              0
+            ]
+          }
+        },
+        {
+          "op": "oxyz_line",
+          "name": "e",
+          "by": {
+            "form": "point_dir",
+            "base": [
+              0,
+              0,
+              0
+            ],
+            "dir": [
+              0,
+              1,
+              1
+            ]
+          }
+        }
+      ],
+      "queries": [
+        {
+          "kind": "angle",
+          "a": "d",
+          "b": "e"
+        }
+      ]
+    }
+  },
+  {
+    "text": "Trong không gian Oxyz, cho mặt phẳng (P) đi qua điểm (0;0;0) có vectơ pháp tuyến (0;0;1) và mặt phẳng (Q) đi qua điểm (1;0;0) có vectơ pháp tuyến (0;1;1). Tính góc giữa hai mặt phẳng (P) và (Q).",
+    "source": "synthetic",
+    "difficulty": "medium",
+    "kind": "angle",
+    "expected": [
+      "45°"
+    ],
+    "plan": {
+      "solidName": "figure",
+      "ops": [
+        {
+          "op": "oxyz_plane",
+          "name": "P",
+          "by": {
+            "form": "coeffs",
+            "a": 0,
+            "b": 0,
+            "c": 1,
+            "d": 0
+          }
+        },
+        {
+          "op": "oxyz_plane",
+          "name": "Q",
+          "by": {
+            "form": "coeffs",
+            "a": 0,
+            "b": 1,
+            "c": 1,
+            "d": 0
+          }
+        }
+      ],
+      "queries": [
+        {
+          "kind": "angle",
+          "a": "P",
+          "b": "Q"
+        }
+      ]
+    }
+  },
+  {
+    "text": "Trong không gian Oxyz, cho hai mặt phẳng (α) đi qua điểm (0;0;0) có vectơ pháp tuyến (1;0;0) và (β) đi qua điểm (0;0;2) có vectơ pháp tuyến (1;√3;0). Tính góc giữa hai mặt phẳng (α) và (β).",
+    "source": "synthetic",
+    "difficulty": "medium",
+    "kind": "angle",
+    "expected": [
+      "60°"
+    ],
+    "plan": {
+      "solidName": "figure",
+      "ops": [
+        {
+          "op": "oxyz_plane",
+          "name": "alpha",
+          "by": {
+            "form": "coeffs",
+            "a": 1,
+            "b": 0,
+            "c": 0,
+            "d": 0
+          }
+        },
+        {
+          "op": "oxyz_plane",
+          "name": "beta",
+          "by": {
+            "form": "coeffs",
+            "a": 1,
+            "b": "sqrt(3)",
+            "c": 0,
+            "d": 0
+          }
+        }
+      ],
+      "queries": [
+        {
+          "kind": "angle",
+          "a": "alpha",
+          "b": "beta"
+        }
+      ]
+    }
+  },
+  {
+    "text": "Trong không gian Oxyz, cho đường thẳng d đi qua gốc tọa độ O có vectơ chỉ phương (√3;0;1) và mặt phẳng (P): z = 0. Tính góc giữa đường thẳng d và mặt phẳng (P).",
+    "source": "synthetic",
+    "difficulty": "medium",
+    "kind": "angle",
+    "expected": [
+      "30°"
+    ],
+    "plan": {
+      "solidName": "figure",
+      "ops": [
+        {
+          "op": "oxyz_line",
+          "name": "d",
+          "by": {
+            "form": "point_dir",
+            "base": [
+              0,
+              0,
+              0
+            ],
+            "dir": [
+              "sqrt(3)",
+              0,
+              1
+            ]
+          }
+        },
+        {
+          "op": "oxyz_plane",
+          "name": "P",
+          "by": {
+            "form": "coeffs",
+            "a": 0,
+            "b": 0,
+            "c": 1,
+            "d": 0
+          }
+        }
+      ],
+      "queries": [
+        {
+          "kind": "angle",
+          "a": "d",
+          "b": "P"
+        }
+      ]
+    }
+  },
+  {
+    "text": "Trong không gian Oxyz, cho đường thẳng d đi qua điểm (1;1;0) có vectơ chỉ phương (0;0;1) và mặt phẳng (P) đi qua gốc tọa độ có vectơ pháp tuyến (0;0;2). Tính góc giữa đường thẳng d và mặt phẳng (P).",
+    "source": "synthetic",
+    "difficulty": "easy",
+    "kind": "angle",
+    "expected": [
+      "90°"
+    ],
+    "plan": {
+      "solidName": "figure",
+      "ops": [
+        {
+          "op": "oxyz_line",
+          "name": "d",
+          "by": {
+            "form": "point_dir",
+            "base": [
+              1,
+              1,
+              0
+            ],
+            "dir": [
+              0,
+              0,
+              1
+            ]
+          }
+        },
+        {
+          "op": "oxyz_plane",
+          "name": "P",
+          "by": {
+            "form": "coeffs",
+            "a": 0,
+            "b": 0,
+            "c": 2,
+            "d": 0
+          }
+        }
+      ],
+      "queries": [
+        {
+          "kind": "angle",
+          "a": "d",
+          "b": "P"
+        }
+      ]
+    }
+  },
+  {
+    "text": "Trong không gian Oxyz, cho đường thẳng d1 đi qua điểm (0;0;0) có vectơ chỉ phương (1;0;0) và đường thẳng d2 đi qua điểm (0;1;0) có vectơ chỉ phương (2;0;0). Xét vị trí tương đối của hai đường thẳng d1 và d2.",
+    "source": "synthetic",
+    "difficulty": "easy",
+    "kind": "relative_position",
+    "expected": [
+      "song song"
+    ],
+    "plan": {
+      "solidName": "figure",
+      "ops": [
+        {
+          "op": "oxyz_line",
+          "name": "d1",
+          "by": {
+            "form": "point_dir",
+            "base": [
+              0,
+              0,
+              0
+            ],
+            "dir": [
+              1,
+              0,
+              0
+            ]
+          }
+        },
+        {
+          "op": "oxyz_line",
+          "name": "d2",
+          "by": {
+            "form": "point_dir",
+            "base": [
+              0,
+              1,
+              0
+            ],
+            "dir": [
+              2,
+              0,
+              0
+            ]
+          }
+        }
+      ],
+      "queries": [
+        {
+          "kind": "relative_position",
+          "a": "d1",
+          "b": "d2"
+        }
+      ]
+    }
+  },
+  {
+    "text": "Trong không gian Oxyz, cho đường thẳng a đi qua điểm (0;0;0) có vectơ chỉ phương (1;1;1) và đường thẳng b đi qua điểm (2;2;2) có vectơ chỉ phương (2;2;2). Xét vị trí tương đối của hai đường thẳng a và b.",
+    "source": "synthetic",
+    "difficulty": "medium",
+    "kind": "relative_position",
+    "expected": [
+      "trùng nhau"
+    ],
+    "plan": {
+      "solidName": "figure",
+      "ops": [
+        {
+          "op": "oxyz_line",
+          "name": "a",
+          "by": {
+            "form": "point_dir",
+            "base": [
+              0,
+              0,
+              0
+            ],
+            "dir": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "op": "oxyz_line",
+          "name": "b",
+          "by": {
+            "form": "point_dir",
+            "base": [
+              2,
+              2,
+              2
+            ],
+            "dir": [
+              2,
+              2,
+              2
+            ]
+          }
+        }
+      ],
+      "queries": [
+        {
+          "kind": "relative_position",
+          "a": "a",
+          "b": "b"
+        }
+      ]
+    }
+  },
+  {
+    "text": "Trong không gian Oxyz, cho đường thẳng d1 đi qua điểm (0;0;0) có vectơ chỉ phương (1;0;0) và đường thẳng d2 đi qua điểm (2;0;0) có vectơ chỉ phương (0;1;0). Xét vị trí tương đối của hai đường thẳng d1 và d2.",
+    "source": "synthetic",
+    "difficulty": "medium",
+    "kind": "relative_position",
+    "expected": [
+      "cắt nhau"
+    ],
+    "plan": {
+      "solidName": "figure",
+      "ops": [
+        {
+          "op": "oxyz_line",
+          "name": "d1",
+          "by": {
+            "form": "point_dir",
+            "base": [
+              0,
+              0,
+              0
+            ],
+            "dir": [
+              1,
+              0,
+              0
+            ]
+          }
+        },
+        {
+          "op": "oxyz_line",
+          "name": "d2",
+          "by": {
+            "form": "point_dir",
+            "base": [
+              2,
+              0,
+              0
+            ],
+            "dir": [
+              0,
+              1,
+              0
+            ]
+          }
+        }
+      ],
+      "queries": [
+        {
+          "kind": "relative_position",
+          "a": "d1",
+          "b": "d2"
+        }
+      ]
+    }
+  },
+  {
+    "text": "Trong không gian Oxyz, cho đường thẳng d1 đi qua điểm (0;0;0) có vectơ chỉ phương (1;0;0) và đường thẳng d2 đi qua điểm (0;0;1) có vectơ chỉ phương (0;1;0). Xét vị trí tương đối của hai đường thẳng d1 và d2.",
+    "source": "synthetic",
+    "difficulty": "medium",
+    "kind": "relative_position",
+    "expected": [
+      "chéo nhau"
+    ],
+    "plan": {
+      "solidName": "figure",
+      "ops": [
+        {
+          "op": "oxyz_line",
+          "name": "d1",
+          "by": {
+            "form": "point_dir",
+            "base": [
+              0,
+              0,
+              0
+            ],
+            "dir": [
+              1,
+              0,
+              0
+            ]
+          }
+        },
+        {
+          "op": "oxyz_line",
+          "name": "d2",
+          "by": {
+            "form": "point_dir",
+            "base": [
+              0,
+              0,
+              1
+            ],
+            "dir": [
+              0,
+              1,
+              0
+            ]
+          }
+        }
+      ],
+      "queries": [
+        {
+          "kind": "relative_position",
+          "a": "d1",
+          "b": "d2"
+        }
+      ]
+    }
+  },
+  {
+    "text": "Trong không gian Oxyz, cho đường thẳng d đi qua điểm (0;0;0) có vectơ chỉ phương (0;0;1) và mặt phẳng (P): z = 0 (pháp tuyến (0;0;1)). Xét vị trí tương đối của đường thẳng d và mặt phẳng (P).",
+    "source": "synthetic",
+    "difficulty": "easy",
+    "kind": "relative_position",
+    "expected": [
+      "cắt nhau"
+    ],
+    "plan": {
+      "solidName": "figure",
+      "ops": [
+        {
+          "op": "oxyz_line",
+          "name": "d",
+          "by": {
+            "form": "point_dir",
+            "base": [
+              0,
+              0,
+              0
+            ],
+            "dir": [
+              0,
+              0,
+              1
+            ]
+          }
+        },
+        {
+          "op": "oxyz_plane",
+          "name": "P",
+          "by": {
+            "form": "coeffs",
+            "a": 0,
+            "b": 0,
+            "c": 1,
+            "d": 0
+          }
+        }
+      ],
+      "queries": [
+        {
+          "kind": "relative_position",
+          "a": "d",
+          "b": "P"
+        }
+      ]
+    }
+  },
+  {
+    "text": "Trong không gian Oxyz, cho đường thẳng d đi qua điểm (1;2;0) có vectơ chỉ phương (1;0;0) và mặt phẳng (P): z = 0 (pháp tuyến (0;0;1)). Xét vị trí tương đối của đường thẳng d và mặt phẳng (P).",
+    "source": "synthetic",
+    "difficulty": "medium",
+    "kind": "relative_position",
+    "expected": [
+      "đường nằm trên mặt"
+    ],
+    "plan": {
+      "solidName": "figure",
+      "ops": [
+        {
+          "op": "oxyz_line",
+          "name": "d",
+          "by": {
+            "form": "point_dir",
+            "base": [
+              1,
+              2,
+              0
+            ],
+            "dir": [
+              1,
+              0,
+              0
+            ]
+          }
+        },
+        {
+          "op": "oxyz_plane",
+          "name": "P",
+          "by": {
+            "form": "coeffs",
+            "a": 0,
+            "b": 0,
+            "c": 1,
+            "d": 0
+          }
+        }
+      ],
+      "queries": [
+        {
+          "kind": "relative_position",
+          "a": "d",
+          "b": "P"
+        }
+      ]
+    }
+  },
+  {
+    "text": "Trong không gian Oxyz, cho đường thẳng d đi qua điểm (0;0;5) có vectơ chỉ phương (1;1;0) và mặt phẳng (P): z = 0 (pháp tuyến (0;0;1)). Xét vị trí tương đối của đường thẳng d và mặt phẳng (P).",
+    "source": "synthetic",
+    "difficulty": "medium",
+    "kind": "relative_position",
+    "expected": [
+      "song song"
+    ],
+    "plan": {
+      "solidName": "figure",
+      "ops": [
+        {
+          "op": "oxyz_line",
+          "name": "d",
+          "by": {
+            "form": "point_dir",
+            "base": [
+              0,
+              0,
+              5
+            ],
+            "dir": [
+              1,
+              1,
+              0
+            ]
+          }
+        },
+        {
+          "op": "oxyz_plane",
+          "name": "P",
+          "by": {
+            "form": "coeffs",
+            "a": 0,
+            "b": 0,
+            "c": 1,
+            "d": 0
+          }
+        }
+      ],
+      "queries": [
+        {
+          "kind": "relative_position",
+          "a": "d",
+          "b": "P"
+        }
+      ]
+    }
+  }
+]

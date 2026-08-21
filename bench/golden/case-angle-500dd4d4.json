@@ -1,0 +1,55 @@
+{
+  "id": "case-angle-500dd4d4",
+  "source": "synthetic",
+  "difficulty": "medium",
+  "text": "Trong không gian Oxyz, cho đường thẳng d đi qua gốc tọa độ O có vectơ chỉ phương (√3;0;1) và mặt phẳng (P): z = 0. Tính góc giữa đường thẳng d và mặt phẳng (P).",
+  "plan": {
+    "solidName": "figure",
+    "ops": [
+      {
+        "op": "oxyz_line",
+        "name": "d",
+        "by": {
+          "form": "point_dir",
+          "base": [
+            0,
+            0,
+            0
+          ],
+          "dir": [
+            "sqrt(3)",
+            0,
+            1
+          ]
+        }
+      },
+      {
+        "op": "oxyz_plane",
+        "name": "P",
+        "by": {
+          "form": "coeffs",
+          "a": 0,
+          "b": 0,
+          "c": 1,
+          "d": 0
+        }
+      }
+    ],
+    "queries": [
+      {
+        "kind": "angle",
+        "a": "d",
+        "b": "P"
+      }
+    ]
+  },
+  "expect": {
+    "ok": true,
+    "answers": [
+      {
+        "kind": "angle",
+        "text": "30°"
+      }
+    ]
+  }
+}

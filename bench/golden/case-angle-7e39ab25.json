@@ -1,0 +1,49 @@
+{
+  "id": "case-angle-7e39ab25",
+  "source": "synthetic",
+  "difficulty": "medium",
+  "text": "Trong không gian Oxyz, cho hai mặt phẳng (α) đi qua điểm (0;0;0) có vectơ pháp tuyến (1;0;0) và (β) đi qua điểm (0;0;2) có vectơ pháp tuyến (1;√3;0). Tính góc giữa hai mặt phẳng (α) và (β).",
+  "plan": {
+    "solidName": "figure",
+    "ops": [
+      {
+        "op": "oxyz_plane",
+        "name": "alpha",
+        "by": {
+          "form": "coeffs",
+          "a": 1,
+          "b": 0,
+          "c": 0,
+          "d": 0
+        }
+      },
+      {
+        "op": "oxyz_plane",
+        "name": "beta",
+        "by": {
+          "form": "coeffs",
+          "a": 1,
+          "b": "sqrt(3)",
+          "c": 0,
+          "d": 0
+        }
+      }
+    ],
+    "queries": [
+      {
+        "kind": "angle",
+        "a": "alpha",
+        "b": "beta"
+      }
+    ]
+  },
+  "expect": {
+    "ok": true,
+    "answers": [
+      {
+        "kind": "angle",
+        "text": "60°"
+      }
+    ]
+  }
+}

@@ -1,0 +1,48 @@
+{
+  "id": "case-volume-8bce1d58",
+  "source": "synthetic",
+  "difficulty": "medium",
+  "text": "Cho hình trụ có bán kính đáy r = 3 và chiều cao h = 7. Tính thể tích khối trụ và diện tích xung quanh của hình trụ.",
+  "plan": {
+    "solidName": "X",
+    "ops": [
+      {
+        "op": "oxyz_point",
+        "name": "O",
+        "at": [
+          0,
+          0,
+          0
+        ]
+      }
+    ],
+    "queries": [
+      {
+        "kind": "volume",
+        "solid": "cylinder",
+        "r": 3,
+        "h": 7
+      },
+      {
+        "kind": "area",
+        "shape": "cylinder",
+        "part": "lateral",
+        "r": 3,
+        "h": 7
+      }
+    ]
+  },
+  "expect": {
+    "ok": true,
+    "answers": [
+      {
+        "kind": "volume",
+        "text": "63π"
+      },
+      {
+        "kind": "area",
+        "text": "42π"
+      }
+    ]
+  }
+}

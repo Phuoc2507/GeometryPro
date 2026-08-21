@@ -1,0 +1,49 @@
+{
+  "id": "case-slant-554ef0de",
+  "source": "synthetic",
+  "difficulty": "medium",
+  "text": "Cho hình nón cụt có bán kính hai đáy R = 7, r = 2 và chiều cao h = 12. Tính độ dài đường sinh và diện tích xung quanh của hình nón cụt.",
+  "plan": {
+    "solidName": "X",
+    "ops": [
+      {
+        "op": "oxyz_point",
+        "name": "O",
+        "at": [
+          0,
+          0,
+          0
+        ]
+      }
+    ],
+    "queries": [
+      {
+        "kind": "slant",
+        "R": 7,
+        "r": 2,
+        "h": 12
+      },
+      {
+        "kind": "area",
+        "shape": "cone_frustum",
+        "part": "lateral",
+        "R": 7,
+        "r": 2,
+        "h": 12
+      }
+    ]
+  },
+  "expect": {
+    "ok": true,
+    "answers": [
+      {
+        "kind": "slant",
+        "text": "13"
+      },
+      {
+        "kind": "area",
+        "text": "117π"
+      }
+    ]
+  }
+}

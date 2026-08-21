@@ -1,0 +1,55 @@
+{
+  "id": "case-relative-position-4b717569",
+  "source": "synthetic",
+  "difficulty": "easy",
+  "text": "Trong không gian Oxyz, cho đường thẳng d đi qua điểm (0;0;0) có vectơ chỉ phương (0;0;1) và mặt phẳng (P): z = 0 (pháp tuyến (0;0;1)). Xét vị trí tương đối của đường thẳng d và mặt phẳng (P).",
+  "plan": {
+    "solidName": "figure",
+    "ops": [
+      {
+        "op": "oxyz_line",
+        "name": "d",
+        "by": {
+          "form": "point_dir",
+          "base": [
+            0,
+            0,
+            0
+          ],
+          "dir": [
+            0,
+            0,
+            1
+          ]
+        }
+      },
+      {
+        "op": "oxyz_plane",
+        "name": "P",
+        "by": {
+          "form": "coeffs",
+          "a": 0,
+          "b": 0,
+          "c": 1,
+          "d": 0
+        }
+      }
+    ],
+    "queries": [
+      {
+        "kind": "relative_position",
+        "a": "d",
+        "b": "P"
+      }
+    ]
+  },
+  "expect": {
+    "ok": true,
+    "answers": [
+      {
+        "kind": "relative_position",
+        "text": "cắt nhau"
+      }
+    ]
+  }
+}

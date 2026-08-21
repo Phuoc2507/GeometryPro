@@ -1,0 +1,63 @@
+{
+  "id": "case-sphere-metric-1e46dbbf",
+  "source": "synthetic",
+  "difficulty": "medium",
+  "text": "Cho mặt cầu (S) tâm I(2; -1; 3) bán kính R = 5. Tìm cao độ z của điểm cao nhất và điểm thấp nhất trên mặt cầu, rồi tính diện tích mặt cầu.",
+  "plan": {
+    "solidName": "S",
+    "ops": [
+      {
+        "op": "oxyz_point",
+        "name": "I",
+        "at": [
+          2,
+          -1,
+          3
+        ]
+      },
+      {
+        "op": "oxyz_sphere",
+        "name": "S",
+        "by": {
+          "form": "center_radius",
+          "center": "I",
+          "radius": 5
+        }
+      }
+    ],
+    "queries": [
+      {
+        "kind": "sphere_metric",
+        "target": "S",
+        "what": "top_z"
+      },
+      {
+        "kind": "sphere_metric",
+        "target": "S",
+        "what": "bottom_z"
+      },
+      {
+        "kind": "area",
+        "shape": "sphere",
+        "target": "S"
+      }
+    ]
+  },
+  "expect": {
+    "ok": true,
+    "answers": [
+      {
+        "kind": "sphere_metric",
+        "text": "8"
+      },
+      {
+        "kind": "sphere_metric",
+        "text": "-2"
+      },
+      {
+        "kind": "area",
+        "text": "100π"
+      }
+    ]
+  }
+}

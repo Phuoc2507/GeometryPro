@@ -1,0 +1,51 @@
+{
+  "id": "case-point-coord-e6d2ec50",
+  "source": "synthetic",
+  "difficulty": "medium",
+  "text": "Trong không gian Oxyz, cho điểm A(3;-1;4) và điểm I(1;2;2). Tìm tung độ (tọa độ y) của điểm A' đối xứng với A qua điểm I.",
+  "plan": {
+    "solidName": "doi-xung-tam",
+    "ops": [
+      {
+        "op": "oxyz_point",
+        "name": "A",
+        "at": [
+          3,
+          -1,
+          4
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "I",
+        "at": [
+          1,
+          2,
+          2
+        ]
+      },
+      {
+        "op": "oxyz_reflect",
+        "name": "A2",
+        "point": "A",
+        "about": "I"
+      }
+    ],
+    "queries": [
+      {
+        "kind": "point_coord",
+        "target": "A2",
+        "axis": "y"
+      }
+    ]
+  },
+  "expect": {
+    "ok": true,
+    "answers": [
+      {
+        "kind": "point_coord",
+        "text": "5"
+      }
+    ]
+  }
+}

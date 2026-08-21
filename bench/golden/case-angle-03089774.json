@@ -1,0 +1,61 @@
+{
+  "id": "case-angle-03089774",
+  "source": "synthetic",
+  "difficulty": "easy",
+  "text": "Trong không gian Oxyz, cho đường thẳng a đi qua điểm A(0;0;0) với vectơ chỉ phương (1;0;0) và đường thẳng b đi qua điểm B(2;0;3) với vectơ chỉ phương (1;1;0). Tính góc giữa hai đường thẳng a và b.",
+  "plan": {
+    "solidName": "figure",
+    "ops": [
+      {
+        "op": "oxyz_line",
+        "name": "a",
+        "by": {
+          "form": "point_dir",
+          "base": [
+            0,
+            0,
+            0
+          ],
+          "dir": [
+            1,
+            0,
+            0
+          ]
+        }
+      },
+      {
+        "op": "oxyz_line",
+        "name": "b",
+        "by": {
+          "form": "point_dir",
+          "base": [
+            2,
+            0,
+            3
+          ],
+          "dir": [
+            1,
+            1,
+            0
+          ]
+        }
+      }
+    ],
+    "queries": [
+      {
+        "kind": "angle",
+        "a": "a",
+        "b": "b"
+      }
+    ]
+  },
+  "expect": {
+    "ok": true,
+    "answers": [
+      {
+        "kind": "angle",
+        "text": "45°"
+      }
+    ]
+  }
+}

@@ -1,0 +1,54 @@
+{
+  "id": "case-volume-1e4bc4e6",
+  "source": "synthetic",
+  "difficulty": "medium",
+  "text": "Cho khối cầu (S) có bán kính R = 4. Tính thể tích khối cầu và diện tích mặt cầu (S).",
+  "plan": {
+    "solidName": "S",
+    "ops": [
+      {
+        "op": "oxyz_point",
+        "name": "O",
+        "at": [
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_sphere",
+        "name": "S",
+        "by": {
+          "form": "center_radius",
+          "center": "O",
+          "radius": 4
+        }
+      }
+    ],
+    "queries": [
+      {
+        "kind": "volume",
+        "solid": "sphere",
+        "target": "S"
+      },
+      {
+        "kind": "area",
+        "shape": "sphere",
+        "target": "S"
+      }
+    ]
+  },
+  "expect": {
+    "ok": true,
+    "answers": [
+      {
+        "kind": "volume",
+        "text": "256π/3"
+      },
+      {
+        "kind": "area",
+        "text": "64π"
+      }
+    ]
+  }
+}

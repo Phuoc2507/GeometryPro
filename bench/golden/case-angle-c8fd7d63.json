@@ -1,0 +1,61 @@
+{
+  "id": "case-angle-c8fd7d63",
+  "source": "synthetic",
+  "difficulty": "easy",
+  "text": "Trong không gian Oxyz, cho đường thẳng d đi qua điểm P(1;2;3) có vectơ chỉ phương (1;0;0) và đường thẳng d' đi qua gốc tọa độ O có vectơ chỉ phương (0;1;1). Tính góc giữa hai đường thẳng d và d'.",
+  "plan": {
+    "solidName": "figure",
+    "ops": [
+      {
+        "op": "oxyz_line",
+        "name": "d",
+        "by": {
+          "form": "point_dir",
+          "base": [
+            1,
+            2,
+            3
+          ],
+          "dir": [
+            1,
+            0,
+            0
+          ]
+        }
+      },
+      {
+        "op": "oxyz_line",
+        "name": "e",
+        "by": {
+          "form": "point_dir",
+          "base": [
+            0,
+            0,
+            0
+          ],
+          "dir": [
+            0,
+            1,
+            1
+          ]
+        }
+      }
+    ],
+    "queries": [
+      {
+        "kind": "angle",
+        "a": "d",
+        "b": "e"
+      }
+    ]
+  },
+  "expect": {
+    "ok": true,
+    "answers": [
+      {
+        "kind": "angle",
+        "text": "90°"
+      }
+    ]
+  }
+}

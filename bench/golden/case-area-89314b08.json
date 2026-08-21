@@ -1,0 +1,50 @@
+{
+  "id": "case-area-89314b08",
+  "source": "synthetic",
+  "difficulty": "medium",
+  "text": "Cho hình nón cụt có bán kính hai đáy R = 8, r = 4 và chiều cao h = 3. Tính diện tích toàn phần và thể tích của khối nón cụt.",
+  "plan": {
+    "solidName": "X",
+    "ops": [
+      {
+        "op": "oxyz_point",
+        "name": "O",
+        "at": [
+          0,
+          0,
+          0
+        ]
+      }
+    ],
+    "queries": [
+      {
+        "kind": "area",
+        "shape": "cone_frustum",
+        "part": "total",
+        "R": 8,
+        "r": 4,
+        "h": 3
+      },
+      {
+        "kind": "volume",
+        "solid": "cone_frustum",
+        "R": 8,
+        "r": 4,
+        "h": 3
+      }
+    ]
+  },
+  "expect": {
+    "ok": true,
+    "answers": [
+      {
+        "kind": "area",
+        "text": "140π"
+      },
+      {
+        "kind": "volume",
+        "text": "112π"
+      }
+    ]
+  }
+}

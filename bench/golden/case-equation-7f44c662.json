@@ -1,0 +1,75 @@
+{
+  "id": "case-equation-7f44c662",
+  "source": "synthetic",
+  "difficulty": "medium",
+  "text": "Trong không gian Oxyz, cho tam giác ABC với A(0;0;0), B(3;0;0), C(0;3;0). Gọi G là trọng tâm tam giác ABC. Viết phương trình mặt phẳng đi qua G và nhận n=(1;1;1) làm vectơ pháp tuyến.",
+  "plan": {
+    "solidName": "qua-G",
+    "ops": [
+      {
+        "op": "oxyz_point",
+        "name": "A",
+        "at": [
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "B",
+        "at": [
+          3,
+          0,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "C",
+        "at": [
+          0,
+          3,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_centroid",
+        "name": "G",
+        "of": [
+          "A",
+          "B",
+          "C"
+        ]
+      },
+      {
+        "op": "oxyz_plane",
+        "name": "P",
+        "by": {
+          "form": "point_normal",
+          "point": "G",
+          "normal": [
+            1,
+            1,
+            1
+          ]
+        }
+      }
+    ],
+    "queries": [
+      {
+        "kind": "equation",
+        "target": "P"
+      }
+    ]
+  },
+  "expect": {
+    "ok": true,
+    "answers": [
+      {
+        "kind": "equation",
+        "text": "x + y + z - 2 = 0"
+      }
+    ]
+  }
+}
