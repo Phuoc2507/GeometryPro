@@ -51,7 +51,7 @@ describe('credits.checkAndConsume — charge decision', () => {
   it('blocks a feature the plan cannot use (no charge)', async () => {
     mocks.ruleFor.mockReturnValue({ mode: 'blocked' });
     const { checkAndConsume } = await loadCredits();
-    const r = await checkAndConsume('u1', 'draw', 'draw_advance');
+    const r = await checkAndConsume('u1', 'draw', 'draw_detailed');
     expect(r).toMatchObject({ ok: false, reason: 'blocked', cost: 0 });
     expect(mocks.rpc).not.toHaveBeenCalled();
   });

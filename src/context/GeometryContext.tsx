@@ -439,7 +439,6 @@ export interface GeometryContextType {
   startDemo: (type?: 'pyramid' | 'satellite' | 'lod4' | GeometryData) => void;
   analyzeImage: (imageBase64: string) => Promise<void>;
   analyzeText: (prompt: string, mode?: DrawMode) => Promise<void>;
-  analyzeAdvance: (prompt: string, imageBase64?: string) => Promise<void>;
   setStep: (i: number) => void;
   setAdvanceT: (t: number) => void;
   queueAnalyzeText: (prompt: string, mode?: DrawMode, tags?: string[], detailLevel?: import('@/types/geometry').DetailLevel, offset?: [number, number, number]) => void;
@@ -777,132 +776,6 @@ export function GeometryProvider({ children }: { children: React.ReactNode }) {
     }
   }, [finishWithGeometry, openAuthModal, openUpgradeModal]);
 
-  const analyzeAdvance = useCallback(async (prompt: string, imageBase64?: string) => {
-    // CHẠY NỀN như Vẽ nhanh/Vẽ kỹ (queueAnalyzeText): KHÔNG bật isScanning/scan-session nữa. Chỉ đẩy 1
-    // item hàng đợi 'processing' — overlay hiện qua đường isViewingProcessing của ScanningOverlay
-    // (activeQueueId do QUEUE_ADD tự trỏ tới item đang xử lý). Nút "Vẽ hình mới" trên overlay khi đó chỉ
-    // ẨN overlay (clearActiveQueue) chứ KHÔNG huỷ việc giải. Nhờ vậy Advance đồng nhất 3 điểm với 2 chế
-    // độ kia: (1) hiện đề ở left panel lúc giải, (2) không chặn thao tác canvas, (3) chạy song song nhiều
-    // bài. Kết quả: done → toast + lưu Recents (item done bị lọc khỏi "Đang xử lý" y như Vẽ nhanh/Vẽ kỹ).
-    const streamSeed = imageBase64 ? '📷 Đang đọc đề từ ảnh…\n' : `📝 ${prompt}\n`;
-    const queueId = `q_${Date.now()}_${++queueIdCounter}`;
-    dispatch({
-      type: 'QUEUE_ADD',
-      item: {
-        id: queueId,
-        prompt: imageBase64 ? '📷 Đang đọc đề từ ảnh…' : prompt,
-        mode: 'advance',
-        status: 'processing',
-        progress: 0,
-        statusText: SCAN_STATUSES[0],
-        streamingText: streamSeed,
-        geometry: null,
-        createdAt: Date.now(),
-      },
-    });
-    // Advance gọi 1 lần (KHÔNG stream) ~30-40s → mô phỏng progress feed thẳng vào item để overlay không
-    // đứng hình. Interval dọn ở finally (mỗi lượt có interval + queueId riêng nên chạy song song vô hại).
-    let progress = 0;
-    let statusIndex = 0;
-    const totalStatuses = SCAN_STATUSES.length;
-    const progressInterval = setInterval(() => {
-      // Advance chậm hơn vẽ thường (×0.4) cho khớp thời lượng thực (nhiều câu + lời giải).
-      const increment = (progress < 30 ? 5 : progress < 60 ? 3 : progress < 85 ? 1 : 0.5) * 0.4;
-      progress = Math.min(progress + increment, 95);
-      if (progress < 15) statusIndex = 0;
-      else if (progress < 30) statusIndex = 1;
-      else if (progress < 50) statusIndex = 2;
-      else if (progress < 75) statusIndex = 3;
-      else if (progress < 90) statusIndex = 4;
-      else statusIndex = 5;
-      const status = SCAN_STATUSES[Math.min(statusIndex, totalStatuses - 1)];
-      dispatch({ type: 'QUEUE_UPDATE', id: queueId, updates: { progress, statusText: status } });
-    }, 500);
-    // Chỉ đưa kết quả LÊN CANVAS khi người dùng đang xem chính item này (activeQueueId===queueId) hoặc
-    // canvas đang trống (idle) — không giật hình nếu user đã chuyển sang bài khác. (Cùng tinh thần "chỉ
-    // auto-load khi idle" của Vẽ nhanh/Vẽ kỹ, nới thêm "đang xem item này" cho hợp trực giác.)
-    const maybeShow = (loader: () => void) => {
-      const st = stateRef.current;
-      if (st.activeQueueId === queueId || (!st.geometry && !st.isScanning)) {
-        loader();
-        dispatch({ type: 'QUEUE_SET_ACTIVE', id: queueId });
-        dispatch({ type: 'START_BUILDING' });
-        setTimeout(() => dispatch({ type: 'FINISH_BUILDING' }), 1000);
-      }
-    };
-    try {
-      const { data, error } = await invokeLocalApi('/api/analyze-advance', imageBase64 ? { imageBase64, prompt: prompt || undefined } : { prompt });
-      if (error) throw new Error(error.message || String(error));
-      if (data?.mode === 'advance' && data.scene) {
-        // LƯU vào lịch sử để xem lại. Nhúng cả cảnh vào geometry_data ⇒ mở lại khôi phục nguyên stepper +
-        // lời giải (xem loadGeometry). Chỉ nhúng scene MỘT lần (không spread base ra top-level) — khi mở
-        // lại loadGeometry dùng advanceScene.base; base ở top-level là thừa (gấp đôi cỡ).
-        const label = (prompt && prompt.trim()) || data.scene.base?.name || '📷 Đề Advance (từ ảnh)';
-        const geometryForHistory: GeometryData = {
-          name: data.scene.base?.name || label,
-          points: [],
-          lines: [],
-          advanceScene: data.scene,
-          drawMode: 'advance',
-        };
-        const historyId = await addToHistory(geometryForHistory, label);
-        if (historyId) {
-          const url = new URL(window.location.href);
-          url.searchParams.set('id', historyId);
-          window.history.replaceState({}, '', url.toString());
-        }
-        // Đánh dấu item done (lưu cả scene vào geometry) — mirror queueAnalyzeText. Item done bị lọc khỏi
-        // "Đang xử lý" nên card tự biến mất, kết quả sống ở canvas (nếu maybeShow) + Recents.
-        dispatch({
-          type: 'QUEUE_UPDATE',
-          id: queueId,
-          updates: { status: 'done', progress: 100, statusText: 'Hoàn thành!', geometry: geometryForHistory, completedAt: Date.now() },
-        });
-        refreshProfile?.();   // Advance tốn credit (server đã trừ) → cập nhật số dư hiển thị
-        toast({ title: '✅ Giải xong!', description: `${geometryForHistory.name} (Advance) — Nhấn để xem`, duration: 8000 });
-        maybeShow(() => dispatch({ type: 'SET_ADVANCE_SCENE', scene: data.scene }));
-      } else if (data?.revUnsupported) {
-        // Đề tròn xoay KHÔNG dựng được ⇒ KHÔNG vẽ hình lạ; báo thẳng, giữ nguyên canvas cũ. Server đã hoàn
-        // TOÀN BỘ credit. Đánh dấu item 'error' (bị lọc khỏi "Đang xử lý" như lỗi Vẽ nhanh/Vẽ kỹ) + toast.
-        // `imageReadFailed` = đọc ẢNH hỏng (không chắc là đề tròn xoay) → tiêu đề nói về đọc ảnh cho đúng.
-        const msg = data.error || 'Bạn thử gõ lại đề bằng chữ, hoặc chụp rõ hơn nhé.';
-        dispatch({ type: 'QUEUE_UPDATE', id: queueId, updates: { status: 'error', progress: 0, statusText: msg, error: msg } });
-        toast({
-          title: data.imageReadFailed ? 'Chưa đọc được đề trong ảnh' : 'Chưa vẽ được đề tròn xoay này',
-          description: msg,
-        });
-        refreshProfile?.();
-      } else if (data?.geometry) {
-        // Nhánh tụt-hạng vẫn ra 1 hình → lưu lịch sử như Vẽ kỹ để xem lại (nhãn "Vẽ kỹ" cho đúng mức server tính).
-        const label = (prompt && prompt.trim()) || data.geometry.name || '📷 Đề (từ ảnh)';
-        const geo: GeometryData = { ...data.geometry, drawMode: 'detailed' };
-        const historyId = await addToHistory(geo, label);
-        if (historyId) {
-          const url = new URL(window.location.href);
-          url.searchParams.set('id', historyId);
-          window.history.replaceState({}, '', url.toString());
-        }
-        dispatch({
-          type: 'QUEUE_UPDATE',
-          id: queueId,
-          updates: { status: 'done', progress: 100, statusText: 'Hoàn thành!', geometry: geo, completedAt: Date.now() },
-        });
-        refreshProfile?.();   // nhánh tụt-hạng vẫn tốn credit (đã hoàn về mức Vẽ kỹ ở server)
-        toast({ title: '✅ Vẽ xong!', description: `${geo.name || 'Hình'} (Vẽ kỹ) — Nhấn để xem`, duration: 8000 });
-        maybeShow(() => dispatch({ type: 'SET_GEOMETRY', geometry: geo }));
-      } else {
-        dispatch({ type: 'QUEUE_UPDATE', id: queueId, updates: { status: 'error', progress: 0, statusText: 'Chưa dựng được hình', error: 'Chưa dựng được hình cho đề này' } });
-        toast({ title: 'Chưa dựng được hình cho đề này', variant: 'destructive' });
-      }
-    } catch (e) {
-      const msg = String((e as Error).message);
-      dispatch({ type: 'QUEUE_UPDATE', id: queueId, updates: { status: 'error', progress: 0, statusText: msg || 'Lỗi Advance', error: msg || 'Lỗi Advance' } });
-      toast({ title: 'Lỗi Advance', description: msg, variant: 'destructive' });
-    } finally {
-      clearInterval(progressInterval);
-    }
-  }, [refreshProfile, addToHistory]);
-
   const queueAnalyzeText = useCallback((prompt: string, mode: DrawMode = 'detailed') => {
     const id = `q_${Date.now()}_${++queueIdCounter}`;
     const modeLabels: Record<string, string> = { quick: 'Nhanh', detailed: 'Kỹ', advance: 'Advance' };
@@ -954,7 +827,7 @@ export function GeometryProvider({ children }: { children: React.ReactNode }) {
         }
 
         // Vẽ kỹ định tuyến sang Nâng cao (vật thật tròn xoay/thiết diện/thể tích): server trả scene advance.
-        // Xử như analyzeAdvance — nhúng scene vào geometry lịch sử (mở lại khôi phục stepper), SET_ADVANCE_SCENE.
+        // Nhúng scene vào geometry lịch sử (mở lại khôi phục stepper), SET_ADVANCE_SCENE.
         if (data?.mode === 'advance' && data.scene) {
           const label = (prompt && prompt.trim()) || data.scene.base?.name || 'Vật thể nâng cao';
           const geometryForHistory: GeometryData = {
@@ -1481,7 +1354,7 @@ export function GeometryProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <GeometryContext.Provider value={{
-      state, startDemo, analyzeImage, analyzeText, analyzeAdvance, setStep, setAdvanceT, queueAnalyzeText, queueAnalyzeImage,
+      state, startDemo, analyzeImage, analyzeText, setStep, setAdvanceT, queueAnalyzeText, queueAnalyzeImage,
       modifyGeometry, loadGeometry, clearGeometry, stopScanning, viewQueueItem, removeQueueItem, clearActiveQueue,
       updateDynamicPoint, addPoint, addLine, addMidpoint, addPlane, addPlaneFromEquation, removeElement,
       updatePoint, setManualMode, setManualTool, setVideoMode, toggleVideoMode, setSelectedIds, setAutoRotate, togglePoints, toggleAutoColor, toggleCoordinateGrid, toggleRecenterToSphere, toggleRecenterToBase,

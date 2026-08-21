@@ -1,6 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
 import { assembleAdvance, looksLikeSection } from '../../analyze-advance.js'; // export named tu route file
-import { CREDIT_COST } from '../entitlements.js';
 
 const geo = { name: 'g', points: [{ id: 'A' }, { id: 'B' }], lines: [], timeline: { duration: 5, tracks: [{}] } };
 
@@ -131,13 +130,3 @@ describe('assembleAdvance — section-poly (Đợt 3)', () => {
   });
 });
 
-// Step 1: phí credit cho Advance. CREDIT_COST khai ở entitlements.js (credits.js dùng lại
-// qua creditCostFor), nên test khẳng định trực tiếp trên nguồn khai báo đó.
-describe('credit draw_advance', () => {
-  it('draw_advance cao hơn draw_detailed', () => {
-    expect(CREDIT_COST.draw_advance).toBeGreaterThan(CREDIT_COST.draw_detailed ?? 2);
-  });
-  it('draw_advance = 30 (đơn vị credit v2 ×10)', () => {
-    expect(CREDIT_COST.draw_advance).toBe(30);
-  });
-});
