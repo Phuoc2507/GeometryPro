@@ -97,6 +97,13 @@ Pipeline: spec (3 agent) → phản biện thiết kế (2 agent) → sửa spec
   Đổi mục tiêu giờ: code v0 + phản biện code + tích hợp xong trước ~01:00Z
   (8g sáng VN).
 
+- **D14 · [NGƯỜI DÙNG PHÁN, sáng 22/08] molarVolume default = 24,79 L/mol** —
+  xác nhận trực tiếp, đóng câu hỏi treo ở D4. Engine vẫn hỗ trợ cả 22,4 khi đề
+  ghi "đktc".
+- **D15 · Sáng 22/08, trong lúc 2 agent thi công chạy:** giao 1 agent phản biện
+  3 spec chương mới (động lực học, dao động, mạch điện) + 1 agent viết lại spec
+  Hóa-v1 bị mất trong sự cố. Tổng 4 agent — đúng trần an toàn D12.
+
 ## Quyết định chờ ghi tiếp (sẽ bổ sung trong đêm)
 
 - Phân xử 5 điểm lệch giữa spec kiến trúc và spec Lý (theo khuyến nghị phản biện).
