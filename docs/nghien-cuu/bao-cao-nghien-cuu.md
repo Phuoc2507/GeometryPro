@@ -209,7 +209,7 @@ Dự án đã có một **bộ đề mốc (golden)** và một **trình chạy 
 *(Mục tiêu: mở rộng lên hàng trăm ca, có gán nhãn dạng bài & độ khó.)*
 
 ### 5.2. Bộ dữ liệu chuẩn tiếng Việt (sẽ mở rộng)
-- **Nguồn:** đề trong SGK và đề thi THPT (ghi rõ nguồn, tôn trọng bản quyền).
+- **Nguồn:** đề trong SGK và đề thi THPT (ghi rõ nguồn, tôn trọng bản quyền). *(Quy trình nhập đề thật + template cho học sinh: `docs/nghien-cuu/huong-dan-nhap-de-that.md`.)*
 - **Gán nhãn:** mỗi bài gồm đề gốc, *plan* JSON, đáp số đúng (đã **xác minh thủ công**), dạng bài, độ khó, và nhãn "giải được / từ chối".
 - **Quy mô mục tiêu:** ⟦CHỜ CHỐT⟧ ~150–300 bài, đa dạng dạng (khoảng cách, góc, thể tích, thiết diện, tương giao, tròn xoay…).
 - **Công bố:** kèm tài liệu mô tả để tái sử dụng.

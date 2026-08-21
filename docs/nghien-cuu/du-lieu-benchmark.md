@@ -70,6 +70,8 @@ npm run bench:gate                        # chốt: cả rổ phải PASS
 
 ## 6. Việc tiếp theo
 
+> **Nhập đề THẬT:** quy trình từng bước cho học sinh (ghi nguồn, tự giải, đối chiếu, promote) ở **`huong-dan-nhap-de-that.md`**; template worklist sẵn ở `bench/worklists/REAL-de-that-template.json` (có mục chạy thử offline).
+
 - (Người) Gom đề theo các dạng còn thiếu ở §5, tự xác minh đáp, đưa vào worklist.
 - (Có API key) Chạy `--llm` để LLM dịch hàng loạt; người chỉ soát rổ ✅ và ⚠️.
 - (Máy) Khi rổ đủ lớn: chia **train/test**, chạy đánh giá + tối ưu prompt trên tập train, báo cáo accuracy trên tập test.
