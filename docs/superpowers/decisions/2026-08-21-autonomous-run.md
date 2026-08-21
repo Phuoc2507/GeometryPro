@@ -81,6 +81,22 @@ Pipeline: spec (3 agent) → phản biện thiết kế (2 agent) → sửa spec
   phân, hữu cơ 12 nặng DB) xếp đợt 4 CÓ CHỦ ĐÍCH — 6 spec đang bay đã chạm trần
   băng thông phản biện; thứ tự code sau v0 quyết sáng mai cùng người dùng.
 
+- **D12 · SỰ CỐ 17:45Z: chạm trần quota phiên khi chạy 8 agent song song — cả 8
+  bị ngắt; phiên đứng im tới 22:23Z (trần reset 18:50Z nhưng không có wake).**
+  Thiệt hại & cứu được: (a) 3 spec đợt 2/3 KỊP VIẾT XONG (động lực học, dao động,
+  mạch điện — commit ngay); (b) 3 spec chết trước khi viết (khí+nhiệt, hữu cơ,
+  Hóa-v1 mở rộng) → làm lại sáng mai; (c) agent sửa docs Lý/kiến trúc chết GIỮA
+  CHỪNG — 3 file mang sửa đổi dở (commit nguyên trạng, đánh dấu "phần 1");
+  (d) agent sửa docs Hóa chết TRƯỚC khi sửa — 2 file Hóa còn nguyên bản gốc.
+  Bài học ghi nhớ: không quá 4-5 agent song song; luôn đặt nhịp wake KẾ TIẾP
+  trước khi giao đợt agent mới.
+- **D13 · Phương án gỡ: KHÔNG chờ sửa xong docs mới code.** Agent thi công nhận
+  bộ nguồn: plan TDD (không bị sửa dở) + spec gốc + BÁO CÁO PHẢN BIỆN với quy
+  tắc "review đè spec khi vênh nhau" + bộ đề vàng. Sửa docs hoàn chỉnh xếp sau
+  code hoặc sáng mai — docs là bản đồ, code+test mới là sản phẩm đêm nay.
+  Đổi mục tiêu giờ: code v0 + phản biện code + tích hợp xong trước ~01:00Z
+  (8g sáng VN).
+
 ## Quyết định chờ ghi tiếp (sẽ bổ sung trong đêm)
 
 - Phân xử 5 điểm lệch giữa spec kiến trúc và spec Lý (theo khuyến nghị phản biện).

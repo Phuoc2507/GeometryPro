@@ -119,11 +119,44 @@ Theo precedent MERGE-BRIEF (thêm route MỚI `analyze-geometry-v2` thay vì s�
 
 `subject ∈ 'geometry' | 'physics' | 'chem'`. `subject: 'geometry'` (hoặc classifier trả geometry) ⇒ route ủy quyền **nguyên vẹn** cho `solveProblem`/`solvePlan` của `kernel-bridge/solveWithKernel.js` — cùng code path với v2, nên hành vi Toán trùng bit với hiện tại.
 
+**Tầng quota/billing — BẮT BUỘC cho MỌI nhánh LLM (F1, finding CAO của phản biện phiên 1).** Route mới phải bọc y hệt `api/analyze-geometry-v2.js` (pattern trích từ chính file đó):
+
+```js
+// api/analyze-problem.js — khung quota SAO Y v2 (analyze-geometry-v2.js:31-62)
+const access = await resolveAiAccess(req, res, {
+  feature: 'draw', action: 'draw_quick',            // QUYẾT ĐỊNH: physics/chem dùng CÙNG feature/action với v2 (xem dưới)
+  allowGuest: true, guestFeature: 'draw_quick', guestMax: 2,
+});
+if (!access.ok) return accessError(res, access);
+const creditCharge = access.actorType === 'account' && access.gate.mode === 'credit'
+  ? { cost: access.gate.cost, reqId: crypto.randomUUID() } : null;
+try {
+  // classifier (nếu thiếu subject) + translator của môn — TẤT CẢ nằm SAU resolveAiAccess
+  return res.json(withQuota({ mode: 'kernel', subject, ...out }, access));
+} catch (error) {
+  await reportServerError(error, { route: 'analyze-problem' });
+  await refundAiUsage(access);                                            // hoàn quota free/khách khi lỗi
+  if (creditCharge && access.userId) await refund(access.userId, creditCharge.cost, creditCharge.reqId);
+  await logBrokenProblem({ endpoint: 'analyze-problem', userId: access.userId, mode: 'kernel',
+    prompt, errorMessage, errorStage: 'exception', durationMs });
+  return res.status(500).json({ error: /* … */ });
+}
+// export default withSentry(handler, 'analyze-problem');
+```
+
+Quy tắc chốt:
+
+- **Feature/action:** physics và chem dùng **cùng `feature: 'draw'`, `action: 'draw_quick'` như v2** — một bể quota chung cho mọi môn (QUYẾT ĐỊNH của spec này; muốn tách bể theo môn sau chỉ là đổi tham số `resolveAiAccess`, không đổi kiến trúc). Guest giữ nguyên `allowGuest: true, guestFeature: 'draw_quick', guestMax: 2`.
+- **Classifier là lượt gọi PHỤ, không tính phí riêng:** `resolveAiAccess` chạy TRƯỚC classifier; classifier + translator của môn nằm TRONG cùng một lượt đã trừ quota của request. Tuyệt đối không để nhánh nào gọi LLM trước khi qua cổng quota.
+- **Mọi nhánh LLM** (kể cả nhánh geometry ủy quyền `solveProblem`) đều nằm trong khung try/catch trên: lỗi ⇒ `refundAiUsage` + hoàn credit + `logBrokenProblem`.
+- **Dry-run `{plan}`** không gọi LLM ⇒ xử lý TRƯỚC tầng quota, dev-only 404 ở production — sao y v2 (analyze-geometry-v2.js:15-22).
+- **Nghiệm thu P2** (rollout) phải có ca "vượt quota bị chặn giống v2": hết lượt ⇒ `accessError` trả về TRƯỚC khi bất kỳ LLM nào được gọi.
+
 ### 4.2 Classifier môn (khi thiếu `subject`)
 
 Hai tầng, rẻ trước đắt sau:
 
-1. **Prefilter từ khoá tất định** (0 token): hit các marker gần-như-chắc — `mol|gam.*dung dịch|phản ứng|kết tủa|dãy hoạt động` → chem; `gia tốc|m/s²|rơi tự do|ném ngang|ném xiên|chuyển động thẳng đều` → physics; `hình chóp|Oxyz|mặt phẳng|tứ diện` → geometry. Chỉ chốt khi **duy nhất một** môn hit.
+1. **Prefilter từ khoá tất định** (0 token): hit các marker gần-như-chắc — `mol|gam.*dung dịch|phản ứng|kết tủa|dãy hoạt động` → chem; `gia tốc|m/s²|m/s2|m/s^2|rơi tự do|ném ngang|ném xiên|chuyển động thẳng đều` → physics (F17: nhận cả ba biến thể gõ của "m/s²" — `m/s²`, `m/s2`, `m/s^2`; nhớ escape `^` khi viết regex); `hình chóp|Oxyz|mặt phẳng|tứ diện` → geometry. Chỉ chốt khi **duy nhất một** môn hit.
 2. **Classifier LLM rẻ** (mơ hồ hoặc 0/2+ môn hit): cùng hạ tầng Vilao với translator (`VILAO_TRANSLATOR_MODEL`, mặc định `ram/gemini-3.5-flash-low`), prompt few-shot trả đúng một token `geometry|physics|chem`, timeout ngắn; lỗi/timeout ⇒ mặc định `geometry` (luồng trưởng thành nhất).
 
 **Ca ranh giới đã biết (bắt buộc có trong few-shot):** bài "máy bay & radar" (Câu 3 demo) *có chuyển động* nhưng hiện do **pack Toán** giải trọn bằng `mover` + optimize — classifier phải trả `geometry` cho lớp bài "hình không gian có vật chuyển động, hỏi khoảng cách/góc"; `physics` dành cho bài động học thuần (hỏi v, a, t, quãng đường, tầm xa theo công thức chuyển động).
@@ -179,6 +212,7 @@ Quy ước:
 - **`answers[].unit`**: field cộng thêm, tùy chọn — nhánh Toán không phát (giữ nguyên shape `QueryAnswer` + cơ chế `answerScale`/`answerUnit` của analysis, runAnalysis.ts:79-83). Engine Lý/Hóa **tự tính và tự ghi đơn vị** — LLM không được nhúng đơn vị vào số.
 - **BigInt-safe**: mọi nhánh đi qua `jsonSafe` như `solveWithKernel.js:60-69` (đáp exact mang BigInt sẽ giết `res.json`).
 - **`tier`**: nhánh Toán dùng `classifyTier` y nguyên. Lý/Hóa v0: mapping tối giản cùng ngữ nghĩa — level 1 ⟺ engine giải + answers hữu hạn + 0 violation; level 3 kèm `reason` (violation/error/abstain). Mở rộng `problemTypeOf` cho môn mới bằng bảng label riêng trong bridge của pack (không sửa `classifyTier.js`).
+- **Đối chiếu PhysicsResult ↔ contract chung (F7, chốt phản biện phiên 1):** pack Lý trả field `geometry` (spec pack §9) — **bridge P2 alias `scene = result.geometry`** khi dựng response (pack không đổi tên); `trace` của contract chung do bridge **tổng hợp từ `checks[].detail` + `errors`** của PhysicsResult (pack v0 không có field trace riêng); các field riêng `checks`/`charts`/`meta` của nhánh physics là **mở rộng HỢP LỆ** của contract — consumer chung chỉ được dựa vào `{ok, answers, violations, errors, trace, scene}`, field thêm bỏ qua được.
 
 ---
 
@@ -194,7 +228,7 @@ Chi tiết kỹ thuật BẮT BUỘC tuân thủ (đọc từ code renderer, src
 
 - Ưu tiên phát `params.equations: { x, y, z }` (object) thay vì chuỗi `params.path` — parser path split theo dấu `','` nên biểu thức chứa phẩy sẽ gãy; `equations` không qua bước split.
 - Biểu thức được eval bằng `new Function('t', 'return ' + expr)` ⇒ phải là **JS thuần**: dùng `t*t`, KHÔNG dùng `t^2` (renderer chỉ replace chuỗi `'t^2'` **một lần duy nhất** — `String.replace` với string arg; `^` sót lại là XOR của JS, sai lặng lẽ). Engine emit sẵn `5*t*t`.
-- `t` trong track là **GIÂY thật** trên `[start, end]` (bằng chứng: mover, Câu 3 demo). Physics dùng thời gian vật lý thật của bài ⇒ animation đúng nhịp tự nhiên.
+- `t` trong track là **giây PLAYBACK kể từ `track.start`** (dt mà AnimatedAgent cộng dồn) — KHÔNG phải "giây thật trên [start, end]" (F4 sửa mô tả cũ). Engine nhân sẵn hệ số timeScale k vào path (bậc 1 nhân k, bậc 2 nhân k²) theo quy tắc playback của spec pack Lý §8.2 (giữ nguyên sau phản biện — D2); với bài ném/rơi 3–15 s thì k=1 và playback trùng giây thật.
 - Trục **z của geo3d là trục đứng** (renderer map geo3d (x,y,z) → threejs (x,z,y)) ⇒ độ cao ném xiên nằm ở z.
 - `params.landing_point: [x,y,z]` giữ agent đứng yên tại điểm rơi sau khi track kết thúc — physics nên phát để quả bóng không "đơ giữa trời".
 - Quỹ đạo tĩnh (đường parabol mờ dưới animation): phát `curves: [{ type: 'expr', samples: [...] }]` — `Curve3D.samples` do engine tính sẵn, frontend vẽ Line không cần parser (src/types/geometry.ts:252).
@@ -222,34 +256,14 @@ Ví dụ scene ném xiên (rút gọn) — engine tính mọi hệ số:
 
 Nhánh Toán tiếp tục dùng `entityTableToGeometryData` / `buildAnalysisFigure` như hiện tại. Spec này không thêm yêu cầu nào cho nó.
 
-### 6.3 ChemScene — extension point (khung, chi tiết để spec pack Hóa)
+### 6.3 ChemScene — POINTER sang spec pack Hóa (chốt F5/C9)
 
-Field mới **tùy chọn** trên GeometryData: `chemScene?: ChemScene` (thêm vào `src/types/geometry.ts` ở phase P4 — thêm optional field là thay đổi cộng thêm, không phá consumer nào). Scene Hóa vẫn LÀ một GeometryData hợp lệ: `{ name, points: [], lines: [], chemScene }` — canvas thấy `chemScene` thì render ChemSceneView thay vì cảnh 3D.
+> **SUPERSEDED (phản biện phiên 1, 21/08):** khung ChemScene vessels/precipitate/gasBubbles từng phác ở đây **hết hiệu lực**. Nguồn sự thật duy nhất về hình dạng ChemScene là **spec pack Hóa §11** (`docs/superpowers/specs/2026-08-21-chem-pack-design.md`) — bản **events-based** (`{vessels, events[], captions[]}`): mỗi vessel có `contents` (formula/state/color/colorName), chuỗi `events` (pour/add_solid/heat/color_change/precipitate/gas_bubbles/dissolve) theo mốc `t` logic, `captions` thuyết minh tiếng Việt. Render v0 = **2D overlay, không r3f** (C9).
 
-Khung v0 (đủ cho vô cơ THPT; mọi chuỗi màu/hiện tượng lấy từ DB phản ứng §8.3, không do LLM viết):
+Phần còn nguyên hiệu lực ở tầng kiến trúc:
 
-```ts
-interface ChemScene {
-  vessels: ChemVessel[];               // mỗi bình một cột cảnh
-  caption?: string;                    // chú thích tổng ("Fe tan dần, sủi bọt khí không màu")
-}
-interface ChemVessel {
-  id: string;
-  kind: 'test_tube' | 'beaker' | 'flask' | 'gas_jar';
-  label?: string;                      // "Ống nghiệm 1"
-  contents: Array<{                    // các lớp trong bình, vẽ từ dưới lên
-    species: string;                   // "CuSO4"
-    state: 'dung_dich' | 'ran' | 'long';
-    color: string;                     // hex — tra từ DB màu chất (vd Cu²⁺ "#4FA3D1")
-    levelPct: number;                  // 0–100, mức chiếm bình
-  }>;
-  precipitate?: { species: string; color: string; amountHint?: 'it' | 'nhieu' } | null;  // kết tủa lắng đáy
-  gasBubbles?: { species: string; color: string; rate: 'cham' | 'vua' | 'manh' } | null; // bọt khí bay lên
-  labels: string[];                    // dòng hiện tượng gắn cạnh bình (từ DB, đã kiểm)
-}
-```
-
-Chi tiết render (2D overlay hay mesh 3D trong r3f, animation sủi bọt…) do **spec riêng của pack Hóa** chốt ở P4 — spec này chỉ đóng băng *hình dạng JSON* để engine P3 build sẵn scene mà không đợi frontend. (Spec pack Hóa chi tiết đang soạn song song: `docs/superpowers/specs/2026-08-21-chem-pack-design.md` — khi hai spec lệch nhau về khung ChemScene, phiên phản biện chốt một bản.)
+- Field mới **tùy chọn** trên GeometryData: `chemScene?: ChemScene` (thêm vào `src/types/geometry.ts` ở phase P4 — optional field là thay đổi cộng thêm, không phá consumer nào). Scene Hóa vẫn LÀ một GeometryData hợp lệ: `{ name, points: [], lines: [], chemScene }` — canvas thấy `chemScene` thì render ChemSceneView thay vì cảnh 3D.
+- Mọi chuỗi màu/hiện tượng trong ChemScene lấy từ DB phản ứng + bảng màu của pack Hóa (chem spec §8/§12), không do LLM viết.
 
 ---
 
@@ -285,11 +299,13 @@ Chuyển động **chất điểm, gia tốc không đổi, closed-form**: thẳ
 
 Queries v0: `state_at` (vị trí/vận tốc/tốc độ tại t) · `flight_time` · `range` (tầm xa) · `max_height` · `time_when` (khi nào cao độ/quãng đường/khoảng cách đạt giá trị) · `meet` (2 vật gặp nhau: thời điểm + vị trí) · `distance_between_at` (khoảng cách 2 vật tại t).
 
+> **Ghi chú sau phản biện phiên 1:** khối JSON + danh mục query trên là PHÁC THẢO minh hoạ ở tầng kiến trúc. Bản CHUẨN để thi công là **spec pack Lý §5–§6** (`2026-08-21-physics-pack-design.md`): ops phẳng `mover1d/free_fall/projectile` với `g` bắt buộc theo op, query tách-một-số (`position_at`, `time_to_ground`, `meet_time`/`meet_position`…, tổng 12 query), **unit per-quantity `v0Unit`/`xUnit`/`tUnit` — engine đổi exact** (F2/D1), thêm `time_when_velocity`/`position_when_velocity` (F3) và `angleDeg` âm cho ném thẳng đứng xuống (F11). Đối chiếu hai bản: spec pack §14 — phản biện đã chốt thi công theo spec pack.
+
 ### 7.3 Compute: exact-khi-được, numeric + tự kiểm khi không
 
 - Mỗi body hạ thành bộ hàm `x(t), y(t), z(t)` đa thức bậc ≤ 2 theo t (motion.ts).
 - Công thức đáp closed-form chạy trên `Scalar` (scalar.ts): góc đẹp (30/45/60/90…) cho sin/cos dạng Surd ⇒ `range = v²·sin2θ/g = 20√3` **exact**; góc lẻ ⇒ float + `recognizeConstant` (analysis/recognize.ts), gắn `approximate: true`.
-- `time_when`/`meet` = nghiệm đa thức bậc ≤ 2 ⇒ `solvePoly` (analysis/solver1d.ts) trả nghiệm exact; loại nghiệm ngoài miền t ≥ 0.
+- `time_when`/`meet` = nghiệm đa thức bậc ≤ 2 ⇒ `solveQuadratic` (analysis/solver1d.ts — F4: tên đúng; `solvePoly` KHÔNG tồn tại) trả nghiệm exact; loại nghiệm ngoài miền t ≥ 0.
 - **Self-certificate** (soi gương §4.4 spec unified-engine): mọi đáp closed-form đối chiếu với đánh giá số độc lập trên bộ hàm motion (thay t*, sample lân cận cho max); lệch quá ngưỡng ⇒ đẩy `errors`, không trả đáp sai.
 - Kiểm tra tay cho bộ golden: v₀=20, θ=60°, g=10 ⇒ H = v₀²sin²θ/2g = **15 m** (exact), L = **20√3 ≈ 34,641 m**, T = **2√3 ≈ 3,4641 s**; rơi tự do h=45, g=10 ⇒ t = 3 s, v chạm đất = 30 m/s; xe A (x=0, v=10) đuổi xe B (x=120, v=−20) ⇒ gặp tại t = 4 s, x = 40 m.
 
@@ -303,25 +319,11 @@ Queries v0: `state_at` (vị trí/vận tốc/tốc độ tại t) · `flight_ti
 
 ## 8. Pack Hóa v0 — vô cơ THPT (phác thảo để P3 cắt plan)
 
-### 8.1 ChemPlanSchema (Zod, độc lập)
+### 8.1 ChemPlanSchema — POINTER sang spec pack Hóa (chốt F5)
 
-```jsonc
-{
-  "name": "fe-tac-dung-hcl",
-  "reaction": { "reactants": ["Fe", "HCl"], "products": ["FeCl2", "H2"] },
-  //           HOẶC { "dbId": "fe-hcl" } — tham chiếu thẳng DB §8.3
-  "given": [ { "species": "Fe", "gram": 5.6 } ],          // mol | gram | litGas | solution {CM, litres}
-  "conditions": { "molarVolume": 24.79 },                  // đkc GDPT-2018 (25°C, 1 bar); đề cũ "đktc" ⇒ 22.4 — LLM CHÉP từ đề
-  "asserts": [ { "kind": "amount", "species": "H2", "litGas": 2.479, "tol": 0.01 } ],
-  "queries": [
-    { "kind": "balance" },                                 // hệ số cân bằng
-    { "kind": "amount", "species": "H2", "unit": "lit" },  // 2,479 lít
-    { "kind": "amount", "species": "FeCl2", "unit": "gam" },
-    { "kind": "phenomena" }                                // hiện tượng — TRA DB, không sinh
-  ],
-  "knowledgeTags": ["hoa/9-10/kim-loai/tac-dung-axit", "hoa/8-9/tinh-toan/tinh-theo-phuong-trinh"]
-}
-```
+> **SUPERSEDED (phản biện phiên 1, 21/08):** bản phác ChemPlanSchema `{reaction, given, conditions, …}` từng nằm ở đây **hết hiệu lực**. Nguồn sự thật duy nhất là **spec pack Hóa §10** (`docs/superpowers/specs/2026-08-21-chem-pack-design.md`): plan dạng **ops** (`species` op có `formula/amount/state/variant` + đúng một `mix` op ở v0), `molarVolume` literal-union `{22.4, 24.79}` default 24.79 (C5 — LLM đọc từ đề: "đktc"→22,4, "đkc"→24,79), queries `mass/mol/volume_gas/concentration/remaining/phenomena/equation`, asserts `given_mass/given_mol`. Kết quả `ChemResult` cũng theo chem spec §10.
+>
+> Quy ước còn hiệu lực ở tầng kiến trúc: `knowledgeTags` vẫn do translator phát ngoài schema và bridge gắn lại theo §9.2; asserts từ dữ kiện đề dùng tol hai tầng theo C10/F6 (bảo toàn nội bộ EXACT, asserts từ đề tol 1e-3).
 
 ### 8.2 Compute tất định
 
@@ -414,7 +416,9 @@ export function parseTag(t: string): { subject: string; grade: string; chapter: 
 
 **Lý — động học 10:** `ly/10/dong-hoc/` + {`chuyen-dong-thang-deu`, `bien-doi-deu`, `roi-tu-do`, `nem-ngang`, `nem-xien`, `gap-nhau-duoi-kip`, `do-thi-chuyen-dong`, `van-toc-tuong-doi`}.
 
-**Hóa — vô cơ:** `hoa/9-10/kim-loai/{day-hoat-dong, tac-dung-axit, tac-dung-muoi}` · `hoa/9-10/axit-bazo-muoi/{phan-ung-trao-doi, nhan-biet}` · `hoa/9-10/oxit/oxit-axit-oxit-bazo` · `hoa/9-10/dieu-che/dieu-che-khi` · `hoa/8-9/tinh-toan/{tinh-theo-phuong-trinh, nong-do-dung-dich, chat-du-chat-het}` · `hoa/10/phan-ung/oxi-hoa-khu`.
+**Hóa — vô cơ (11 tag):** `hoa/9-10/kim-loai/{day-hoat-dong, tac-dung-axit, tac-dung-muoi}` · `hoa/9-10/axit-bazo-muoi/{phan-ung-trao-doi, nhan-biet}` · `hoa/9-10/oxit/oxit-axit-oxit-bazo` · `hoa/9-10/dieu-che/dieu-che-khi` · `hoa/8-9/tinh-toan/{tinh-theo-phuong-trinh, nong-do-dung-dich, chat-du-chat-het}` · `hoa/10/phan-ung/oxi-hoa-khu`.
+
+**Quy ước cho reactionDB Hóa (F10):** field `tags` của MỖI `ReactionRecord`/`ReactionEntry` trong DB phản ứng PHẢI là tag 4 tầng thuộc registry này (`isKnownTag` trả true) — tag lệch format bị `isKnownTag` drop lặng lẽ ở bridge, thành taxonomy rỗng mà không ai hay. Test integrity của pack Hóa enforce điều này; việc sửa nội dung DB thuộc vòng plan Hóa (trùng F14 phản biện Hóa, đang xử lý song song) — kiến trúc chỉ đóng băng QUY ƯỚC.
 
 Ghi chú versioning: `grade` đặt theo **lớp thường gặp trong đề luyện thi** (khối tròn xoay để 12 dù GDPT-2018 đã kéo nón/trụ/cầu xuống lớp 9). Nếu sau này cần map theo bộ sách, thêm alias trong registry — không đổi format tag.
 
@@ -443,9 +447,10 @@ Ghi chú versioning: `grade` đặt theo **lớp thường gặp trong đề luy
 | `t^2`/dấu phẩy làm gãy animation | Engine chỉ phát `equations` object + `t*t`; test format so khớp chuỗi; kiểm browser ở phase nối route (sao KIN-T3) |
 | DB Hóa sai hệ số/hiện tượng | Test integrity: balance() từng entry + schema effects; hiện tượng chỉ TRA không SINH |
 | molarVolume lệch chương trình (22,4 vs 24,79) | Field bắt buộc LLM chép từ đề; default 24,79; asserts từ số liệu đề bắt lệch nếu chép sai |
-| Đơn vị sai/lẫn (m vs km/h) | Engine quy đổi về SI ngay ở schema-parse (vd `velocityKmh` → m/s), answers mang `unit` do engine ghi |
+| Đơn vị sai/lẫn (m vs km/h) | Chốt F2/D1: schema khai **unit per-quantity** (`v0Unit`/`xUnit`/`tUnit` — spec pack Lý §5); engine đổi bằng hữu tỉ EXACT (km/h→m/s ×5/18, km→m ×1000, min→s ×60, h→s ×3600); LLM chỉ CHÉP số + unit từ đề, cấm tự chia 3,6; answers mang `unit` do engine ghi |
+| Người dùng/khách gọi LLM không giới hạn qua route mới | F1: bọc `resolveAiAccess`/`withQuota`/`refundAiUsage`/`logBrokenProblem` y v2 cho MỌI nhánh LLM (§4.1); classifier nằm TRONG lượt đã trừ quota; nghiệm thu P2 có ca "vượt quota bị chặn giống v2" |
 | Route mới phình bề mặt bảo trì | Route chỉ là dispatcher mỏng; toàn bộ logic trong bridge/pack đã test; dry-run cho phép test route không cần LLM |
-| Cross-pack import (physics → analysis) thành nợ | Chỉ 3 module thuần (`solver1d`, `recognize`, `expr`); TODO tách `mathlib/` ghi ngay trong code |
+| Cross-pack import (physics → analysis) thành nợ | Chỉ 2 module thuần (`solver1d`, `recognize` — C2/F4: BỎ `expr`; `compute/answer` thuộc core, chiều hợp lệ sẵn); TODO tách `mathlib/` ghi ngay trong code |
 
 ---
 
@@ -463,7 +468,7 @@ Ghi chú versioning: `grade` đặt theo **lớp thường gặp trong đề luy
 ## 13. Cấu trúc file dự kiến (tổng, để writing-plans cắt từng phase)
 
 ```
-api/_lib/kernel/physics/{index,runPhysics,schema,motion,compute,scene}.ts + __tests__/    (P1)
+api/_lib/kernel/physics/{planSchema,kinematics,compute,runPhysics,scene}.ts + __tests__/  (P1; physics/index.ts 3 dòng thêm ở P2 — bước người tích hợp)
 api/_lib/kernel/chem/{index,runChem,schema,formula,balance,stoichiometry,reactionDB,scene}.ts + __tests__/  (P3)
 api/_lib/kernel/taxonomy/tags.ts + __tests__/                                             (P0)
 api/_lib/kernel-bridge/{physicsTranslatorPrompt,solveWithPhysics,subjectClassifier}.js    (P2)
@@ -474,3 +479,34 @@ api/_lib/kernel/index.ts (CHỈ thêm dòng export pack — bước "người t�
 src/types/geometry.ts   (CHỈ thêm chemScene?: ChemScene)                                  (P4)
 src/components/chem/ChemSceneView.tsx + UI chọn môn (React + react-router, theo AGENTS.md)(P4)
 ```
+
+---
+
+## 14. Điểm phân vân & phán quyết (phản biện phiên 1, 21/08/2026)
+
+Mười điểm phân vân của spec đã được phiên phản biện 1 phán quyết (báo cáo đầy đủ: `docs/superpowers/reviews/2026-08-21-arch-physics-review-phien1.md`). Rollout P0 trỏ về mục này; mọi phase thi công theo các phán quyết dưới đây, KHÔNG mở lại tranh luận:
+
+1. **C1 — Route:** dùng route MỚI `/api/analyze-problem`; v2 đóng băng không đụng. Kèm điều kiện F1: route mới bọc quota/billing y v2 (§4.1).
+2. **C2 — Cross-import:** chấp nhận physics import `analysis/solver1d`, `analysis/recognize` + `compute/answer` (core) ở v0; **BỎ `expr`**; ghi TODO tách `mathlib/` cho đợt refactor có chủ đích.
+3. **C3 — Ranh giới môn:** giữ quy tắc §4.2 + few-shot ca "máy bay & radar" → geometry + biến thể regex (F17); mơ hồ ⇒ mặc định `geometry`.
+4. **C4 — Grade taxonomy:** đặt theo "lớp thường-gặp-trong-đề" (khối tròn xoay để 12…), alias theo bộ sách thêm sau; registry là nguồn sự thật duy nhất.
+5. **C5 — molarVolume:** default 24,79 (đkc GDPT-2018), schema literal-union `{22.4, 24.79}`; answer ghi rõ mốc điều kiện đã dùng. (Chờ user xác nhận theo nhật ký D4 của vòng Hóa.)
+6. **C6 — Đơn vị đáp:** `answers[].unit` do ENGINE ghi cho Lý/Hóa; nhánh Toán giữ cơ chế `answerScale`/`answerUnit` cũ, không phát field mới.
+7. **C7 — Tên field scene:** field chuẩn của contract là `scene`; nhánh Toán kèm `geometry` alias để consumer cũ không gãy (nhánh Lý: bridge alias `scene = result.geometry` — F7).
+8. **C8 — EXACT_TRIG:** bảng exact = {0, ±30, ±45, ±60, ±90} (sin(−θ)=−sin θ, cos(−θ)=cos θ); góc lẻ đi đường float + recognize, KHÔNG dựng CAS.
+9. **C9 — ChemScene:** theo chem spec (events-based, chem spec §11); render v0 = 2D overlay, không r3f. Kiến trúc §6.3 chỉ còn là pointer.
+10. **C10 — Tolerance Hóa:** hai tầng như F6 — bảo toàn nội bộ EXACT (vi phạm là bug engine), asserts từ dữ kiện đề tol 1e-3 (dung nạp đề làm tròn).
+
+---
+
+## Changelog phản biện phiên 1 (21/08)
+
+- **F1 (§4.1, §11):** thêm tầng quota/billing BẮT BUỘC cho route `/api/analyze-problem` — bọc `resolveAiAccess`/`withQuota`/`refundAiUsage`/`logBrokenProblem` y `analyze-geometry-v2.js` cho mọi nhánh LLM; chốt feature/action `draw`/`draw_quick` chung với v2; classifier là lượt phụ nằm TRONG lượt đã trừ quota; dry-run trước tầng quota, dev-only.
+- **F2/D1 (§11):** dòng rủi ro đơn vị đổi sang thiết kế unit per-quantity + engine đổi hữu tỉ exact (chi tiết: spec pack Lý §5).
+- **F4 (§3, §6.1, §7.3, §11, §13):** `solvePoly` → `solveQuadratic`; bỏ `expr.ts` khỏi danh sách physics tái dùng; mô tả `t` sửa thành "giây playback kể từ track.start"; tên file physics khớp spec pack (`planSchema`/`kinematics`, index.ts ở P2).
+- **F5 (§6.3, §8.1):** ChemScene + ChemPlanSchema đổi thành pointer sang chem spec §11/§10, kèm ghi chú superseded.
+- **F7 (§5):** ghi rõ bridge alias `scene = result.geometry`, `trace` tổng hợp từ `checks[].detail` + errors, `checks/charts/meta` là mở rộng hợp lệ.
+- **F10 (§9.3):** đếm đúng 11 tag Hóa; thêm quy ước ReactionRecord dùng tag 4 tầng thuộc registry.
+- **F13 (§14):** thêm mục "Điểm phân vân & phán quyết" chép 10 phán quyết C1–C10.
+- **F17 (§4.2):** prefilter physics nhận thêm biến thể `m/s2`, `m/s^2`.
+- **§7.2:** thêm ghi chú bản chuẩn thi công là spec pack Lý §5–§6 (gồm F2/F3/F11).

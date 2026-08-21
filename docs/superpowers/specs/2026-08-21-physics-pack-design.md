@@ -1,8 +1,8 @@
 # Physics Pack v0 — Động học lớp 10 (GDPT 2018) — Design Spec
 
 **Ngày:** 2026-08-21
-**Trạng thái:** Chờ phản biện spec
-**Phạm vi:** Engine Vật lý v0 — ĐỘNG HỌC chất điểm lớp 10. Chỉ thêm `api/_lib/kernel/physics/**` + test. KHÔNG sửa bất kỳ file có sẵn nào.
+**Trạng thái:** ĐÃ QUA PHẢN BIỆN PHIÊN 1 (21/08/2026) — các finding/phán quyết liên quan (F2, F3, F7, F8, F9, F11, F12, F16, F18, D1–D6) đã áp vào spec; báo cáo: `docs/superpowers/reviews/2026-08-21-arch-physics-review-phien1.md`.
+**Phạm vi:** Engine Vật lý v0 — ĐỘNG HỌC chất điểm lớp 10. Chỉ thêm `api/_lib/kernel/physics/**` + test + `tsconfig.kernel.json` (gate typecheck kernel — F9). KHÔNG sửa bất kỳ file có sẵn nào.
 
 ---
 
@@ -33,8 +33,10 @@ Giữ nguyên nguyên tắc geo3d cho bài Vật lý động học: **LLM chỉ 
 | Ném ngang | `projectile` (angleDeg=0, h0>0) | `time_to_ground`, `range`, `impact_velocity` |
 | Ném xiên (từ đất hoặc từ độ cao) | `projectile` (angleDeg>0) | `time_to_ground`, `range`, `max_height`, `velocity_at`, `impact_velocity` |
 | Hai xe gặp nhau / đuổi nhau (kể cả xuất phát lệch giờ, kể cả 1 xe có gia tốc) | 2 × `mover1d` (`startAt`) | `meet_time`, `meet_position`, `distance_between_at` |
+| Hãm phanh / dừng lại / đạt vận tốc cho trước (F3) | `mover1d` (a ngược dấu v0) | `time_when_velocity`, `position_when_velocity` |
 | Đồ thị x-t / v-t | trường `charts` trong plan | dữ liệu mẫu số cho frontend vẽ (v0 KHÔNG dựng chart UI) |
 | Ném thẳng đứng lên | `projectile` (angleDeg=90) | như ném xiên |
+| Ném thẳng đứng xuống (F11) | `projectile` (angleDeg=−90) | `time_to_ground`, `impact_velocity`, `position_at` |
 
 ## 4. Kiến trúc & ranh giới
 
@@ -66,41 +68,59 @@ import { z } from 'zod';
 const Num = z.number().finite();
 const Obj = z.string().min(1);
 
+// F2/D1 (phản biện phiên 1): UNIT PER-QUANTITY — LLM chỉ CHÉP số + unit từ đề; ENGINE đổi về hệ nền
+// `units` của plan bằng HỮU TỈ EXACT (bảng factor unit→SI: km/h→m/s ×5/18; km→m ×1000; min→s ×60;
+// h→s ×3600). Không khai unit ⇒ số hiểu theo hệ nền (tương thích P1–P10 cũ). Cấm LLM tự chia 3,6.
+const VelUnit = z.enum(['m/s', 'km/h']);
+const LenUnit = z.enum(['m', 'km']);
+const TimeUnit = z.enum(['s', 'min', 'h']);
+
 const Mover1dOp = z.object({
   op: z.literal('mover1d'), name: Obj,
-  x0: Num,                          // toạ độ đầu trên trục chuyển động (đơn vị units.length)
+  x0: Num,                          // toạ độ đầu trên trục chuyển động
+  xUnit: LenUnit.optional(),        // đơn vị của x0 (vắng = units.length)
   v0: Num,                          // vận tốc đầu, ĐẠI SỐ: âm = ngược chiều dương
-  a: Num.default(0),                // gia tốc (0 = thẳng đều)
-  startAt: Num.default(0),          // thời điểm xuất phát t0 — bài "xe B đi sau 30 phút" ⇒ startAt: 0.5 (h)
+  v0Unit: VelUnit.optional(),       // đơn vị của v0 (vắng = units.length/units.time) — bài "54 km/h, a=3 m/s²" khai đây
+  a: Num.default(0),                // gia tốc (0 = thẳng đều) — LUÔN theo hệ nền (đề có a hầu như luôn SI; aUnit → v1)
+  startAt: Num.default(0),          // thời điểm xuất phát t0 — "xe B đi sau 30 phút" ⇒ startAt: 30, tUnit: 'min'
+  tUnit: TimeUnit.optional(),       // đơn vị của startAt (vắng = units.time)
   axis: z.enum(['x', 'y']).default('x'), // 'y' = chuyển động thẳng đứng (thang máy…)
 });
 const FreeFallOp = z.object({
   op: z.literal('free_fall'), name: Obj,
   h0: Num.positive(),               // độ cao thả
-  g: Num.positive(),                // BẮT BUỘC — LLM truyền 9.8 hoặc 10 THEO ĐỀ. Engine KHÔNG hard-code g.
+  xUnit: LenUnit.optional(),        // đơn vị của h0 VÀ x0 (một unit cho cả hai — đề không trộn m/km trong một vật)
+  g: Num.positive(),                // BẮT BUỘC — LLM truyền 9.8 hoặc 10 THEO ĐỀ, theo hệ nền (m/s²). Engine KHÔNG hard-code g.
   x0: Num.default(0),
 });
 const ProjectileOp = z.object({
   op: z.literal('projectile'), name: Obj,
   x0: Num.default(0),
   h0: Num.min(0),                   // 0 = ném từ mặt đất
-  v0: Num.positive(),
-  angleDeg: Num,                    // LUÔN là ĐỘ. 0 = ném ngang; 90 = ném thẳng đứng lên. Độ→radian là việc NỘI BỘ engine.
+  xUnit: LenUnit.optional(),        // đơn vị của x0/h0
+  v0: Num.positive(),               // ĐỘ LỚN (>0) — chiều nằm ở angleDeg
+  v0Unit: VelUnit.optional(),
+  angleDeg: Num,                    // LUÔN là ĐỘ. 0 = ném ngang; 90 = thẳng đứng LÊN; −90 = thẳng đứng XUỐNG (F11). Độ→radian là việc NỘI BỘ engine.
   g: Num.positive(),                // BẮT BUỘC, như free_fall
 });
 export const PhysicsOpSchema = z.discriminatedUnion('op', [Mover1dOp, FreeFallOp, ProjectileOp]);
 
 export const PhysicsQuerySchema = z.discriminatedUnion('kind', [
-  z.object({ kind: z.literal('position_at'), of: Obj, t: Num, axis: z.enum(['x','y']).optional(), label: z.string().optional() }),
-  z.object({ kind: z.literal('velocity_at'), of: Obj, t: Num, component: z.enum(['x','y','speed']).default('speed'), label: z.string().optional() }),
+  z.object({ kind: z.literal('position_at'), of: Obj, t: Num, tUnit: TimeUnit.optional(), axis: z.enum(['x','y']).optional(), label: z.string().optional() }),
+  z.object({ kind: z.literal('velocity_at'), of: Obj, t: Num, tUnit: TimeUnit.optional(), component: z.enum(['x','y','speed']).default('speed'), label: z.string().optional() }),
   z.object({ kind: z.literal('time_to_ground'), of: Obj, label: z.string().optional() }),   // min t>t0: y(t)=0
   z.object({ kind: z.literal('range'), of: Obj, label: z.string().optional() }),            // x(t_đất) − x(t0) — tầm xa
   z.object({ kind: z.literal('max_height'), of: Obj, label: z.string().optional() }),       // y tại đỉnh v_y=0
   z.object({ kind: z.literal('impact_velocity'), of: Obj, component: z.enum(['x','y','speed']).default('speed'), label: z.string().optional() }),
   z.object({ kind: z.literal('meet_time'), a: Obj, b: Obj, label: z.string().optional() }),      // min t≥max(t0a,t0b): pos_a=pos_b
   z.object({ kind: z.literal('meet_position'), a: Obj, b: Obj, label: z.string().optional() }),
-  z.object({ kind: z.literal('distance_between_at'), a: Obj, b: Obj, t: Num, label: z.string().optional() }),
-  z.object({ kind: z.literal('time_when'), of: Obj, position: Num, axis: z.enum(['x','y']).optional(), label: z.string().optional() }), // min t≥t0: coord=position
+  z.object({ kind: z.literal('distance_between_at'), a: Obj, b: Obj, t: Num, tUnit: TimeUnit.optional(), label: z.string().optional() }),
+  z.object({ kind: z.literal('time_when'), of: Obj, position: Num, xUnit: LenUnit.optional(), axis: z.enum(['x','y']).optional(), label: z.string().optional() }), // min t≥t0: coord=position
+  // F3 (phản biện phiên 1): cặp query cho lớp bài "hãm phanh/dừng lại/đạt vận tốc cho trước".
+  // v(t) TUYẾN TÍNH ⇒ nghiệm exact. `value` là giá trị ĐẠI SỐ theo component (dừng lại: value 0).
+  // Tách-một-số như meet_time/meet_position (triết lý §14.4): time_… trả t, position_… trả toạ độ tại t đó.
+  z.object({ kind: z.literal('time_when_velocity'), of: Obj, value: Num, vUnit: VelUnit.optional(), component: z.enum(['x','y']).optional(), label: z.string().optional() }),
+  z.object({ kind: z.literal('position_when_velocity'), of: Obj, value: Num, vUnit: VelUnit.optional(), component: z.enum(['x','y']).optional(), label: z.string().optional() }),
 ]);
 
 export const PhysicsPlanSchema = z.object({
@@ -122,7 +142,15 @@ export const PhysicsPlanSchema = z.object({
 export type PhysicsPlan = z.infer<typeof PhysicsPlanSchema>;
 ```
 
-Quy ước cho translator (v1, ghi sẵn để few-shot sau): mọi SỐ trong plan chép thẳng từ đề theo MỘT hệ đơn vị nhất quán; đề trộn đơn vị (phút trong bài km/h) thì LLM đổi lượng NHỎ đó (30 phút → 0.5 h) — phép đổi duy nhất được phép; góc LUÔN bằng độ; g LUÔN lấy từ đề (đề không nói ⇒ prompt bảo lấy 10).
+Quy ước cho translator (v1, ghi sẵn để few-shot sau — cập nhật theo F2/D1, F18):
+
+- Mọi SỐ trong plan chép thẳng từ đề; `units` khai hệ đơn vị NỀN của bài (đề thuần km+h ⇒ `{length:'km', time:'h'}`).
+- Đề trộn đơn vị ⇒ **khai unit per-quantity** (`v0Unit`/`xUnit`/`tUnit`) và để ENGINE đổi — **LLM KHÔNG tự đổi bất kỳ đơn vị nào** (không chia 3,6 cho km/h, không đổi "30 phút" → 0.5 h; quy ước cũ "LLM đổi lượng nhỏ" BÃI BỎ).
+- Hệ nền engine hiểu để đổi: length `m|km`, time `s|min|h`, vận tốc `m/s|km/h`; nền/unit ngoài bảng ⇒ engine trả error có cấu trúc (không đoán). `a`/`g` luôn theo hệ nền (aUnit/gUnit → v1).
+- Asserts (dữ kiện dư): query bên trong assert vẫn dùng được `tUnit`/`xUnit`; riêng `equals` hiểu theo đơn vị đáp của query đó (hệ nền) — dữ kiện dư ở đơn vị lệch hệ nền thì v0 prompt BỎ QUA assert đó (không đổi hộ; `equalsUnit` → v1).
+- Góc LUÔN bằng độ; ném thẳng đứng XUỐNG khai `angleDeg: -90` với `v0` là độ lớn (F11) — không khai vận tốc âm cho projectile.
+- g LUÔN lấy từ đề (đề không nói ⇒ prompt bảo lấy 10).
+- Trình bày vận tốc thành phần âm (F18, việc của prompt lời giải v1): answers giữ số ĐẠI SỐ (vd `impact_velocity component:'y'` = −35); lời giải diễn đạt "35 m/s, hướng xuống" — engine không đổi dấu.
 
 ## 6. Tầng compute — công thức đóng, exact trước
 
@@ -143,7 +171,8 @@ Chuẩn hoá op → Motion (trục y là PHƯƠNG THẲNG ĐỨNG hướng lên,
 | `projectile` | {x0, v0·cosθ, 0} | {h0, v0·sinθ, −g/2} | 0 |
 
 - **Số → Scalar:** `scalarFromNumber(x)` — thập phân hữu hạn (≤9 chữ số lẻ) thành hữu tỉ chính xác (9.8 → 49/5; 0.5 → 1/2), ngoài ra rơi về float. ⇒ đầu vào JSON số thập phân KHÔNG phá exact.
-- **Độ → radian NỘI BỘ, exact khi đẹp:** bảng `EXACT_TRIG` cho angleDeg ∈ {0, 30, 45, 60, 90}: cos/sin là Scalar exact (cos45 = (1/2)√2, sin60 = (1/2)√3…). Góc khác (37°, 53°…) → `Math.cos(deg·π/180)` float, đáp cuối qua recognize.
+- **Đơn vị per-quantity → hệ nền, EXACT (F2/D1):** `qty(value, unit?, base)` — bảng `UNIT_TO_SI` hữu tỉ {m:1, km:1000, s:1, min:60, h:3600, 'm/s':1, 'km/h':5/18}; đổi `value × factor(unit) ÷ factor(base)` toàn trên Rational (54 km/h nền m/s → 54·(5/18) = **15 exact**; 30 min nền h → 30·60/3600 = **1/2 exact**). Không khai unit ⇒ giữ nguyên theo hệ nền. Unit/nền ngoài bảng ⇒ throw có thông điệp — runPhysics bắt thành `errors` (không ném ra ngoài).
+- **Độ → radian NỘI BỘ, exact khi đẹp (C8/F11):** bảng `EXACT_TRIG` cho angleDeg ∈ **{0, ±30, ±45, ±60, ±90}** — góc âm qua quy tắc đối xứng **sin(−θ) = −sin θ, cos(−θ) = cos θ** trên bảng góc dương: cos/sin là Scalar exact (cos45 = (1/2)√2, sin60 = (1/2)√3, sin(−90) = −1…). Góc khác (37°, 53°…) → `Math.cos(deg·π/180)` float, đáp cuối qua recognize — KHÔNG dựng CAS.
 - Toolkit: `evalQuadS(q,τ)` (Scalar), `evalQuadN(q,τ)` (float độc lập — đường certify), `derivQuad(q)` = {k1, 2k2, 0}, `expandAbs(q,t0)` (đổi về t tuyệt đối: k0−k1t0+k2t0², k1−2k2t0, k2 — cần khi trừ hai vật khác t0), `subQuad(a,b)`, `rootsFor(q, value)` = `solveQuadratic(k2, k1, k0−value)` (mảng Scalar, sort theo approx).
 
 ### 6.2. Công thức đóng từng query (compute.ts)
@@ -158,10 +187,12 @@ Ký hiệu: τ = t − t0 của vật; vật "rơi được" = free_fall/project
 | `range(of)` | x(τ_đất) − x(0) | tự chạy time_to_ground trước |
 | `max_height(of)` | τ* = −k1/(2k2) (đòi k2<0, τ*≥0, nếu không → error rõ); H = y(τ*) = h0 + v0y²/(2g) | exact thuần (chia hữu tỉ) |
 | `impact_velocity(of,comp)` | velocity_at tại t_đất | vd ném ngang 20 m/s, rơi 4 s → √(20²+40²)=20√5 |
-| `meet_time(a,b)` | d = subQuad(expandAbs(xa hoặc trục chung), expandAbs(xb)); nghiệm NHỎ NHẤT t ≥ max(t0a,t0b)−EPS_T của d(t)=0 | tuyến tính (2 xe đều) → t = −c/b exact; 1 xe có gia tốc → bậc 2 |
+| `meet_time(a,b)` | d = subQuad(expandAbs(xa hoặc trục chung), expandAbs(xb)); nghiệm NHỎ NHẤT t ≥ max(t0a,t0b)−EPS_T của d(t)=0. **D3:** nếu còn nghiệm hợp lệ thứ hai (1 xe có gia tốc, gặp 2 lần) ⇒ vẫn trả nghiệm ĐẦU + đẩy 1 dòng check info "còn nghiệm gặp lần 2: t₂ = …" (minh bạch, KHÔNG thêm query mảng) | tuyến tính (2 xe đều) → t = −c/b exact; 1 xe có gia tốc → bậc 2 |
 | `meet_position(a,b)` | pos_a(t_gặp) | |
 | `distance_between_at(a,b,t)` | 1D: \|Δx\|; nếu có vật 2D: √(Δx²+Δy²) | |
 | `time_when(of,position,axis?)` | nghiệm nhỏ nhất t ≥ t0 của coord(t)=position | |
+| `time_when_velocity(of,value,comp?)` **(F3)** | v_comp(t) TUYẾN TÍNH (deriv của Quad): nghiệm nhỏ nhất t ≥ t0 của v_comp(t)=value ⇒ τ = (value−k1)/(2k2), trả t = t0+τ. comp mặc định = trục chính. Không nghiệm hợp lệ (v hằng ≠ value, hoặc sai chiều) ⇒ error rõ | nghiệm tuyến tính −c/b ⇒ exact thuần khi hệ số hữu tỉ (hãm phanh 15/3 = 5) |
+| `position_when_velocity(of,value,comp?)` **(F3)** | toạ độ trục chính (hoặc comp) tại t vừa giải ở trên — cặp tách-một-số với time_when_velocity (như meet_time/meet_position). Bài hãm phanh x0=0: chính là quãng đường tới lúc dừng | exact thuần |
 
 **Hai vật & mốc thời gian:** mọi vật dùng CHUNG gốc thời gian t=0 của đề; vật có `startAt` đứng yên tại vị trí đầu cho tới t0 (khớp hành vi AnimatedAgent: trước track.start agent đậu ở initialPosition). `meet_time` chỉ xét t ≥ max(t0) — trường hợp "xe A đi ngang chỗ xe B còn đậu" KHÔNG tính là gặp (giới hạn có chủ đích, đề SGK không ra kiểu đó — ghi ở §12).
 
@@ -174,8 +205,11 @@ Ký hiệu: τ = t − t0 của vật; vật "rơi được" = free_fall/project
    exact chết    → recognizeConstant(float) // "1/2 + √13/2" (nghiệm nhị thức căn tự rơi về float — đúng
                                             // thiết kế solver1d — recognize dựng lại dạng đẹp)
    recognize trượt → fmtNum 4 chữ số        // "19.9426", approximate: true
-3. Gắn đơn vị theo query: position/range/max_height/meet_position/distance → units.length;
-   velocity/impact → `${length}/${time}`; time_* / meet_time → units.time.
+3. Gắn đơn vị theo query: position_at/range/max_height/meet_position/distance_between_at/
+   position_when_velocity → units.length; velocity_at/impact_velocity → `${length}/${time}`;
+   time_to_ground/time_when/time_when_velocity/meet_time → units.time.
+   (unitOf so khớp CHUỖI KIND ĐẦY ĐỦ — nhớ liệt kê 'time_when_velocity' tường minh ở nhánh
+   thời gian, vì so `kind === 'time_when'` KHÔNG bắt được nó.)
 ```
 
 ## 7. Tự kiểm (asserts) — thay đáp ngược, eps CÓ CHỦ ĐÍCH
@@ -187,6 +221,7 @@ Ký hiệu: τ = t − t0 của vật; vật "rơi được" = free_fall/project
 | t_đất (time_to_ground, range, impact) | \|y(t_đất)\| ≤ EPS_SELF·scale |
 | t_gặp, x_gặp | \|pos_a(t_gặp) − pos_b(t_gặp)\| ≤ EPS_SELF·scale — "x gặp của 2 xe bằng nhau" |
 | t (time_when) | \|coord(t) − position\| ≤ EPS_SELF·scale |
+| t (time_when_velocity), x (position_when_velocity) | \|v_comp(t) − value\| ≤ EPS_SELF·scale (F3) |
 | max_height | \|v_y(τ*)\| ≤ EPS_SELF·scale VÀ y(τ*) ≥ y(τ*±h) (đúng là đỉnh) |
 | miền nghiệm | t ≥ t0 (không serve nghiệm âm/trước xuất phát); không có nghiệm hợp lệ ⇒ error, KHÔNG serve |
 
@@ -206,10 +241,13 @@ Ký hiệu: τ = t − t0 của vật; vật "rơi được" = free_fall/project
 Physics tính trong mặt phẳng (x ngang, y đứng). Map sang geo3d: **điểm (x_p, y_p) → (x, 0, y_p)** — vì frontend map geo3d z lên trục đứng của Three (`AnimatedAgent`: `currentPos.set(x, z, y)`). Đơn vị trục = `units.length` → `GeometryData.axisUnit`.
 
 - **Mặt đất:** 2 điểm `G0`,`G1` (label rỗng) tại z=0, x = [xMin−5%span, xMax+5%span] + `Line3D` solid xám.
-- **Mốc:** điểm xuất phát mỗi vật `<name>0`; điểm chạm đất `<name>_dat` (vật rơi được); đỉnh `<name>_dinh` (khi query max_height); điểm gặp `M_<a>_<b>` (khi query meet). Nhãn kèm giá trị đã tính (vd "Chạm đất (20√3 m)").
-- **Quỹ đạo** (chỉ vật rơi được): `Curve3D {type:'expr', plane:'xz', style:'dashed', samples: 33 điểm {x:x(τ), y:y(τ)}, τ đều trên [0, τ_đất]}` — `plane:'xz'` render (x, cao, 0) đúng mặt phẳng chuyển động, samples có sẵn nên frontend KHÔNG cần parser.
+- **Mốc — mức v0 (chốt F8, hạ xuống đúng mức plan Task 4):** điểm xuất phát mỗi vật `<name>0` (label `"<label> (xuất phát)"`); điểm chạm đất `<name>_dat` cho vật rơi được (label **text trần** `"Chạm đất"` — KHÔNG nhúng giá trị đã tính vào nhãn).
+- **Để dành v1 (tường minh — KHÔNG làm ở v0, F8):** điểm đỉnh `<name>_dinh` (khi query max_height); điểm gặp `M_<a>_<b>` (khi query meet); giá trị đã tính trong nhãn mốc (vd "Chạm đất (20√3 m)"). Giá trị số vẫn đến tay người dùng qua `answers[]` — scene v0 chỉ là minh hoạ.
+- **Quỹ đạo** (chỉ vật rơi được): `Curve3D {type:'expr', plane:'xz', style:'dashed', params: {}, samples: 33 điểm {x:x(τ), y:y(τ)}, τ đều trên [0, τ_đất]}` — `plane:'xz'` render (x, cao, 0) đúng mặt phẳng chuyển động, samples có sẵn nên frontend KHÔNG cần parser. **`params: {}` BẮT BUỘC phát** (F9 — field `params` là required của type `Curve3D`; thiếu là lỗi typecheck khi gate tsconfig.kernel.json bật).
 
 ### 8.2. Timeline — quy ước scale thời gian (ghi rõ vì playback là THỜI GIAN THỰC)
+
+> Chốt D2 (phản biện phiên 1): quy tắc playback dưới đây GIỮ NGUYÊN (kể cả ngưỡng 3–15 s); bước thử trên canvas thật được thêm vào rollout P2 — chỉ chỉnh ngưỡng nếu cảm quan canvas bác bỏ.
 
 `AnimationContext` chạy đồng hồ thật (không có timeScale) ⇒ bài 1,5 giờ không thể phát 1,5 giờ:
 
@@ -246,10 +284,13 @@ Trường `charts` của **PhysicsResult** (KHÔNG nhét vào GeometryData — k
 - `x_t`: 65 mẫu đều trên [t0, T_phys] mỗi vật (bậc 2 cần mật độ); vật thẳng đều chỉ 2 mẫu.
 - `v_t`: v(t) tuyến tính từng vật ⇒ 2 mẫu [t0, v(t0)], [T_phys, v(T_phys)].
 - `events`: mọi đáp thời gian (gặp nhau, chạm đất) để frontend đánh dấu. Frontend UI vẽ chart là việc v1.
+- **Chốt D6 (phản biện phiên 1):** v0 GIỮ `charts` trong PhysicsResult (không đụng GeometryData); hướng v1 là thêm field optional `charts?` trên `GeometryData` (thay đổi cộng thêm) — **KHÔNG nhét charts vào `tags`**. Hệ quả v0 phải ghi rõ: lưu lịch sử/saved geometries chỉ persist `geometry` ⇒ **charts KHÔNG persist, mất khi xem lại bài cũ** — chấp nhận ở v0.
 
 ### 8.4. Ví dụ scene JSON HOÀN CHỈNH — bài ném xiên P6 (v0=20 m/s, 60°, g=10)
 
-T_phys = 2√3 ≈ 3.4641 s ∈ [3,15] ⇒ k=1, D_pb=3.4641. Đỉnh (10√3, 15), chạm đất (20√3, 0), span ≈ 34.64 ⇒ radius 0.69, margin đất 1.73.
+(Đã hạ về đúng mức scene v0 theo F8 — plan kèm `scene.labels = { "bong": "Quả bóng" }`.)
+
+T_phys = 2√3 ≈ 3.4641 s ∈ [3,15] ⇒ k=1, D_pb=3.4641. Đỉnh quỹ đạo (10√3, 15) chỉ dùng để tính span/yTop (KHÔNG phát điểm — v1); chạm đất (20√3, 0); span ≈ 34.64 ⇒ radius 0.69, margin đất 1.73.
 
 ```jsonc
 {
@@ -257,15 +298,15 @@ T_phys = 2√3 ≈ 3.4641 s ∈ [3,15] ⇒ k=1, D_pb=3.4641. Đỉnh (10√3, 15
   "axisUnit": "m",
   "tags": ["physics", "timeScale:1"],
   "points": [
-    { "id": "bong0",     "label": "O (ném)",           "x": 0,       "y": 0, "z": 0 },
-    { "id": "bong_dinh", "label": "Đỉnh (15 m)",       "x": 17.3205, "y": 0, "z": 15 },
-    { "id": "bong_dat",  "label": "Chạm đất (20√3 m)", "x": 34.641,  "y": 0, "z": 0 },
     { "id": "G0", "label": "", "x": -1.73, "y": 0, "z": 0 },
-    { "id": "G1", "label": "", "x": 36.37, "y": 0, "z": 0 }
+    { "id": "G1", "label": "", "x": 36.37, "y": 0, "z": 0 },
+    { "id": "bong0",    "label": "Quả bóng (xuất phát)", "x": 0,      "y": 0, "z": 0 },
+    { "id": "bong_dat", "label": "Chạm đất",             "x": 34.641, "y": 0, "z": 0 }
   ],
   "lines": [ { "id": "ground", "from": "G0", "to": "G1", "style": "solid", "color": "#8B8B8B" } ],
   "curves": [
     { "id": "traj_bong", "type": "expr", "plane": "xz", "style": "dashed", "color": "#FFA500",
+      "params": {},
       "samples": [ { "x": 0, "y": 0 }, { "x": 1.0825, "y": 1.8164 },
                    /* … 33 mẫu đều theo τ ∈ [0, 2√3], mẫu i: x=10τᵢ, y=10√3·τᵢ−5τᵢ² … */
                    { "x": 33.5585, "y": 1.8164 }, { "x": 34.641, "y": 0 } ] }
@@ -306,9 +347,11 @@ type PhysicsResult = {
 };
 ```
 
-## 10. MƯỜI BÀI MẪU — contract test (đáp tính tay từng bước)
+**Đối chiếu contract chung route đa môn (chốt F7, phản biện phiên 1):** PhysicsResult KHÔNG đổi shape để ép khớp contract `{ok, answers, violations, errors, trace, scene}` — việc khớp là của **bridge P2**: alias `scene = result.geometry`; `trace` tổng hợp từ `checks[].detail` + `errors`; `checks`/`charts`/`meta` là **mở rộng hợp lệ** của nhánh physics (consumer chung bỏ qua được). Xem spec kiến trúc §5.
 
-Mỗi bài: đề kiểu SGK/đề thi VN (số liệu tự đặt chuẩn), plan kỳ vọng, đáp tính TAY để test assert. File test: `physics-contract.test.ts`.
+## 10. MƯỜI HAI BÀI MẪU (P1–P12) — contract test (đáp tính tay từng bước)
+
+Mỗi bài: đề kiểu SGK/đề thi VN (số liệu tự đặt chuẩn), plan kỳ vọng, đáp tính TAY để test assert. File test: `physics-contract.test.ts`. (P11–P12 thêm sau phản biện phiên 1 — F3, F11.)
 
 ---
 
@@ -318,12 +361,12 @@ Mỗi bài: đề kiểu SGK/đề thi VN (số liệu tự đặt chuẩn), pla
 
 ```json
 { "problemName": "oto-thang-deu", "units": { "length": "km", "time": "h" },
-  "ops": [ { "op": "mover1d", "name": "oto", "x0": 0, "v0": 60 } ],
+  "ops": [ { "op": "mover1d", "name": "oto", "x0": 0, "v0": 60, "v0Unit": "km/h" } ],
   "queries": [ { "kind": "position_at", "of": "oto", "t": 1.5, "label": "a" },
                { "kind": "time_when", "of": "oto", "position": 150, "label": "b" } ] }
 ```
 
-**Tính tay:** x(t)=60t. a) x(1,5)=60·3/2=**90 km** (exact: 1.5→3/2). b) 60t=150 ⇒ t=150/60=**5/2 h = 2,5 h** (nghiệm tuyến tính −c/b exact). Thay ngược: x(5/2)=150 ✓ residual 0.
+**Tính tay:** F2 — LLM chép "60 km/h" thành `v0: 60, v0Unit: 'km/h'`; hệ nền km/h ⇒ engine đổi qua SI rồi về nền = factor 1 exact (khai unit để nhất quán "chép số + unit", đáp không đổi). x(t)=60t. a) x(1,5)=60·3/2=**90 km** (exact: 1.5→3/2). b) 60t=150 ⇒ t=150/60=**5/2 h = 2,5 h** (nghiệm tuyến tính −c/b exact). Thay ngược: x(5/2)=150 ✓ residual 0.
 **Kỳ vọng test:** answers[0] ≈ 90, text "90 km"; answers[1] ≈ 2.5, text "5/2 h", approximate:false.
 
 ---
