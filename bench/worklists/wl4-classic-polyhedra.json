@@ -1,0 +1,340 @@
+[
+  {
+    "text": "Trong không gian Oxyz, cho tứ diện ABCD với A(0;0;0), B(3;0;0), C(0;4;0), D(0;0;6). Tính thể tích khối tứ diện ABCD.",
+    "source": "synthetic",
+    "difficulty": "medium",
+    "kind": "volume",
+    "expected": ["12"],
+    "plan": {
+      "solidName": "ABCD",
+      "ops": [
+        { "op": "oxyz_point", "name": "A", "at": [0, 0, 0] },
+        { "op": "oxyz_point", "name": "B", "at": [3, 0, 0] },
+        { "op": "oxyz_point", "name": "C", "at": [0, 4, 0] },
+        { "op": "oxyz_point", "name": "D", "at": [0, 0, 6] },
+        { "op": "edge", "from": "A", "to": "B" },
+        { "op": "edge", "from": "A", "to": "C" },
+        { "op": "edge", "from": "A", "to": "D" },
+        { "op": "edge", "from": "B", "to": "C" },
+        { "op": "edge", "from": "C", "to": "D" },
+        { "op": "edge", "from": "D", "to": "B" }
+      ],
+      "queries": [
+        { "kind": "volume", "solid": "tetrahedron", "points": ["A", "B", "C", "D"] }
+      ]
+    }
+  },
+  {
+    "text": "Cho hình chóp S.ABCD có đáy ABCD là hình vuông cạnh 3, SA vuông góc với mặt phẳng đáy và SA = 6. Tính thể tích khối chóp S.ABCD.",
+    "source": "synthetic",
+    "difficulty": "medium",
+    "kind": "volume",
+    "expected": ["18"],
+    "plan": {
+      "solidName": "S.ABCD",
+      "ops": [
+        { "op": "oxyz_point", "name": "A", "at": [0, 0, 0] },
+        { "op": "oxyz_point", "name": "B", "at": [3, 0, 0] },
+        { "op": "oxyz_point", "name": "C", "at": [3, 3, 0] },
+        { "op": "oxyz_point", "name": "D", "at": [0, 3, 0] },
+        { "op": "oxyz_point", "name": "S", "at": [0, 0, 6] },
+        { "op": "oxyz_plane", "name": "ABCD", "by": { "form": "three_points", "a": "A", "b": "B", "c": "C" } },
+        { "op": "edge", "from": "A", "to": "B" },
+        { "op": "edge", "from": "B", "to": "C" },
+        { "op": "edge", "from": "C", "to": "D" },
+        { "op": "edge", "from": "D", "to": "A" },
+        { "op": "edge", "from": "S", "to": "A" },
+        { "op": "edge", "from": "S", "to": "B" },
+        { "op": "edge", "from": "S", "to": "C" },
+        { "op": "edge", "from": "S", "to": "D" }
+      ],
+      "asserts": [
+        { "relation": "perp", "args": ["SA", "ABCD"] },
+        { "relation": "dist", "args": ["S", "A"], "value": 6 },
+        { "relation": "dist", "args": ["A", "B"], "value": 3 }
+      ],
+      "queries": [
+        { "kind": "volume", "solid": "pyramid", "points": ["A", "B", "C", "D"], "apex": "S" }
+      ]
+    }
+  },
+  {
+    "text": "Trong không gian Oxyz, cho bốn điểm A(0;0;0), B(1;0;0), C(0;1;0), D(0;0;1). Tính thể tích khối tứ diện ABCD.",
+    "source": "synthetic",
+    "difficulty": "medium",
+    "kind": "volume",
+    "expected": ["1/6"],
+    "plan": {
+      "solidName": "ABCD",
+      "ops": [
+        { "op": "oxyz_point", "name": "A", "at": [0, 0, 0] },
+        { "op": "oxyz_point", "name": "B", "at": [1, 0, 0] },
+        { "op": "oxyz_point", "name": "C", "at": [0, 1, 0] },
+        { "op": "oxyz_point", "name": "D", "at": [0, 0, 1] },
+        { "op": "edge", "from": "A", "to": "B" },
+        { "op": "edge", "from": "A", "to": "C" },
+        { "op": "edge", "from": "A", "to": "D" },
+        { "op": "edge", "from": "B", "to": "C" },
+        { "op": "edge", "from": "C", "to": "D" },
+        { "op": "edge", "from": "D", "to": "B" }
+      ],
+      "queries": [
+        { "kind": "volume", "solid": "tetrahedron", "points": ["A", "B", "C", "D"] }
+      ]
+    }
+  },
+  {
+    "text": "Cho hình chóp S.ABC có đáy A(0;0;0), B(6;0;0), C(0;6;0) và đỉnh S(2;3;5). Tính thể tích khối chóp S.ABC.",
+    "source": "synthetic",
+    "difficulty": "medium",
+    "kind": "volume",
+    "expected": ["30"],
+    "plan": {
+      "solidName": "S.ABC",
+      "ops": [
+        { "op": "oxyz_point", "name": "A", "at": [0, 0, 0] },
+        { "op": "oxyz_point", "name": "B", "at": [6, 0, 0] },
+        { "op": "oxyz_point", "name": "C", "at": [0, 6, 0] },
+        { "op": "oxyz_point", "name": "S", "at": [2, 3, 5] },
+        { "op": "edge", "from": "A", "to": "B" },
+        { "op": "edge", "from": "B", "to": "C" },
+        { "op": "edge", "from": "C", "to": "A" },
+        { "op": "edge", "from": "S", "to": "A" },
+        { "op": "edge", "from": "S", "to": "B" },
+        { "op": "edge", "from": "S", "to": "C" }
+      ],
+      "queries": [
+        { "kind": "volume", "solid": "pyramid", "points": ["A", "B", "C"], "apex": "S" }
+      ]
+    }
+  },
+  {
+    "text": "Cho lăng trụ đứng ABC.A'B'C' có đáy ABC là tam giác vuông tại A với AB = 3, AC = 4 và chiều cao lăng trụ bằng 5. Tính thể tích khối lăng trụ.",
+    "source": "synthetic",
+    "difficulty": "medium",
+    "kind": "volume",
+    "expected": ["30"],
+    "plan": {
+      "solidName": "ABC.A1B1C1",
+      "ops": [
+        { "op": "oxyz_point", "name": "A", "at": [0, 0, 0] },
+        { "op": "oxyz_point", "name": "B", "at": [3, 0, 0] },
+        { "op": "oxyz_point", "name": "C", "at": [0, 4, 0] },
+        { "op": "oxyz_point", "name": "A1", "at": [0, 0, 5] },
+        { "op": "oxyz_point", "name": "B1", "at": [3, 0, 5] },
+        { "op": "oxyz_point", "name": "C1", "at": [0, 4, 5] },
+        { "op": "edge", "from": "A", "to": "B" },
+        { "op": "edge", "from": "B", "to": "C" },
+        { "op": "edge", "from": "C", "to": "A" },
+        { "op": "edge", "from": "A1", "to": "B1" },
+        { "op": "edge", "from": "B1", "to": "C1" },
+        { "op": "edge", "from": "C1", "to": "A1" },
+        { "op": "edge", "from": "A", "to": "A1" },
+        { "op": "edge", "from": "B", "to": "B1" },
+        { "op": "edge", "from": "C", "to": "C1" }
+      ],
+      "queries": [
+        { "kind": "volume", "solid": "prism", "base": ["A", "B", "C"], "top": ["A1", "B1", "C1"] }
+      ]
+    }
+  },
+  {
+    "text": "Cho lăng trụ đứng ABC.A'B'C' có đáy ABC là tam giác đều cạnh 2 và chiều cao lăng trụ bằng 7. Tính thể tích khối lăng trụ.",
+    "source": "synthetic",
+    "difficulty": "medium",
+    "kind": "volume",
+    "expected": ["7√3"],
+    "plan": {
+      "solidName": "ABC.A1B1C1",
+      "ops": [
+        { "op": "oxyz_point", "name": "A", "at": [0, 0, 0] },
+        { "op": "oxyz_point", "name": "B", "at": [2, 0, 0] },
+        { "op": "oxyz_point", "name": "C", "at": [1, "sqrt(3)", 0] },
+        { "op": "oxyz_point", "name": "A1", "at": [0, 0, 7] },
+        { "op": "oxyz_point", "name": "B1", "at": [2, 0, 7] },
+        { "op": "oxyz_point", "name": "C1", "at": [1, "sqrt(3)", 7] },
+        { "op": "edge", "from": "A", "to": "B" },
+        { "op": "edge", "from": "B", "to": "C" },
+        { "op": "edge", "from": "C", "to": "A" },
+        { "op": "edge", "from": "A1", "to": "B1" },
+        { "op": "edge", "from": "B1", "to": "C1" },
+        { "op": "edge", "from": "C1", "to": "A1" },
+        { "op": "edge", "from": "A", "to": "A1" },
+        { "op": "edge", "from": "B", "to": "B1" },
+        { "op": "edge", "from": "C", "to": "C1" }
+      ],
+      "queries": [
+        { "kind": "volume", "solid": "prism", "base": ["A", "B", "C"], "top": ["A1", "B1", "C1"] }
+      ]
+    }
+  },
+  {
+    "text": "Cho lăng trụ đứng ABC.A'B'C' có đáy ABC là tam giác vuông tại A với AB = 5, AC = 12 và chiều cao lăng trụ bằng 4. Tính thể tích khối lăng trụ.",
+    "source": "synthetic",
+    "difficulty": "medium",
+    "kind": "volume",
+    "expected": ["120"],
+    "plan": {
+      "solidName": "ABC.A1B1C1",
+      "ops": [
+        { "op": "oxyz_point", "name": "A", "at": [0, 0, 0] },
+        { "op": "oxyz_point", "name": "B", "at": [5, 0, 0] },
+        { "op": "oxyz_point", "name": "C", "at": [0, 12, 0] },
+        { "op": "oxyz_point", "name": "A1", "at": [0, 0, 4] },
+        { "op": "oxyz_point", "name": "B1", "at": [5, 0, 4] },
+        { "op": "oxyz_point", "name": "C1", "at": [0, 12, 4] },
+        { "op": "edge", "from": "A", "to": "B" },
+        { "op": "edge", "from": "B", "to": "C" },
+        { "op": "edge", "from": "C", "to": "A" },
+        { "op": "edge", "from": "A1", "to": "B1" },
+        { "op": "edge", "from": "B1", "to": "C1" },
+        { "op": "edge", "from": "C1", "to": "A1" },
+        { "op": "edge", "from": "A", "to": "A1" },
+        { "op": "edge", "from": "B", "to": "B1" },
+        { "op": "edge", "from": "C", "to": "C1" }
+      ],
+      "queries": [
+        { "kind": "volume", "solid": "prism", "base": ["A", "B", "C"], "top": ["A1", "B1", "C1"] }
+      ]
+    }
+  },
+  {
+    "text": "Trong không gian Oxyz, cho tam giác ABC với A(0;0;0), B(3;0;0), C(0;4;0). Tính diện tích tam giác ABC.",
+    "source": "synthetic",
+    "difficulty": "medium",
+    "kind": "area",
+    "expected": ["6"],
+    "plan": {
+      "solidName": "ABC",
+      "ops": [
+        { "op": "oxyz_point", "name": "A", "at": [0, 0, 0] },
+        { "op": "oxyz_point", "name": "B", "at": [3, 0, 0] },
+        { "op": "oxyz_point", "name": "C", "at": [0, 4, 0] },
+        { "op": "edge", "from": "A", "to": "B" },
+        { "op": "edge", "from": "B", "to": "C" },
+        { "op": "edge", "from": "C", "to": "A" }
+      ],
+      "queries": [
+        { "kind": "area", "shape": "triangle", "points": ["A", "B", "C"] }
+      ]
+    }
+  },
+  {
+    "text": "Trong không gian Oxyz, cho tam giác ABC với A(1;0;0), B(0;1;0), C(0;0;1). Tính diện tích tam giác ABC.",
+    "source": "synthetic",
+    "difficulty": "medium",
+    "kind": "area",
+    "expected": ["√3/2"],
+    "plan": {
+      "solidName": "ABC",
+      "ops": [
+        { "op": "oxyz_point", "name": "A", "at": [1, 0, 0] },
+        { "op": "oxyz_point", "name": "B", "at": [0, 1, 0] },
+        { "op": "oxyz_point", "name": "C", "at": [0, 0, 1] },
+        { "op": "edge", "from": "A", "to": "B" },
+        { "op": "edge", "from": "B", "to": "C" },
+        { "op": "edge", "from": "C", "to": "A" }
+      ],
+      "queries": [
+        { "kind": "area", "shape": "triangle", "points": ["A", "B", "C"] }
+      ]
+    }
+  },
+  {
+    "text": "Trong không gian Oxyz, cho hình vuông ABCD với A(0;0;0), B(5;0;0), C(5;5;0), D(0;5;0). Tính diện tích hình vuông ABCD.",
+    "source": "synthetic",
+    "difficulty": "medium",
+    "kind": "area",
+    "expected": ["25"],
+    "plan": {
+      "solidName": "ABCD",
+      "ops": [
+        { "op": "oxyz_point", "name": "A", "at": [0, 0, 0] },
+        { "op": "oxyz_point", "name": "B", "at": [5, 0, 0] },
+        { "op": "oxyz_point", "name": "C", "at": [5, 5, 0] },
+        { "op": "oxyz_point", "name": "D", "at": [0, 5, 0] },
+        { "op": "edge", "from": "A", "to": "B" },
+        { "op": "edge", "from": "B", "to": "C" },
+        { "op": "edge", "from": "C", "to": "D" },
+        { "op": "edge", "from": "D", "to": "A" }
+      ],
+      "queries": [
+        { "kind": "area", "shape": "polygon", "points": ["A", "B", "C", "D"] }
+      ]
+    }
+  },
+  {
+    "text": "Trong không gian Oxyz, cho điểm A(1;1;1) và mặt phẳng (P): x + y + z = 0. Tính khoảng cách từ điểm A đến mặt phẳng (P).",
+    "source": "synthetic",
+    "difficulty": "medium",
+    "kind": "distance",
+    "expected": ["√3"],
+    "plan": {
+      "solidName": "figure",
+      "ops": [
+        { "op": "oxyz_point", "name": "A", "at": [1, 1, 1] },
+        { "op": "oxyz_plane", "name": "P", "by": { "form": "coeffs", "a": 1, "b": 1, "c": 1, "d": 0 } }
+      ],
+      "queries": [
+        { "kind": "distance", "a": "A", "b": "P" }
+      ]
+    }
+  },
+  {
+    "text": "Trong không gian Oxyz, cho điểm A(3;4;0) và đường thẳng d là trục Oz (đi qua gốc O với vectơ chỉ phương (0;0;1)). Tính khoảng cách từ điểm A đến đường thẳng d.",
+    "source": "synthetic",
+    "difficulty": "medium",
+    "kind": "distance",
+    "expected": ["5"],
+    "plan": {
+      "solidName": "figure",
+      "ops": [
+        { "op": "oxyz_point", "name": "A", "at": [3, 4, 0] },
+        { "op": "oxyz_line", "name": "d", "by": { "form": "point_dir", "base": [0, 0, 0], "dir": [0, 0, 1] } }
+      ],
+      "queries": [
+        { "kind": "distance", "a": "A", "b": "d" }
+      ]
+    }
+  },
+  {
+    "text": "Trong không gian Oxyz, cho đường thẳng d đi qua điểm M(1;2;3) với vectơ chỉ phương (1;1;1) và mặt phẳng (P): x + y + z - 12 = 0. Tìm tọa độ giao điểm I của d và (P).",
+    "source": "synthetic",
+    "difficulty": "medium",
+    "kind": "intersection",
+    "expected": ["3", "4", "5"],
+    "plan": {
+      "solidName": "figure",
+      "ops": [
+        { "op": "oxyz_line", "name": "d", "by": { "form": "point_dir", "base": [1, 2, 3], "dir": [1, 1, 1] } },
+        { "op": "oxyz_plane", "name": "P", "by": { "form": "coeffs", "a": 1, "b": 1, "c": 1, "d": -12 } },
+        { "op": "oxyz_intersect", "name": "I", "a": "d", "b": "P" }
+      ],
+      "queries": [
+        { "kind": "point_coord", "target": "I", "axis": "x" },
+        { "kind": "point_coord", "target": "I", "axis": "y" },
+        { "kind": "point_coord", "target": "I", "axis": "z" }
+      ]
+    }
+  },
+  {
+    "text": "Trong không gian Oxyz, cho đường thẳng d1 đi qua gốc O với vectơ chỉ phương (1;0;0) và đường thẳng d2 đi qua điểm B(2;1;0) với vectơ chỉ phương (0;1;0). Tìm tọa độ giao điểm I của d1 và d2.",
+    "source": "synthetic",
+    "difficulty": "medium",
+    "kind": "intersection",
+    "expected": ["2", "0", "0"],
+    "plan": {
+      "solidName": "figure",
+      "ops": [
+        { "op": "oxyz_line", "name": "d1", "by": { "form": "point_dir", "base": [0, 0, 0], "dir": [1, 0, 0] } },
+        { "op": "oxyz_line", "name": "d2", "by": { "form": "point_dir", "base": [2, 1, 0], "dir": [0, 1, 0] } },
+        { "op": "oxyz_intersect", "name": "I", "a": "d1", "b": "d2" }
+      ],
+      "queries": [
+        { "kind": "point_coord", "target": "I", "axis": "x" },
+        { "kind": "point_coord", "target": "I", "axis": "y" },
+        { "kind": "point_coord", "target": "I", "axis": "z" }
+      ]
+    }
+  }
+]

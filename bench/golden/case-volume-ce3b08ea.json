@@ -1,0 +1,98 @@
+{
+  "id": "case-volume-ce3b08ea",
+  "source": "synthetic",
+  "difficulty": "medium",
+  "text": "Trong không gian Oxyz, cho tứ diện ABCD với A(0;0;0), B(3;0;0), C(0;4;0), D(0;0;6). Tính thể tích khối tứ diện ABCD.",
+  "plan": {
+    "solidName": "ABCD",
+    "ops": [
+      {
+        "op": "oxyz_point",
+        "name": "A",
+        "at": [
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "B",
+        "at": [
+          3,
+          0,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "C",
+        "at": [
+          0,
+          4,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "D",
+        "at": [
+          0,
+          0,
+          6
+        ]
+      },
+      {
+        "op": "edge",
+        "from": "A",
+        "to": "B"
+      },
+      {
+        "op": "edge",
+        "from": "A",
+        "to": "C"
+      },
+      {
+        "op": "edge",
+        "from": "A",
+        "to": "D"
+      },
+      {
+        "op": "edge",
+        "from": "B",
+        "to": "C"
+      },
+      {
+        "op": "edge",
+        "from": "C",
+        "to": "D"
+      },
+      {
+        "op": "edge",
+        "from": "D",
+        "to": "B"
+      }
+    ],
+    "queries": [
+      {
+        "kind": "volume",
+        "solid": "tetrahedron",
+        "points": [
+          "A",
+          "B",
+          "C",
+          "D"
+        ]
+      }
+    ]
+  },
+  "expect": {
+    "ok": true,
+    "answers": [
+      {
+        "kind": "volume",
+        "text": "12"
+      }
+    ]
+  }
+}

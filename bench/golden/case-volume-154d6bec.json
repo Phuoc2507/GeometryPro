@@ -1,0 +1,135 @@
+{
+  "id": "case-volume-154d6bec",
+  "source": "synthetic",
+  "difficulty": "medium",
+  "text": "Cho lăng trụ đứng ABC.A'B'C' có đáy ABC là tam giác đều cạnh 2 và chiều cao lăng trụ bằng 7. Tính thể tích khối lăng trụ.",
+  "plan": {
+    "solidName": "ABC.A1B1C1",
+    "ops": [
+      {
+        "op": "oxyz_point",
+        "name": "A",
+        "at": [
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "B",
+        "at": [
+          2,
+          0,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "C",
+        "at": [
+          1,
+          "sqrt(3)",
+          0
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "A1",
+        "at": [
+          0,
+          0,
+          7
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "B1",
+        "at": [
+          2,
+          0,
+          7
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "C1",
+        "at": [
+          1,
+          "sqrt(3)",
+          7
+        ]
+      },
+      {
+        "op": "edge",
+        "from": "A",
+        "to": "B"
+      },
+      {
+        "op": "edge",
+        "from": "B",
+        "to": "C"
+      },
+      {
+        "op": "edge",
+        "from": "C",
+        "to": "A"
+      },
+      {
+        "op": "edge",
+        "from": "A1",
+        "to": "B1"
+      },
+      {
+        "op": "edge",
+        "from": "B1",
+        "to": "C1"
+      },
+      {
+        "op": "edge",
+        "from": "C1",
+        "to": "A1"
+      },
+      {
+        "op": "edge",
+        "from": "A",
+        "to": "A1"
+      },
+      {
+        "op": "edge",
+        "from": "B",
+        "to": "B1"
+      },
+      {
+        "op": "edge",
+        "from": "C",
+        "to": "C1"
+      }
+    ],
+    "queries": [
+      {
+        "kind": "volume",
+        "solid": "prism",
+        "base": [
+          "A",
+          "B",
+          "C"
+        ],
+        "top": [
+          "A1",
+          "B1",
+          "C1"
+        ]
+      }
+    ]
+  },
+  "expect": {
+    "ok": true,
+    "answers": [
+      {
+        "kind": "volume",
+        "text": "7√3"
+      }
+    ]
+  }
+}

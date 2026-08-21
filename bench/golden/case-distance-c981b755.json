@@ -1,0 +1,47 @@
+{
+  "id": "case-distance-c981b755",
+  "source": "synthetic",
+  "difficulty": "medium",
+  "text": "Trong không gian Oxyz, cho điểm A(1;1;1) và mặt phẳng (P): x + y + z = 0. Tính khoảng cách từ điểm A đến mặt phẳng (P).",
+  "plan": {
+    "solidName": "figure",
+    "ops": [
+      {
+        "op": "oxyz_point",
+        "name": "A",
+        "at": [
+          1,
+          1,
+          1
+        ]
+      },
+      {
+        "op": "oxyz_plane",
+        "name": "P",
+        "by": {
+          "form": "coeffs",
+          "a": 1,
+          "b": 1,
+          "c": 1,
+          "d": 0
+        }
+      }
+    ],
+    "queries": [
+      {
+        "kind": "distance",
+        "a": "A",
+        "b": "P"
+      }
+    ]
+  },
+  "expect": {
+    "ok": true,
+    "answers": [
+      {
+        "kind": "distance",
+        "text": "√3"
+      }
+    ]
+  }
+}

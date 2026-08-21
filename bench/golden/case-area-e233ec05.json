@@ -1,0 +1,73 @@
+{
+  "id": "case-area-e233ec05",
+  "source": "synthetic",
+  "difficulty": "medium",
+  "text": "Trong không gian Oxyz, cho tam giác ABC với A(0;0;0), B(3;0;0), C(0;4;0). Tính diện tích tam giác ABC.",
+  "plan": {
+    "solidName": "ABC",
+    "ops": [
+      {
+        "op": "oxyz_point",
+        "name": "A",
+        "at": [
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "B",
+        "at": [
+          3,
+          0,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "C",
+        "at": [
+          0,
+          4,
+          0
+        ]
+      },
+      {
+        "op": "edge",
+        "from": "A",
+        "to": "B"
+      },
+      {
+        "op": "edge",
+        "from": "B",
+        "to": "C"
+      },
+      {
+        "op": "edge",
+        "from": "C",
+        "to": "A"
+      }
+    ],
+    "queries": [
+      {
+        "kind": "area",
+        "shape": "triangle",
+        "points": [
+          "A",
+          "B",
+          "C"
+        ]
+      }
+    ]
+  },
+  "expect": {
+    "ok": true,
+    "answers": [
+      {
+        "kind": "area",
+        "text": "6"
+      }
+    ]
+  }
+}

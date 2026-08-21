@@ -1,0 +1,98 @@
+{
+  "id": "case-volume-a29d3cc9",
+  "source": "synthetic",
+  "difficulty": "medium",
+  "text": "Cho hình chóp S.ABC có đáy A(0;0;0), B(6;0;0), C(0;6;0) và đỉnh S(2;3;5). Tính thể tích khối chóp S.ABC.",
+  "plan": {
+    "solidName": "S.ABC",
+    "ops": [
+      {
+        "op": "oxyz_point",
+        "name": "A",
+        "at": [
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "B",
+        "at": [
+          6,
+          0,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "C",
+        "at": [
+          0,
+          6,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "S",
+        "at": [
+          2,
+          3,
+          5
+        ]
+      },
+      {
+        "op": "edge",
+        "from": "A",
+        "to": "B"
+      },
+      {
+        "op": "edge",
+        "from": "B",
+        "to": "C"
+      },
+      {
+        "op": "edge",
+        "from": "C",
+        "to": "A"
+      },
+      {
+        "op": "edge",
+        "from": "S",
+        "to": "A"
+      },
+      {
+        "op": "edge",
+        "from": "S",
+        "to": "B"
+      },
+      {
+        "op": "edge",
+        "from": "S",
+        "to": "C"
+      }
+    ],
+    "queries": [
+      {
+        "kind": "volume",
+        "solid": "pyramid",
+        "points": [
+          "A",
+          "B",
+          "C"
+        ],
+        "apex": "S"
+      }
+    ]
+  },
+  "expect": {
+    "ok": true,
+    "answers": [
+      {
+        "kind": "volume",
+        "text": "30"
+      }
+    ]
+  }
+}

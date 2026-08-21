@@ -1,0 +1,135 @@
+{
+  "id": "case-volume-d48d39ff",
+  "source": "synthetic",
+  "difficulty": "medium",
+  "text": "Cho lăng trụ đứng ABC.A'B'C' có đáy ABC là tam giác vuông tại A với AB = 5, AC = 12 và chiều cao lăng trụ bằng 4. Tính thể tích khối lăng trụ.",
+  "plan": {
+    "solidName": "ABC.A1B1C1",
+    "ops": [
+      {
+        "op": "oxyz_point",
+        "name": "A",
+        "at": [
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "B",
+        "at": [
+          5,
+          0,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "C",
+        "at": [
+          0,
+          12,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "A1",
+        "at": [
+          0,
+          0,
+          4
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "B1",
+        "at": [
+          5,
+          0,
+          4
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "C1",
+        "at": [
+          0,
+          12,
+          4
+        ]
+      },
+      {
+        "op": "edge",
+        "from": "A",
+        "to": "B"
+      },
+      {
+        "op": "edge",
+        "from": "B",
+        "to": "C"
+      },
+      {
+        "op": "edge",
+        "from": "C",
+        "to": "A"
+      },
+      {
+        "op": "edge",
+        "from": "A1",
+        "to": "B1"
+      },
+      {
+        "op": "edge",
+        "from": "B1",
+        "to": "C1"
+      },
+      {
+        "op": "edge",
+        "from": "C1",
+        "to": "A1"
+      },
+      {
+        "op": "edge",
+        "from": "A",
+        "to": "A1"
+      },
+      {
+        "op": "edge",
+        "from": "B",
+        "to": "B1"
+      },
+      {
+        "op": "edge",
+        "from": "C",
+        "to": "C1"
+      }
+    ],
+    "queries": [
+      {
+        "kind": "volume",
+        "solid": "prism",
+        "base": [
+          "A",
+          "B",
+          "C"
+        ],
+        "top": [
+          "A1",
+          "B1",
+          "C1"
+        ]
+      }
+    ]
+  },
+  "expect": {
+    "ok": true,
+    "answers": [
+      {
+        "kind": "volume",
+        "text": "120"
+      }
+    ]
+  }
+}

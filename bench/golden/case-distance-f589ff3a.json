@@ -1,0 +1,53 @@
+{
+  "id": "case-distance-f589ff3a",
+  "source": "synthetic",
+  "difficulty": "medium",
+  "text": "Trong không gian Oxyz, cho điểm A(3;4;0) và đường thẳng d là trục Oz (đi qua gốc O với vectơ chỉ phương (0;0;1)). Tính khoảng cách từ điểm A đến đường thẳng d.",
+  "plan": {
+    "solidName": "figure",
+    "ops": [
+      {
+        "op": "oxyz_point",
+        "name": "A",
+        "at": [
+          3,
+          4,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_line",
+        "name": "d",
+        "by": {
+          "form": "point_dir",
+          "base": [
+            0,
+            0,
+            0
+          ],
+          "dir": [
+            0,
+            0,
+            1
+          ]
+        }
+      }
+    ],
+    "queries": [
+      {
+        "kind": "distance",
+        "a": "A",
+        "b": "d"
+      }
+    ]
+  },
+  "expect": {
+    "ok": true,
+    "answers": [
+      {
+        "kind": "distance",
+        "text": "5"
+      }
+    ]
+  }
+}

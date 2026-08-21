@@ -1,0 +1,85 @@
+{
+  "id": "case-intersection-763a2e29",
+  "source": "synthetic",
+  "difficulty": "medium",
+  "text": "Trong không gian Oxyz, cho đường thẳng d1 đi qua gốc O với vectơ chỉ phương (1;0;0) và đường thẳng d2 đi qua điểm B(2;1;0) với vectơ chỉ phương (0;1;0). Tìm tọa độ giao điểm I của d1 và d2.",
+  "plan": {
+    "solidName": "figure",
+    "ops": [
+      {
+        "op": "oxyz_line",
+        "name": "d1",
+        "by": {
+          "form": "point_dir",
+          "base": [
+            0,
+            0,
+            0
+          ],
+          "dir": [
+            1,
+            0,
+            0
+          ]
+        }
+      },
+      {
+        "op": "oxyz_line",
+        "name": "d2",
+        "by": {
+          "form": "point_dir",
+          "base": [
+            2,
+            1,
+            0
+          ],
+          "dir": [
+            0,
+            1,
+            0
+          ]
+        }
+      },
+      {
+        "op": "oxyz_intersect",
+        "name": "I",
+        "a": "d1",
+        "b": "d2"
+      }
+    ],
+    "queries": [
+      {
+        "kind": "point_coord",
+        "target": "I",
+        "axis": "x"
+      },
+      {
+        "kind": "point_coord",
+        "target": "I",
+        "axis": "y"
+      },
+      {
+        "kind": "point_coord",
+        "target": "I",
+        "axis": "z"
+      }
+    ]
+  },
+  "expect": {
+    "ok": true,
+    "answers": [
+      {
+        "kind": "point_coord",
+        "text": "2"
+      },
+      {
+        "kind": "point_coord",
+        "text": "0"
+      },
+      {
+        "kind": "point_coord",
+        "text": "0"
+      }
+    ]
+  }
+}
