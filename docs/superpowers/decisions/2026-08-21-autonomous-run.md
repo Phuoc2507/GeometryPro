@@ -45,6 +45,21 @@ Pipeline: spec (3 agent) → phản biện thiết kế (2 agent) → sửa spec
   tính chứng minh. Giao agent sửa 2 tài liệu chem ngay, không đợi phản biện
   kiến trúc (độc lập nhau; điểm giao F13 đã được chốt "chem-pack thắng").
 
+- **D7 · Phản biện kiến trúc + Lý phiên 1: chấp nhận toàn bộ 18 finding + 16 phán
+  quyết (C1–C10, D1–D6).** Báo cáo: `docs/superpowers/reviews/2026-08-21-arch-physics-review-phien1.md`.
+  Nổi bật: route mới phải bọc nguyên tầng quota/billing như v2 (F1 — nếu không
+  là lỗ hổng chi phí); schema Lý thêm unit per-quantity để ENGINE đổi km/h→m/s
+  bằng hữu tỉ exact (F2); thêm query time_when_velocity cho bài hãm phanh (F3);
+  scene v0 hạ về mức plan, các mốc "đỉnh/điểm gặp" dời v1 (F8 — chọn phương án
+  rẻ); EXACT_TRIG thêm góc âm (C8); ChemScene chốt theo chem spec, kiến trúc
+  thành pointer (F5/C9); tsc gate rỗng với kernel → thêm tsconfig.kernel.json
+  vào nghi thức kiểm (F9). Xác nhận độc lập: 10/10 bài mẫu Lý đúng, mọi quirk
+  frontend có thật (trích dòng). Giao agent sửa 4 tài liệu (kiến trúc, rollout,
+  spec Lý, plan Lý) — không đụng 2 file Hóa (vòng sửa Hóa đang chạy song song).
+- **D8 · Trình tự thi công chốt theo phản biện:** physics pack code ngay sau
+  vòng sửa docs Lý; chem pack code ngay sau vòng sửa docs Hóa; route/bridge (P2)
+  và UI (P4) KHÔNG thi công đêm nay — cần bàn giao có người xem (quota, UX).
+
 ## Quyết định chờ ghi tiếp (sẽ bổ sung trong đêm)
 
 - Phân xử 5 điểm lệch giữa spec kiến trúc và spec Lý (theo khuyến nghị phản biện).
