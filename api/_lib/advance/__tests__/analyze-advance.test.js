@@ -146,6 +146,24 @@ describe('assembleAdvance — đề ĐA-CÂU (multi_question) → bóc lớp the
   });
 });
 
+// Phase 2 ("đọc ảnh 1 lần, tái dùng bản chép"): với đề ẢNH KHÔNG phải nâng cao, route [detailed→advance]
+// lấy adv.split.setup (bản chép do splitProblem vision tạo) gán trimmedPrompt rồi chạy Vẽ kỹ trên CHỮ —
+// đọc ảnh đúng MỘT lần. Test này khoá HỢP ĐỒNG tại ranh giới assembleAdvance: bản chép phải còn để tái dùng.
+describe('assembleAdvance — Phase 2: ảnh đề thường (1 câu) GIỮ bản chép cho route tái dùng', () => {
+  it('ảnh single không-template → degraded KÈM split.setup (bản chép) không rỗng', async () => {
+    const split = { type: 'single', setup: 'Cho hình chóp S.ABCD đáy vuông cạnh a, SA⟂đáy, SA=a. Tính thể tích.' };
+    const splitProblem = vi.fn().mockResolvedValue(split);
+    const solveProblem = vi.fn().mockResolvedValue({ ok: true, geometry: { points: [{ id: 'S' }] } });
+
+    const out = await assembleAdvance('', { splitProblem, solveProblem }, { imageBase64: 'x' });
+
+    expect(out.mode).toBe('kernel');
+    expect(out.degraded).toBe(true);
+    expect(out.split.setup).toContain('hình chóp');          // route gán trimmedPrompt = bản chép này
+    expect(out.split.setup.trim().length).toBeGreaterThan(0); // có bản chép ⇒ tái dùng được (không đọc ảnh lần 2)
+  });
+});
+
 describe('assembleAdvance — đề tròn xoay không dựng được ⇒ báo trung thực (KHÔNG vẽ bừa)', () => {
   it('rev-intent + không có template ⇒ revUnsupported, KHÔNG gọi solveProblem vẽ hình lạ', async () => {
     const splitProblem = vi.fn().mockResolvedValue({ type: 'single' }); // classifier trượt / OCR mờ

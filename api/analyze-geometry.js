@@ -86,7 +86,9 @@ async function handler(req, res) {
       return res.status(400).json({ error: errMsg });
     }
 
-    const trimmedPrompt = prompt.trim();
+    // `let` (không `const`): nhánh Vẽ kỹ có thể GÁN LẠI = bản chép đề từ ảnh (transcription) để chạy
+    // tiếp engine/LLM trên CHỮ — đọc ảnh đúng MỘT lần (xem [detailed→advance] Phase 2).
+    let trimmedPrompt = prompt.trim();
     const validModes = ['quick', 'detailed'];
     const drawMode = validModes.includes(mode) ? mode : 'quick';
     dbgPrompt = trimmedPrompt; dbgMode = drawMode; dbgModel = aiModel || null; dbgImage = !!imageBase64;
@@ -327,37 +329,79 @@ Hãy:
       // CHỈ áp cho 'detailed' (Vẽ nhanh KHÔNG đụng — giữ nhẹ). Gate REGEX rẻ quyết định có ĐÁNG chạy
       // pipeline nâng cao không (tránh tốn 1 lượt split-LLM cho MỌI đề Vẽ kỹ); runAdvance → assembleAdvance
       // tự lo phần còn lại + fallback. Hỏng/không dựng được ⇒ rơi êm về luồng Vẽ kỹ thường bên dưới.
-      // Trả THẲNG scene advance (frontend queueAnalyzeText nhận diện mode:'advance'). Ảnh → bỏ qua (Phase 2
-      // sẽ mở). Cờ ENV DETAILED_ADVANCE=off tắt hẳn nhánh này (đường lui khi p95 xấu, không cần revert code).
+      // Trả THẲNG scene advance (frontend queueAnalyzeText nhận diện mode:'advance'). Cờ ENV
+      // DETAILED_ADVANCE=off tắt hẳn nhánh này (đường lui khi p95 xấu, không cần revert code).
+      //
+      // ẢNH (Phase 2 — "đọc ảnh 1 lần, tái dùng bản chép"): NGUYÊN TẮC SỐNG CÒN là đọc ảnh bằng AI
+      // (vision) TỐI ĐA MỘT lần trong 1 request (~60s Vercel) — chạy vision 2 lần ⇒ 504. splitProblem
+      // (trong runAdvance) đã đọc ảnh + phân loại + CHÉP đề trong 1 lượt vision. Do đó với đề ẢNH:
+      //   • dựng được scene nâng cao      → phục vụ advance;
+      //   • không phải nâng cao NHƯNG có bản chép (adv.split.setup) → GÁN trimmedPrompt = bản chép,
+      //     BỎ imageBase64 → luồng Vẽ kỹ dưới chạy trên CHỮ (kernel/LLM), KHÔNG đọc ảnh lần 2;
+      //   • không dựng được & KHÔNG có bản chép (đọc ảnh hỏng / chạm deadline) → HOÀN credit + báo sạch,
+      //     TUYỆT ĐỐI không rơi xuống LLM-vision (sẽ là lượt vision thứ 2 → 504).
       const advanceOff = process.env.DETAILED_ADVANCE === 'off';
-      if (!advanceOff && !imageBase64 && trimmedPrompt && process.env.KERNEL_MODE !== 'off') {
+      if (!advanceOff && (imageBase64 || trimmedPrompt) && process.env.KERNEL_MODE !== 'off') {
         try {
           const advMod = await import('./analyze-advance.js');
-          const isAdvance = advMod.looksLikeVessel(trimmedPrompt) || advMod.looksLikeRevolution(trimmedPrompt)
+          // CHỮ: gate regex rẻ (tránh split-LLM cho mọi đề). ẢNH: luôn thử (vision của splitProblem
+          // vừa đọc-ảnh vừa phân loại; kết quả CÒN được tái dùng cho luồng dưới nên không phí).
+          const textGate = advMod.looksLikeVessel(trimmedPrompt) || advMod.looksLikeRevolution(trimmedPrompt)
             || advMod.looksLikeCrossSection(trimmedPrompt) || advMod.looksLikeArea(trimmedPrompt)
             || advMod.looksLikeSection(trimmedPrompt) || advMod.looksLikeMultiQuestion(trimmedPrompt);
-          if (isAdvance) {
+          const shouldTry = imageBase64 ? true : textGate;
+          if (shouldTry) {
             sendEvent('Đang thử engine nâng cao...', 30);
             const { runAdvance } = await import('./_lib/advance/runAdvance.js');
             // Deadline nội bộ: pipeline nâng cao (split + dịch base 1 lần + giải từng câu) có thể ~30-40s.
-            // Chạm mốc ⇒ rơi về Vẽ kỹ thường thay vì treo tới trần 60s Vercel (→ 504). 52s mặc định (chừa lằn).
+            // Chạm mốc ⇒ (chữ) rơi về Vẽ kỹ thường; (ảnh) hoàn credit + báo sạch. 52s mặc định (chừa lằn 60s).
             const DEADLINE_MS = Number(process.env.ADVANCE_DEADLINE_MS) || 52000;
             let _advTimer;
             const _advDeadline = new Promise((r) => { _advTimer = setTimeout(() => r({ __deadline: true }), DEADLINE_MS); });
-            const adv = await Promise.race([runAdvance(trimmedPrompt, {}), _advDeadline]);
+            // ẢNH: đẩy ảnh xuống (problem='' → splitProblem tự đọc ảnh). CHỮ: đẩy chữ, không ảnh.
+            const adv = await Promise.race([
+              runAdvance(imageBase64 ? '' : trimmedPrompt, imageBase64 ? { imageBase64 } : {}),
+              _advDeadline,
+            ]);
             clearTimeout(_advTimer);
-            if (adv && adv.__deadline) {
-              console.warn('[detailed→advance] chạm deadline → Vẽ kỹ thường');
-            } else if (adv && adv.mode === 'advance' && adv.scene && adv.scene.base
-                && Array.isArray(adv.scene.base.points) && adv.scene.base.points.length > 0) {
-              console.log('[detailed→advance] phục vụ:', trimmedPrompt.substring(0, 60));
-              logEngineDecision({ mode: 'detailed', served: true, reason: 'advance-from-detailed', ms: 0, promptLen: trimmedPrompt.length });
+
+            const usableScene = adv && adv.mode === 'advance' && adv.scene && adv.scene.base
+              && Array.isArray(adv.scene.base.points) && adv.scene.base.points.length > 0;
+
+            if (usableScene) {
+              console.log('[detailed→advance] phục vụ:', (trimmedPrompt || '📷 ảnh').substring(0, 60));
+              logEngineDecision({ mode: 'detailed', served: true, reason: imageBase64 ? 'advance-from-detailed-image' : 'advance-from-detailed', ms: 0, promptLen: trimmedPrompt.length });
               sendEvent('Hoàn tất (nâng cao)!', 100);
               const advPayload = withQuota({ mode: 'advance', scene: adv.scene, engine: 'advance' }, access);
               if (isStream) { res.write(`data: ${JSON.stringify({ status: 'done', data: advPayload })}\n\n`); return res.end(); }
               return res.json(advPayload);
+            }
+
+            // Không dựng được scene nâng cao:
+            const transcript = imageBase64 && !(adv && adv.__deadline) ? String(adv?.split?.setup || '').trim() : '';
+            if (imageBase64 && transcript) {
+              // ẢNH có bản chép → tái dùng: chạy tiếp luồng Vẽ kỹ trên CHỮ (kernel bật được), KHÔNG đọc ảnh lần 2.
+              console.log('[detailed→advance] ảnh không phải nâng cao → tái dùng bản chép, chạy Vẽ kỹ trên chữ');
+              logEngineDecision({ mode: 'detailed', served: false, reason: 'image-transcript-reuse', ms: 0, promptLen: transcript.length });
+              trimmedPrompt = transcript;
+              imageBase64 = null;
+              // rơi xuống luồng Vẽ kỹ thường (giờ là bài CHỮ).
+            } else if (imageBase64) {
+              // ẢNH nhưng KHÔNG có bản chép (đọc ảnh hỏng / chạm deadline). KHÔNG chạy vision lần 2.
+              // Hoàn credit + quota rồi báo sạch (mô phỏng route Advance: ảnh khó → mời gõ chữ).
+              console.warn('[detailed→advance] ảnh không đọc/không dựng được → báo sạch, KHÔNG LLM-vision lần 2');
+              if (creditCharge && userId) {
+                try { await refund(userId, creditCharge.cost, creditCharge.reqId); } catch (e) { console.warn('refund (advance-image-fail) lỗi:', e?.message); }
+                creditCharge = null;
+              }
+              await refundAiUsage(access);
+              const msg = adv?.imageReadFailed
+                ? 'Mình chưa đọc được đề trong ảnh (có thể ảnh hơi mờ hoặc chữ nhỏ). Bạn thử chụp rõ/gần hơn, hoặc gõ đề bằng chữ giúp mình nhé.'
+                : 'Đề trong ảnh xử lý lâu quá mức. Bạn thử gõ đề bằng chữ (rút gọn) hoặc chụp rõ/gần hơn nhé.';
+              if (isStream) { res.write(`data: ${JSON.stringify({ error: msg })}\n\n`); return res.end(); }
+              return res.status(200).json({ error: msg });
             } else {
-              // adv.revUnsupported / degraded ⇒ engine Nâng cao chưa dựng được ⇒ rơi về Vẽ kỹ thường (thử vẽ hình).
+              // CHỮ: engine nâng cao chưa dựng được ⇒ rơi về Vẽ kỹ thường (không có vision, an toàn).
               console.log('[detailed→advance] không dùng được → Vẽ kỹ thường');
             }
           }
