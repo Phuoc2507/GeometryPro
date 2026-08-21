@@ -1,7 +1,7 @@
 # Kiến trúc Engine Pack Đa Môn (Multi-Subject Engine Packs) — Design Spec
 
 **Ngày:** 2026-08-21
-**Trạng thái:** Spec chờ phản biện. Kế hoạch rollout tổng: `docs/superpowers/plans/2026-08-21-engine-pack-rollout.md`.
+**Trạng thái:** ĐÃ QUA PHẢN BIỆN PHIÊN 1 (21/08/2026) — mọi finding F1–F18 + phán quyết C1–C10, D1–D6 đã áp vào spec (báo cáo: `docs/superpowers/reviews/2026-08-21-arch-physics-review-phien1.md`; phán quyết chép tại §14). Kế hoạch rollout tổng: `docs/superpowers/plans/2026-08-21-engine-pack-rollout.md`.
 **Tiền đề:** Kernel hình học + engine giải tích + module kinematic đã chạy production-shape; baseline **1072 test xanh / 168 file** (đo 2026-08-21 bằng `npx vitest run`).
 **Nguyên tắc thừa kế:** đúng tinh thần `docs/MERGE-BRIEF.md` — **mọi thứ chỉ CỘNG THÊM**, luồng Toán hiện tại không đổi một hành vi nào.
 
@@ -60,10 +60,10 @@
 ```
 api/_lib/kernel/
   physics/                      # PACK VẬT LÝ — v0: động học lớp 10
-    index.ts                    # export public: runPhysics, PhysicsPlanSchema, types
+    index.ts                    # export public: runPhysics, PhysicsPlanSchema, types — THÊM Ở P2 (bước người tích hợp; v0 chưa có — spec pack Lý §14.1)
     runPhysics.ts               # entrypoint (soi gương runAnalysis.ts)
-    schema.ts                   # PhysicsPlanSchema (Zod)
-    motion.ts                   # mô hình chuyển động → hàm x(t),y(t),z(t) + đạo hàm (closed-form)
+    planSchema.ts               # PhysicsPlanSchema (Zod) — tên file theo spec pack Lý (chốt §14.1 spec pack)
+    kinematics.ts               # mô hình chuyển động → Quad x(t),y(t) + đạo hàm (closed-form) + đổi đơn vị exact
     compute.ts                  # trả lời queries (range, max_height, meet, …) exact-khi-được
     scene.ts                    # motion → GeometryData {points, lines, curves, agents, timeline}
     __tests__/                  # golden tính tay + violation + scene format
@@ -96,7 +96,7 @@ api/_lib/kernel/
 - `scripts/build-kernel.mjs` bundle từ `kernel/index.ts` → `kernel-dist/index.mjs` (esbuild, ESM, node18) — **không cần sửa build script**; export đến đâu bundle đến đó. Trước khi tích hợp, pack vẫn test được đầy đủ qua vitest (import .ts trực tiếp), y như analysis đã từng.
 - Route `.js` chỉ được import từ `kernel-dist/index.mjs` (như `solveWithKernel.js:4` đang làm) — không import `.ts` nguồn.
 
-**Ghi chú tái dùng chéo (quyết định có chủ đích):** physics import `analysis/solver1d.ts`, `analysis/recognize.ts`, `analysis/expr.ts` như thư viện toán. Đây là import pack→pack, hơi lệch quy tắc "pack → core"; lý do chấp nhận ở v0: tách các file này ra `kernel/mathlib/` sẽ **sửa import của analysis** (vi phạm "chỉ cộng thêm"). Ghi TODO: tách mathlib khi có đợt refactor có chủ đích, kèm codemod import.
+**Ghi chú tái dùng chéo (quyết định có chủ đích — chốt C2, F4):** physics import `analysis/solver1d.ts`, `analysis/recognize.ts` như thư viện toán (KHÔNG dùng `analysis/expr.ts` — F4 đã gạch khỏi danh sách), cộng thêm `compute/answer.ts` (certifyScalar — thuộc core, chiều pack→core hợp lệ sẵn). Import `analysis/*` là pack→pack, hơi lệch quy tắc "pack → core"; lý do chấp nhận ở v0: tách các file này ra `kernel/mathlib/` sẽ **sửa import của analysis** (vi phạm "chỉ cộng thêm"). Ghi TODO: tách mathlib khi có đợt refactor có chủ đích, kèm codemod import.
 
 ---
 
