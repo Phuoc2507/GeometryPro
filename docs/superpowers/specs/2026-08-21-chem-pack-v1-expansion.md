@@ -598,7 +598,203 @@ Bình thứ hai / gạn lọc kết tủa đem nung tiếp; chuỗi ưu tiên ng
 K2CO3, photphat từng nấc); "thêm từ từ đến khi kết tủa lớn nhất/bắt đầu tan" (bài biện luận theo
 tham số); trộn 3 dung dịch trở lên trong MỘT bước có tương tác chéo.
 
-<!-- TIEP -->
+### 4.2. Cơ chế B — CO2/SO2 + KIỀM vùng 2 muối (gỡ guard F4 + miền R65)
+
+#### 4.2.1. Kích hoạt & mô hình
+
+- **Kích hoạt (đóng):** tập chất mix (hoặc một bước add) = {khí ∈ {CO2, SO2}} × {kiềm ∈ {NaOH,
+  Ca(OH)2}}, CẢ HAI có lượng định lượng. (Thiếu amount = bài định tính → dùng record vùng kiềm dư
+  làm hiện tượng chuẩn: R29/R87/R65/R85.) Cặp có khí/kiềm khác (KOH, Ba(OH)2, hỗn hợp kiềm) ⇒ KHÔNG
+  kích hoạt, đi đường thường → thường là "ngoài phạm vi" (§4.4).
+- Tính **T = n(OH⁻)/n(khí)** — n(OH⁻) = 1·n(NaOH) hoặc 2·n(Ca(OH)2); hữu tỉ exact. Kiềm excess ⇒
+  T = ∞ (vùng 1); khí excess ⇒ T → 0 (vùng 3). Cả hai excess ⇒ error F23.
+- **Ba vùng** (biên thuộc vùng MỘT MUỐI để đáp gọn — tại biên hệ 2 ẩn cho nghiệm một-muối trùng khớp,
+  xem tính liên tục dưới):
+
+| Vùng | Điều kiện | Lời giải |
+|---|---|---|
+| 1 — muối trung hòa | T ≥ 2 | chạy đơn record biên trên (R65/R85/R29/R87), kiềm dư nếu T > 2 |
+| 2 — HAI MUỐI | 1 < T < 2 | tổ hợp tuyến tính HAI record biên với mức ξ₁, ξ₂ > 0 — hệ 2 ẩn hữu tỉ, nghiệm ĐÓNG dưới |
+| 3 — muối axit | T ≤ 1 | chạy đơn record biên dưới (R88/R86/R89); khí dư phần không hấp thụ |
+
+- **Nghiệm đóng vùng 2** (đặt g = n(khí), b = n(kiềm)):
+  - NaOH (cặp R65 + R88): ξ₁(R65) = b − g (mol muối trung hòa); ξ₂(R88) = 2g − b (mol muối axit).
+    Kiểm: NaOH tiêu thụ 2ξ₁ + ξ₂ = b ✓; khí ξ₁ + ξ₂ = g ✓; cả hai > 0 trong vùng ✓.
+  - Ca(OH)2 (cặp R29 + R89): ξ₁(R29) = 2b − g = n(OH⁻) − n(khí) (mol kết tủa); ξ₂(R89) = g − b.
+    Kiểm: Ca ξ₁ + ξ₂ = b ✓; khí ξ₁ + 2ξ₂ = g ✓.
+  - Cặp {SO2, Ca(OH)2} thiếu biên dưới (không có Ca(HSO3)2, §3.3) ⇒ chỉ vùng 1 hợp lệ; T < 2 ⇒
+    error "vùng muối axit của cặp SO2/Ca(OH)2 ngoài phạm vi v1".
+- **Tính liên tục tại biên (test bắt buộc):** T = 2 ⇒ ξ₂ = 0, nghiệm vùng 2 trùng nghiệm vùng 1;
+  T = 1 ⇒ ξ₁ = 0, trùng vùng 3 — dispatcher và record đơn KHÔNG ĐƯỢC lệch nhau tại biên.
+- Kết quả: `reactions` chứa 1 hoặc 2 record với ξ tương ứng; ledger cộng dồn; hiện tượng vùng 2 của
+  Ca(OH)2 = "có kết tủa trắng nhưng KHÔNG cực đại; nếu tiếp tục sục khí kết tủa sẽ tan dần".
+
+#### 4.2.2. Tự kiểm
+
+Bảo toàn C/S (nguyên tố khí), Na/Ca, O, H exact trên tổ hợp 2 record; ξ₁, ξ₂ ≥ 0 (âm = bug phân vùng
+⇒ violation); tại vùng 1/3 chạy qua chính record đơn nên tự kế thừa kiểm v0.
+
+#### 4.2.3. Bài mẫu tính tay
+
+**B1 (bài F4 của review):** Sục 6,72 lít CO2 (đktc) vào 200 ml dd Ca(OH)2 1M. Tính khối lượng kết tủa.
+
+- g = 6,72/22,4 = 0,3 · b = 0,2 · n(OH⁻) = 0,4 · T = 4/3 ∈ (1; 2) → vùng 2.
+- ξ₁(R29) = 2·0,2 − 0,3 = **0,1 mol CaCO3** → m↓ = **10 g** ✓ (đúng bài Phần F review; v0-chưa-guard
+  trả 20 g — sai gấp đôi). ξ₂(R89) = 0,3 − 0,2 = 0,1 mol Ca(HCO3)2.
+- Kiểm: Ca 0,1 + 0,1 = 0,2 ✓ · C 0,1 + 0,2 = 0,3 ✓.
+
+**B2:** Hấp thụ hoàn toàn 3,36 lít CO2 (đktc) vào 200 ml dd NaOH 1M. Tính khối lượng MỖI muối.
+
+- g = 0,15 · b = 0,2 · T = 4/3 ∈ (1; 2) → vùng 2.
+- ξ₁(R65) = 0,2 − 0,15 = 0,05 mol Na2CO3 → **5,3 g**; ξ₂(R88) = 0,3 − 0,2 = 0,1 mol NaHCO3 → **8,4 g**.
+- Kiểm Na: 2·0,05 + 0,1 = 0,2 ✓ · C: 0,05 + 0,1 = 0,15 ✓ · khối lượng: 6,6 + 8 = 14,6 =
+  5,3 + 8,4 + 0,05·18 (H2O của R65 = 0,9) ✓.
+
+### 4.3. Cơ chế C — PHẢN ỨNG NỐI TIẾP kim loại + muối dư (gỡ guard F3 của R23)
+
+#### 4.3.1. Kích hoạt, record kéo theo, thuật toán
+
+- **Kích hoạt (đóng, v1 đúng MỘT cặp):** mix = {Fe, AgNO3}, cả hai định lượng hoặc AgNO3 excess.
+  (AgNO3 thỏa guard mustBeLimiting của R23 ⇒ chạy R23 đơn như v0 — cơ chế là phần MỞ RỘNG khi guard
+  vi phạm, không thay hành vi cũ.)
+- **Cơ sở hóa học (thứ tự ưu tiên theo dãy điện hóa):** chất khử MẠNH NHẤT phản ứng trước — còn Fe
+  thì Ag⁺ chỉ oxi hóa Fe → Fe²⁺; khi Fe hết, Ag⁺ còn dư mới oxi hóa tiếp Fe²⁺ → Fe³⁺. Mã hóa thành
+  CHUỖI 2 GIAI ĐOẠN CỐ ĐỊNH (không giải tổng quát dãy điện hóa — tất định, đóng):
+  1. **Giai đoạn 1 — R23:** Fe + 2AgNO3 → Fe(NO3)2 + 2Ag↓, ξ₁ = min(n(Fe), n(AgNO3)/2).
+     Nếu AgNO3 hết trước (ξ₁ = n(AgNO3)/2 < n(Fe)) ⇒ DỪNG (chính là miền cũ của R23).
+  2. **Giai đoạn 2 — R96:** Fe(NO3)2 + AgNO3 → Fe(NO3)3 + Ag↓, ξ₂ = min(n(Fe(NO3)2), n(AgNO3) còn).
+     Chỉ chạy khi sau giai đoạn 1 AgNO3 còn > 0.
+- **Record kéo theo R96 — Fe(NO3)2 + AgNO3 → Fe(NO3)3 + Ag↓.** Tự cân: Fe 1=1 · Ag 1=1 · N 2+1 = 3 ·
+  O 6+3 = 9 ✓. dd; type 'oxi hóa – khử'; redox ✓; hiện tượng: "có thêm bạc trắng xám bám ra; dung
+  dịch chuyển từ lục nhạt sang vàng nâu (Fe³⁺)"; tags: `hoa/12/dai-cuong-kim-loai/day-dien-hoa`,
+  `hoa/10/phan-ung/oxi-hoa-khu`. R96 đứng ĐƯỢC một mình (mix {Fe(NO3)2, AgNO3} trực tiếp — không
+  cần cơ chế, không domain).
+- Xóa note văn xuôi "v0 không mô hình ca dư" của R23; guard mustBeLimiting GIỮ NGUYÊN nhưng vi phạm
+  ⇒ chuyển dispatcher (thay vì error).
+
+#### 4.3.2. Tự kiểm
+
+Bảo toàn Ag: n(Ag↓) + n(AgNO3 dư) = n(AgNO3 đầu); bảo toàn Fe: n(Fe(NO3)2) + n(Fe(NO3)3) + n(Fe dư)
+= n(Fe đầu); bảo toàn N, O exact; mỗi giai đoạn chạy qua `react()` chuẩn nên 2 định luật khối lượng/
+nguyên tố tự chạy; after ≥ 0 xuyên giai đoạn.
+
+#### 4.3.3. Bài mẫu tính tay
+
+**C1 (bài F3 của review):** Cho 5,6 g Fe vào dd chứa 0,25 mol AgNO3 (phản ứng hoàn toàn). Tính m(Ag).
+
+- n(Fe) = 0,1. GĐ1: cần 0,2 AgNO3 ≤ 0,25 ⇒ ξ₁ = 0,1: Fe hết, Ag 0,2 mol, Fe(NO3)2 0,1, AgNO3 còn 0,05.
+- GĐ2: ξ₂ = min(0,1; 0,05) = 0,05: Ag thêm 0,05, Fe(NO3)3 0,05, Fe(NO3)2 còn 0,05, AgNO3 hết.
+- **m(Ag) = 0,25 × 108 = 27 g** ✓ (đúng đáp F3; engine cũ 21,6 g — sai 20%).
+- Kiểm N: 0,25 = 2·0,05 + 3·0,05 ✓; khối lượng: 5,6 + 42,5 = 48,1 = 27 + 0,05·180 + 0,05·242 ✓.
+
+**C2:** Cho 5,6 g Fe vào dd chứa 0,35 mol AgNO3. Tính m(Ag) và số mol các muối.
+
+- GĐ1: ξ₁ = 0,1 → Ag 0,2; Fe(NO3)2 0,1; AgNO3 còn 0,15. GĐ2: ξ₂ = min(0,1; 0,15) = 0,1 → Ag thêm
+  0,1; Fe(NO3)3 0,1; Fe(NO3)2 hết; AgNO3 dư 0,05.
+- **m(Ag) = 0,3 × 108 = 32,4 g**; muối: Fe(NO3)3 0,1 mol + AgNO3 dư 0,05 mol. (Đúng công thức giới
+  hạn n(Ag) = 3n(Fe) khi AgNO3 ≥ 3n(Fe).) Kiểm N: 0,35 = 0,3 + 0,05 ✓.
+
+### 4.4. Những gì VẪN ngoài v1 (tuyên bố tường minh — mỗi dòng là một error message có chủ đích)
+
+- **Hỗn hợp kim loại + muối / hỗn hợp muối + kim loại / hỗn hợp axit** (Fe&Cu + AgNO3; Fe +
+  Cu(NO3)2&AgNO3; kim loại + HCl&H2SO4): cần giải HỆ phương trình + thứ tự ưu tiên tổng quát theo
+  dãy điện hóa — v2 (hệ tuyến tính hữu tỉ đã có sẵn trong balancer, nhưng miền hóa học phải duyệt
+  từng khuôn).
+- Kim loại khác + Fe³⁺/Ag⁺ theo chuỗi nhiều nấc (Zn + FeCl3 dư, Mg + AgNO3…): G2' trả null.
+- HNO3 loãng tạo NH4NO3 / hỗn hợp sản phẩm khử; kim loại + HNO3/H2SO4 đặc mà axit hữu hạn.
+- Bài NGƯỢC (cho sản phẩm tìm chất đầu), bài HIỆU SUẤT, bài BIỆN LUẬN kết tủa cực đại/tan một phần
+  theo tham số.
+- CO2/SO2 + KOH/Ba(OH)2/hỗn hợp kiềm; Ca(HSO3)2; điện phân; pH; nhiệt nhôm hỗn hợp.
+- Tách/lọc/nung kết tủa ở bình thứ hai (đa bình).
+
+---
+
+## 5. CONTRACT v1 — 10 bài tổng hợp (golden tính tay, test so `exact`)
+
+Mỗi bài sẽ thành một `it` trong `__tests__/runChem-v1-contract.test.ts`; phủ đủ 3 phần. Vm ghi rõ
+từng bài. Mọi bài đều tự kiểm bảo toàn khối lượng ghi ngay dưới.
+
+**V1-01 (R59).** Cho 6,4 g Cu vào dd chứa 32,5 g FeCl3, phản ứng hoàn toàn. Tính m các muối.
+n(Cu) = 0,1; n(FeCl3) = 32,5/162,5 = 0,2. Tỉ số 0,1/1 = 0,2/2 → VỪA ĐỦ (hòa min hợp lệ), ξ = 0,1.
+**m(CuCl2) = 0,1·135 = 13,5 g; m(FeCl2) = 0,2·127 = 25,4 g.** Kiểm: 6,4 + 32,5 = 38,9 = 13,5 + 25,4 ✓.
+
+**V1-02 (R61).** Hòa tan hoàn toàn 12,8 g Cu trong dd HNO3 đặc DƯ. Tính V(NO2) (đkc).
+n(Cu) = 0,2 → n(NO2) = 0,4. **V = 0,4 × 24,79 = 9,916 lít (đkc).**
+Kiểm: 12,8 + 0,8·63 (50,4) = 0,2·188 (37,6) + 0,4·46 (18,4) + 0,4·18 (7,2) = 63,2 ✓.
+
+**V1-03 (R62).** Hòa tan hoàn toàn 11,2 g Fe trong H2SO4 đặc, nóng, DƯ. Tính V(SO2) (đktc) và m muối.
+n(Fe) = 0,2 → ξ = 0,1 → n(SO2) = 0,3; **V = 6,72 lít (đktc)**; **m(Fe2(SO4)3) = 0,1·400 = 40 g.**
+Kiểm: 11,2 + 0,6·98 (58,8) = 40 + 0,3·64 (19,2) + 0,6·18 (10,8) = 70 ✓.
+(Biến thể bắt buộc test: cùng plan nhưng `heated:false` → noReaction "thụ động hóa" — F19.)
+
+**V1-04 (R63).** Cho 5,4 g Al vào dd NaOH dư. Tính V(H2) (đkc).
+n(Al) = 0,2 → n(H2) = 0,3. **V = 0,3 × 24,79 = 7,437 lít (đkc).**
+Kiểm (H2O engine tự cấp 0,2 mol): 5,4 + 0,2·40 (8) + 0,2·18 (3,6) = 17 = 0,2·82 (16,4) + 0,3·2 (0,6) ✓.
+
+**V1-05 (R64).** Nhiệt phân hoàn toàn 24,5 g KClO3 (xúc tác MnO2). Tính m(KCl) và V(O2) (đktc).
+n = 24,5/122,5 = 0,2 → **m(KCl) = 0,2·74,5 = 14,9 g; n(O2) = 0,3 → V = 6,72 lít (đktc).**
+Kiểm: 24,5 = 14,9 + 0,3·32 (9,6) ✓. (MnO2 khai `catalyst:true`: before = after, không vào matching.)
+
+**V1-06 (R68).** Đốt cháy hoàn toàn 6,2 g P trong khí O2 dư. Tính m(P2O5).
+n(P) = 0,2 → ξ = 0,05 → n(P2O5) = 0,1. **m = 14,2 g.** Kiểm: 6,2 + 0,25·32 (8) = 14,2 ✓.
+
+**V1-07 (R80).** Cho 17,4 g MnO2 tác dụng với dd HCl đặc DƯ, đun nhẹ. Tính V(Cl2) (đktc).
+n(MnO2) = 17,4/87 = 0,2 → n(Cl2) = 0,2. **V = 4,48 lít (đktc).**
+Kiểm: 17,4 + 0,8·36,5 (29,2) = 0,2·126 (25,2) + 0,2·71 (14,2) + 0,4·18 (7,2) = 46,6 ✓.
+
+**V1-08 (cơ chế A).** = bài A1 §4.1.3 nguyên văn: nhỏ từ từ 100 ml HCl 1M vào 100 ml Na2CO3 0,6M →
+**V(CO2) = 0,896 lít (đktc)**; CM sau: NaCl 0,5M, NaHCO3 0,1M. (Kèm test chiều ngược A2 = 1,12 lít —
+hai plan chỉ khác `dropwise`/chiều add mà đáp khác nhau.)
+
+**V1-09 (cơ chế B).** = bài B2 §4.2.3: 3,36 lít CO2 (đktc) + 200 ml NaOH 1M → **Na2CO3 5,3 g +
+NaHCO3 8,4 g.** (Kèm test biên: 2,24 lít CO2 (0,1 mol) + cùng dd NaOH → T = 2, chỉ Na2CO3 0,1 mol —
+dispatcher phải trùng record đơn R65.)
+
+**V1-10 (cơ chế C).** = bài C1 §4.3.3: 5,6 g Fe + dd chứa 0,25 mol AgNO3 → **m(Ag) = 27 g**; dd sau:
+Fe(NO3)2 0,05 mol + Fe(NO3)3 0,05 mol. (Kèm assert chống ảo giác kiểu Bài 11 v0: đề bịa
+`given_mass Ag = 21,6` → violation, KHÔNG tự sửa mô hình.)
+
+Ngoài 10 bài trên, suite v1 PHẢI có các test biên đã rải trong spec: liên tục T=1/T=2 (§4.2), miền
+trống H2S+O2 (§1.3), requireCold R76, equilibrium chặn định lượng (R75/R81–R83), stageOnly R95 không
+match đơn, MnCl2/KNO2 có màu chủ đích (test phủ màu F16), và 3 bài "engine cũ giải sai" của review
+chạy đúng đáp mới (0,896 L / 10 g / 27 g).
+
+---
+
+## 6. ĐIỂM CÒN PHÂN VÂN — CHO PHẢN BIỆN CHUYÊN GIA HÓA
+
+1. **Màu dd MnCl2** (§3.2.2): spec để "không màu (hồng rất nhạt khi đặc)" — SGK 10 không tả màu.
+   Chốt câu chữ hoặc bỏ ngoặc.
+2. **Màu KNO2** (§3.2.2): "trắng (hơi ngả vàng)" — cần xác nhận theo SGK/thực nghiệm phổ thông.
+3. **Hiện tượng R76 nước Javel**: "dung dịch không màu" — một số tài liệu tả vàng RẤT nhạt. Chốt.
+4. **Cờ `equilibrium` (R75, R81, R82, R83)**: (a) chấp nhận mô hình "record định-tính-only trong DB"
+   hay tách bảng riêng? (b) R82/R83: SGK 9 in MỘT CHIỀU — in ⇌ trong answer có làm lệch SGK lớp dưới?
+   (đề xuất: in ⇌ kèm chú thích "lớp 9 thường viết →").
+5. **R66 `mustBeLimiting C`**: có quá chặt cho đề "than dư"? (Bài than dư + CuO vẫn chạy — khác
+   record R72; chỉ chặn "đốt C trong O2 thiếu".) Xác nhận miền.
+6. **R72 C + CuO không domain**: chấp nhận quy ước SGK 9 (luôn CO2) hay thêm guard C không dư?
+7. **Ngữ nghĩa `dropwise` khi đề mơ hồ** (§4.1.2): đề không nói "từ từ" → không dùng chuỗi → có thể
+   error thay vì đoán. Đúng khẩu vị chống ảo giác, nhưng có làm trượt các đề mặc-định-hiểu-là-từ-từ?
+8. **`solventWater` (R63, R90)**: LLM KHÔNG khai H2O — xác nhận quy ước prompt translator, và xác
+   nhận không có record nào khác cần cờ này mà spec bỏ sót.
+9. **Biên T = 1 và T = 2 thuộc nhánh MỘT muối** (§4.2.1): xác nhận quy ước (đáp tại biên trùng nhau
+   nên chỉ là chuyện trình bày reactions 1 hay 2 phần tử).
+10. **CO2/SO2 + Ba(OH)2, KOH để v2** (§3.3): phản biện thấy cần kéo vào v1 luôn thì chỉ tốn 4–6
+    record theo khuôn sẵn — quyết ở vòng này để chốt scope.
+11. **Giả định đánh số R51–R58 cho 8 record F18** (§0.2): cần agent đợt 1 xác nhận trước khi viết
+    plan thi công (spec chỉ phụ thuộc ở tham chiếu R56).
+12. **R80 chỉ `requireExcess HCl`** — đủ chưa, hay cần thêm mustBeLimiting MnO2? (requireExcess đã
+    kéo theo MnO2 là chất hữu hạn duy nhất ⇒ luôn limiting — spec cho là đủ.)
+13. **Nhãn `type` cho record oxit-axit + kiềm và R90/R95** (§1.7, §3.1): phụ thuộc phương án F17 mà
+    đợt 1 chọn ('oxit-axit + bazơ' hay bỏ nhãn) — đồng bộ một lần khi merge.
+14. **R74 (H2S cháy thiếu oxi)**: miền `n(O2) ≤ ½·n(H2S)` lấy đúng tỉ lệ hợp thức — thực nghiệm là
+    dải liên tục S/SO2; xác nhận quy ước "đề phổ thông chỉ hỏi hai đầu".
+
+---
+
+*Hết spec v1 đợt 2 — chờ phản biện chuyên gia Hóa trước khi viết plan thi công.*
+
+
 
 
 
