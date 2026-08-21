@@ -4,7 +4,7 @@
 >
 > **Dùng để dựng deck HTML.** File này CHỈ chứa nội dung + ghi chú người nói. 14 slide. Mỗi mục: tiêu đề hành động · 3–5 gạch đầu dòng · ghi chú người nói (~20–30s).
 >
-> **Kỷ luật số liệu (bắt buộc giữ khi dựng deck):** số THẬT được khẳng định — engine‑replay **66/66**, ~**1082** test đơn vị, benchmark **66 ca** (40 synthetic + 25 capture, **chưa có đề thi/SGK thật**), đáp căn/π thật (`2√3/3`, `8√2π/3`, `52π`…). Mọi số baseline/end‑to‑end ghi **"đang đo"**. Không đưa số mock vào deck như thể là kết quả.
+> **Kỷ luật số liệu (bắt buộc giữ khi dựng deck):** số THẬT được khẳng định — engine‑replay **145/145**, ~**1082** test đơn vị, benchmark **145 ca** (120 synthetic + 25 capture, **chưa có đề thi/SGK thật**), đáp căn/π thật (`2√3/3`, `8√2π/3`, `52π`…). Mọi số baseline/end‑to‑end ghi **"đang đo"**. Không đưa số mock vào deck như thể là kết quả.
 
 ---
 
@@ -87,25 +87,25 @@
 
 ---
 
-## [Slide 8] Kết quả đo thật: engine‑replay 66/66, ~1082 test xanh, đáp căn/π chính xác
+## [Slide 8] Kết quả đo thật: engine‑replay 145/145, ~1082 test xanh, đáp căn/π chính xác
 
-- **Engine‑replay 66/66 (100%)** trên toàn bộ 66 ca golden: 0 sai đáp, 0 sai trạng thái, 0 lỗi — tất định, chạy lại giống hệt mỗi lần.
+- **Engine‑replay 145/145 (100%)** trên toàn bộ 145 ca golden: 0 sai đáp, 0 sai trạng thái, 0 lỗi — tất định, chạy lại giống hệt mỗi lần.
 - Toàn repo **~1082 test đơn vị xanh**; riêng kernel ~5.000 dòng do nhóm tự viết.
 - Phủ dạng truy vấn: đa diện, khoảng cách điểm–mặt, mặt cầu, nón/trụ, nón cụt/chóp cụt, tỉ số thể tích, giao điểm.
 - Demo đáp căn thật: khoảng cách `2√3/3`, thể tích `8√2π/3` và `52π` — không phải số thập phân.
 
-*Ghi chú người nói (~30s): Đây là con số thật, đo được, tái lập được. Chúng em chạy engine ở chế độ replay trên toàn bộ 66 ca mốc: cả 66 đều pass, không một ca sai. Toàn dự án có khoảng 1082 test đơn vị đều xanh. Và quan trọng, các đáp ra đúng dạng căn và π như em đang chiếu — hai căn ba phần ba, năm hai pi. Nếu hội đồng muốn, em có thể chạy lại lệnh này ngay tại chỗ, offline, cho ra đúng con số này.*
+*Ghi chú người nói (~30s): Đây là con số thật, đo được, tái lập được. Chúng em chạy engine ở chế độ replay trên toàn bộ 145 ca mốc: cả 66 đều pass, không một ca sai. Toàn dự án có khoảng 1082 test đơn vị đều xanh. Và quan trọng, các đáp ra đúng dạng căn và π như em đang chiếu — hai căn ba phần ba, năm hai pi. Nếu hội đồng muốn, em có thể chạy lại lệnh này ngay tại chỗ, offline, cho ra đúng con số này.*
 
 ---
 
-## [Slide 9] Con số 66/66 đo cái gì — và trung thực về cái nó chưa đo
+## [Slide 9] Con số 145/145 đo cái gì — và trung thực về cái nó chưa đo
 
-- 66/66 chứng minh **engine tính đúng khi đã có plan đúng** và **thực sự trả đáp dạng căn** — nó củng cố năng lực engine.
+- 145/145 chứng minh **engine tính đúng khi đã có plan đúng** và **thực sự trả đáp dạng căn** — nó củng cố năng lực engine.
 - Nó **chưa** đo khâu **LLM dịch đề → plan** (đầu‑cuối); muốn đo phải chạy `--full` (gọi LLM, cần khoá API).
-- "100%" chỉ nghĩa "chưa phát hiện hồi quy trên rổ 66 ca", **không** phải "hệ thống chính xác 100%".
+- "100%" chỉ nghĩa "chưa phát hiện hồi quy trên rổ 145 ca", **không** phải "hệ thống chính xác 100%".
 - **Đang đo (cần khoá API):** baseline LLM thuần vs hệ của chúng em, và đặc biệt chỉ số **confidently‑wrong** + **precision khi trả lời**.
 
-*Ghi chú người nói (~30s): Chúng em muốn chủ động thu hẹp ý nghĩa con số này trước khi hội đồng vặn. 66/66 là engine‑replay: nó chứng minh engine tính đúng khi đã có kế hoạch đúng, và trả đáp dạng căn. Nó chưa đo khâu LLM dịch đề, và 66 ca là mẫu còn nhỏ, nên "100%" chỉ có nghĩa "chưa thấy hồi quy", không phải hệ thống đúng tuyệt đối. Bảng baseline và chỉ số confidently‑wrong chúng em đang đo — harness đã dựng xong, chỉ còn chờ khoá API để chạy trên LLM thật.*
+*Ghi chú người nói (~30s): Chúng em muốn chủ động thu hẹp ý nghĩa con số này trước khi hội đồng vặn. 145/145 là engine‑replay: nó chứng minh engine tính đúng khi đã có kế hoạch đúng, và trả đáp dạng căn. Nó chưa đo khâu LLM dịch đề, và 145 ca là mẫu còn nhỏ, nên "100%" chỉ có nghĩa "chưa thấy hồi quy", không phải hệ thống đúng tuyệt đối. Bảng baseline và chỉ số confidently‑wrong chúng em đang đo — harness đã dựng xong, chỉ còn chờ khoá API để chạy trên LLM thật.*
 
 ---
 
@@ -144,16 +144,16 @@
 
 ## [Slide 13] Liêm chính và hạn chế — chúng em tự nêu trước khi bị hỏi
 
-- **Số đã đo:** engine‑replay 66/66, ~1082 test. **Số chưa đo:** end‑to‑end + baseline + confidently‑wrong — cần khoá API, ghi rõ `⟦đang đo⟧`, không tô vẽ.
-- **Benchmark còn nhỏ (66 ca) và là máy‑sinh** (40 synthetic kiểm hai chiều + 25 capture) — **chưa có đề từ SGK/đề thi thật**; bổ sung đề thật có nguồn là việc học sinh đang làm.
+- **Số đã đo:** engine‑replay 145/145, ~1082 test. **Số chưa đo:** end‑to‑end + baseline + confidently‑wrong — cần khoá API, ghi rõ `⟦đang đo⟧`, không tô vẽ.
+- **Benchmark còn nhỏ (145 ca) và là máy‑sinh** (120 synthetic kiểm hai chiều + 25 capture) — **chưa có đề từ SGK/đề thi thật**; bổ sung đề thật có nguồn là việc học sinh đang làm.
 - **Phạm vi engine có giới hạn:** quỹ tích tổng quát, bất đẳng thức, biện luận tham số ⇒ engine **từ chối an toàn** thay vì giải — là ranh giới năng lực rõ ràng, không giấu.
 - **Ghi công minh bạch:** LLM hosted làm bộ dịch, three.js/React để vẽ; phần tự viết là engine, cổng từ chối, benchmark, phân tầng.
 
-*Ghi chú người nói (~30s): Chúng em chủ động nêu hạn chế, vì trung thực chính là điểm mạnh. Số chắc chắn của chúng em là engine‑replay và test đơn vị; số baseline và confidently‑wrong đang đo vì cần khoá API. Benchmark hiện 66 ca là máy sinh, chưa có đề thi thật — chúng em đang bổ sung đề có nguồn, tự giải tay xác minh. Engine cũng có ranh giới: gặp quỹ tích hay bất đẳng thức thì nó từ chối chứ không bịa. Phần nào dùng thư viện, phần nào tự viết, chúng em ghi rõ ràng.*
+*Ghi chú người nói (~30s): Chúng em chủ động nêu hạn chế, vì trung thực chính là điểm mạnh. Số chắc chắn của chúng em là engine‑replay và test đơn vị; số baseline và confidently‑wrong đang đo vì cần khoá API. Benchmark hiện 145 ca là máy sinh, chưa có đề thi thật — chúng em đang bổ sung đề có nguồn, tự giải tay xác minh. Engine cũng có ranh giới: gặp quỹ tích hay bất đẳng thức thì nó từ chối chứ không bịa. Phần nào dùng thư viện, phần nào tự viết, chúng em ghi rõ ràng.*
 
 ---
 
-## [Slide 14] Hướng phát triển: từ 66 ca máy‑sinh tới benchmark có nguồn và số đầu‑cuối thật
+## [Slide 14] Hướng phát triển: từ 145 ca máy‑sinh tới benchmark có nguồn và số đầu‑cuối thật
 
 - Mở rộng benchmark tiếng Việt lên **~150–300 ca có nguồn SGK/đề thi**, tự giải tay xác minh, đủ dạng (thêm góc, thiết diện, giao tuyến).
 - Chạy **đánh giá đầu‑cuối + baseline thật** (accuracy, confidently‑wrong, latency) khi có khoá API.
@@ -167,7 +167,7 @@
 ## [Slide 15] Kết: một AI đáng tin cho hình học không gian — biết tính đúng và biết từ chối
 
 - Đóng góp: kiến trúc Neuro‑Symbolic an toàn cho hình học **không gian** · cổng từ chối theo bất biến affine · engine trả đáp căn/π đúng · benchmark tiếng Việt đầu tiên.
-- Số thật làm nền: engine‑replay **66/66**, ~**1082** test; phần còn lại **đang đo** một cách minh bạch.
+- Số thật làm nền: engine‑replay **145/145**, ~**1082** test; phần còn lại **đang đo** một cách minh bạch.
 - Giá trị giáo dục: hình 3D để hiểu bằng mắt + đáp kiểm chứng được, và quan trọng nhất — **thà từ chối còn hơn dạy sai**.
 - **Xin cảm ơn hội đồng và quý thầy cô** — chúng em sẵn sàng chạy demo trực tiếp và trả lời chất vấn.
 

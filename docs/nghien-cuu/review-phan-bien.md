@@ -1,8 +1,8 @@
 # Phản biện đề tài — góc nhìn GIÁM KHẢO ViSEF khó tính
 
 > **Trạng thái xử lý (đã khép vòng một phần — cập nhật sau khi rà):**
-> - Lỗi #4 (benchmark nhỏ/lệch dạng): **đã bổ sung 40 ca synthetic** kiểm hai chiều (tỉ số, toạ độ/giao điểm, mặt cầu, nón/trụ, nón cụt/chóp cụt) → **66 ca**, `bench:gate` 66/66.
-> - Lỗi #5 (số tự mâu thuẫn): **đã sửa** — test→1082, ca→66, baseline SymPy đánh dấu *chưa hiện thực*.
+> - Lỗi #4 (benchmark nhỏ/lệch dạng): **đã bổ sung nhiều đợt ca synthetic** kiểm hai chiều → **145 ca / 208 đáp**, `bench:gate` 145/145. Đã lấp đúng các dạng review chỉ ra thiếu (§2.6): góc 15, vị trí tương đối 15, phương trình mặt phẳng 15, thiết diện/đa giác, tỉ số thể tích, mặt cầu, nón/trụ/cụt — không còn "0 ca" ở các dạng này. **100% đáp ở dạng chính xác** (0 làm tròn). *(Ghi chú: các con số trong phần THÂN bài dưới đây — vd "26 file capture", "0 ca góc" — giữ nguyên làm ảnh chụp thời điểm rà soát để đối chiếu tiến độ; trạng thái mới nhất xem dòng này.)*
+> - Lỗi #5 (số tự mâu thuẫn): **đã sửa** — test→1082, ca→145, baseline SymPy đánh dấu *chưa hiện thực*.
 > - Lỗi #3 (nguồn dữ liệu nói như đã có): **đã sửa** báo cáo/datasheet — nêu rõ hiện là ca máy‑sinh, đề SGK/đề thi là phần học sinh làm.
 > - Lỗi #1 (git 82% commit AI) & #2 (chưa có số thật): **cần bạn** — học sinh sở hữu/hiểu & tự commit phần của mình; cắm API key để đo confidently‑wrong.
 
