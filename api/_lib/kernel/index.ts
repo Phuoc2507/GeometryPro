@@ -47,3 +47,9 @@ export { buildVesselSolid, vesselVolume, vesselSegmentVolume, validateVesselSegm
 export { buildPolyhedron, resolveSectionPoint, planeFrom3, sliceConvexPolyhedron, polygonArea3D, buildSectionCut } from './analysis/sectionCut';
 // Parser biểu thức 1 biến — dùng bởi api/_lib/exprExpand.js (nở đường cong 'expr' của Vẽ nhanh/Vẽ kỹ).
 export { parseExpr, evalExpr } from './analysis/expr';
+// Engine pack đa môn (chỉ CỘNG THÊM — không đụng luồng hình học/giải tích).
+// Vật lý động học lớp 10: dán đề Lý → vật chuyển động + đáp số tất định.
+export { runPhysics, type PhysicsResult } from './physics/runPhysics';
+export { PhysicsPlanSchema, type PhysicsPlan } from './physics/planSchema';
+// Hóa vô cơ THPT: dán đề Hóa → phản ứng + hiện tượng + đáp số (namespace tránh trùng tên).
+export * as chem from './chem/index';
