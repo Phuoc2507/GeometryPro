@@ -129,6 +129,17 @@ Pipeline: spec (3 agent) → phản biện thiết kế (2 agent) → sửa spec
   Cả 2 pack DB/lõi toán được xác nhận SẠCH; lỗi nằm ở tầng guard/miền — đúng
   chỗ khó thấy nhất, đúng lý do cần phản biện code.
 
+- **D20 · Physics pack HOÀN THIỆN qua vòng vá (commit f82819b):** 16 finding
+  săn lỗi đã vá, 90 test pack, toàn suite 1301 xanh, tsc sạch. CAO-1 dùng cơ
+  chế Check severity 'warn' (answers giữ, cảnh báo hiện) — quyết định thiết kế
+  hợp lý vì mover1d không phân biệt "dừng hẳn" với "lăn ngược dốc". Chờ vá chem
+  xong là tới bước tích hợp cuối.
+- **D21 · Spec Hóa-v1 mở rộng hoàn chỉnh (trong f82819b):** 38 record mới (7
+  nhạy + 29 phi kim + 2 nấc trung gian) + 3 cơ chế giải đúng 3 bài v0 phải
+  chặn (nhỏ từ từ 0,896 L; CO2 dư 10 g; Fe+AgNO3 dư 27 g). Cần phản biện Hóa
+  trước khi code — xếp lịch sau khi chốt v0. Có 1 việc cần xác nhận đánh số
+  R51-R58 giữa 2 đợt (agent tự ghi là giả định).
+
 ## Quyết định chờ ghi tiếp (sẽ bổ sung trong đêm)
 
 - Phân xử 5 điểm lệch giữa spec kiến trúc và spec Lý (theo khuyến nghị phản biện).
