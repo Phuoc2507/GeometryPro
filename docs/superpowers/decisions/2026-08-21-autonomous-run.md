@@ -73,6 +73,14 @@ Pipeline: spec (3 agent) → phản biện thiết kế (2 agent) → sửa spec
   ma sau dừng; CM với chất excess; g nhận từ đề). Bài nào engine v0 chưa phục vụ
   được sẽ chuyển phụ lục v1 thay vì nới engine vội.
 
+- **D11 · Người dùng yêu cầu phủ lớp 11+12 → giao thêm 3 spec đợt 3** (Lý 11
+  dòng điện không đổi; Lý 12 khí lý tưởng + nhiệt; Hóa 11-12 hữu cơ tầng 1:
+  đốt cháy/CTPT/este — chọn theo tiêu chí tính-được-tất-định + nặng đề thi).
+  Lập bản đồ phủ chương đầy đủ tại `docs/superpowers/2026-08-21-lo-trinh-phu-chuong.md`;
+  các chương còn lại (sóng, điện trường, từ trường, hạt nhân, cân bằng, điện
+  phân, hữu cơ 12 nặng DB) xếp đợt 4 CÓ CHỦ ĐÍCH — 6 spec đang bay đã chạm trần
+  băng thông phản biện; thứ tự code sau v0 quyết sáng mai cùng người dùng.
+
 ## Quyết định chờ ghi tiếp (sẽ bổ sung trong đêm)
 
 - Phân xử 5 điểm lệch giữa spec kiến trúc và spec Lý (theo khuyến nghị phản biện).
