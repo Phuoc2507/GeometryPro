@@ -9,6 +9,16 @@ import { requireAdmin } from './_lib/adminAuth.js';
 import { grant, getAccount } from './_lib/credits.js';
 import { normalizePrompt } from './_lib/promptNormalize.js';
 import { buildGoldenResponse } from './_lib/goldenStore.js';
+// Gộp tab "Test API Key" vào endpoint admin (giảm số serverless function — trần 12 của Vercel Hobby).
+import { callVilao } from './_lib/vilao.js';
+import { parseJsonResponse } from './_lib/jsonHelpers.js';
+import { normalizeGeometryData } from './_lib/normalizeGeometry.js';
+import { BASE_PROMPT } from './_prompts/prompts/base.js';
+import { LEVEL_STATIC } from './_prompts/prompts/levels.js';
+import { getTestApiKeys, getTestApiKeysPublic } from './_lib/testApiKeys.js';
+
+// maxDuration 60: action 'test-apikey-run' gọi LLM (tới ~50s). Các action admin khác vẫn trả nhanh.
+export const config = { maxDuration: 60 };
 
 async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -32,6 +42,8 @@ async function handler(req, res) {
       case 'delete-golden': return await deleteGolden(admin, req, res);
       case 'list-withdrawals':   return await listWithdrawals(admin, req, res);
       case 'resolve-withdrawal': return await resolveWithdrawal(admin, req, res);
+      case 'test-apikey-list':   return res.json({ keys: getTestApiKeysPublic() });
+      case 'test-apikey-run':    return await testApiKeyRun(req, res);
       default:             return res.status(400).json({ error: 'Hành động không hợp lệ' });
     }
   } catch (error) {
@@ -394,6 +406,64 @@ async function resolveWithdrawal(admin, req, res) {
   if (error) return res.status(500).json({ error: error.message });
   if (!data?.ok) return res.status(400).json({ error: data?.err || 'Không xử lý được yêu cầu' });
   return res.json(data);
+}
+
+// ── test-apikey: gửi 1 đề qua NHIỀU api key, đo token/thời gian, trả JSON hình ──
+// (gộp từ endpoint /api/test-apikey cũ). KHÔNG trừ credit, KHÔNG đụng kernel — chỉ gọi LLM thô.
+const TEST_APIKEY_SYSTEM_PROMPT = `${BASE_PROMPT}\n\n${LEVEL_STATIC}`;
+
+async function runOneTestKey(key, problem, image) {
+  const t0 = Date.now();
+  try {
+    const userMsg = image
+      ? (problem || 'Đề bài nằm trong ảnh đính kèm — hãy đọc kỹ và dựng hình.')
+      : problem;
+    const raw = await callVilao(TEST_APIKEY_SYSTEM_PROMPT, userMsg, {
+      model: key.model, apiKey: key.apiKey,
+      maxTokens: 8192, timeoutMs: 50000, aiModel: 'low',
+      maxAttempts: 1,   // test: KHÔNG retry để đo trung thực từng key
+      imageBase64: image || null, returnRaw: true,
+    });
+    // Trích JSON linh hoạt GIỐNG luồng vẽ thật (strip fence / <think> / JSON cắt) — KHÔNG gọi AI sửa.
+    let parsed = null, parseError = null;
+    try { parsed = parseJsonResponse(raw.content); } catch (e) { parseError = e.message; }
+    const geometry = parsed ? (parsed.geometry || parsed) : null;
+    let renderGeometry = null;
+    if (geometry) {
+      try { renderGeometry = normalizeGeometryData(geometry); } catch { renderGeometry = null; }
+    }
+    return {
+      keyId: key.id, keyName: key.name, model: key.model, ok: true,
+      timeMs: Date.now() - t0,
+      tokens: raw.usage ? {
+        prompt: raw.usage.prompt_tokens ?? null,
+        completion: raw.usage.completion_tokens ?? null,
+        total: raw.usage.total_tokens ?? null,
+      } : null,
+      raw: raw.content, geometry, renderGeometry, parseError,
+    };
+  } catch (e) {
+    return {
+      keyId: key.id, keyName: key.name, model: key.model, ok: false,
+      timeMs: Date.now() - t0, error: e?.message || 'Lỗi không xác định',
+    };
+  }
+}
+
+async function testApiKeyRun(req, res) {
+  const { problem, keyIds, image } = req.body || {};
+  const text = (problem || '').toString().trim();
+  const img = typeof image === 'string' && image ? image : null;
+  if (!text && !img) return res.status(400).json({ error: 'Thiếu đề bài (gõ chữ hoặc dán ảnh)' });
+
+  const all = getTestApiKeys();
+  const chosen = (Array.isArray(keyIds) && keyIds.length)
+    ? all.filter((k) => keyIds.includes(k.id))
+    : all;
+  if (!chosen.length) return res.status(400).json({ error: 'Không có API key hợp lệ để gửi' });
+
+  const results = await Promise.all(chosen.map((k) => runOneTestKey(k, text, img)));
+  return res.status(200).json({ results });
 }
 
 export default withSentry(handler, 'admin');
