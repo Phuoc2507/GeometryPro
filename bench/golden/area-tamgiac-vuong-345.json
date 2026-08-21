@@ -1,0 +1,57 @@
+{
+  "id": "area-tamgiac-vuong-345",
+  "source": "soạn tay 2026-08-21 (S = 3·4/2 = 6)",
+  "text": "Trong không gian Oxyz, tính diện tích tam giác ABC với A(0;0;0), B(3;0;0), C(0;4;0).",
+  "plan": {
+    "solidName": "ABC",
+    "ops": [
+      {
+        "op": "oxyz_point",
+        "name": "A",
+        "at": [
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "B",
+        "at": [
+          3,
+          0,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "C",
+        "at": [
+          0,
+          4,
+          0
+        ]
+      }
+    ],
+    "queries": [
+      {
+        "kind": "area",
+        "shape": "triangle",
+        "points": [
+          "A",
+          "B",
+          "C"
+        ]
+      }
+    ]
+  },
+  "expect": {
+    "ok": true,
+    "answers": [
+      {
+        "kind": "area",
+        "text": "6"
+      }
+    ]
+  }
+}

@@ -1,0 +1,41 @@
+{
+  "id": "gt-giai-phuong-trinh",
+  "source": "soạn tay 2026-08-21 (x²=4, x∈[0,5] ⇒ x=2)",
+  "text": "Tìm số thực x thuộc đoạn [0; 5] sao cho x² = 4.",
+  "plan": {
+    "solidName": "sol1",
+    "parameters": [
+      {
+        "name": "x",
+        "domain": [
+          0,
+          5
+        ]
+      }
+    ],
+    "analyze": {
+      "kind": "solve",
+      "parameter": "x",
+      "constraint": {
+        "of": {
+          "kind": "expr",
+          "expr": "x^2"
+        },
+        "equals": 4
+      },
+      "report": {
+        "kind": "expr",
+        "expr": "x"
+      }
+    }
+  },
+  "expect": {
+    "ok": true,
+    "answers": [
+      {
+        "kind": "kết quả",
+        "text": "2"
+      }
+    ]
+  }
+}

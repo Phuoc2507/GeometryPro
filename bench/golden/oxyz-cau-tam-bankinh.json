@@ -1,0 +1,61 @@
+{
+  "id": "oxyz-cau-tam-bankinh",
+  "source": "soạn tay 2026-08-21 (V=4/3·π·8=32π/3; S=4π·4=16π)",
+  "text": "Trong không gian Oxyz, cho mặt cầu tâm I(1;2;3) bán kính R = 2. Viết phương trình mặt cầu, tính thể tích và diện tích mặt cầu đó.",
+  "plan": {
+    "solidName": "SP",
+    "ops": [
+      {
+        "op": "oxyz_point",
+        "name": "I",
+        "at": [
+          1,
+          2,
+          3
+        ]
+      },
+      {
+        "op": "oxyz_sphere",
+        "name": "SP",
+        "by": {
+          "form": "center_radius",
+          "center": "I",
+          "radius": 2
+        }
+      }
+    ],
+    "queries": [
+      {
+        "kind": "equation",
+        "target": "SP"
+      },
+      {
+        "kind": "volume",
+        "solid": "sphere",
+        "target": "SP"
+      },
+      {
+        "kind": "area",
+        "shape": "sphere",
+        "target": "SP"
+      }
+    ]
+  },
+  "expect": {
+    "ok": true,
+    "answers": [
+      {
+        "kind": "equation",
+        "text": "(x - 1)² + (y - 2)² + (z - 3)² = 4"
+      },
+      {
+        "kind": "volume",
+        "text": "32π/3"
+      },
+      {
+        "kind": "area",
+        "text": "16π"
+      }
+    ]
+  }
+}

@@ -1,0 +1,24 @@
+{
+  "id": "gt-tich-phan-sin",
+  "source": "soạn tay 2026-08-21 (∫₀^π sin x dx = [-cos x] = 2)",
+  "text": "Tính tích phân của sin(x) từ 0 đến pi.",
+  "plan": {
+    "solidName": "int2",
+    "analyze": {
+      "kind": "integrate",
+      "variable": "x",
+      "from": 0,
+      "to": "pi",
+      "integrand": "sin(x)"
+    }
+  },
+  "expect": {
+    "ok": true,
+    "answers": [
+      {
+        "kind": "kết quả",
+        "text": "2"
+      }
+    ]
+  }
+}

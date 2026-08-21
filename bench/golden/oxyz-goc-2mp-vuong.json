@@ -1,0 +1,48 @@
+{
+  "id": "oxyz-goc-2mp-vuong",
+  "source": "soạn tay 2026-08-21 (n1·n2 = 1-1+0 = 0)",
+  "text": "Trong không gian Oxyz, tính góc giữa hai mặt phẳng (P): x + y + z - 1 = 0 và (Q): x - y = 0.",
+  "plan": {
+    "solidName": "PQ",
+    "ops": [
+      {
+        "op": "oxyz_plane",
+        "name": "P",
+        "by": {
+          "form": "coeffs",
+          "a": 1,
+          "b": 1,
+          "c": 1,
+          "d": -1
+        }
+      },
+      {
+        "op": "oxyz_plane",
+        "name": "Q",
+        "by": {
+          "form": "coeffs",
+          "a": 1,
+          "b": -1,
+          "c": 0,
+          "d": 0
+        }
+      }
+    ],
+    "queries": [
+      {
+        "kind": "angle",
+        "a": "P",
+        "b": "Q"
+      }
+    ]
+  },
+  "expect": {
+    "ok": true,
+    "answers": [
+      {
+        "kind": "angle",
+        "text": "90°"
+      }
+    ]
+  }
+}

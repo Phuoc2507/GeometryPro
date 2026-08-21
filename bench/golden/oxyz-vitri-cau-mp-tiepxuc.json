@@ -1,0 +1,55 @@
+{
+  "id": "oxyz-vitri-cau-mp-tiepxuc",
+  "source": "soạn tay 2026-08-21 (d(I,P)=1 = R)",
+  "text": "Trong không gian Oxyz, xét vị trí tương đối của mặt cầu tâm O(0;0;0) bán kính R = 1 và mặt phẳng (P): z - 1 = 0.",
+  "plan": {
+    "solidName": "SP",
+    "ops": [
+      {
+        "op": "oxyz_point",
+        "name": "I",
+        "at": [
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_sphere",
+        "name": "SP",
+        "by": {
+          "form": "center_radius",
+          "center": "I",
+          "radius": 1
+        }
+      },
+      {
+        "op": "oxyz_plane",
+        "name": "P",
+        "by": {
+          "form": "coeffs",
+          "a": 0,
+          "b": 0,
+          "c": 1,
+          "d": -1
+        }
+      }
+    ],
+    "queries": [
+      {
+        "kind": "relative_position",
+        "a": "SP",
+        "b": "P"
+      }
+    ]
+  },
+  "expect": {
+    "ok": true,
+    "answers": [
+      {
+        "kind": "relative_position",
+        "text": "tiếp xúc"
+      }
+    ]
+  }
+}

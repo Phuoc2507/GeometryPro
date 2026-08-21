@@ -1,0 +1,35 @@
+{
+  "id": "gt-toi-uu-1-bien",
+  "source": "soạn tay 2026-08-21 (đỉnh parabol x=2 ⇒ f=3)",
+  "text": "Tìm giá trị nhỏ nhất của hàm số f(x) = x² - 4x + 7 trên đoạn [0; 5].",
+  "plan": {
+    "solidName": "opt1",
+    "parameters": [
+      {
+        "name": "x",
+        "domain": [
+          0,
+          5
+        ]
+      }
+    ],
+    "analyze": {
+      "kind": "optimize",
+      "parameter": "x",
+      "sense": "min",
+      "objective": {
+        "kind": "expr",
+        "expr": "x^2-4*x+7"
+      }
+    }
+  },
+  "expect": {
+    "ok": true,
+    "answers": [
+      {
+        "kind": "kết quả",
+        "text": "3"
+      }
+    ]
+  }
+}

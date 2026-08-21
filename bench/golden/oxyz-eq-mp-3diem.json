@@ -1,0 +1,62 @@
+{
+  "id": "oxyz-eq-mp-3diem",
+  "source": "soạn tay 2026-08-21 (đối chiếu: dạng đoạn chắn x/1+y/2+z/3=1 ⇒ ×6)",
+  "text": "Trong không gian Oxyz, viết phương trình mặt phẳng đi qua ba điểm A(1;0;0), B(0;2;0), C(0;0;3).",
+  "plan": {
+    "solidName": "ABC",
+    "ops": [
+      {
+        "op": "oxyz_point",
+        "name": "A",
+        "at": [
+          1,
+          0,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "B",
+        "at": [
+          0,
+          2,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "C",
+        "at": [
+          0,
+          0,
+          3
+        ]
+      },
+      {
+        "op": "oxyz_plane",
+        "name": "P",
+        "by": {
+          "form": "three_points",
+          "a": "A",
+          "b": "B",
+          "c": "C"
+        }
+      }
+    ],
+    "queries": [
+      {
+        "kind": "equation",
+        "target": "P"
+      }
+    ]
+  },
+  "expect": {
+    "ok": true,
+    "answers": [
+      {
+        "kind": "equation",
+        "text": "6x + 3y + 2z - 6 = 0"
+      }
+    ]
+  }
+}

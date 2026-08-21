@@ -4,10 +4,26 @@
 // toNumeric: đọc số từ text đáp engine (a√b/c, p±q√r, phân số p/q, thập phân) → number|null.
 // answersAgree: null nếu không parse được; else |a−b| ≤ relTol·max(1,|a|).
 
-// Parse MỘT hạng tử: hằng hữu tỉ (p, p.q, p/q) hoặc hạng căn (a√b/c). Trả number|null.
-function parseTerm(raw) {
+// Parse MỘT THỪA SỐ: hằng hữu tỉ (p, p.q, p/q), hạng căn (a√b/c), hoặc hạng π (aπ/c).
+// Trả number|null.
+function parseFactor(raw) {
   const t = raw.trim();
   if (!t) return null;
+
+  // Hạng π: [coef]π[/den] — engine trả các dạng '16π', '32π/3', 'π'.
+  // Trước đây KHÔNG đọc được ⇒ mọi đáp mặt cầu/khối tròn xoay đều không so được,
+  // vừa không làm golden được vừa khiến cross-check im lặng bỏ qua.
+  const pi = t.match(/^([+-]?\d*(?:\.\d+)?)π(?:\/(\d+))?$/);
+  if (pi) {
+    const coefStr = pi[1];
+    let coef;
+    if (coefStr === '' || coefStr === '+') coef = 1;
+    else if (coefStr === '-') coef = -1;
+    else coef = parseFloat(coefStr);
+    const den = pi[2] ? parseInt(pi[2], 10) : 1;
+    if (!Number.isFinite(coef) || den === 0) return null;
+    return (coef * Math.PI) / den;
+  }
   // Hạng căn: [coef]√radicand[/den]
   const surd = t.match(/^([+-]?\d*(?:\.\d+)?)√(\d+)(?:\/(\d+))?$/);
   if (surd) {
@@ -35,12 +51,32 @@ function parseTerm(raw) {
   return null;
 }
 
+// Parse MỘT hạng tử = tích các thừa số ngăn bởi '·' hoặc '*'.
+// Engine có trả dạng tích chưa rút gọn (vd diện tích mặt cầu '4π·4'); tách nhân
+// ở đây thì không phải bắt engine đổi cách hiển thị.
+function parseTerm(raw) {
+  const t = raw.trim();
+  if (!t) return null;
+  const factors = t.split(/[·*]/);
+  let product = 1;
+  for (const f of factors) {
+    const v = parseFactor(f);
+    if (v === null) return null;
+    product *= v;
+  }
+  return product;
+}
+
 export function toNumeric(text) {
   if (text == null) return null;
   let s = String(text).trim();
   if (!s) return null;
   // Chuẩn hoá dấu trừ unicode → '-'
   s = s.replace(/[−–—]/g, '-');
+  // Đáp GÓC mang hậu tố độ ('45°'). Trước đây không đọc được ⇒ mọi đáp góc vừa không
+  // làm golden được vừa bị cross-check bỏ qua. Đơn vị ở đây luôn là độ nên bỏ ký hiệu
+  // đi là so số được.
+  s = s.replace(/°/g, '');
   // Bỏ khoảng trắng thừa quanh dấu để tách hạng tử theo +/-
   s = s.replace(/\s+/g, '');
   if (!s) return null;

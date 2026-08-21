@@ -1,0 +1,54 @@
+{
+  "id": "oxyz-giao-duong-mp",
+  "source": "soạn tay 2026-08-21 (đường ⟂ Oxy qua (1,2,4) cắt z=0 tại (1,2,0))",
+  "text": "Trong không gian Oxyz, tìm giao điểm của đường thẳng d đi qua A(1;2;4) có vectơ chỉ phương u(0;0;-1) với mặt phẳng (Oxy).",
+  "plan": {
+    "solidName": "dP",
+    "ops": [
+      {
+        "op": "oxyz_line",
+        "name": "D",
+        "by": {
+          "form": "point_dir",
+          "base": [
+            1,
+            2,
+            4
+          ],
+          "dir": [
+            0,
+            0,
+            -1
+          ]
+        }
+      },
+      {
+        "op": "oxyz_plane",
+        "name": "OXY",
+        "by": {
+          "form": "coeffs",
+          "a": 0,
+          "b": 0,
+          "c": 1,
+          "d": 0
+        }
+      }
+    ],
+    "queries": [
+      {
+        "kind": "intersection",
+        "a": "D",
+        "b": "OXY"
+      }
+    ]
+  },
+  "expect": {
+    "ok": true,
+    "answers": [
+      {
+        "kind": "intersection",
+        "text": "point (1,2,0)"
+      }
+    ]
+  }
+}

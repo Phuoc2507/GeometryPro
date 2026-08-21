@@ -1,0 +1,81 @@
+{
+  "id": "oxyz-cau-4diem",
+  "source": "soạn tay 2026-08-21 (tâm (1,1,1); kiểm O,A,B,C đều cách √3)",
+  "text": "Trong không gian Oxyz, viết phương trình mặt cầu đi qua bốn điểm O(0;0;0), A(2;0;0), B(0;2;0), C(0;0;2) và tính bán kính của nó.",
+  "plan": {
+    "solidName": "SP",
+    "ops": [
+      {
+        "op": "oxyz_point",
+        "name": "O",
+        "at": [
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "A",
+        "at": [
+          2,
+          0,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "B",
+        "at": [
+          0,
+          2,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "C",
+        "at": [
+          0,
+          0,
+          2
+        ]
+      },
+      {
+        "op": "oxyz_sphere",
+        "name": "SP",
+        "by": {
+          "form": "four_points",
+          "a": "O",
+          "b": "A",
+          "c": "B",
+          "d": "C"
+        }
+      }
+    ],
+    "queries": [
+      {
+        "kind": "equation",
+        "target": "SP"
+      },
+      {
+        "kind": "sphere_metric",
+        "target": "SP",
+        "what": "radius"
+      }
+    ]
+  },
+  "expect": {
+    "ok": true,
+    "answers": [
+      {
+        "kind": "equation",
+        "text": "(x - 1)² + (y - 1)² + (z - 1)² = 3"
+      },
+      {
+        "kind": "sphere_metric",
+        "text": "√3"
+      }
+    ]
+  }
+}

@@ -1,0 +1,24 @@
+{
+  "id": "gt-tron-xoay-quanh-ox",
+  "source": "soạn tay 2026-08-21 (V = π∫₀¹x²dx = π/3)",
+  "text": "Tính thể tích khối tròn xoay tạo bởi hình phẳng giới hạn bởi y = x, trục hoành, x = 0 và x = 1 khi quay quanh trục Ox.",
+  "plan": {
+    "solidName": "rev1",
+    "analyze": {
+      "kind": "integrate",
+      "variable": "x",
+      "from": 0,
+      "to": 1,
+      "integrand": "pi*x^2"
+    }
+  },
+  "expect": {
+    "ok": true,
+    "answers": [
+      {
+        "kind": "kết quả",
+        "text": "π/3"
+      }
+    ]
+  }
+}

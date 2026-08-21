@@ -1,0 +1,46 @@
+{
+  "id": "oxyz-dist-diem-mp",
+  "source": "soạn tay 2026-08-21 (|1+4+6-6|/√9 = 5/3)",
+  "text": "Trong không gian Oxyz, tính khoảng cách từ điểm M(1;2;3) đến mặt phẳng (P): x + 2y + 2z - 6 = 0.",
+  "plan": {
+    "solidName": "M",
+    "ops": [
+      {
+        "op": "oxyz_point",
+        "name": "M",
+        "at": [
+          1,
+          2,
+          3
+        ]
+      },
+      {
+        "op": "oxyz_plane",
+        "name": "P",
+        "by": {
+          "form": "coeffs",
+          "a": 1,
+          "b": 2,
+          "c": 2,
+          "d": -6
+        }
+      }
+    ],
+    "queries": [
+      {
+        "kind": "distance",
+        "a": "M",
+        "b": "P"
+      }
+    ]
+  },
+  "expect": {
+    "ok": true,
+    "answers": [
+      {
+        "kind": "distance",
+        "text": "5/3"
+      }
+    ]
+  }
+}

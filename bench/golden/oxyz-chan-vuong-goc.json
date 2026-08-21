@@ -1,0 +1,62 @@
+{
+  "id": "oxyz-chan-vuong-goc",
+  "source": "soạn tay 2026-08-21 (t=5/9 ⇒ H=(4/9,8/9,17/9); MH = d(M,P) = 5/3)",
+  "text": "Trong không gian Oxyz, cho điểm M(1;2;3) và mặt phẳng (P): x + 2y + 2z - 6 = 0. Tìm hoành độ hình chiếu vuông góc H của M lên (P) và tính độ dài MH.",
+  "plan": {
+    "solidName": "MH",
+    "ops": [
+      {
+        "op": "oxyz_point",
+        "name": "M",
+        "at": [
+          1,
+          2,
+          3
+        ]
+      },
+      {
+        "op": "oxyz_plane",
+        "name": "P",
+        "by": {
+          "form": "coeffs",
+          "a": 1,
+          "b": 2,
+          "c": 2,
+          "d": -6
+        }
+      },
+      {
+        "op": "oxyz_foot",
+        "name": "H",
+        "from": "M",
+        "onto": "plane",
+        "target": "P"
+      }
+    ],
+    "queries": [
+      {
+        "kind": "point_coord",
+        "target": "H",
+        "axis": "x"
+      },
+      {
+        "kind": "distance",
+        "a": "M",
+        "b": "H"
+      }
+    ]
+  },
+  "expect": {
+    "ok": true,
+    "answers": [
+      {
+        "kind": "point_coord",
+        "text": "4/9"
+      },
+      {
+        "kind": "distance",
+        "text": "5/3"
+      }
+    ]
+  }
+}

@@ -1,0 +1,67 @@
+{
+  "id": "vol-tudien-don-vi",
+  "source": "soạn tay 2026-08-21 (V = |det|/6 = 1/6)",
+  "text": "Trong không gian Oxyz, tính thể tích tứ diện OABC với O(0;0;0), A(1;0;0), B(0;1;0), C(0;0;1).",
+  "plan": {
+    "solidName": "OABC",
+    "ops": [
+      {
+        "op": "oxyz_point",
+        "name": "O",
+        "at": [
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "A",
+        "at": [
+          1,
+          0,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "B",
+        "at": [
+          0,
+          1,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "C",
+        "at": [
+          0,
+          0,
+          1
+        ]
+      }
+    ],
+    "queries": [
+      {
+        "kind": "volume",
+        "solid": "tetrahedron",
+        "points": [
+          "O",
+          "A",
+          "B",
+          "C"
+        ]
+      }
+    ]
+  },
+  "expect": {
+    "ok": true,
+    "answers": [
+      {
+        "kind": "volume",
+        "text": "1/6"
+      }
+    ]
+  }
+}

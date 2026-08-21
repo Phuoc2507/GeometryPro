@@ -1,0 +1,44 @@
+{
+  "id": "sphere-dinh-cau-topz",
+  "source": "soạn tay 2026-08-21 (z tâm 3 + R 2 = 5)",
+  "text": "Trong không gian Oxyz, cho mặt cầu tâm I(0;0;3) bán kính R = 2. Tìm cao độ điểm cao nhất của mặt cầu.",
+  "plan": {
+    "solidName": "SP",
+    "ops": [
+      {
+        "op": "oxyz_point",
+        "name": "I",
+        "at": [
+          0,
+          0,
+          3
+        ]
+      },
+      {
+        "op": "oxyz_sphere",
+        "name": "SP",
+        "by": {
+          "form": "center_radius",
+          "center": "I",
+          "radius": 2
+        }
+      }
+    ],
+    "queries": [
+      {
+        "kind": "sphere_metric",
+        "target": "SP",
+        "what": "top_z"
+      }
+    ]
+  },
+  "expect": {
+    "ok": true,
+    "answers": [
+      {
+        "kind": "sphere_metric",
+        "text": "5"
+      }
+    ]
+  }
+}

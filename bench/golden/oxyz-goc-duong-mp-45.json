@@ -1,0 +1,54 @@
+{
+  "id": "oxyz-goc-duong-mp-45",
+  "source": "soạn tay 2026-08-21 (sin = |1|/(√2·1) = 1/√2)",
+  "text": "Trong không gian Oxyz, tính góc giữa đường thẳng d đi qua gốc toạ độ có vectơ chỉ phương u(1;0;1) và mặt phẳng (Oxy).",
+  "plan": {
+    "solidName": "dP",
+    "ops": [
+      {
+        "op": "oxyz_line",
+        "name": "D",
+        "by": {
+          "form": "point_dir",
+          "base": [
+            0,
+            0,
+            0
+          ],
+          "dir": [
+            1,
+            0,
+            1
+          ]
+        }
+      },
+      {
+        "op": "oxyz_plane",
+        "name": "P",
+        "by": {
+          "form": "coeffs",
+          "a": 0,
+          "b": 0,
+          "c": 1,
+          "d": 0
+        }
+      }
+    ],
+    "queries": [
+      {
+        "kind": "angle",
+        "a": "D",
+        "b": "P"
+      }
+    ]
+  },
+  "expect": {
+    "ok": true,
+    "answers": [
+      {
+        "kind": "angle",
+        "text": "45°"
+      }
+    ]
+  }
+}

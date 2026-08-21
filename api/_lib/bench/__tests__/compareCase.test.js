@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { compareCase } from '../compareCase.js';
+import { compareCase, answerText } from '../compareCase.js';
 
 const golden = (over = {}) => ({
   id: 't', plan: {},
@@ -40,5 +40,37 @@ describe('compareCase', () => {
   it('pass khi kỳ vọng ok:false và nay cũng ok:false', () => {
     const r = compareCase(golden({ expect: { ok: false } }), { ok: false, answers: [] });
     expect(r.verdict).toBe('pass');
+  });
+
+  // Không phải đáp nào cũng có `.text`: relative_position trả {relation},
+  // intersection trả {result, point}. Trước đây hai loại truy vấn ĐÃ SHIP này
+  // không thể canh hồi quy vì text luôn undefined.
+  describe('đáp không phải số', () => {
+    it('answerText đọc được relation và intersection', () => {
+      expect(answerText({ kind: 'relative_position', relation: 'rời nhau' })).toBe('rời nhau');
+      expect(answerText({
+        kind: 'intersection', result: 'point',
+        point: { p: { x: { approx: 1 }, y: { approx: 2 }, z: { approx: 0 } } },
+      })).toBe('point (1,2,0)');
+      expect(answerText(null)).toBe('');
+      expect(answerText({ kind: 'gì đó' })).toBe('');
+    });
+
+    it('pass khi kỳ vọng là chuỗi và đáp khớp (bỏ qua hoa/thường, khoảng trắng)', () => {
+      const g = { id: 't', plan: {}, expect: { ok: true, answers: [{ text: 'rời nhau' }] } };
+      const r = { ok: true, answers: [{ kind: 'relative_position', relation: '  Rời   nhau ' }] };
+      expect(compareCase(g, r).verdict).toBe('pass');
+    });
+
+    it('regress-answer khi chuỗi khác', () => {
+      const g = { id: 't', plan: {}, expect: { ok: true, answers: [{ text: 'rời nhau' }] } };
+      const r = { ok: true, answers: [{ kind: 'relative_position', relation: 'tiếp xúc' }] };
+      expect(compareCase(g, r).verdict).toBe('regress-answer');
+    });
+
+    it('đáp rỗng KHÔNG được coi là khớp với kỳ vọng rỗng', () => {
+      const g = { id: 't', plan: {}, expect: { ok: true, answers: [{ text: '' }] } };
+      expect(compareCase(g, { ok: true, answers: [{ kind: 'x' }] }).verdict).toBe('regress-answer');
+    });
   });
 });

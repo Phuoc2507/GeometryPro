@@ -1,0 +1,87 @@
+{
+  "id": "vol-ratio-trung-diem",
+  "source": "soạn tay 2026-08-21 (M là trung điểm AB ⇒ tỉ số = 1/2)",
+  "text": "Cho tứ diện ABCD với A(0;0;0), B(2;0;0), C(0;2;0), D(0;0;2) và M(1;0;0) là trung điểm AB. Tính tỉ số thể tích khối AMCD và khối ABCD.",
+  "plan": {
+    "solidName": "ABCD",
+    "ops": [
+      {
+        "op": "oxyz_point",
+        "name": "A",
+        "at": [
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "B",
+        "at": [
+          2,
+          0,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "C",
+        "at": [
+          0,
+          2,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "D",
+        "at": [
+          0,
+          0,
+          2
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "M",
+        "at": [
+          1,
+          0,
+          0
+        ]
+      }
+    ],
+    "queries": [
+      {
+        "kind": "volume_ratio",
+        "a": {
+          "solid": "tetrahedron",
+          "points": [
+            "A",
+            "M",
+            "C",
+            "D"
+          ]
+        },
+        "b": {
+          "solid": "tetrahedron",
+          "points": [
+            "A",
+            "B",
+            "C",
+            "D"
+          ]
+        }
+      }
+    ]
+  },
+  "expect": {
+    "ok": true,
+    "answers": [
+      {
+        "kind": "volume_ratio",
+        "text": "1/2"
+      }
+    ]
+  }
+}
