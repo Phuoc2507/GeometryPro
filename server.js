@@ -19,6 +19,7 @@ import payoutAccountHandler from './api/payout-account.js';
 import withdrawHandler from './api/withdraw.js';
 import shareHandler from './api/share.js';
 import ogHandler from './api/og.js';
+import sitemapHandler from './api/sitemap.js';
 
 export function createApp() {
 const app = express();
@@ -175,6 +176,33 @@ app.get('/s/:id', async (req, res) => {
     }
   }
 });
+
+// Sitemap động (index + trang con). Trên Vercel do rewrite trong vercel.json trỏ vào
+// /api/sitemap; mount ở đây để chạy local giống hệt production.
+function mountSitemap(route, queryFor) {
+  app.get(route, async (req, res) => {
+    Object.defineProperty(req, 'query', {
+      value: { ...req.query, ...queryFor(req) },
+      configurable: true,
+      enumerable: true,
+    });
+    try {
+      await sitemapHandler(req, res);
+    } catch (error) {
+      console.error(`Error in ${route}:`, error);
+      if (!res.headersSent) {
+        res.status(500).json({ error: error.message || 'Internal Server Error' });
+      }
+    }
+  });
+}
+
+mountSitemap('/sitemap.xml', () => ({ kind: 'index' }));
+mountSitemap('/sitemap-pages.xml', () => ({ kind: 'pages' }));
+mountSitemap('/sitemap-shares-:page.xml', (req) => ({
+  kind: 'shares',
+  page: String(req.params.page || '1').replace(/\.xml$/i, ''),
+}));
 
 app.get('/og/s/:id.png', async (req, res) => {
   withQueryId(req, String(req.params.id || '').replace(/\.png$/i, ''));

@@ -14,6 +14,18 @@
       "destination": "/api/share?id=:id"
     },
     {
+      "source": "/sitemap.xml",
+      "destination": "/api/sitemap?kind=index"
+    },
+    {
+      "source": "/sitemap-pages.xml",
+      "destination": "/api/sitemap?kind=pages"
+    },
+    {
+      "source": "/sitemap-shares-:page.xml",
+      "destination": "/api/sitemap?kind=shares&page=:page"
+    },
+    {
       "source": "/((?!api/).*)",
       "destination": "/index.html"
     }
