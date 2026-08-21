@@ -37,6 +37,16 @@ describe('parseDecimal', () => {
   it('số âm parse được (chặn ≤0 nằm ở tầng Qty/amount)', () => {
     expect(parseDecimal('-5,6')).toEqual(rat(-28n, 5n));
   });
+  it('VỪA-4: dấu CHẤM + đúng 3 chữ số thập phân → từ chối (nhập nhằng nghìn VN "2.500"=2500)', () => {
+    expect(() => parseDecimal('1.500')).toThrow(/phẩy|phân cách|nghìn|nguyên/);
+    expect(() => parseDecimal('2.500')).toThrow(/phẩy|phân cách|nghìn|nguyên/);
+  });
+  it('VỪA-4: các dạng hợp lệ vẫn qua — "0.15"→3/20, "2,479"→2479/1000, "1.5"→3/2, "0.25"→1/4', () => {
+    expect(parseDecimal('0.15')).toEqual(rat(3n, 20n));
+    expect(parseDecimal('2,479')).toEqual(rat(2479n, 1000n)); // dấu PHẨY + 3 số → vẫn hợp lệ
+    expect(parseDecimal('1.5')).toEqual(rat(3n, 2n));
+    expect(parseDecimal('0.25')).toEqual(rat(1n, 4n));
+  });
 });
 
 describe('số học hữu tỉ đóng kín', () => {

@@ -82,17 +82,26 @@ export function parseDecimal(x: number | string): Rat {
     s = x.trim();
   }
   if (s === '') throw new Error('parseDecimal: chuỗi rỗng');
-  const m = /^(-?)(\d+)(?:[.,](\d+))?$/.exec(s);
+  // Bắt luôn KÝ TỰ PHÂN CÁCH (sep) để phân biệt dấu chấm với dấu phẩy — review VỪA-4.
+  const m = /^(-?)(\d+)(?:([.,])(\d+))?$/.exec(s);
   if (!m) {
     if ((s.match(/[.,]/g) ?? []).length > 1) {
       throw new Error(`parseDecimal: "${s}" có nhiều dấu phân cách — nghi dấu phân cách nghìn, không hợp lệ`);
     }
     throw new Error(`parseDecimal: không đọc được số từ "${s}"`);
   }
-  const [, sign, intPart, fracPart] = m;
+  const [, sign, intPart, sep, fracPart] = m;
   if (fracPart === '000') {
     // "1.000"/"25,000": gần như chắc chắn là dấu phân cách nghìn kiểu VN — mơ hồ, từ chối.
     throw new Error(`parseDecimal: "${s}" giống dấu phân cách nghìn ("1.000") — hãy viết số nguyên không phân cách hoặc bỏ các số 0 thừa`);
+  }
+  // VỪA-4: dấu CHẤM + đúng 3 chữ số thập phân ("1.500", "2.500") nhập nhằng với dấu phân
+  // cách nghìn kiểu VN ("2.500 gam" = 2500) — từ chối; yêu cầu dùng dấu phẩy cho phần thập
+  // phân hoặc viết số nguyên. Dấu PHẨY + 3 số ("2,479") vẫn hợp lệ (phẩy = thập phân VN rõ ràng).
+  // CHỈ mơ hồ khi phần nguyên KHÁC 0: "1.500"/"25.000" mới có nhóm nghìn; "0.001"/"0.500"
+  // (phần nguyên 0) không bao giờ là dấu phân cách nghìn nên vẫn là thập phân hợp lệ.
+  if (sep === '.' && fracPart !== undefined && fracPart.length === 3 && intPart !== '0') {
+    throw new Error(`parseDecimal: "${s}" dùng dấu CHẤM với đúng 3 chữ số thập phân — nhập nhằng dấu phân cách nghìn kiểu VN ("2.500"=2500); hãy dùng dấu PHẨY cho phần thập phân hoặc viết số nguyên`);
   }
   const frac = fracPart ?? '';
   const num = BigInt(intPart + frac) * (sign === '-' ? -1n : 1n);

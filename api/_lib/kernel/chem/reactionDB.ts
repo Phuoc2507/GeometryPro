@@ -13,6 +13,12 @@
 //   F19 — thụ động hóa (Al/Fe + axit đặc) CHỈ khi heated=false; đun nóng → ngoài phạm vi
 //   F25 — bỏ 'đpnc' khỏi enum conditions (không record nào dùng)
 //   §16 — R06 "khói màu vàng nâu"; NaAlO2; R38 giữ t°; R05 "khói màu nâu đỏ"
+//
+// TODO (VỪA-3 — chốt khi dựng taxonomy/tags.ts, thuộc P0 tích hợp, KHÔNG làm trong đợt vá này):
+//   tags của DB dùng đúng FORMAT 4 tầng `hoa/<lop>/<chuong>/<skill>` (vd 'hoa/9/kim-loai/tac-dung-muoi').
+//   Khi dựng taxonomy/tags.ts, seed REGISTRY PHẢI lấy nguồn sự thật từ CHÍNH tập tags dùng ở đây
+//   (không seed 'hoa/9-10/...' lệch), để isKnownTag(tag)=true cho mọi tag của 58 record — nếu không
+//   bridge lọc theo seed sẽ làm 58 record MẤT taxonomy lặng lẽ. Kèm test membership cross-module.
 
 export type SpeciesState = 'solid' | 'gas' | 'solution' | 'liquid';
 export type Variant = 'loãng' | 'đặc';
@@ -689,9 +695,13 @@ export function classifyNoMatch(species: SpeciesKey[], opts: { heated: boolean }
         if (!el) continue; // cation NH4… → không phán
         if (idx(metal.formula) >= idx(el)) {
           // Kim loại KHÔNG đứng trước kim loại trong muối (cation hóa trị thấp nhất) ⇒ không đẩy được.
+          // THẤP-7: khi TRÙNG kim loại (Fe + FeSO4, el===metal) câu "Fe đứng sau Fe" vô nghĩa →
+          // diễn đạt "không đứng trước".
           return {
             verdict: 'no_reaction',
-            reason: `${metal.formula} đứng sau ${el} trong dãy hoạt động hóa học — kim loại yếu hơn không đẩy được kim loại mạnh hơn ra khỏi dung dịch muối`,
+            reason: metal.formula === el
+              ? `${metal.formula} không đứng trước ${el} trong dãy hoạt động hóa học (cùng một kim loại) — không tự đẩy mình ra khỏi dung dịch muối`
+              : `${metal.formula} đứng sau ${el} trong dãy hoạt động hóa học — kim loại yếu hơn không đẩy được kim loại mạnh hơn ra khỏi dung dịch muối`,
           };
         }
         // Kim loại đứng trước nhưng DB không có record ⇒ phản ứng thật ngoài DB → null (generic).
@@ -702,6 +712,10 @@ export function classifyNoMatch(species: SpeciesKey[], opts: { heated: boolean }
 
   // Guard TRAO ĐỔI (chỉ với đúng 2 hợp chất ion, không kim loại đơn chất).
   if (metals.length === 0 && species.length === 2 && ionic.length === 2) {
+    // CAO-2: nếu BẤT KỲ chất nào là axit ĐẶC (H2SO4/HNO3 đặc) thì đây có thể là phản ứng
+    // đặc thù axit đặc + muối rắn (điều chế HCl/HNO3 dễ bay hơi — SGK 10), KHÔNG được kết luận
+    // "không phản ứng". Trả null ⇒ runChem báo "ngoài phạm vi DB v0" (không mô hình hóa ở v0).
+    if (species.some((s) => effectiveVariant(s) === 'đặc')) return null;
     const [a, b] = ionic.map((s) => IONS[s.formula]);
     let driver = false;
     let itTan = false;

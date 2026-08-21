@@ -336,6 +336,13 @@ export function runChem(input: unknown): ChemResult {
   const record = matches[0];
   trace.push(`record ${record.id}: ${equationOf(record)}`);
 
+  // ── CAO-1: chống "spectator ẩn" ────────────────────────────────────────────
+  // Record chỉ khớp TẬP CON species ⇒ phần thừa (spectator) KHÔNG được mặc nhiên coi là trơ.
+  // Phải CHỨNG MINH TRƠ trước khi cho đi tiếp, nếu không engine sẽ dạy sai kèm dấu kiểm chứng
+  // (vd Al + Fe + CuSO4 → chỉ khớp R20 (Fe+CuSO4) → trả 6,4g Cu, giấu mất Al hoạt động hơn).
+  const spectatorError = checkSpectatorsInert(record, speciesKeys, heated);
+  if (spectatorError) return bail(spectatorError, staticScene());
+
   // ── Định tính: chỉ phenomena/equation; vẫn enforce requireExcess (F5) ──────
   if (qualitativeMode) {
     const domainError = checkQualitativeDomain(record, excessSet);
@@ -430,6 +437,50 @@ export function runChem(input: unknown): ChemResult {
     ledger: serializeLedger(rows),
     answers, scene, violations, errors, trace,
   };
+}
+
+// ── CAO-1: kiểm mọi spectator (species ngoài record) có THỰC SỰ trơ không ──────
+// Với MỖI spectator, ghép cặp với TỪNG chất còn lại trong mix:
+//   • cặp khớp một record khác (findMatches ≥ 1) → ĐA PHẢN ỨNG, engine không tự chọn → bail;
+//   • classifyNoMatch cặp KHÔNG trả 'no_reaction' (tức out_of_scope hoặc null) → chất có thể
+//     phản ứng nhưng chưa mô hình hóa → NGOÀI PHẠM VI v0 → bail.
+// Chỉ giữ role trơ khi MỌI cặp đều "không phản ứng CÓ LÝ DO".
+//
+// QUYẾT ĐỊNH THIẾT KẾ — tập "chất còn lại" = các species KHÁC trong mix (reactant của record +
+// spectator khác), KHÔNG gồm SẢN PHẨM. Lý do:
+//   (a) ca review Al+Fe+CuSO4 đã bị chặn nhờ cặp spectator×reactant (Al×CuSO4 → null) — không
+//       cần soi sản phẩm;
+//   (b) ghép spectator với sản phẩm gây DƯƠNG TÍNH GIẢ: H2O (dung môi/sản phẩm phổ biến) và kim
+//       loại sản phẩm (vd Ag trơ × Cu vừa sinh ra) đều cho classifyNoMatch = null OAN, chặn nhầm
+//       bài spectator hợp lệ.
+// Ngoại lệ TRƠ hiển nhiên: HAI KIM LOẠI đơn chất không bao giờ phản ứng với nhau (classifyNoMatch
+// trả null cho cặp kim loại-kim loại) → bỏ qua, nếu không sẽ chặn oan bài "hỗn hợp kim loại +
+// axit/muối" kinh điển (vd Cu trơ trong Fe+HCl, Fe+Cu trong CuSO4).
+function checkSpectatorsInert(
+  record: ReactionRecord,
+  species: { formula: string; variant?: Variant; state: SpeciesState }[],
+  heated: boolean
+): string | null {
+  const inRecord = new Set(record.reactants.map((rr) => rr.formula));
+  const spectators = species.filter((s) => !inRecord.has(s.formula));
+  for (const sp of spectators) {
+    for (const other of species) {
+      if (other.formula === sp.formula) continue;
+      // Hai kim loại đơn chất luôn trơ với nhau — không phải "hidden reaction".
+      if (METALS.has(sp.formula) && METALS.has(other.formula)) continue;
+      const pair = [sp, other];
+      const { matches } = findMatches(pair, { heated });
+      if (matches.length > 0) {
+        return `đa phản ứng: ngoài phản ứng chính (${record.id}), "${sp.formula}" còn phản ứng với "${other.formula}" (${matches
+          .map((m) => m.id)
+          .join(', ')}) — ngoài phạm vi v0, engine không tự chọn phản ứng`;
+      }
+      const verdict = classifyNoMatch(pair, { heated });
+      if (verdict?.verdict === 'no_reaction') continue; // trơ CÓ LÝ DO — chấp nhận
+      return `ngoài phạm vi v0: "${sp.formula}" có thể phản ứng với "${other.formula}" (chưa mô hình hóa trong DB v0) — không thể coi "${sp.formula}" là chất trơ để bỏ qua`;
+    }
+  }
+  return null;
 }
 
 // requireExcess vẫn enforce được ở bài định tính (chỉ cần cờ khai excess — F5).
@@ -559,6 +610,11 @@ function answerOne(q: ChemQuery, ctx: QueryCtx): ChemAnswer | null {
   if (q.kind === 'volume_gas') {
     if (row.state !== 'gas') {
       return err(`"${target}" không phải chất khí (trạng thái ${row.state}) — không có thể tích khí (F26)`);
+    }
+    // VỪA-5: state='gas' ở một số record (R45–R48) chỉ để mô tả HIỆN TƯỢNG hơi nước, KHÔNG
+    // đồng nghĩa là chất khí ở điều kiện thường. Điều kiện tính V = thuộc GAS_SET (H2O không thuộc).
+    if (!GAS_SET.has(target)) {
+      return err(`${target} không phải chất khí ở điều kiện thường (không thuộc danh sách khí đóng) — không quy ra thể tích khí được`);
     }
     const v = mulR(row.after, vm);
     return {

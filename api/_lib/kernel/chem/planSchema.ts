@@ -56,9 +56,11 @@ export const ChemQuerySchema = z.union([
 ]);
 
 // tol: dung sai TƯƠNG ĐỐI khi đối chiếu dữ kiện đề (F10) — default 1e-3 tại runChem.
+// THẤP-8: tol nhận CẢ number LẪN chuỗi ("0,001") như Qty (đề VN dùng dấu phẩy) — runChem
+// parseDecimal đằng nào cũng nhận chuỗi; Qty chặn ≤ 0 sẵn nên tol luôn dương.
 export const ChemAssertSchema = z.union([
-  z.object({ kind: z.literal('given_mass'), of: z.string(), grams: Qty, tol: z.number().positive().optional() }),
-  z.object({ kind: z.literal('given_mol'), of: z.string(), mol: Qty, tol: z.number().positive().optional() }),
+  z.object({ kind: z.literal('given_mass'), of: z.string(), grams: Qty, tol: Qty.optional() }),
+  z.object({ kind: z.literal('given_mol'), of: z.string(), mol: Qty, tol: Qty.optional() }),
 ]);
 
 export const ChemPlanSchema = z.object({

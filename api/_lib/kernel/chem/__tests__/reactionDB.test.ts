@@ -145,6 +145,18 @@ describe('explainNoReaction — guard dãy hoạt động & trao đổi (đã s�
   it('F11: sản phẩm trao đổi duy nhất ÍT TAN (CaCl2 + Na2SO4 → CaSO4) → null, không phán', () => {
     expect(explainNoReaction([{ formula: 'CaCl2' }, { formula: 'Na2SO4' }])).toBeNull();
   });
+  it('THẤP-7: kim loại TRÙNG kim loại trong muối (Fe + FeSO4) → "không đứng trước", KHÔNG "đứng sau Fe"', () => {
+    const reason = explainNoReaction([{ formula: 'Fe' }, { formula: 'FeSO4' }]);
+    expect(reason).toMatch(/không đứng trước/);
+    expect(reason).not.toMatch(/đứng sau Fe/);
+  });
+  it('CAO-2: axit ĐẶC trong nhánh trao đổi → null (ngoài phạm vi), KHÔNG phán "không phản ứng"', () => {
+    // NaCl + H2SO4 đặc = điều chế HCl (SGK 10) — KHÔNG được kết luận noReaction
+    expect(explainNoReaction([{ formula: 'NaCl' }, { formula: 'H2SO4', variant: 'đặc' }])).toBeNull();
+    expect(classifyNoMatch([{ formula: 'NaCl' }, { formula: 'H2SO4', variant: 'đặc' }], { heated: true })).toBeNull();
+    // đối chứng: H2SO4 LOÃNG với NaCl vẫn được phán "không phản ứng" (không tạo kết tủa/khí/nước)
+    expect(explainNoReaction([{ formula: 'NaCl' }, { formula: 'H2SO4', variant: 'loãng' }])).toMatch(/kết tủa|khí|nước/i);
+  });
   it('F9: NH4⁺ + OH⁻ là KHÍ NH3, không bao giờ là "kết tủa NH4OH" — (NH4)2SO4 + KOH ngoài DB → null', () => {
     expect(explainNoReaction([{ formula: '(NH4)2SO4' }, { formula: 'KOH' }])).toBeNull();
   });
