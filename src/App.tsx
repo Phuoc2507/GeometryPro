@@ -10,6 +10,7 @@ import { ToolModeProvider } from "@/context/ToolModeContext";
 import { ToolSlider } from "@/components/ui/ToolSlider";
 import { AuthModal } from "@/components/AuthModal";
 import { UpgradeModal } from "@/components/UpgradeModal";
+import { ReferralAnnouncement } from "@/components/ReferralAnnouncement";
 import { useAuth } from "@/context/AuthContext";
 import React, { Suspense, useEffect } from 'react';
 import { Loader2 } from 'lucide-react';
@@ -104,6 +105,7 @@ function App() {
                 <GlobalUpgradeModal />
                 <PaymentSuccessHandler />
                 <ReferralCapture />
+                <ReferralAnnouncement />
                 <ToolSlider />
                 <Suspense fallback={<PageLoader />}>
                   <Routes>
