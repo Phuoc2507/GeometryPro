@@ -18,7 +18,7 @@ Mỗi câu trả lời được viết **ngắn, đúng dự án, tự tin nhưn
 ### (a) Tính mới & định vị
 
 **Q1. Đề tài của em mới ở chỗ nào? Nói một câu.**
-> Em đưa tinh thần neuro‑symbolic của AlphaGeometry từ hình học **phẳng** sang hình học **không gian 3D** và **tính toán đại lượng** (khoảng cách, góc, thể tích), thay việc "huấn luyện mô hình trên hàng trăm triệu mẫu" bằng "một engine tất định tự viết + tối ưu prompt + cổng từ chối an toàn", và công bố **benchmark tiếng Việt đầu tiên** cho dạng toán này.
+> Em đưa tinh thần neuro‑symbolic của AlphaGeometry từ hình học **phẳng** sang hình học **không gian 3D** và **tính toán đại lượng** (khoảng cách, góc, thể tích), thay việc "huấn luyện mô hình trên hàng trăm triệu mẫu" bằng "một engine tất định tự viết + tối ưu prompt + cổng từ chối an toàn", và một **benchmark tiếng Việt** cho dạng toán này (em chưa tìm thấy bộ tương tự đã công bố).
 
 **Q2. Khác AlphaGeometry chỗ nào? Có phải em chép lại không?**
 > Khác về **bài toán**, **kiến trúc** và **quy mô**. AlphaGeometry **chứng minh định lý** hình học **phẳng**, huấn luyện một mô hình ngôn ngữ chuyên biệt trên ~100 triệu mẫu tổng hợp để sinh "điểm phụ". Em làm hình học **không gian**, mục tiêu là **tính ra đại lượng kiểm chứng được + dựng hình 3D**, và em **không huấn luyện lại mô hình nào cả** — em dùng một LLM sẵn có chỉ để **dịch** đề sang JSON, còn phần lõi khoa học là **engine ký hiệu tự viết** (số học chính xác) và **cổng từ chối theo bất biến affine**. Điểm chung duy nhất là triết lý "thần kinh + ký hiệu"; mọi thứ còn lại là của em.
@@ -149,11 +149,11 @@ Nếu chưa nắm mục nào, **học ngay hôm nay**. Mỗi mục em phải nó
 
 **Bẫy 2 — "Khác gì AlphaGeometry? Không phải chỉ là bản sao à?"**
 - *Sai lầm:* trả lời mơ hồ "dạ khác nhiều ạ".
-- *Cách xử lý:* Trả lời bằng **ba khác biệt cụ thể, dứt khoát** (xem Q2): **(1) bài toán** — họ chứng minh định lý phẳng, em tính đại lượng không gian + dựng hình; **(2) phương pháp** — họ huấn luyện mô hình trên ~100 triệu mẫu, em **không huấn luyện gì**, chỉ dùng LLM để dịch + engine tự viết + cổng từ chối; **(3) đóng góp mới** — benchmark tiếng Việt đầu tiên. "Điểm chung duy nhất là triết lý neuro‑symbolic; đó là *nguồn cảm hứng*, không phải bản sao."
+- *Cách xử lý:* Trả lời bằng **ba khác biệt cụ thể, dứt khoát** (xem Q2): **(1) bài toán** — họ chứng minh định lý phẳng, em tính đại lượng không gian + dựng hình; **(2) phương pháp** — họ huấn luyện mô hình trên ~100 triệu mẫu, em **không huấn luyện gì**, chỉ dùng LLM để dịch + engine tự viết + cổng từ chối; **(3) đóng góp mới** — một benchmark tiếng Việt cho dạng toán này (chưa thấy bộ tương tự đã công bố). "Điểm chung duy nhất là triết lý neuro‑symbolic; đó là *nguồn cảm hứng*, không phải bản sao."
 
 **Bẫy 3 — "Số 210/210 nghĩa là hệ thống của em đúng 100% à?"**
 - *Bẫy:* nếu em gật đầu, em **tự bẫy mình** — giám khảo sẽ vặn "vậy sao báo cáo nói cỡ mẫu nhỏ?".
-- *Cách xử lý:* **Chủ động thu hẹp ý nghĩa con số** trước khi bị vặn (xem Q20). "Dạ không ạ. 210/210 là **engine‑replay** — chứng minh **engine tính đúng** trên rổ mốc và trả đáp **dạng căn chính xác**. Nó **chưa** đo khâu LLM dịch đề, và cỡ mẫu 210 còn nhỏ, nên nó chỉ nói 'chưa phát hiện hồi quy', không phải 'chính xác 100%'. Số đầu‑cuối em đang chờ chạy vì cần khoá API." → **Sự trung thực chủ động này ghi điểm liêm chính rất mạnh** trong bối cảnh hậu kiểm.
+- *Cách xử lý:* **Chủ động thu hẹp ý nghĩa con số** trước khi bị vặn (xem Q20). "Dạ không ạ. 210/210 là **engine‑replay** — chứng minh **engine tính đúng** trên rổ mốc và trả đáp **dạng căn chính xác**. Nó **chưa** đo khâu LLM dịch đề, và cỡ mẫu 210 còn nhỏ, nên nó chỉ nói 'chưa phát hiện hồi quy', không phải 'chính xác 100%'. Số đầu‑cuối em đang chờ chạy vì cần khoá API." → Sự trung thực chủ động này rất quan trọng trong bối cảnh hậu kiểm.
 
 > **Nguyên tắc vàng khi gặp bẫy:** giám khảo bẫy để xem em có **trung thực** và **hiểu giới hạn** của chính mình không. Thắng bằng cách **tự nêu hạn chế trước khi bị chỉ ra** — đó là dấu hiệu của người thật sự làm nghiên cứu.
 
@@ -166,7 +166,7 @@ Nếu chưa nắm mục nào, **học ngay hôm nay**. Mỗi mục em phải nó
 1. **(30s) Móc câu bằng vấn đề thật.** "Hình học không gian là mạch khó nhất ở THPT. Khi hỏi thẳng một AI, nó hay **bịa toạ độ, tính sai, đưa đáp nghe hợp lý mà không kiểm được**. Đó là vấn đề em giải." — Nêu **nỗi đau**, đừng mở bằng "em xin trình bày đề tài...".
 2. **(45s) Ý tưởng cốt lõi, một câu.** Nói câu thần chú: *"LLM chỉ DỊCH đề thành mô hình hình thức; một ENGINE tất định TÍNH và TỰ KIỂM."* Vẽ nhanh sơ đồ 3 khối. Đây là **linh hồn** của đề tài — nói chậm, rõ.
 3. **(60s) Demo sống nếu có thể.** Nhập một đề → chỉ vào **đáp dạng căn `2√3/3`** (không phải số thập phân) và **hình 3D xoay được**. Nếu không demo được, chạy `npm run bench:gate` cho ra **210/210** ngay tại chỗ — bằng chứng tất định, tái lập.
-4. **(45s) Ba điểm khác biệt.** Cổng từ chối an toàn (thà từ chối còn hơn bịa) · engine trả đáp căn đúng tự viết · benchmark tiếng Việt đầu tiên. Gắn mỗi cái với **một câu vì sao nó quan trọng**.
+4. **(45s) Ba điểm khác biệt.** Cổng từ chối an toàn (thà từ chối còn hơn bịa) · engine trả đáp căn đúng tự viết · benchmark tiếng Việt cho dạng toán này. Gắn mỗi cái với **một câu vì sao nó quan trọng**.
 5. **(30s) Trung thực về trạng thái.** "Engine và toàn bộ phương pháp đánh giá đã dựng xong; số đầu‑cuối và baseline em **đang chạy** — cần khoá API." → Chủ động minh bạch **ngay từ đầu** làm giám khảo tin em suốt phần sau.
 
 **Mẹo phong thái:**

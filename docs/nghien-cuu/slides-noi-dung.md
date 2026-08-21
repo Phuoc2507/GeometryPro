@@ -12,7 +12,7 @@
 
 - Tên đề tài: Hệ thống Neuro‑Symbolic giải và trực quan hoá toán hình học không gian THPT (tiếng Việt).
 - Nguyên tắc lõi, đọc chậm: **"LLM chỉ DỊCH đề thành mô hình hình thức; một ENGINE tất định TÍNH và TỰ KIỂM."**
-- Ba trụ đóng góp: cổng từ chối an toàn · engine trả đáp dạng căn/π đúng · benchmark tiếng Việt đầu tiên.
+- Ba trụ đóng góp: cổng từ chối an toàn · engine trả đáp dạng căn/π đúng · benchmark tiếng Việt cho dạng toán này.
 - Nhóm thực hiện · GVHD · lĩnh vực dự thi: Phần mềm hệ thống / Hệ thống thông minh.
 
 *Ghi chú người nói (~25s): Kính thưa hội đồng, đề tài của chúng em giải một bài toán mà AI hiện nay làm rất tệ: hình học không gian. Ý tưởng cốt lõi gói trong một câu — LLM chỉ dịch đề, còn một engine tất định do chúng em tự viết mới là thứ tính toán và tự kiểm chứng. Trong 3 phút tới em sẽ chứng minh vì sao cách tách vai này khiến hệ thống vừa chính xác, vừa biết từ chối thay vì bịa.*
@@ -125,9 +125,9 @@
 - **AlphaGeometry** chứng minh định lý hình học **phẳng**, huấn luyện một mô hình chuyên biệt trên ~100 triệu mẫu tổng hợp.
 - Chúng em làm hình học **không gian 3D** và **tính đại lượng** (khoảng cách/góc/thể tích) + **trực quan hoá** — không phải chứng minh định lý phẳng.
 - Chúng em **không huấn luyện lại mô hình nào**: dùng LLM sẵn có chỉ để dịch, cộng engine tự viết + cổng từ chối + tối ưu prompt.
-- Điểm chung duy nhất là **triết lý neuro‑symbolic** — đó là nguồn cảm hứng, không phải bản sao; và chúng em thêm **benchmark tiếng Việt đầu tiên**.
+- Điểm chung duy nhất là **triết lý neuro‑symbolic** — đó là nguồn cảm hứng, không phải bản sao; và chúng em thêm **benchmark tiếng Việt** cho dạng toán này.
 
-*Ghi chú người nói (~30s): Chắc chắn hội đồng sẽ hỏi khác gì AlphaGeometry. Ba khác biệt dứt khoát. Về bài toán: họ chứng minh định lý hình phẳng, chúng em tính đại lượng trong không gian ba chiều và dựng hình. Về phương pháp: họ huấn luyện một mô hình trên trăm triệu mẫu, chúng em không huấn luyện gì, chỉ dùng LLM để dịch. Về đóng góp mới: benchmark tiếng Việt đầu tiên cho dạng toán này. Điểm chung duy nhất là triết lý thần kinh cộng ký hiệu — đó là cảm hứng, không phải sao chép.*
+*Ghi chú người nói (~30s): Chắc chắn hội đồng sẽ hỏi khác gì AlphaGeometry. Ba khác biệt dứt khoát. Về bài toán: họ chứng minh định lý hình phẳng, chúng em tính đại lượng trong không gian ba chiều và dựng hình. Về phương pháp: họ huấn luyện một mô hình trên trăm triệu mẫu, chúng em không huấn luyện gì, chỉ dùng LLM để dịch. Về đóng góp mới: một benchmark tiếng Việt cho dạng toán này mà chúng em chưa thấy bộ tương tự đã công bố. Điểm chung duy nhất là triết lý thần kinh cộng ký hiệu — đó là cảm hứng, không phải sao chép.*
 
 ---
 
@@ -166,7 +166,7 @@
 
 ## [Slide 15] Kết: một AI đáng tin cho hình học không gian — biết tính đúng và biết từ chối
 
-- Đóng góp: kiến trúc Neuro‑Symbolic an toàn cho hình học **không gian** · cổng từ chối theo bất biến affine · engine trả đáp căn/π đúng · benchmark tiếng Việt đầu tiên.
+- Đóng góp: kiến trúc Neuro‑Symbolic an toàn cho hình học **không gian** · cổng từ chối theo bất biến affine · engine trả đáp căn/π đúng · benchmark tiếng Việt cho dạng toán này.
 - Số thật làm nền: engine‑replay **210/210**, ~**1086** test; phần còn lại **đang đo** một cách minh bạch.
 - Giá trị giáo dục: hình 3D để hiểu bằng mắt + đáp kiểm chứng được, và quan trọng nhất — **thà từ chối còn hơn dạy sai**.
 - **Xin cảm ơn hội đồng và quý thầy cô** — chúng em sẵn sàng chạy demo trực tiếp và trả lời chất vấn.
