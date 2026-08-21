@@ -41,4 +41,16 @@ describe('compareCase', () => {
     const r = compareCase(golden({ expect: { ok: false } }), { ok: false, answers: [] });
     expect(r.verdict).toBe('pass');
   });
+
+  it('đáp PHI-SỐ (nhãn/phương trình): so chuỗi chuẩn hoá', () => {
+    const g = { id: 't', expect: { ok: true, answers: [{ text: 'chéo nhau' }] } };
+    expect(compareCase(g, { ok: true, answers: [{ text: 'Chéo  nhau' }] }).verdict).toBe('pass');
+    expect(compareCase(g, { ok: true, answers: [{ text: 'song song' }] }).verdict).toBe('regress-answer');
+  });
+
+  it('góc theo ĐỘ: so bằng giá trị số', () => {
+    const g = { id: 't', expect: { ok: true, answers: [{ text: '60°' }] } };
+    expect(compareCase(g, { ok: true, answers: [{ text: '60°' }] }).verdict).toBe('pass');
+    expect(compareCase(g, { ok: true, answers: [{ text: '45°' }] }).verdict).toBe('regress-answer');
+  });
 });

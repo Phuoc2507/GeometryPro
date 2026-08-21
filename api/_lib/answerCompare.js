@@ -6,8 +6,12 @@
 
 // Parse MỘT hạng tử: hằng hữu tỉ (p, p.q, p/q) hoặc hạng căn (a√b/c). Trả number|null.
 function parseTerm(raw) {
-  const t = raw.trim();
+  let t = raw.trim();
   if (!t) return null;
+  // Bỏ dấu xấp xỉ đầu chuỗi (engine có thể trả "≈35.26°").
+  t = t.replace(/^[≈~]\s*/, '');
+  // Hạng ĐỘ: "60°", "45°" → so bằng GIÁ TRỊ SỐ của độ (đủ để đối chiếu góc).
+  if (t.endsWith('°')) return parseTerm(t.slice(0, -1));
   // Hạng π: [coef]π[/den] — vd 'π', '36π', '8π/3', '8√2π/3', '2√2π', '-π/3'. Gỡ 'π', parse hệ số
   // còn lại (đệ quy) rồi nhân Math.PI. Hệ số rỗng/±/'/…' được chuẩn hoá thành 1/±1/1/… trước khi parse.
   if (t.includes('π')) {

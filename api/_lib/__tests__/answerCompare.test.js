@@ -13,4 +13,11 @@ describe('answerCompare', () => {
     expect(answersAgree('√2', 2.0, 1e-3)).toBe(false);
     expect(answersAgree('không phải số', 1, 1e-3)).toBeNull(); // không so được
   });
+  it('toNumeric: hiểu π và ĐỘ', () => {
+    expect(toNumeric('36π')).toBeCloseTo(36 * Math.PI, 6);
+    expect(toNumeric('8√2π/3')).toBeCloseTo(8 * Math.SQRT2 * Math.PI / 3, 6);
+    expect(toNumeric('60°')).toBe(60);
+    expect(toNumeric('≈35.26°')).toBeCloseTo(35.26, 6);
+    expect(toNumeric('90°')).toBe(90);
+  });
 });
