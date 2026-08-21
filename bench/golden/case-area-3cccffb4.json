@@ -1,0 +1,54 @@
+{
+  "id": "case-area-3cccffb4",
+  "source": "synthetic",
+  "difficulty": "easy",
+  "text": "Cho mặt cầu (S) có bán kính R = 2. Tính diện tích mặt cầu (S) và thể tích khối cầu (S).",
+  "plan": {
+    "solidName": "S",
+    "ops": [
+      {
+        "op": "oxyz_point",
+        "name": "O",
+        "at": [
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_sphere",
+        "name": "S",
+        "by": {
+          "form": "center_radius",
+          "center": "O",
+          "radius": 2
+        }
+      }
+    ],
+    "queries": [
+      {
+        "kind": "area",
+        "shape": "sphere",
+        "target": "S"
+      },
+      {
+        "kind": "volume",
+        "solid": "sphere",
+        "target": "S"
+      }
+    ]
+  },
+  "expect": {
+    "ok": true,
+    "answers": [
+      {
+        "kind": "area",
+        "text": "16π"
+      },
+      {
+        "kind": "volume",
+        "text": "32π/3"
+      }
+    ]
+  }
+}

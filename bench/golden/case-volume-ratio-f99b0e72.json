@@ -1,0 +1,86 @@
+{
+  "id": "case-volume-ratio-f99b0e72",
+  "source": "synthetic",
+  "difficulty": "easy",
+  "text": "Cho khối chóp S.ABC. Điểm M nằm trên cạnh SA sao cho SM = (2/3)SA. Tính tỉ số thể tích của khối chóp M.ABC và khối chóp S.ABC.",
+  "plan": {
+    "solidName": "S.ABC",
+    "ops": [
+      {
+        "op": "oxyz_point",
+        "name": "S",
+        "at": [
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "A",
+        "at": [
+          3,
+          0,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "B",
+        "at": [
+          0,
+          3,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "C",
+        "at": [
+          0,
+          0,
+          3
+        ]
+      },
+      {
+        "op": "oxyz_ratio",
+        "name": "M",
+        "a": "S",
+        "b": "A",
+        "t": "2/3"
+      }
+    ],
+    "queries": [
+      {
+        "kind": "volume_ratio",
+        "a": {
+          "solid": "tetrahedron",
+          "points": [
+            "M",
+            "A",
+            "B",
+            "C"
+          ]
+        },
+        "b": {
+          "solid": "tetrahedron",
+          "points": [
+            "S",
+            "A",
+            "B",
+            "C"
+          ]
+        }
+      }
+    ]
+  },
+  "expect": {
+    "ok": true,
+    "answers": [
+      {
+        "kind": "ratio",
+        "text": "1/3"
+      }
+    ]
+  }
+}

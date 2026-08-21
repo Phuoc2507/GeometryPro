@@ -1,0 +1,50 @@
+{
+  "id": "case-volume-22b34635",
+  "source": "synthetic",
+  "difficulty": "medium",
+  "text": "Cho hình nón cụt có bán kính hai đáy R = 6, r = 3 và chiều cao h = 4. Tính thể tích khối nón cụt và diện tích xung quanh của hình nón cụt.",
+  "plan": {
+    "solidName": "X",
+    "ops": [
+      {
+        "op": "oxyz_point",
+        "name": "O",
+        "at": [
+          0,
+          0,
+          0
+        ]
+      }
+    ],
+    "queries": [
+      {
+        "kind": "volume",
+        "solid": "cone_frustum",
+        "R": 6,
+        "r": 3,
+        "h": 4
+      },
+      {
+        "kind": "area",
+        "shape": "cone_frustum",
+        "part": "lateral",
+        "R": 6,
+        "r": 3,
+        "h": 4
+      }
+    ]
+  },
+  "expect": {
+    "ok": true,
+    "answers": [
+      {
+        "kind": "volume",
+        "text": "84π"
+      },
+      {
+        "kind": "area",
+        "text": "45π"
+      }
+    ]
+  }
+}

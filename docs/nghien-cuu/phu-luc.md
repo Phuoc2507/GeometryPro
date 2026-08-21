@@ -75,11 +75,11 @@ Trích/tóm lược trung thực từ `api/_lib/kernel-bridge/translatorPrompt.j
 Theo khung *Datasheets for Datasets* (rút gọn).
 
 - **Động cơ:** chưa có benchmark hình học không gian **tiếng Việt** có đáp kiểm chứng được; bộ này lấp khoảng trống đó và phục vụ đánh giá tất định.
-- **Thành phần:** mỗi ca `{ id, source, text, plan, expect:{ ok, answers:[{kind,text}] } }`. Hiện **26 ca** (14 thể tích, 6 khoảng cách, 2 mặt cầu, 2 nón/trụ, 2 nón-cụt/chóp-cụt; một ca 2 câu hỏi). Đáp lưu ở **dạng căn chính xác** (vd `2√3/3`, `64/3`).
-- **Thu thập & gán nhãn:** đề từ SGK/đề thi (**ghi nguồn**); plan do LLM dịch hoặc dán tay; đáp **do người xác minh**, engine đối chiếu bằng số. Công cụ: `scripts/label/` (xem `du-lieu-benchmark.md`).
+- **Thành phần:** mỗi ca `{ id, source, text, plan, expect:{ ok, answers:[{kind,text}] } }`. Hiện **66 ca**: **40 synthetic** (đề gốc tự soạn) + **25 capture** + 1 smoke. Bao phủ đa diện · khoảng cách điểm–mặt · mặt cầu · nón/trụ · nón cụt/chóp cụt · tỉ số thể tích · giao điểm. Đáp lưu **dạng căn/π chính xác** (vd `2√3/3`, `8√2π/3`, `52π`).
+- **Thu thập & gán nhãn (trạng thái THẬT):** 40 ca *synthetic* là **đề gốc tự soạn**, đáp **kiểm hai chiều** (tính bằng công thức độc lập ↔ engine tính lại; chỉ nạp khi khớp) qua công cụ `scripts/label/`; 25 ca *capture* do engine sinh. **Hiện chưa có đề từ SGK/đề thi thật** — đây là phần **mở rộng do nhóm (học sinh)**: nhập đề thật, **ghi nguồn**, tự giải tay ra đáp, rồi dùng `scripts/label/` đối chiếu và sửa `source` thành nguồn thật.
 - **Kiểm định chất lượng:** mọi ca phải **PASS** `npm run bench:gate` (engine‑replay tất định). Ca engine giải sai/lệch **không** được nạp làm golden.
 - **Phân phối & bảo trì:** công bố kèm mã nguồn & tài liệu; mở rộng dần theo các dạng còn thiếu (góc, thiết diện, tương giao, mặt cầu, tròn xoay, bài "thang chữ").
-- **Hạn chế:** cỡ hiện tại nhỏ (26) — đang mở rộng; phân bố dạng bài chưa cân bằng.
+- **Hạn chế:** cỡ hiện tại nhỏ (66); toàn bộ là ca máy‑sinh, chưa có đề thật — đang mở rộng; phân bố dạng bài chưa cân bằng.
 
 ---
 

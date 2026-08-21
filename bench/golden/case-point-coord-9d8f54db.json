@@ -1,0 +1,63 @@
+{
+  "id": "case-point-coord-9d8f54db",
+  "source": "synthetic",
+  "difficulty": "medium",
+  "text": "Trong không gian Oxyz, cho tam giác ABC có A(0; 0; 0), B(4; 0; 0), C(0; 6; 0). Gọi O là tâm đường tròn ngoại tiếp tam giác ABC. Tìm tung độ của điểm O.",
+  "plan": {
+    "solidName": "circum-ABC",
+    "ops": [
+      {
+        "op": "oxyz_point",
+        "name": "A",
+        "at": [
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "B",
+        "at": [
+          4,
+          0,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "C",
+        "at": [
+          0,
+          6,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_circumcenter",
+        "name": "O",
+        "of": [
+          "A",
+          "B",
+          "C"
+        ]
+      }
+    ],
+    "queries": [
+      {
+        "kind": "point_coord",
+        "target": "O",
+        "axis": "y"
+      }
+    ]
+  },
+  "expect": {
+    "ok": true,
+    "answers": [
+      {
+        "kind": "point_coord",
+        "text": "3"
+      }
+    ]
+  }
+}

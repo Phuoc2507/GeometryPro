@@ -1,0 +1,116 @@
+{
+  "id": "case-point-coord-81ec43ee",
+  "source": "synthetic",
+  "difficulty": "medium",
+  "text": "Trong không gian Oxyz, cho ba điểm A(2;0;0), B(0;3;0), C(0;0;6) và đường thẳng OM với O(0;0;0), M(1;1;1). Tìm tọa độ giao điểm I của đường thẳng OM và mặt phẳng (ABC).",
+  "plan": {
+    "solidName": "OM-ABC",
+    "ops": [
+      {
+        "op": "oxyz_point",
+        "name": "A",
+        "at": [
+          2,
+          0,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "B",
+        "at": [
+          0,
+          3,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "C",
+        "at": [
+          0,
+          0,
+          6
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "O",
+        "at": [
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "M",
+        "at": [
+          1,
+          1,
+          1
+        ]
+      },
+      {
+        "op": "oxyz_line",
+        "name": "OM",
+        "by": {
+          "form": "two_points",
+          "a": "O",
+          "b": "M"
+        }
+      },
+      {
+        "op": "oxyz_plane",
+        "name": "ABC",
+        "by": {
+          "form": "three_points",
+          "a": "A",
+          "b": "B",
+          "c": "C"
+        }
+      },
+      {
+        "op": "oxyz_intersect",
+        "name": "I",
+        "a": "OM",
+        "b": "ABC"
+      }
+    ],
+    "asserts": [],
+    "queries": [
+      {
+        "kind": "point_coord",
+        "target": "I",
+        "axis": "x"
+      },
+      {
+        "kind": "point_coord",
+        "target": "I",
+        "axis": "y"
+      },
+      {
+        "kind": "point_coord",
+        "target": "I",
+        "axis": "z"
+      }
+    ]
+  },
+  "expect": {
+    "ok": true,
+    "answers": [
+      {
+        "kind": "point_coord",
+        "text": "1"
+      },
+      {
+        "kind": "point_coord",
+        "text": "1"
+      },
+      {
+        "kind": "point_coord",
+        "text": "1"
+      }
+    ]
+  }
+}

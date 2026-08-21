@@ -1,0 +1,87 @@
+{
+  "id": "case-point-coord-a4687648",
+  "source": "synthetic",
+  "difficulty": "hard",
+  "text": "Trong không gian Oxyz, cho mặt cầu (S) tâm O(0;0;0) bán kính R=5 và đường thẳng d: x=3, y=4, z=t (t thuộc R). Chứng tỏ d tiếp xúc với (S) và tìm tọa độ tiếp điểm.",
+  "plan": {
+    "solidName": "d-S-tiepxuc",
+    "ops": [
+      {
+        "op": "oxyz_point",
+        "name": "O",
+        "at": [
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_sphere",
+        "name": "S",
+        "by": {
+          "form": "center_radius",
+          "center": "O",
+          "radius": 5
+        }
+      },
+      {
+        "op": "oxyz_line",
+        "name": "d",
+        "by": {
+          "form": "point_dir",
+          "base": [
+            3,
+            4,
+            0
+          ],
+          "dir": [
+            0,
+            0,
+            1
+          ]
+        }
+      },
+      {
+        "op": "oxyz_intersect",
+        "name": "H",
+        "a": "d",
+        "b": "S"
+      }
+    ],
+    "asserts": [],
+    "queries": [
+      {
+        "kind": "point_coord",
+        "target": "H",
+        "axis": "x"
+      },
+      {
+        "kind": "point_coord",
+        "target": "H",
+        "axis": "y"
+      },
+      {
+        "kind": "point_coord",
+        "target": "H",
+        "axis": "z"
+      }
+    ]
+  },
+  "expect": {
+    "ok": true,
+    "answers": [
+      {
+        "kind": "point_coord",
+        "text": "3"
+      },
+      {
+        "kind": "point_coord",
+        "text": "4"
+      },
+      {
+        "kind": "point_coord",
+        "text": "0"
+      }
+    ]
+  }
+}

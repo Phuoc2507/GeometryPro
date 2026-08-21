@@ -1,0 +1,146 @@
+{
+  "id": "case-distance-6f081b47",
+  "source": "synthetic",
+  "difficulty": "khó",
+  "text": "Cho hình chóp S.ABC có đáy ABC là tam giác vuông tại A với AB = 1, AC = 2, SA vuông góc với mặt phẳng đáy và SA = 2. Tính khoảng cách từ A đến mặt phẳng (SBC).",
+  "plan": {
+    "solidName": "S.ABC",
+    "ops": [
+      {
+        "op": "oxyz_point",
+        "name": "A",
+        "at": [
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "B",
+        "at": [
+          1,
+          0,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "C",
+        "at": [
+          0,
+          2,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "S",
+        "at": [
+          0,
+          0,
+          2
+        ]
+      },
+      {
+        "op": "oxyz_plane",
+        "name": "ABC",
+        "by": {
+          "form": "three_points",
+          "a": "A",
+          "b": "B",
+          "c": "C"
+        }
+      },
+      {
+        "op": "oxyz_plane",
+        "name": "SBC",
+        "by": {
+          "form": "three_points",
+          "a": "S",
+          "b": "B",
+          "c": "C"
+        }
+      },
+      {
+        "op": "edge",
+        "from": "A",
+        "to": "B"
+      },
+      {
+        "op": "edge",
+        "from": "A",
+        "to": "C"
+      },
+      {
+        "op": "edge",
+        "from": "B",
+        "to": "C"
+      },
+      {
+        "op": "edge",
+        "from": "S",
+        "to": "A"
+      },
+      {
+        "op": "edge",
+        "from": "S",
+        "to": "B"
+      },
+      {
+        "op": "edge",
+        "from": "S",
+        "to": "C"
+      }
+    ],
+    "asserts": [
+      {
+        "relation": "perp",
+        "args": [
+          "SA",
+          "ABC"
+        ]
+      },
+      {
+        "relation": "dist",
+        "args": [
+          "A",
+          "B"
+        ],
+        "value": 1
+      },
+      {
+        "relation": "dist",
+        "args": [
+          "A",
+          "C"
+        ],
+        "value": 2
+      },
+      {
+        "relation": "dist",
+        "args": [
+          "S",
+          "A"
+        ],
+        "value": 2
+      }
+    ],
+    "queries": [
+      {
+        "kind": "distance",
+        "a": "A",
+        "b": "SBC"
+      }
+    ]
+  },
+  "expect": {
+    "ok": true,
+    "answers": [
+      {
+        "kind": "distance",
+        "text": "√6/3"
+      }
+    ]
+  }
+}

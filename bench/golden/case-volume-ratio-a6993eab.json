@@ -1,0 +1,93 @@
+{
+  "id": "case-volume-ratio-a6993eab",
+  "source": "synthetic",
+  "difficulty": "medium",
+  "text": "Cho khối chóp S.ABC. Lấy điểm M trên cạnh SA với SM = (1/2)SA và điểm N trên cạnh SB với SN = (1/3)SB. Tính tỉ số thể tích của khối chóp S.MNC và khối chóp S.ABC.",
+  "plan": {
+    "solidName": "S.ABC",
+    "ops": [
+      {
+        "op": "oxyz_point",
+        "name": "S",
+        "at": [
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "A",
+        "at": [
+          1,
+          0,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "B",
+        "at": [
+          0,
+          1,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "C",
+        "at": [
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "op": "oxyz_ratio",
+        "name": "M",
+        "a": "S",
+        "b": "A",
+        "t": "1/2"
+      },
+      {
+        "op": "oxyz_ratio",
+        "name": "N",
+        "a": "S",
+        "b": "B",
+        "t": "1/3"
+      }
+    ],
+    "queries": [
+      {
+        "kind": "volume_ratio",
+        "a": {
+          "solid": "tetrahedron",
+          "points": [
+            "S",
+            "M",
+            "N",
+            "C"
+          ]
+        },
+        "b": {
+          "solid": "tetrahedron",
+          "points": [
+            "S",
+            "A",
+            "B",
+            "C"
+          ]
+        }
+      }
+    ]
+  },
+  "expect": {
+    "ok": true,
+    "answers": [
+      {
+        "kind": "ratio",
+        "text": "1/6"
+      }
+    ]
+  }
+}

@@ -1,0 +1,117 @@
+{
+  "id": "case-point-coord-4c445d2b",
+  "source": "synthetic",
+  "difficulty": "medium",
+  "text": "Trong không gian Oxyz, cho hình chóp S.ABCD có S(0;0;4), A(0;0;0), B(2;0;0), C(2;2;0), D(0;2;0). Mặt phẳng (P): z=1 song song với đáy cắt cạnh SC tại điểm I. Tìm tọa độ điểm I.",
+  "plan": {
+    "solidName": "S.ABCD",
+    "ops": [
+      {
+        "op": "oxyz_point",
+        "name": "S",
+        "at": [
+          0,
+          0,
+          4
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "A",
+        "at": [
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "B",
+        "at": [
+          2,
+          0,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "C",
+        "at": [
+          2,
+          2,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "D",
+        "at": [
+          0,
+          2,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_line",
+        "name": "SC",
+        "by": {
+          "form": "two_points",
+          "a": "S",
+          "b": "C"
+        }
+      },
+      {
+        "op": "oxyz_plane",
+        "name": "P",
+        "by": {
+          "form": "coeffs",
+          "a": 0,
+          "b": 0,
+          "c": 1,
+          "d": -1
+        }
+      },
+      {
+        "op": "oxyz_intersect",
+        "name": "I",
+        "a": "SC",
+        "b": "P"
+      }
+    ],
+    "asserts": [],
+    "queries": [
+      {
+        "kind": "point_coord",
+        "target": "I",
+        "axis": "x"
+      },
+      {
+        "kind": "point_coord",
+        "target": "I",
+        "axis": "y"
+      },
+      {
+        "kind": "point_coord",
+        "target": "I",
+        "axis": "z"
+      }
+    ]
+  },
+  "expect": {
+    "ok": true,
+    "answers": [
+      {
+        "kind": "point_coord",
+        "text": "3/2"
+      },
+      {
+        "kind": "point_coord",
+        "text": "3/2"
+      },
+      {
+        "kind": "point_coord",
+        "text": "1"
+      }
+    ]
+  }
+}

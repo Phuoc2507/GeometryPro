@@ -1,0 +1,148 @@
+{
+  "id": "case-volume-0e8c69b8",
+  "source": "synthetic",
+  "difficulty": "khó",
+  "text": "Cho tứ diện đều ABCD có cạnh bằng 3. Tính thể tích khối tứ diện ABCD.",
+  "plan": {
+    "solidName": "ABCD",
+    "ops": [
+      {
+        "op": "oxyz_point",
+        "name": "B",
+        "at": [
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "C",
+        "at": [
+          3,
+          0,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "D",
+        "at": [
+          "3/2",
+          "3*sqrt(3)/2",
+          0
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "A",
+        "at": [
+          "3/2",
+          "sqrt(3)/2",
+          "sqrt(6)"
+        ]
+      },
+      {
+        "op": "edge",
+        "from": "A",
+        "to": "B"
+      },
+      {
+        "op": "edge",
+        "from": "A",
+        "to": "C"
+      },
+      {
+        "op": "edge",
+        "from": "A",
+        "to": "D"
+      },
+      {
+        "op": "edge",
+        "from": "B",
+        "to": "C"
+      },
+      {
+        "op": "edge",
+        "from": "C",
+        "to": "D"
+      },
+      {
+        "op": "edge",
+        "from": "D",
+        "to": "B"
+      }
+    ],
+    "asserts": [
+      {
+        "relation": "dist",
+        "args": [
+          "A",
+          "B"
+        ],
+        "value": 3
+      },
+      {
+        "relation": "dist",
+        "args": [
+          "B",
+          "C"
+        ],
+        "value": 3
+      },
+      {
+        "relation": "dist",
+        "args": [
+          "C",
+          "D"
+        ],
+        "value": 3
+      },
+      {
+        "relation": "dist",
+        "args": [
+          "D",
+          "B"
+        ],
+        "value": 3
+      },
+      {
+        "relation": "dist",
+        "args": [
+          "A",
+          "C"
+        ],
+        "value": 3
+      },
+      {
+        "relation": "dist",
+        "args": [
+          "A",
+          "D"
+        ],
+        "value": 3
+      }
+    ],
+    "queries": [
+      {
+        "kind": "volume",
+        "solid": "tetrahedron",
+        "points": [
+          "A",
+          "B",
+          "C",
+          "D"
+        ]
+      }
+    ]
+  },
+  "expect": {
+    "ok": true,
+    "answers": [
+      {
+        "kind": "volume",
+        "text": "9√2/4"
+      }
+    ]
+  }
+}

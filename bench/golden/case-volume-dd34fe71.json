@@ -1,0 +1,48 @@
+{
+  "id": "case-volume-dd34fe71",
+  "source": "synthetic",
+  "difficulty": "easy",
+  "text": "Cho hình trụ có bán kính đáy r = 3 và chiều cao h = 2. Tính thể tích khối trụ và diện tích toàn phần của hình trụ.",
+  "plan": {
+    "solidName": "X",
+    "ops": [
+      {
+        "op": "oxyz_point",
+        "name": "O",
+        "at": [
+          0,
+          0,
+          0
+        ]
+      }
+    ],
+    "queries": [
+      {
+        "kind": "volume",
+        "solid": "cylinder",
+        "r": 3,
+        "h": 2
+      },
+      {
+        "kind": "area",
+        "shape": "cylinder",
+        "part": "total",
+        "r": 3,
+        "h": 2
+      }
+    ]
+  },
+  "expect": {
+    "ok": true,
+    "answers": [
+      {
+        "kind": "volume",
+        "text": "18π"
+      },
+      {
+        "kind": "area",
+        "text": "30π"
+      }
+    ]
+  }
+}

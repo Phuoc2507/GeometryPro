@@ -1,0 +1,48 @@
+{
+  "id": "case-volume-df69252d",
+  "source": "synthetic",
+  "difficulty": "easy",
+  "text": "Cho hình nón có bán kính đáy r = 6 và chiều cao h = 8. Tính thể tích khối nón và diện tích xung quanh của hình nón.",
+  "plan": {
+    "solidName": "X",
+    "ops": [
+      {
+        "op": "oxyz_point",
+        "name": "O",
+        "at": [
+          0,
+          0,
+          0
+        ]
+      }
+    ],
+    "queries": [
+      {
+        "kind": "volume",
+        "solid": "cone",
+        "r": 6,
+        "h": 8
+      },
+      {
+        "kind": "area",
+        "shape": "cone",
+        "part": "lateral",
+        "r": 6,
+        "h": 8
+      }
+    ]
+  },
+  "expect": {
+    "ok": true,
+    "answers": [
+      {
+        "kind": "volume",
+        "text": "96π"
+      },
+      {
+        "kind": "area",
+        "text": "60π"
+      }
+    ]
+  }
+}

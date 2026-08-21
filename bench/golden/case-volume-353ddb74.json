@@ -1,0 +1,38 @@
+{
+  "id": "case-volume-353ddb74",
+  "source": "synthetic",
+  "difficulty": "medium",
+  "text": "Cho hình chóp cụt có diện tích đáy lớn bằng 8, diện tích đáy nhỏ bằng 2 và chiều cao h = 3. Tính thể tích khối chóp cụt.",
+  "plan": {
+    "solidName": "X",
+    "ops": [
+      {
+        "op": "oxyz_point",
+        "name": "O",
+        "at": [
+          0,
+          0,
+          0
+        ]
+      }
+    ],
+    "queries": [
+      {
+        "kind": "volume",
+        "solid": "pyramid_frustum",
+        "s1": 8,
+        "s2": 2,
+        "h": 3
+      }
+    ]
+  },
+  "expect": {
+    "ok": true,
+    "answers": [
+      {
+        "kind": "volume",
+        "text": "14"
+      }
+    ]
+  }
+}

@@ -1,0 +1,86 @@
+{
+  "id": "case-point-coord-6914ea08",
+  "source": "synthetic",
+  "difficulty": "medium",
+  "text": "Trong không gian Oxyz, cho đường thẳng d1 đi qua A(1;-1;4) với vectơ chỉ phương (1;2;-1) và đường thẳng d2 đi qua B(0;2;2) với vectơ chỉ phương (2;-1;1). Hai đường thẳng cắt nhau tại điểm I; tìm tọa độ I.",
+  "plan": {
+    "solidName": "d1-d2-3d",
+    "ops": [
+      {
+        "op": "oxyz_line",
+        "name": "d1",
+        "by": {
+          "form": "point_dir",
+          "base": [
+            1,
+            -1,
+            4
+          ],
+          "dir": [
+            1,
+            2,
+            -1
+          ]
+        }
+      },
+      {
+        "op": "oxyz_line",
+        "name": "d2",
+        "by": {
+          "form": "point_dir",
+          "base": [
+            0,
+            2,
+            2
+          ],
+          "dir": [
+            2,
+            -1,
+            1
+          ]
+        }
+      },
+      {
+        "op": "oxyz_intersect",
+        "name": "I",
+        "a": "d1",
+        "b": "d2"
+      }
+    ],
+    "asserts": [],
+    "queries": [
+      {
+        "kind": "point_coord",
+        "target": "I",
+        "axis": "x"
+      },
+      {
+        "kind": "point_coord",
+        "target": "I",
+        "axis": "y"
+      },
+      {
+        "kind": "point_coord",
+        "target": "I",
+        "axis": "z"
+      }
+    ]
+  },
+  "expect": {
+    "ok": true,
+    "answers": [
+      {
+        "kind": "point_coord",
+        "text": "2"
+      },
+      {
+        "kind": "point_coord",
+        "text": "1"
+      },
+      {
+        "kind": "point_coord",
+        "text": "3"
+      }
+    ]
+  }
+}

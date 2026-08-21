@@ -1,0 +1,141 @@
+{
+  "id": "case-volume-b0714e88",
+  "source": "synthetic",
+  "difficulty": "TB",
+  "text": "Cho hình chóp S.ABC có đáy ABC là tam giác vuông tại B với AB = 3, BC = 4, SA vuông góc với mặt phẳng đáy và SA = 5. Tính thể tích khối chóp S.ABC.",
+  "plan": {
+    "solidName": "S.ABC",
+    "ops": [
+      {
+        "op": "oxyz_point",
+        "name": "B",
+        "at": [
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "A",
+        "at": [
+          3,
+          0,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "C",
+        "at": [
+          0,
+          4,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "S",
+        "at": [
+          3,
+          0,
+          5
+        ]
+      },
+      {
+        "op": "oxyz_plane",
+        "name": "ABC",
+        "by": {
+          "form": "three_points",
+          "a": "A",
+          "b": "B",
+          "c": "C"
+        }
+      },
+      {
+        "op": "edge",
+        "from": "A",
+        "to": "B"
+      },
+      {
+        "op": "edge",
+        "from": "B",
+        "to": "C"
+      },
+      {
+        "op": "edge",
+        "from": "C",
+        "to": "A"
+      },
+      {
+        "op": "edge",
+        "from": "S",
+        "to": "A"
+      },
+      {
+        "op": "edge",
+        "from": "S",
+        "to": "B"
+      },
+      {
+        "op": "edge",
+        "from": "S",
+        "to": "C"
+      }
+    ],
+    "asserts": [
+      {
+        "relation": "perp",
+        "args": [
+          "SA",
+          "ABC"
+        ]
+      },
+      {
+        "relation": "dist",
+        "args": [
+          "A",
+          "B"
+        ],
+        "value": 3
+      },
+      {
+        "relation": "dist",
+        "args": [
+          "B",
+          "C"
+        ],
+        "value": 4
+      },
+      {
+        "relation": "dist",
+        "args": [
+          "S",
+          "A"
+        ],
+        "value": 5
+      }
+    ],
+    "queries": [
+      {
+        "kind": "volume",
+        "solid": "pyramid",
+        "points": [
+          "A",
+          "B",
+          "C"
+        ],
+        "apex": "S"
+      }
+    ]
+  },
+  "expect": {
+    "ok": true,
+    "answers": [
+      {
+        "kind": "volume",
+        "text": "10"
+      }
+    ]
+  }
+}

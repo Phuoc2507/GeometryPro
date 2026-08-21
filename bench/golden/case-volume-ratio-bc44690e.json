@@ -1,0 +1,91 @@
+{
+  "id": "case-volume-ratio-bc44690e",
+  "source": "synthetic",
+  "difficulty": "easy",
+  "text": "Cho khối chóp S.ABC. Gọi M, N lần lượt là trung điểm của các cạnh SA, SB. Tính tỉ số thể tích của khối chóp S.MNC và khối chóp S.ABC.",
+  "plan": {
+    "solidName": "S.ABC",
+    "ops": [
+      {
+        "op": "oxyz_point",
+        "name": "S",
+        "at": [
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "A",
+        "at": [
+          1,
+          0,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "B",
+        "at": [
+          0,
+          1,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "C",
+        "at": [
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "op": "oxyz_midpoint",
+        "name": "M",
+        "a": "S",
+        "b": "A"
+      },
+      {
+        "op": "oxyz_midpoint",
+        "name": "N",
+        "a": "S",
+        "b": "B"
+      }
+    ],
+    "queries": [
+      {
+        "kind": "volume_ratio",
+        "a": {
+          "solid": "tetrahedron",
+          "points": [
+            "S",
+            "M",
+            "N",
+            "C"
+          ]
+        },
+        "b": {
+          "solid": "tetrahedron",
+          "points": [
+            "S",
+            "A",
+            "B",
+            "C"
+          ]
+        }
+      }
+    ]
+  },
+  "expect": {
+    "ok": true,
+    "answers": [
+      {
+        "kind": "ratio",
+        "text": "1/4"
+      }
+    ]
+  }
+}

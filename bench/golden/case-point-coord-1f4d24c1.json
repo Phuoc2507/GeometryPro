@@ -1,0 +1,106 @@
+{
+  "id": "case-point-coord-1f4d24c1",
+  "source": "synthetic",
+  "difficulty": "medium",
+  "text": "Trong không gian Oxyz, cho đường thẳng d1 đi qua A(0;0;0), B(2;2;0) và đường thẳng d2 đi qua C(2;0;0), D(0;2;0). Chứng tỏ d1 và d2 cắt nhau và tìm tọa độ giao điểm.",
+  "plan": {
+    "solidName": "d1-d2",
+    "ops": [
+      {
+        "op": "oxyz_point",
+        "name": "A",
+        "at": [
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "B",
+        "at": [
+          2,
+          2,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "C",
+        "at": [
+          2,
+          0,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "D",
+        "at": [
+          0,
+          2,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_line",
+        "name": "d1",
+        "by": {
+          "form": "two_points",
+          "a": "A",
+          "b": "B"
+        }
+      },
+      {
+        "op": "oxyz_line",
+        "name": "d2",
+        "by": {
+          "form": "two_points",
+          "a": "C",
+          "b": "D"
+        }
+      },
+      {
+        "op": "oxyz_intersect",
+        "name": "I",
+        "a": "d1",
+        "b": "d2"
+      }
+    ],
+    "asserts": [],
+    "queries": [
+      {
+        "kind": "point_coord",
+        "target": "I",
+        "axis": "x"
+      },
+      {
+        "kind": "point_coord",
+        "target": "I",
+        "axis": "y"
+      },
+      {
+        "kind": "point_coord",
+        "target": "I",
+        "axis": "z"
+      }
+    ]
+  },
+  "expect": {
+    "ok": true,
+    "answers": [
+      {
+        "kind": "point_coord",
+        "text": "1"
+      },
+      {
+        "kind": "point_coord",
+        "text": "1"
+      },
+      {
+        "kind": "point_coord",
+        "text": "0"
+      }
+    ]
+  }
+}

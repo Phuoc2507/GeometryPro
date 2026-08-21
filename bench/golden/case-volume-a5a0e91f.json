@@ -1,0 +1,48 @@
+{
+  "id": "case-volume-a5a0e91f",
+  "source": "synthetic",
+  "difficulty": "medium",
+  "text": "Cho hình nón cụt có bán kính đáy lớn R = 4, bán kính đáy nhỏ r = 1 và chiều cao h = 4. Tính thể tích khối nón cụt và độ dài đường sinh của nó.",
+  "plan": {
+    "solidName": "X",
+    "ops": [
+      {
+        "op": "oxyz_point",
+        "name": "O",
+        "at": [
+          0,
+          0,
+          0
+        ]
+      }
+    ],
+    "queries": [
+      {
+        "kind": "volume",
+        "solid": "cone_frustum",
+        "R": 4,
+        "r": 1,
+        "h": 4
+      },
+      {
+        "kind": "slant",
+        "R": 4,
+        "r": 1,
+        "h": 4
+      }
+    ]
+  },
+  "expect": {
+    "ok": true,
+    "answers": [
+      {
+        "kind": "volume",
+        "text": "28π"
+      },
+      {
+        "kind": "slant",
+        "text": "5"
+      }
+    ]
+  }
+}

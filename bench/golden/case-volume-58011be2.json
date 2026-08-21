@@ -1,0 +1,48 @@
+{
+  "id": "case-volume-58011be2",
+  "source": "synthetic",
+  "difficulty": "medium",
+  "text": "Cho hình nón có bán kính đáy r = 1 và chiều cao h = √3. Tính thể tích khối nón và diện tích xung quanh của hình nón.",
+  "plan": {
+    "solidName": "X",
+    "ops": [
+      {
+        "op": "oxyz_point",
+        "name": "O",
+        "at": [
+          0,
+          0,
+          0
+        ]
+      }
+    ],
+    "queries": [
+      {
+        "kind": "volume",
+        "solid": "cone",
+        "r": 1,
+        "h": "sqrt(3)"
+      },
+      {
+        "kind": "area",
+        "shape": "cone",
+        "part": "lateral",
+        "r": 1,
+        "h": "sqrt(3)"
+      }
+    ]
+  },
+  "expect": {
+    "ok": true,
+    "answers": [
+      {
+        "kind": "volume",
+        "text": "√3π/3"
+      },
+      {
+        "kind": "area",
+        "text": "2π"
+      }
+    ]
+  }
+}

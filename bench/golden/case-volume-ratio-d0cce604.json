@@ -1,0 +1,100 @@
+{
+  "id": "case-volume-ratio-d0cce604",
+  "source": "synthetic",
+  "difficulty": "medium",
+  "text": "Cho hình chóp S.ABC. Trên các cạnh SA, SB, SC lần lượt lấy các điểm M, N, P sao cho SM = (1/2)SA, SN = (1/3)SB, SP = (1/4)SC. Tính tỉ số thể tích của khối chóp S.MNP và khối chóp S.ABC.",
+  "plan": {
+    "solidName": "S.ABC",
+    "ops": [
+      {
+        "op": "oxyz_point",
+        "name": "S",
+        "at": [
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "A",
+        "at": [
+          1,
+          0,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "B",
+        "at": [
+          0,
+          1,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "C",
+        "at": [
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "op": "oxyz_ratio",
+        "name": "M",
+        "a": "S",
+        "b": "A",
+        "t": "1/2"
+      },
+      {
+        "op": "oxyz_ratio",
+        "name": "N",
+        "a": "S",
+        "b": "B",
+        "t": "1/3"
+      },
+      {
+        "op": "oxyz_ratio",
+        "name": "P",
+        "a": "S",
+        "b": "C",
+        "t": "1/4"
+      }
+    ],
+    "queries": [
+      {
+        "kind": "volume_ratio",
+        "a": {
+          "solid": "tetrahedron",
+          "points": [
+            "S",
+            "M",
+            "N",
+            "P"
+          ]
+        },
+        "b": {
+          "solid": "tetrahedron",
+          "points": [
+            "S",
+            "A",
+            "B",
+            "C"
+          ]
+        }
+      }
+    ]
+  },
+  "expect": {
+    "ok": true,
+    "answers": [
+      {
+        "kind": "ratio",
+        "text": "1/24"
+      }
+    ]
+  }
+}

@@ -1,0 +1,54 @@
+{
+  "id": "case-volume-a73d37cd",
+  "source": "synthetic",
+  "difficulty": "easy",
+  "text": "Cho khối cầu bán kính R = 5. Tính thể tích khối cầu và diện tích mặt cầu tương ứng.",
+  "plan": {
+    "solidName": "S",
+    "ops": [
+      {
+        "op": "oxyz_point",
+        "name": "O",
+        "at": [
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_sphere",
+        "name": "S",
+        "by": {
+          "form": "center_radius",
+          "center": "O",
+          "radius": 5
+        }
+      }
+    ],
+    "queries": [
+      {
+        "kind": "volume",
+        "solid": "sphere",
+        "target": "S"
+      },
+      {
+        "kind": "area",
+        "shape": "sphere",
+        "target": "S"
+      }
+    ]
+  },
+  "expect": {
+    "ok": true,
+    "answers": [
+      {
+        "kind": "volume",
+        "text": "500π/3"
+      },
+      {
+        "kind": "area",
+        "text": "100π"
+      }
+    ]
+  }
+}

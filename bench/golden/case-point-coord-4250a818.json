@@ -1,0 +1,90 @@
+{
+  "id": "case-point-coord-4250a818",
+  "source": "synthetic",
+  "difficulty": "medium",
+  "text": "Trong không gian Oxyz, cho đường thẳng d đi qua hai điểm A(1;1;1) và B(2;3;5), và mặt phẳng (P): 2x-y+z-5=0. Tìm tọa độ giao điểm của d và (P).",
+  "plan": {
+    "solidName": "d-P-2",
+    "ops": [
+      {
+        "op": "oxyz_point",
+        "name": "A",
+        "at": [
+          1,
+          1,
+          1
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "B",
+        "at": [
+          2,
+          3,
+          5
+        ]
+      },
+      {
+        "op": "oxyz_line",
+        "name": "d",
+        "by": {
+          "form": "two_points",
+          "a": "A",
+          "b": "B"
+        }
+      },
+      {
+        "op": "oxyz_plane",
+        "name": "P",
+        "by": {
+          "form": "coeffs",
+          "a": 2,
+          "b": -1,
+          "c": 1,
+          "d": -5
+        }
+      },
+      {
+        "op": "oxyz_intersect",
+        "name": "I",
+        "a": "d",
+        "b": "P"
+      }
+    ],
+    "asserts": [],
+    "queries": [
+      {
+        "kind": "point_coord",
+        "target": "I",
+        "axis": "x"
+      },
+      {
+        "kind": "point_coord",
+        "target": "I",
+        "axis": "y"
+      },
+      {
+        "kind": "point_coord",
+        "target": "I",
+        "axis": "z"
+      }
+    ]
+  },
+  "expect": {
+    "ok": true,
+    "answers": [
+      {
+        "kind": "point_coord",
+        "text": "7/4"
+      },
+      {
+        "kind": "point_coord",
+        "text": "5/2"
+      },
+      {
+        "kind": "point_coord",
+        "text": "4"
+      }
+    ]
+  }
+}

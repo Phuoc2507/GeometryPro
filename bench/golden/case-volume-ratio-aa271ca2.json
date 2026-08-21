@@ -1,0 +1,98 @@
+{
+  "id": "case-volume-ratio-aa271ca2",
+  "source": "synthetic",
+  "difficulty": "medium",
+  "text": "Cho hình chóp S.ABCD có đáy ABCD là hình bình hành. Tính tỉ số thể tích của khối tứ diện S.ABC và khối chóp S.ABCD.",
+  "plan": {
+    "solidName": "S.ABCD",
+    "ops": [
+      {
+        "op": "oxyz_point",
+        "name": "A",
+        "at": [
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "B",
+        "at": [
+          2,
+          0,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "C",
+        "at": [
+          3,
+          2,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "D",
+        "at": [
+          1,
+          2,
+          0
+        ]
+      },
+      {
+        "op": "oxyz_point",
+        "name": "S",
+        "at": [
+          0,
+          0,
+          4
+        ]
+      }
+    ],
+    "asserts": [
+      {
+        "relation": "parallel",
+        "args": [
+          "AB",
+          "DC"
+        ]
+      }
+    ],
+    "queries": [
+      {
+        "kind": "volume_ratio",
+        "a": {
+          "solid": "tetrahedron",
+          "points": [
+            "S",
+            "A",
+            "B",
+            "C"
+          ]
+        },
+        "b": {
+          "solid": "pyramid",
+          "points": [
+            "A",
+            "B",
+            "C",
+            "D"
+          ],
+          "apex": "S"
+        }
+      }
+    ]
+  },
+  "expect": {
+    "ok": true,
+    "answers": [
+      {
+        "kind": "ratio",
+        "text": "1/2"
+      }
+    ]
+  }
+}
