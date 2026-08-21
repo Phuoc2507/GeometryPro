@@ -261,7 +261,7 @@ Ký hiệu: mọi số đã về SI, Scalar. `driving` = tổng thành phần d�
 1. Tổng khối lượng M = m₁ + m₂ (cả hai `mass` bắt buộc có — thiếu ⇒ error).
 2. Lực phát động có hướng cố định: D = (thành phần trọng lực + lực đề cho, chiếu dọc trục từng vật, lấy dấu theo ứng viên chiều "vật treo đi xuống"). Atwood: D = (m₁ − m₂)g. Bàn + treo: D = m₂g.
 3. Ngưỡng ma sát nghỉ: F_ms,max = Σ μᵢNᵢ (chỉ vật trên mặt có μ; N từ cân bằng pháp tuyến).
-4. |D| ≤ F_ms,max (so sánh exact bằng `cmpScalar` khi còn trong trường) ⇒ **violation `he-khong-chuyen-dong`** — không serve đáp (kể cả Atwood m₁ = m₂: cân bằng, xem phân vân §17.6).
+4. |D| ≤ F_ms,max (so sánh exact bằng `cmpScalar` khi còn trong trường) ⇒ **violation `he-khong-chuyen-dong`** — không serve đáp (kể cả Atwood m₁ = m₂: cân bằng — message riêng "hệ cân bằng" theo §9.2, ĐÃ PHÁN QUYẾT §17.6).
 5. |D| > F_ms,max ⇒ chiều dương = sign(D); a = (|D| − F_ms,max)/M.
 6. T giải từ phương trình vật treo: T = m₂(g − a) (vật treo đi xuống) hoặc m₂(g + a) (đi lên); rồi **thay vào phương trình vật kia làm tự kiểm** (§9.1) — "lực căng hai đầu khớp nhau".
 
@@ -345,7 +345,7 @@ Parabol toán học cho vật "chạy lùi" sau khi dừng — vật lý thì kh
 Chuyển động dọc đường thẳng: điểm theo tham số s(t) = v0′·k·t + (a/2)·k²·t² chiếu lên phương của mặt:
 
 - Ngang: x(t) = x_start + s(t), z = const. Nghiêng (trượt xuống): x(t) = s(t)·cosθ, z(t) = H − s(t)·sinθ. Treo: z(t) = z_start ± s(t).
-- **T_phys** = max(mọi `t` trong queries; mọi đáp thời gian; t_dừng nếu hữu hạn); bài thuần lực không có đại lượng thời gian/quãng đường ⇒ **T_phys = 2 s danh nghĩa** (minh hoạ trượt theo a thật — phân vân §17.7). Track end tại min(T_phys, t_dừng).
+- **T_phys** = max(mọi `t` trong queries; mọi đáp thời gian; t_dừng nếu hữu hạn); bài thuần lực không có đại lượng thời gian/quãng đường ⇒ **T_phys = 2 s danh nghĩa** (minh hoạ trượt theo a thật — ĐÃ PHÁN QUYẾT §17.7: giữ 2 s). Track end tại min(T_phys, t_dừng).
 - Quy tắc playback GIỮ NGUYÊN v0 (đã duyệt D2): 3 ≤ T_phys ≤ 15 ⇒ k = 1; ngoài khoảng ⇒ D_pb = 10 s, k = T_phys/10. `scene.durationSec` ép D_pb.
 - 3 quirk frontend giữ nguyên: phát CẢ `params.equations` (vế phải) LẪN `params.path`; **`t*t` không `t^2`**; **`landing_point` bắt buộc mọi track**; `params.timeScale = k`; tags `['physics', 'timeScale:<k>']` (taxonomy do bridge merge sau).
 

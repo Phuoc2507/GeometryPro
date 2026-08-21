@@ -1,7 +1,7 @@
 # Physics Pack v1 — Dòng điện không đổi lớp 11 (GDPT 2018) — Design Spec
 
-**Ngày:** 2026-08-21
-**Trạng thái:** Chờ phản biện spec
+**Ngày:** 2026-08-21 (cập nhật 22/08 — áp phán quyết phản biện đợt 2)
+**Trạng thái:** ĐÃ PHẢN BIỆN đợt 2 — mọi finding CI-1..CI-4 + 10 phán quyết §15 + 3 phán quyết chung (§17) đã áp vào spec, gồm ĐỔI TÊN query `total_resistance` → `resistance(of?)` xuyên suốt (nguồn: `../reviews/2026-08-21-wave2-specs-review.md`); chờ thi công. Changelog sửa đổi: §18.
 **Phạm vi:** Mở rộng physics pack sang chương DÒNG ĐIỆN KHÔNG ĐỔI (Vật lí 11, GDPT 2018 — chương "Dòng điện, mạch điện"). Chỉ CỘNG file mới trong `api/_lib/kernel/physics/` + test. KHÔNG sửa bất kỳ file có sẵn nào (kể cả file v0 động học).
 **Quan hệ:** Xây trên nền `2026-08-21-physics-pack-design.md` (v0 — động học 10) và tuân các quy ước ĐÃ DUYỆT ở `2026-08-21-arch-physics-review-phien1.md` (unit per-quantity engine tự đổi — F2/D1; `answers[].unit` engine ghi — C6; mỗi query MỘT số — D5; tag 4 tầng — §9 kiến trúc). Đối chiếu chi tiết ở §14.
 
@@ -29,7 +29,7 @@ Giải bài mạch điện MỘT nguồn (E, r) với điện trở nối tiếp
 | Dạng bài | Khai báo | Query dùng | Tag đề xuất (`subject/grade/chapter/skill`) |
 |---|---|---|---|
 | Định luật Ôm toàn mạch I = E/(R_tđ + r) | `source {emf, r}` + cây | `current` | `ly/11/dong-dien/dinh-luat-om-toan-mach` |
-| Điện trở tương đương nt/ss/hỗn hợp lồng nhau (≤ ~8 điện trở) | cây `series`/`parallel` | `total_resistance` | `ly/11/dong-dien/dien-tro-tuong-duong` |
+| Điện trở tương đương nt/ss/hỗn hợp lồng nhau (≤ ~8 điện trở) | cây `series`/`parallel` | `resistance` (tên mới — ĐÃ PHÁN QUYẾT §15.2) | `ly/11/dong-dien/dien-tro-tuong-duong` |
 | U, I, P từng phần tử / từng khối / mạch ngoài | như trên | `voltage`, `current`, `power`, `power_source` | `ly/11/dong-dien/dinh-luat-om-toan-mach` |
 | Công suất & điện năng A = UIt (đổi J/kJ/Wh/kWh, t theo s/min/h) | như trên | `energy`, `energy_source` | `ly/11/dong-dien/cong-suat-dien-nang` |
 | Hiệu suất nguồn H = U_ngoài/E | `r > 0` | `efficiency` | `ly/11/dong-dien/hieu-suat-nguon` |
@@ -44,12 +44,14 @@ Tag: v1 scene tự gắn `['physics', 'circuit']` như quy ước v0; 5 tag taxo
 **TRONG phạm vi v1:**
 - Mạch MỘT nguồn (E, r ≥ 0; r = 0 hợp lệ — "điện trở trong không đáng kể", và mô hình luôn cho "mắc vào hiệu điện thế không đổi U" của mạng điện: `{emf: U, r: 0}`).
 - Mạch ngoài là CÂY nối tiếp/song song lồng nhau tùy ý, tối đa **8 lá** (điện trở + đèn + ẩn), sâu tối đa **4 tầng nhóm**.
-- Đèn dây tóc khai (U_đm, P_đm), R_đèn = U_đm²/P_đm **coi là hằng số** (giả định chuẩn SGK "coi điện trở đèn không đổi" — xem phân vân §15.1).
+- Đèn dây tóc khai (U_đm, P_đm), R_đèn = U_đm²/P_đm **coi là hằng số** (giả định chuẩn SGK "coi điện trở đèn không đổi" — **ĐÃ PHÁN QUYẾT §15.1: đề không ghi câu đó vẫn dịch theo thông lệ, engine ghi assumption vào trace**).
 - Ampe kế/vôn kế **LÝ TƯỞNG** xử lý ở tầng DỊCH, không có op: "số chỉ ampe kế nối tiếp nhánh X" → `current(of: X)`; "số chỉ vôn kế mắc vào hai đầu Y" → `voltage(of: Y)` (quy ước translator §6.5).
 - Bài nghịch MỘT ẩn R, ràng buộc là I MẠCH CHÍNH cho trước (nghiệm đóng Möbius §7.5).
 
 **NGOÀI phạm vi v1 (ghi rõ, LLM prompt v2 phải abstain):**
-- Mạch CẦU / mạch không quy được về nối tiếp–song song (cần sao–tam giác hoặc thế nút).
+- Mạch CẦU / mạch không quy được về nối tiếp–song song (cần sao–tam giác hoặc thế nút). **CI-2: few-shot P2 BẮT BUỘC có 1 ví dụ mạch cầu → abstain** — topology cây sai do LLM "ép" mạch cầu về nt–ss không có phòng tuyến máy nào bắt được (spec khai trung thực), nên phòng tuyến là few-shot abstain + luật "mọi số đo dư → asserts" (§6.5).
+- **Khóa K / đoạn NỐI TẮT / mạch HAI TRẠNG THÁI** ("khi K mở I₁ = …, khi K đóng I₂ = …" — dạng phổ biến của đề VN, CI-1): một plan v1 mô tả đúng MỘT trạng thái mạch tĩnh, không có op khóa/trạng thái ⇒ NGOÀI phạm vi; few-shot P2 phải có 1 ví dụ abstain. (Đề chỉ có MỘT trạng thái đã chốt — "K đóng" xuyên suốt — thì dịch mạch ở trạng thái đó như thường.)
+- **Bài NGHỊCH tìm E, r từ HAI lần đo** (hai cặp (I, U) hoặc hai mạch ngoài khác nhau ⇒ hệ 2 phương trình 2 ẩn — dạng phổ biến, CI-1): schema chỉ có một `source {emf, r}` số cho trước, không có ẩn nguồn ⇒ NGOÀI phạm vi; few-shot P2 phải có 1 ví dụ abstain.
 - NHIỀU nguồn (ghép nguồn nối tiếp/song song/xung đối), nguồn là máy thu.
 - Tụ điện trong mạch (kể cả nhánh tụ hở dòng).
 - Ampe kế/vôn kế KHÔNG lý tưởng (R_A ≠ 0, R_V < ∞).
@@ -147,7 +149,8 @@ LLM chỉ chép "nối tiếp"/"song song" từ đề thành `series`/`parallel`
 
 ```ts
 export const CircuitQuerySchema = z.discriminatedUnion('kind', [
-  z.object({ kind: z.literal('total_resistance'), of: Name.optional(), label: z.string().optional() }),
+  z.object({ kind: z.literal('resistance'), of: Name.optional(), label: z.string().optional() }),
+      // ĐỔI TÊN từ 'total_resistance' (ĐÃ PHÁN QUYẾT §15.2): ngữ nghĩa phủ cả lá/khối nên bỏ tiền tố total_.
       // bỏ of = R_tđ MẠCH NGOÀI; of = tên lá/khối = R (tương đương) của phần tử đó (vd R đèn)
   z.object({ kind: z.literal('current'), of: Name.optional(), label: z.string().optional() }),
       // bỏ of = I mạch chính (qua nguồn); of = I qua lá/khối
@@ -214,17 +217,18 @@ Chuẩn nội bộ = SI (Ω, V, A, W, s, J). Field unit CHỈ mở ở những c
 | `energy.unit` (ĐẦU RA) | `J` \| `kJ` \| `Wh` \| `kWh` | ÷1 \| ÷1000 \| ÷3600 \| ÷3 600 000 |
 | `solve_resistance.targetCurrentUnit` | `A` \| `mA` | ×1 \| ×1/1000 |
 
-`emf` luôn V, `r` luôn Ω, `ratedVolts/ratedWatts` luôn V/W (đề lớp 11 không có biến thể — YAGNI, mở thêm khi gặp đề thật, §15.9). `answers[].unit` do ENGINE ghi theo kind (C6): `total_resistance`/`solve_resistance` → `'Ω'`; `current` → `'A'`; `voltage` → `'V'`; `power*` → `'W'`; `energy*` → đúng `unit` khai; `efficiency` → `'%'`; `lamp_check` → `''` (tỉ số).
+`emf` luôn V, `r` luôn Ω, `ratedVolts/ratedWatts` luôn V/W (đề lớp 11 không có biến thể — YAGNI, mở thêm khi gặp đề thật, §15.9). `answers[].unit` do ENGINE ghi theo kind (C6): `resistance`/`solve_resistance` → `'Ω'`; `current` → `'A'`; `voltage` → `'V'`; `power*` → `'W'`; `energy*` → đúng `unit` khai; `efficiency` → `'%'`; `lamp_check` → `''` (tỉ số).
 
 ### 6.5. Quy ước cho translator (ghi sẵn cho few-shot v2)
 
 - Mọi số CHÉP THẲNG từ đề (kể cả thập phân "0,5" → `0.5`); phép đổi đơn vị là việc engine qua field unit — LLM KHÔNG chia/nhân gì.
 - "Biến trở có giá trị R_b = 6 Ω" / "biến trở đang đặt ở 6 Ω" → lá `resistor` thường tên `Rb`. "Tìm giá trị biến trở để I = …" → `unknown_resistor` + `solve_resistance`.
-- "Hai đèn cùng loại 6 V – 3 W mắc song song" → HAI lá `lamp` tên khác nhau (`den1`, `den2`) — tên là id duy nhất.
+- "Hai đèn cùng loại 6 V – 3 W mắc song song" → HAI lá `lamp` tên khác nhau (`den1`, `den2`) — tên là id duy nhất. Đề KHÔNG ghi "coi điện trở đèn không đổi" vẫn dịch theo thông lệ SGK; engine ghi assumption "R đèn coi như không đổi" vào trace/checks (ĐÃ PHÁN QUYẾT §15.1).
 - Ampe kế/vôn kế lý tưởng: không có op — dịch câu hỏi số chỉ thành `current`/`voltage` của nhánh/phần tử tương ứng.
 - "Mắc vào hiệu điện thế không đổi U = 220 V" (mạng điện, không nói nguồn) → `source {emf: 220, r: 0}`.
-- Đề cho dữ kiện tính được từ dữ kiện khác ("biết cường độ mạch chính là 2 A" khi E, r, R đã đủ) → `asserts`, không bỏ.
-- Đề thuộc danh sách NGOÀI phạm vi §4 → abstain (cổng như radar geometry), không cố ép về cây.
+- **MỌI số đo/dữ kiện DƯ → `asserts`, KHÔNG ĐƯỢC BỎ (CI-2 — nâng thành luật cứng):** số chỉ ampe kế/vôn kế, "biết cường độ mạch chính là 2 A", công suất đo được… khi E, r, cây đã đủ — tất cả thành asserts. Đây là phòng tuyến MÁY duy nhất bắt topology cây dịch sai (đặc biệt LLM "ép" mạch cầu về nt–ss): mô hình sai + số đo dư ⇒ assert lệch ⇒ violation, ok:false.
+- **"U giữa hai điểm M, N" (ĐÃ PHÁN QUYẾT §15.3):** đặt tên khối giữa M–N rồi hỏi `voltage(of)` (như C7). **LUẬT: M, N KHÔNG phải hai mút của MỘT khối trong cây (U chéo nhánh — bản chất mạch cầu) ⇒ ABSTAIN tường minh**, không cố ép; prompt P2 ghi luật này cạnh few-shot C7.
+- Đề thuộc danh sách NGOÀI phạm vi §4 → abstain (cổng như radar geometry), không cố ép về cây. **Few-shot abstain P2 tối thiểu phải có ví dụ cho: mạch cầu (CI-2), khóa K/nối tắt/2 trạng thái (CI-1), tìm E–r từ 2 lần đo (CI-1), U chéo nhánh (§15.3).**
 
 ## 7. Tầng giải mạch exact (circuit.ts — THUẦN, không zod, không I/O)
 
@@ -286,7 +290,7 @@ Ký hiệu: hàng bảng của `of` = {R, I, U, P}; bỏ `of` = hàng `_ngoai` (
 
 | Query | Công thức | Unit | Ghi chú |
 |---|---|---|---|
-| `total_resistance(of?)` | R của hàng | Ω | bỏ of = R_tđ mạch ngoài; of=đèn → R suy từ định mức |
+| `resistance(of?)` | R của hàng | Ω | tên mới (§15.2); bỏ of = R_tđ mạch ngoài; of=đèn → R suy từ định mức |
 | `current(of?)` | I của hàng | A | bỏ of = I mạch chính |
 | `voltage(of?)` | U của hàng | V | bỏ of = U_N (= U hai cực nguồn) |
 | `power(of)` | P = U·I của hàng | W | |
@@ -301,7 +305,7 @@ Mỗi query đúng MỘT SỐ (quy ước D5). Dựng đáp 3 tầng y v0 §6.3:
 
 ### 8.1. `lamp_check` — phán quyết tất định từ MỘT số
 
-`ratio = I_thực/I_đm` (exact khi có). Phán quyết bằng `cmpScalar` (exact khi cả hai exact; float dùng ngưỡng tương đối EPS_LAMP = 1e-6):
+`ratio = I_thực/I_đm` (exact khi có). Phán quyết bằng `cmpScalar` (exact khi cả hai exact; float dùng ngưỡng tương đối **EPS_SELF = 1e-6 — dùng chung hằng của v0, KHÔNG đặt hằng riêng EPS_LAMP (CI-4)**):
 
 | So sánh | `verdict` | text mẫu |
 |---|---|---|
@@ -405,7 +409,7 @@ Mỗi bài: đề kiểu SGK/đề thi VN (số tự đặt chuẩn dạng), pla
   "circuit": { "kind": "series", "items": [
       { "kind": "resistor", "name": "R1", "ohms": 4 },
       { "kind": "resistor", "name": "R2", "ohms": 8 } ] },
-  "queries": [ { "kind": "total_resistance", "label": "a" },
+  "queries": [ { "kind": "resistance", "label": "a" },
                { "kind": "current", "label": "b" },
                { "kind": "voltage", "of": "R2", "label": "c" } ] }
 ```
@@ -449,7 +453,7 @@ Mỗi bài: đề kiểu SGK/đề thi VN (số tự đặt chuẩn dạng), pla
   "circuit": { "kind": "parallel", "items": [
       { "kind": "resistor", "name": "R1", "ohms": 6 },
       { "kind": "resistor", "name": "R2", "ohms": 3 } ] },
-  "queries": [ { "kind": "total_resistance", "label": "a" },
+  "queries": [ { "kind": "resistance", "label": "a" },
                { "kind": "current", "label": "b" },
                { "kind": "current", "of": "R1", "label": "c" } ] }
 ```
@@ -471,7 +475,7 @@ Mỗi bài: đề kiểu SGK/đề thi VN (số tự đặt chuẩn dạng), pla
       { "kind": "resistor", "name": "R1", "ohms": 6 },
       { "kind": "resistor", "name": "R2", "ohms": 12 },
       { "kind": "resistor", "name": "R3", "ohms": 4 } ] },
-  "queries": [ { "kind": "total_resistance", "label": "a" },
+  "queries": [ { "kind": "resistance", "label": "a" },
                { "kind": "current", "label": "b" },
                { "kind": "current", "of": "R3", "label": "c" },
                { "kind": "power_source", "part": "total", "label": "d" } ] }
@@ -495,7 +499,7 @@ Mỗi bài: đề kiểu SGK/đề thi VN (số tự đặt chuẩn dạng), pla
       { "kind": "parallel", "name": "P23", "items": [
           { "kind": "resistor", "name": "R2", "ohms": 6 },
           { "kind": "resistor", "name": "R3", "ohms": 3 } ] } ] },
-  "queries": [ { "kind": "total_resistance", "label": "a" },
+  "queries": [ { "kind": "resistance", "label": "a" },
                { "kind": "current", "of": "R1", "label": "b" },
                { "kind": "current", "of": "R2", "label": "c" } ] }
 ```
@@ -520,7 +524,7 @@ Mỗi bài: đề kiểu SGK/đề thi VN (số tự đặt chuẩn dạng), pla
           { "kind": "series", "name": "nhanh34", "items": [
               { "kind": "resistor", "name": "R3", "ohms": 2 },
               { "kind": "resistor", "name": "R4", "ohms": 4 } ] } ] } ] },
-  "queries": [ { "kind": "total_resistance", "label": "a" },
+  "queries": [ { "kind": "resistance", "label": "a" },
                { "kind": "current", "label": "b" },
                { "kind": "current", "of": "R4", "label": "c" },
                { "kind": "efficiency", "label": "d" } ] }
@@ -550,7 +554,7 @@ Mỗi bài: đề kiểu SGK/đề thi VN (số tự đặt chuẩn dạng), pla
                { "kind": "power_source", "part": "external", "label": "c" } ] }
 ```
 
-**Cách dịch "U giữa M và N":** M, N là hai mút của khối song song ⇒ LLM đặt tên khối là `MN`, hỏi `voltage(of:"MN")` — thuần chép cấu trúc, không tính (giới hạn: M, N phải là mút của một khối trong cây — U chéo nhánh là mạch cầu, NGOÀI phạm vi §4; xem phân vân §15.3).
+**Cách dịch "U giữa M và N":** M, N là hai mút của khối song song ⇒ LLM đặt tên khối là `MN`, hỏi `voltage(of:"MN")` — thuần chép cấu trúc, không tính (giới hạn: M, N phải là mút của một khối trong cây — U chéo nhánh là mạch cầu, NGOÀI phạm vi §4; **ĐÃ PHÁN QUYẾT §15.3: M/N không phải hai mút một khối ⇒ ABSTAIN tường minh, luật ghi ở §6.5**).
 **Tính tay:** R_MN = 1/(1/4 + 1/12) = 3; R_tđ = 3 + 3 + 1 = 7. I = 12/(7+1) = **3/2 A**. a) U_MN = I·R_MN = 3/2·3 = **9/2 V = 4,5 V**. b) I3 = U_MN/R3 = (9/2)/12 = **3/8 A = 0,375 A**. c) P_ngoài = U_N·I = (12 − 3/2)·3/2 = (21/2)(3/2) = **63/4 W = 15,75 W**.
 **Tự kiểm:** K2 nút MN: I2 + I3 = 9/8 + 3/8 = 12/8 = 3/2 ✓. K1: U1 + U_MN + U4 = 9/2 + 9/2 + 3/2 = 21/2 = E − I·r = 12 − 3/2 ✓. K3: I²(R1+R4) + P2 + P3 + P_r = 9 + 81/16 + 27/16 + 9/4 = 9 + 27/4 + 9/4 = 18 = E·I = 18 ✓.
 **Kỳ vọng:** "9/2" V; "3/8" A; "63/4" W — exact.
@@ -567,7 +571,7 @@ Mỗi bài: đề kiểu SGK/đề thi VN (số tự đặt chuẩn dạng), pla
   "circuit": { "kind": "series", "items": [
       { "kind": "lamp", "name": "den", "ratedVolts": 6, "ratedWatts": 3 },
       { "kind": "resistor", "name": "Rb", "ohms": 6 } ] },
-  "queries": [ { "kind": "total_resistance", "of": "den", "label": "a" },
+  "queries": [ { "kind": "resistance", "of": "den", "label": "a" },
                { "kind": "current", "of": "den", "label": "b" },
                { "kind": "lamp_check", "of": "den", "label": "c" } ] }
 ```
@@ -631,7 +635,7 @@ Mỗi bài: đề kiểu SGK/đề thi VN (số tự đặt chuẩn dạng), pla
 | C9 | Điện năng J ↔ kWh | 1100 W; 1 980 000 J; 11/20 kWh (0,55) |
 | C10 | Nghịch: tìm Rx cho I = 1,2 A | Rx = 4 Ω |
 
-Phủ query: `total_resistance` ×5 (C1a, C3a, C4a, C5a, C6a, C8a-của-lá), `current` ×9, `voltage` ×3, `power` ×2, `power_source` đủ 3 part (C2d internal, C4d total, C7c external), `energy` ×2 (J, kWh) + `energy_source` ×1 (kJ), `efficiency` ×1, `lamp_check` ×1 (+2 verdict ở unit test), `solve_resistance` ×1 (+1 nhánh error). Đơn vị: tUnit `min` ×3; unit ra `J`/`kJ`/`kWh`; thập phân → hữu tỉ (0,5; 1,5; 1,2).
+Phủ query (đếm ĐÃ SỬA theo CI-3): `resistance` **×6** (C1a, C3a, C4a, C5a, C6a, C8a-của-lá — câu cũ ghi "×5" đếm sót), `current` **×12** (C1b, C2a, C3b, C3c, C4b, C4c, C5b, C5c, C6b, C6c, C7b, C8b — câu cũ ghi "×9"), `voltage` ×3, `power` ×2, `power_source` đủ 3 part (C2d internal, C4d total, C7c external), `energy` ×2 (J, kWh) + `energy_source` ×1 (kJ), `efficiency` ×1, `lamp_check` ×1 (+2 verdict ở unit test), `solve_resistance` ×1 (+1 nhánh error). Đơn vị: tUnit `min` ×3; unit ra `J`/`kJ`/`kWh`; thập phân → hữu tỉ (0,5; 1,5; 1,2).
 
 ## 12. Test plan (chỉ CỘNG, ước ~45–50 test)
 
@@ -659,18 +663,30 @@ Mạch cầu/thế nút; nhiều nguồn/ghép nguồn; tụ; dụng cụ đo kh
 | F1 — route phải có quota | Ghi ở §13: wiring ngoài phạm vi nhưng điều kiện F1 chép lại để không rơi mất |
 | D6 — dữ liệu ngoài GeometryData mất khi lưu lịch sử | §10.3: `circuitLayout` (và `table`) cùng số phận `charts` v0 — ghi rõ, hướng xử lý để bước wiring |
 
-## 15. Điểm còn PHÂN VÂN cho phản biện (trước khi thi công)
+## 15. Điểm phân vân — ĐÃ PHÁN QUYẾT TOÀN BỘ (phản biện đợt 2, 22/08)
 
-1. **Đèn R phi tuyến:** thực tế R dây tóc nguội nhỏ hơn ~10 lần R nóng; v1 coi R = U_đm²/P_đm HẰNG (giả định chuẩn SGK). Đề không ghi "coi điện trở đèn không đổi" thì translator vẫn dịch theo thông lệ SGK hay phải abstain? Đề xuất: vẫn dịch + ghi assumption vào trace; chờ phản biện chốt.
-2. **Tên query `total_resistance(of?)`:** ngữ nghĩa đã mở rộng cho lá/khối ("điện trở của đèn") — tên `total_` hơi lệch. Đổi thành `resistance(of?)`? (Spec giữ tên theo đề bài giao; đổi tên là 1 dòng lúc thi công.)
-3. **U giữa hai điểm qua "khối có tên":** phủ đúng các đề M, N là mút của một khối (đại đa số đề nt–ss). Đề "U_AB" với A, B KHÔNG là mút một khối con (chéo nhánh) bản chất là mạch cầu — đã loại ở §4. Có cần translator quy ước phát hiện + abstain tường minh ca này không?
-4. **Bài nghịch:** v1 giải Möbius TỔNG QUÁT (ẩn ở vị trí bất kỳ trong cây) nhưng ràng buộc CHỈ là I mạch chính. Có nên khóa hẹp hơn (ẩn chỉ ở chuỗi nối tiếp gốc — nghiệm affine thuần) cho v1 để giảm mặt test, hay giữ Möbius (thuật toán đồng nhất, ~30 dòng, đã có nghiệm đóng)? Ràng buộc I-nhánh/U-phần-tử/"đèn sáng bình thường" (cũng Möbius được) để v2.
-5. **`efficiency` trả PHẦN TRĂM** (80, unit '%') thay vì tỉ số 0,8 — khớp đáp SGK VN; hữu tỉ lẻ ra "800/9" ≈ 88,89. OK?
-6. **Entry riêng `runCircuit`** vs nhét vào `runPhysics` qua discriminator (`domain:'circuit'`): v1 chọn entry riêng để thi công song song không đụng file v0; hợp nhất một cửa (và tên gọi pack "physics" chung) quyết ở bước wiring.
-7. **`circuitLayout` format draft** chưa có consumer — nghiệm thu bằng 3 bất biến, KHÔNG khóa tọa độ. Advance-frontend có muốn góp format ngay từ giờ (tránh đổi 2 lần) hay chấp nhận draft?
-8. **Hiển thị hữu tỉ:** displayScalar cho "11/20" thay vì "0,55" — đúng triết lý exact-first nhưng lệch thói quen đáp VN với mẫu 2^a·5^b. Thêm formatter "hữu tỉ thập phân hữu hạn → chuỗi thập phân" ở tầng trình bày (bridge/v2) hay ngay trong text v1?
-9. **Ký tự unit 'Ω':** answers.unit lần đầu chứa ký tự ngoài ASCII (v0 toàn 'm', 's'). JSON/JS an toàn; rủi ro chỉ ở font UI — chấp nhận hay dùng 'ohm'?
-10. **Vị trí `scalarFromNumber`:** đang ở `kinematics.ts` (v0). Circuit import chéo file trong cùng pack (hợp lệ, additive) — nhưng nếu phản biện v0 tách `numeric.ts` dùng chung thì circuit theo; cần chốt CÙNG LÚC với v0 để không sinh duplicate.
+Mười điểm giữ nguyên văn câu hỏi gốc (trace), mỗi điểm ghi phán quyết tại chỗ. Nguồn: `../reviews/2026-08-21-wave2-specs-review.md` §Findings DC-CIRCUIT — không mở lại tranh luận.
+
+1. **Đèn R phi tuyến:** thực tế R dây tóc nguội nhỏ hơn ~10 lần R nóng; v1 coi R = U_đm²/P_đm HẰNG (giả định chuẩn SGK). Đề không ghi "coi điện trở đèn không đổi" thì translator vẫn dịch hay abstain?
+   **ĐÃ PHÁN QUYẾT: vẫn dịch theo thông lệ SGK + engine ghi assumption "R đèn coi như không đổi" vào trace/checks** (đã áp §4, §6.5).
+2. **Tên query `total_resistance(of?)`:** tên `total_` lệch vì ngữ nghĩa phủ cả lá/khối. Đổi thành `resistance(of?)`?
+   **ĐÃ PHÁN QUYẾT: ĐỔI thành `resistance(of?)`** — đã đổi XUYÊN SUỐT spec (schema §6.2, bảng unit §6.4, bảng query §8, 6 bài contract C1/C3/C4/C5/C6/C8, bảng phủ §11).
+3. **U giữa hai điểm qua "khối có tên":** đề "U_AB" với A, B KHÔNG là mút một khối con (chéo nhánh) bản chất là mạch cầu — cần translator phát hiện + abstain tường minh?
+   **ĐÃ PHÁN QUYẾT: CÓ — luật "M/N không phải hai mút của MỘT khối trong cây ⇒ ABSTAIN"** ghi vào quy ước translator §6.5 + chú thích C7.
+4. **Bài nghịch:** khóa hẹp (ẩn chỉ ở chuỗi nối tiếp gốc) hay giữ Möbius tổng quát?
+   **ĐÃ PHÁN QUYẾT: GIỮ Möbius TỔNG QUÁT** (thuật toán đồng nhất ~30 dòng, nghiệm đóng, phản biện đã kiểm cả 2 quy tắc hợp thành). Ràng buộc I-nhánh/U-phần-tử/"đèn sáng bình thường" để v2.
+5. **`efficiency` trả PHẦN TRĂM** (80, unit '%') thay vì tỉ số 0,8?
+   **ĐÃ PHÁN QUYẾT: GIỮ phần trăm** — khớp đáp SGK VN; hữu tỉ lẻ "800/9" vẫn exact.
+6. **Entry riêng `runCircuit`** vs nhét vào `runPhysics` qua discriminator?
+   **ĐÃ PHÁN QUYẾT: GIỮ entry riêng `runCircuit`** cho v1 (thi công song song không đụng v0); hợp nhất một cửa quyết ở bước wiring.
+7. **`circuitLayout` format draft** chưa có consumer?
+   **ĐÃ PHÁN QUYẾT: CHẤP NHẬN draft** — nghiệm thu bằng 3 bất biến, không khóa tọa độ; format được phép đổi khi làm UI thật.
+8. **Hiển thị hữu tỉ:** "11/20" vs "0,55" — formatter thập phân đặt đâu?
+   **ĐÃ PHÁN QUYẾT (phán quyết CHUNG cả 3 spec, §17.2): engine giữ exact-first ("11/20"); formatter thập phân là việc tầng BRIDGE/UI lúc wiring** — không đưa vào text v1.
+9. **Ký tự unit 'Ω':** chấp nhận hay dùng 'ohm'?
+   **ĐÃ PHÁN QUYẾT: GIỮ 'Ω'** — JSON/JS an toàn, rủi ro font là việc UI.
+10. **Vị trí `scalarFromNumber`:** đang ở `kinematics.ts` (v0).
+   **ĐÃ PHÁN QUYẾT: circuit IMPORT từ `kinematics.ts`** như spec khai (§5); nếu sau này v0 tách `numeric.ts` dùng chung thì circuit theo — không tự tách trước.
 
 ## 16. Tiêu chí thành công
 
@@ -679,3 +695,25 @@ Mạch cầu/thế nút; nhiều nguồn/ghép nguồn; tụ; dụng cụ đo kh
 3. Đáp `approximate:false` 100% trên cả 10 bài (không bài nào rơi float) — chứng thực cam kết §7.4.
 4. `geometry` rỗng đúng shape `{name, points:[], lines:[], tags:['physics','circuit']}`; `circuitLayout` qua 3 bất biến trên mọi bài contract.
 5. Toàn suite: test cũ (1072 + phần v0) XANH nguyên vẹn, chỉ CỘNG test mới; `git status` chỉ thấy file mới trong `api/_lib/kernel/physics/`; `npx tsc --noEmit -p tsconfig.kernel.json` sạch.
+
+## 17. Phán quyết chung đợt 2 (áp cho CẢ BA spec: dynamics · oscillation · dc-circuit)
+
+Ba luật chung ĐÃ DUYỆT tại `../reviews/2026-08-21-wave2-specs-review.md` (Kết luận):
+
+1. **Label trần:** scene KHÔNG nhúng giá trị engine tính vào bất kỳ label nào (đồng bộ F8) — mọi giá trị nằm ở `answers[]`. *Spec này v1 không vẽ 3D (geometry rỗng §10.2) nên không có label để vi phạm; lưu ý ranh giới cho tương lai: `circuitLayout.valueText` ("4 Ω", "E = 12 V; r = 1 Ω") chỉ mang SỐ LIỆU ĐỀ CHO đã khai trong plan — đúng vai sơ đồ đề bài SGK — TUYỆT ĐỐI không được đưa giá trị engine TÍNH (I, U, R_tđ…) vào valueText khi làm UI schematic.*
+2. **Exact-first, thập phân ở bridge:** engine giữ text exact ("11/20" kWh, "3/2" W, "63/4" W); mọi formatter thập phân kiểu VN ("0,55", "1,5", "15,75") là việc tầng bridge/UI lúc wiring — engine KHÔNG in số theo quy ước trình bày (= phán quyết §15.8). *Chú thích "= 0,55 kWh" trong lời tính tay §11 chỉ là đối chiếu ≈ cho người đọc, không phải text engine.*
+3. **Chính tả field query theo v0:** field dùng chung viết đúng chính tả planSchema v0 — `value`/`vUnit`/`component`. *Circuit không có field vận tốc/thành phần; các unit field theo mẫu per-quantity (`tUnit`, `targetCurrentUnit`, `unit` cho đầu ra) đã nhất quán — luật áp khi bridge hợp nhất field dùng chung giữa các pack (dynamics đã đổi theo ở DY-3, osc đã đúng sẵn).*
+
+## 18. Changelog phản biện (22/08)
+
+Áp trọn kết luận `../reviews/2026-08-21-wave2-specs-review.md` (mọi finding + phán quyết ĐÃ DUYỆT). Không đổi bất kỳ giá trị số/đáp nào của 10 bài contract C1–C10 (phản biện xác nhận 31/31 số đúng toàn đợt; kiểm riêng chia dòng nút, hiệu suất 2 đường, kWh exact, đại số Möbius cả 2 quy tắc — đều đúng) — chỉ sửa thiết kế/khai báo/tên.
+
+| Finding / phán quyết | Vị trí sửa trong spec |
+|---|---|
+| CI-1 — khóa K/nối tắt/2 trạng thái; bài nghịch tìm E,r từ 2 lần đo | §4 NGOÀI phạm vi (2 bullet mới + chỉ dẫn few-shot abstain), §6.5 (danh sách few-shot abstain) |
+| CI-2 — few-shot mạch cầu abstain + mọi số đo dư → asserts | §4 (bullet mạch cầu, thêm yêu cầu few-shot + lý do "không có phòng tuyến máy"), §6.5 (luật cứng "MỌI số đo dư → asserts") |
+| CI-3 — sửa đếm phủ query | Bảng phủ cuối §11: `resistance` ×5 → **×6**, `current` ×9 → **×12** (kèm liệt kê từng câu) |
+| CI-4 — bỏ EPS_LAMP | §8.1: dùng chung **EPS_SELF = 1e-6**, không đặt hằng riêng |
+| Đổi tên `total_resistance` → `resistance(of?)` (phán quyết §15.2) | §3 (bảng dạng bài), §6.2 (z.literal + comment), §6.4 (bảng unit), §8 (bảng query), 6 bài contract C1/C3/C4/C5/C6/C8, bảng phủ §11 |
+| 10 phán quyết §15 | Ghi "ĐÃ PHÁN QUYẾT" từng điểm tại §15.1–§15.10; áp vào thân bài: §4 (1), §6.5 (1, 3), C7 (3), §17.2 (8) |
+| Phán quyết chung (a)(b)(c) | §17 (+ các mục nó trỏ tới) |
