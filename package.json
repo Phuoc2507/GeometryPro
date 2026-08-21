@@ -22,7 +22,8 @@
     "label": "npm run build:kernel && node scripts/label/label.mjs",
     "eval:split": "node scripts/eval/split.mjs",
     "eval:baseline": "npm run build:kernel && node scripts/eval/baseline.mjs",
-    "eval:baseline:mock": "npm run build:kernel && node scripts/eval/baseline.mjs --mock"
+    "eval:baseline:mock": "npm run build:kernel && node scripts/eval/baseline.mjs --mock",
+    "eval:figures": "node scripts/eval/figures.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",

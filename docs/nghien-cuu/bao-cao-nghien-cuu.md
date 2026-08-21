@@ -327,14 +327,18 @@ Ngân sách mục tiêu **≤ 10 triệu VNĐ**, ưu tiên thuê tài nguyên th
 
 ---
 
-## 11. Tài liệu tham khảo (khung — sẽ bổ sung trích dẫn đầy đủ)
+## 11. Tài liệu tham khảo
 
-1. Trinh, T. et al. *Solving olympiad geometry without human demonstrations* (AlphaGeometry), Nature, 2024. ⟦bổ sung⟧
-2. DeepMind. *AlphaGeometry2* (Gold‑medalist performance), 2025. ⟦bổ sung⟧
-3. Các benchmark hình học không gian: SolidGeo, DynaSolidGeo, GeoSense. ⟦bổ sung⟧
-4. Tối ưu prompt tự động: APE; PromptBreeder; OPRO. ⟦bổ sung⟧
-5. Bộ GD&ĐT. *Thông tư 06/2024/TT‑BGDĐT* — Quy chế & tiêu chí chấm Cuộc thi KHKT cấp quốc gia. ⟦bổ sung⟧
+1. Trinh, T. H., Wu, Y., Le, Q. V., He, H., Luong, T. *Solving olympiad geometry without human demonstrations.* **Nature**, 2024. DOI: 10.1038/s41586‑023‑06747‑5. (AlphaGeometry — neuro‑symbolic cho hình học **phẳng**.)
+2. Google DeepMind. *Gold‑medalist Performance in Solving Olympiad Geometry with AlphaGeometry2.* **arXiv:2502.03544**, 2025.
+3. *SolidGeo: Measuring Multimodal Spatial Math Reasoning in Solid Geometry.* **arXiv:2505.21177**; NeurIPS 2025 Datasets & Benchmarks. (3.113 bài hình học không gian — cho thấy khoảng trống dữ liệu, nhất là tiếng Việt.)
+4. Wu, C. et al. *DynaSolidGeo: A Dynamic Benchmark for Genuine Spatial Mathematical Reasoning of VLMs in Solid Geometry.* **arXiv:2510.22340**, 2025.
+5. Yang, C., Wang, X., Lu, Y., Liu, H., Le, Q. V., Zhou, D., Chen, X. *Large Language Models as Optimizers* (OPRO). **arXiv:2309.03409**, 2023.
+6. Fernando, C., Banarse, D., Michalewski, H., Osindero, S., Rocktäschel, T. *Promptbreeder: Self‑Referential Self‑Improvement via Prompt Evolution.* 2023.
+7. Zhou, Y. et al. *Large Language Models Are Human‑Level Prompt Engineers* (APE). **ICLR**, 2023.
+8. Bộ Giáo dục và Đào tạo. *Thông tư 06/2024/TT‑BGDĐT* — Quy chế Cuộc thi nghiên cứu khoa học, kỹ thuật cấp quốc gia (thang điểm & tiêu chí, Phụ lục 2), hiệu lực 27/5/2024.
 
 ---
 
-*Phụ lục dự kiến:* (A) Lược đồ Construction Plan JSON; (B) Ví dụ bài → plan → đáp dạng căn; (C) Toàn văn 3 câu hỏi cổng từ chối; (D) Thẻ mô tả bộ dữ liệu (datasheet); (E) Ảnh chụp giao diện 3D.
+*Phụ lục (xem `docs/nghien-cuu/phu-luc.md`):* (A) Lược đồ Construction Plan JSON; (B) Ví dụ bài → plan → đáp dạng căn `2√3/3`; (C) Toàn văn 3 câu hỏi cổng từ chối; (D) Thẻ mô tả bộ dữ liệu (datasheet); (E) Ảnh giao diện 3D *(chờ bổ sung)*.
+*Tài liệu phương pháp kèm theo:* `prompt-optimization.md` (tối ưu prompt), `du-lieu-benchmark.md` (dữ liệu & gán nhãn), `danh-gia.md` (train/test & baseline).
