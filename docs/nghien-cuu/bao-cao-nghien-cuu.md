@@ -153,12 +153,12 @@ Thành phần (theo mã nguồn `api/_lib/kernel/**`):
 
 **Ví dụ đáp dạng căn thật (trích từ bench/test):** `2√2/3` (thể tích tứ diện đều cạnh 2), `4√5/5` và `6√5/5` (khoảng cách điểm–mặt), `64/3` (thể tích chóp), và các đáp giải tích như `10 − 2√7`, `16/3`, `64√2/15`, `64π/9 − 512/9 + 24√3`.
 
-**Mở rộng thực hiện trong quá trình nghiên cứu (2026‑08):** trước đây các đại lượng mặt cầu trả *số thập phân* (vd `113.0973`); nhóm đã mở rộng engine để trả **dạng π chính xác** — diện tích `36π`, `8π`; thể tích `36π`, `8√2π/3`; bán kính/đường kính căn chính xác (`√2`, `2√2`) — và cho **bộ so đáp benchmark hiểu π** để kiểm được. (Kèm 2 golden mặt cầu + cập nhật test; toàn bộ 1082 test đơn vị vẫn xanh.)
+**Mở rộng thực hiện trong quá trình nghiên cứu (2026‑08):** trước đây các đại lượng mặt cầu trả *số thập phân* (vd `113.0973`); nhóm đã mở rộng engine để trả **dạng π chính xác** — diện tích `36π`, `8π`; thể tích `36π`, `8√2π/3`; bán kính/đường kính căn chính xác (`√2`, `2√2`) — và cho **bộ so đáp benchmark hiểu π** để kiểm được. (Kèm 2 golden mặt cầu + cập nhật test; toàn bộ 1085 test đơn vị vẫn xanh.)
 
 **Cơ chế tự kiểm (chi tiết).** Engine phát một **"chứng chỉ tự kiểm"** cho mỗi đáp: so **giá trị dạng chính xác** với một số thực được tính **độc lập**; nếu lệch quá dung sai (cỡ `1e-6·|giá trị|`) thì **loại bỏ dạng exact, hạ về số gần đúng** và đánh dấu `approximate` — tức hệ thống *thà báo gần đúng còn hơn khẳng định sai một dạng căn*. Với tích phân/khối tròn xoay, kết quả chỉ được gắn cờ `verified` khi sai số ước lượng đủ nhỏ. Ràng buộc hình (⊥, ∥, đồng phẳng, thuộc, khoảng cách, góc) được kiểm bằng `verify.ts`; nếu mô hình vi phạm điều kiện đề ⇒ trả **violation** thay vì đáp số.
 *(Mã: `api/_lib/kernel/compute/answer.ts` — `certifyDistance/certifyScalar/certifyAngle`; `analysis/quadrature.ts`, `analysis/revolution.ts`; `verify.ts`.)*
 
-**Quy mô hiện có (đo trên repo):** ~48 file mã, ~5.256 dòng cho riêng kernel; toàn repo **1082 test** đơn vị xanh.
+**Quy mô hiện có (đo trên repo):** ~48 file mã, ~5.256 dòng cho riêng kernel; toàn repo **1085 test** đơn vị xanh.
 
 **Giới hạn đã biết (nêu trung thực):** một số bài engine chưa giải và **từ chối an toàn** thay vì bịa (ví dụ tứ diện đều cạnh 3 trong ghi chú bench trả `ok:false` — là abstain an toàn, không phải đáp sai). Ranh giới này được báo cáo minh bạch, không che giấu.
 
@@ -321,7 +321,7 @@ Ngân sách mục tiêu **≤ 10 triệu VNĐ**, ưu tiên thuê tài nguyên th
 ## 8. Kế hoạch thực hiện và phân công
 
 ### 8.1. Trạng thái hiện tại (đo trên repo)
-- ✅ Engine ký hiệu (hình học + giải tích), số học chính xác — ~5.256 dòng; toàn repo 1082 test đơn vị xanh.
+- ✅ Engine ký hiệu (hình học + giải tích), số học chính xác — ~5.256 dòng; toàn repo 1085 test đơn vị xanh.
 - ✅ Khối dịch LLM + cổng từ chối + phân tầng an toàn — đã nối chạy.
 - ✅ Ứng dụng 3D (React Three Fiber) — 17 trang, 136 component.
 - ◑ Benchmark tiếng Việt — **145 ca / 208 đáp** (120 synthetic kiểm hai chiều + 25 capture; 100% đáp dạng chính xác); **chưa có đề SGK/đề thi thật** (phần học sinh làm).

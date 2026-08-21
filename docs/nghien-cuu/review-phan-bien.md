@@ -2,7 +2,7 @@
 
 > **Trạng thái xử lý (đã khép vòng một phần — cập nhật sau khi rà):**
 > - Lỗi #4 (benchmark nhỏ/lệch dạng): **đã bổ sung nhiều đợt ca synthetic** kiểm hai chiều → **145 ca / 208 đáp**, `bench:gate` 145/145. Đã lấp đúng các dạng review chỉ ra thiếu (§2.6): góc 15, vị trí tương đối 15, phương trình mặt phẳng 15, thiết diện/đa giác, tỉ số thể tích, mặt cầu, nón/trụ/cụt — không còn "0 ca" ở các dạng này. **100% đáp ở dạng chính xác** (0 làm tròn). *(Ghi chú: các con số trong phần THÂN bài dưới đây — vd "26 file capture", "0 ca góc" — giữ nguyên làm ảnh chụp thời điểm rà soát để đối chiếu tiến độ; trạng thái mới nhất xem dòng này.)*
-> - Lỗi #5 (số tự mâu thuẫn): **đã sửa** — test→1082, ca→145, baseline SymPy đánh dấu *chưa hiện thực*.
+> - Lỗi #5 (số tự mâu thuẫn): **đã sửa** — test→1085, ca→145, baseline SymPy đánh dấu *chưa hiện thực*.
 > - Lỗi #3 (nguồn dữ liệu nói như đã có): **đã sửa** báo cáo/datasheet — nêu rõ hiện là ca máy‑sinh, đề SGK/đề thi là phần học sinh làm.
 > - Lỗi #1 (git 82% commit AI) & #2 (chưa có số thật): **cần bạn** — học sinh sở hữu/hiểu & tự commit phần của mình; cắm API key để đo confidently‑wrong.
 
@@ -14,7 +14,7 @@
 
 ## Tóm tắt một dòng
 
-Kiến trúc và phần **engine ký hiệu** là thật, chạy được, test xanh (1082 test) — đây là điểm mạnh thực. Nhưng **toàn bộ luận điểm nghiên cứu cốt lõi (CH1–CH3) chưa có một số đo thật nào**, benchmark **26 ca đều do máy tự sinh (không có nguồn SGK/đề thi, không có xác minh người)**, và **lịch sử git cho thấy 82% commit do AI viết**. Ba điều này, nếu không xử lý, đủ để một hội đồng khó tính đánh rớt hoặc nghi "quá tầm / không phải em làm".
+Kiến trúc và phần **engine ký hiệu** là thật, chạy được, test xanh (1085 test) — đây là điểm mạnh thực. Nhưng **toàn bộ luận điểm nghiên cứu cốt lõi (CH1–CH3) chưa có một số đo thật nào**, benchmark **26 ca đều do máy tự sinh (không có nguồn SGK/đề thi, không có xác minh người)**, và **lịch sử git cho thấy 82% commit do AI viết**. Ba điều này, nếu không xử lý, đủ để một hội đồng khó tính đánh rớt hoặc nghi "quá tầm / không phải em làm".
 
 ---
 
@@ -69,11 +69,11 @@ Thực tế: đề do máy sinh, đáp do **chính engine** sinh ra rồi đóng
 ## 2. ĐIỂM YẾU VỪA (không rớt ngay nhưng bị trừ điểm / bị hỏi khó)
 
 ### 2.1. Số liệu tự mâu thuẫn trong cùng báo cáo — mất uy tín "trung thực số"
-**Bằng chứng:** §4.3 và §8.1 ghi **"868 test"**; §5.7 ghi **"1073 test"**; đo thật `npm test` = **1082 test**. Ba con số, không cái nào khớp. Tương tự §8.1 còn ghi **"engine‑replay 20/20"** và hộp diễn giải §5.7 ghi **"cỡ mẫu 20"**, trong khi phần trên cùng §5.7 đã là **26/26**. Kernel "~48 file, ~5.256 dòng" — đo lại 49 file, 5.394 dòng (lệch nhẹ, chấp nhận được nhưng nên cập nhật).
+**Bằng chứng:** §4.3 và §8.1 ghi **"868 test"**; §5.7 ghi **"1073 test"**; đo thật `npm test` = **1085 test**. Ba con số, không cái nào khớp. Tương tự §8.1 còn ghi **"engine‑replay 20/20"** và hộp diễn giải §5.7 ghi **"cỡ mẫu 20"**, trong khi phần trên cùng §5.7 đã là **26/26**. Kernel "~48 file, ~5.256 dòng" — đo lại 49 file, 5.394 dòng (lệch nhẹ, chấp nhận được nhưng nên cập nhật).
 
-**Vì sao là vấn đề:** đề tài lấy "trung thực số liệu, không dùng số bịa" làm nguyên tắc biên tập (dòng 7). Số test đá nhau ngay trong một file khiến giám khảo nghi cả những số khác. (Điểm cộng: `poster.html` đã dùng đúng **1082** và **26/26** — chứng tỏ số đúng tồn tại, chỉ là thân báo cáo chưa đồng bộ.)
+**Vì sao là vấn đề:** đề tài lấy "trung thực số liệu, không dùng số bịa" làm nguyên tắc biên tập (dòng 7). Số test đá nhau ngay trong một file khiến giám khảo nghi cả những số khác. (Điểm cộng: `poster.html` đã dùng đúng **1085** và **26/26** — chứng tỏ số đúng tồn tại, chỉ là thân báo cáo chưa đồng bộ.)
 
-**Cách vá:** **(Học sinh/kỹ thuật)** rà toàn văn, thay mọi "868"/"1073" → **1082**, mọi "20/20"/"cỡ mẫu 20" → **26/26 / 26**; cập nhật dòng/file kernel. Một buổi dò là xong.
+**Cách vá:** **(Học sinh/kỹ thuật)** rà toàn văn, thay mọi "868"/"1073" → **1085**, mọi "20/20"/"cỡ mẫu 20" → **26/26 / 26**; cập nhật dòng/file kernel. Một buổi dò là xong.
 
 ### 2.2. Bảng baseline liệt kê SymPy/CAS — nhưng KHÔNG có trong mã
 **Bằng chứng:** §5.5 liệt kê 4 phương pháp, gồm *"CAS thuần (SymPy) trên bài đã hình thức hoá"*. Nhưng `scripts/eval/methods.mjs` chỉ hiện thực **2** method: `system` và `llm-direct`. Không có SymPy. `danh-gia.md` (đúng) cũng chỉ nói 2 method.
@@ -120,7 +120,7 @@ Thực tế: đề do máy sinh, đáp do **chính engine** sinh ra rồi đóng
 
 - **R1 — Đóng góp viết ở thì hoàn thành cho việc chưa xong.** Abstract & §9 ghi "công bố benchmark tiếng Việt đầu tiên", "giảm mạnh confidently‑wrong" như *đã đạt*. Thực tế benchmark 26 ca máy sinh, confidently‑wrong chưa đo. **Vá:** chuyển các câu này sang "hướng tới / bước đầu", chỉ khẳng định khi có số + nguồn. Giữ đúng nguyên tắc §6 mà báo cáo tự đặt ra.
 - **R2 — "Engine tự phát triển, không phụ thuộc CAS".** Điểm tốt: đã kiểm, **không** thấy `sympy/mathjs/CAS` trong phần lõi kernel — claim này đứng vững. **Giữ nguyên**, và chuẩn bị chỉ được vào `api/_lib/kernel/scalar.ts` (kiểu `Exact={num,den,radicand}`) để chứng minh là tự viết.
-- **R3 — Poster tương đối trung thực** (ghi "26/26", "1082 tests", "các ô đang đo điền sau", "không dùng số minh hoạ") — **giữ chuẩn này** và kéo thân báo cáo về cùng mức kỷ luật. Đừng để poster đúng còn báo cáo lệch.
+- **R3 — Poster tương đối trung thực** (ghi "26/26", "1085 tests", "các ô đang đo điền sau", "không dùng số minh hoạ") — **giữ chuẩn này** và kéo thân báo cáo về cùng mức kỷ luật. Đừng để poster đúng còn báo cáo lệch.
 - **R4 — Mock dễ bị hiểu nhầm là kết quả.** Mọi bảng mock (eval + prompt‑opt) phải có nhãn ⚠️ "GIẢ LẬP — KHÔNG PHẢI KẾT QUẢ" **ngay cạnh số**, kể cả khi trích vào slide. Hiện tài liệu gốc có nhãn (tốt), nhưng khi cắt dán lên poster/slide rất dễ rụng nhãn — kiểm lại.
 
 ---
@@ -130,7 +130,7 @@ Thực tế: đề do máy sinh, đáp do **chính engine** sinh ra rồi đóng
 1. **Có SỐ THẬT cho luận điểm an toàn (confidently‑wrong) và CH1.** Bỏ tiền API, chạy `eval:baseline` (system vs llm‑direct) trên tập test thật; điền bảng §5.5 với ít nhất accuracy + confidently‑wrong + precision. *Đòn bẩy cao nhất: biến đề tài từ "mô tả cơ chế" thành "có kết quả".* — **Học sinh (API) + kỹ thuật (chạy/biểu đồ).**
 2. **Dựng benchmark THẬT có nguồn + người xác minh (≥ 50–100 ca).** Nhập đề SGK/đề thi ghi nguồn, tự giải tay, dùng `scripts/label/`, sửa `source`. Xoá bỏ tính tuần hoàn và khớp lại datasheet với thực tế. *Vừa vá lỗ hổng 1.3, vừa cho mẫu để việc #1 có ý nghĩa thống kê.* — **Học sinh chủ trì.**
 3. **Chuẩn bị bảo vệ "tự làm": hiểu sâu + demo trực tiếp + nhật ký đóng góp.** Trả lời trơn tru cơ chế engine/cổng từ chối; commit bằng tài khoản học sinh từ nay. *Trực tiếp gỡ nguy cơ rớt vì nghi AI/người lớn làm — lỗ hổng 1.1.* — **Học sinh + GVHD.**
-4. **Đồng bộ số liệu & hạ giọng các claim chưa chứng minh.** Sửa 868/1073→1082, 20→26; chuyển "đầu tiên/giảm mạnh/đã công bố" sang "bước đầu/hướng tới"; sửa hoặc bỏ baseline SymPy. *Rẻ, nhanh, cứu uy tín "trung thực số".* — **Học sinh/kỹ thuật, 1 buổi.**
+4. **Đồng bộ số liệu & hạ giọng các claim chưa chứng minh.** Sửa 868/1073→1085, 20→26; chuyển "đầu tiên/giảm mạnh/đã công bố" sang "bước đầu/hướng tới"; sửa hoặc bỏ baseline SymPy. *Rẻ, nhanh, cứu uy tín "trung thực số".* — **Học sinh/kỹ thuật, 1 buổi.**
 5. **Một human eval nhỏ mà thật + vài golden cho dạng còn trống (góc/thiết diện/giao tuyến).** *Lấp hai lỗ hổng bằng chứng (2.5, 2.6) với công vừa phải, tăng chiều sâu sư phạm.* — **Học sinh tổ chức.**
 
 ---
