@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Gift, Copy, Check, Users, Wallet, Share2, Loader2, Building2, ArrowDownToLine, Pencil } from 'lucide-react';
+import { ArrowLeft, Gift, Copy, Check, Users, Wallet, Share2, Loader2, Building2, ArrowDownToLine, Pencil, Clock, ShieldAlert } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -9,6 +9,7 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { authUrlWithRedirect } from '@/lib/authRedirect';
 import { fmtVnd } from '@/lib/plans';
+import { trackEvent } from '@/lib/analytics';
 
 interface PayoutAccount {
   bank_code: string;
@@ -29,6 +30,23 @@ interface ReferralData {
   commissionPending: number;
   payoutAccount: PayoutAccount | null;
   withdrawals: Withdrawal[];
+  /** Rào chắn (Phase 6) — máy chủ là nguồn sự thật, KHÔNG chôn số trong giao diện. */
+  minWithdrawal: number;
+  holdDays: number;
+  /** Mốc chín sớm nhất của khoản đang treo (ISO) — null khi không còn gì treo. */
+  nextMatureAt: string | null;
+  /** Số lượt bị bộ lọc chống gian lận gắn cờ, đang chờ admin duyệt tay. */
+  flaggedCount: number;
+}
+
+/** "còn 3 ngày" / "hôm nay" — đủ dùng, không kéo thêm thư viện ngày tháng. */
+function daysUntil(iso: string | null): string | null {
+  if (!iso) return null;
+  const ms = new Date(iso).getTime() - Date.now();
+  if (Number.isNaN(ms)) return null;
+  if (ms <= 0) return 'hôm nay';
+  const days = Math.ceil(ms / 86_400_000);
+  return days <= 1 ? 'trong hôm nay' : `sau ${days} ngày nữa`;
 }
 
 const BANKS = [
@@ -57,6 +75,14 @@ const Referral = () => {
   const [editingAccount, setEditingAccount] = useState(false);
   const [savingAcc, setSavingAcc] = useState(false);
   const [withdrawing, setWithdrawing] = useState(false);
+
+  // Rào chắn: lấy từ máy chủ, có mặc định phòng khi migration Phase 6 chưa chạy.
+  const minWithdrawal = data?.minWithdrawal ?? 100000;
+  const holdDays = data?.holdDays ?? 7;
+  const pending = data?.commissionPending ?? 0;
+  const available = data?.commissionAvailable ?? 0;
+  const matureIn = daysUntil(data?.nextMatureAt ?? null);
+  const belowMin = available > 0 && available < minWithdrawal;
 
   // Chưa đăng nhập → về trang đăng nhập rồi quay lại đây.
   useEffect(() => {
@@ -102,6 +128,7 @@ const Referral = () => {
   const copy = async (text: string, which: 'code' | 'link') => {
     try {
       await navigator.clipboard.writeText(text);
+      trackEvent('share_click', { channel: which === 'code' ? 'copy_code' : 'copy_link', surface: 'referral' });
       setCopied(which);
       setTimeout(() => setCopied(null), 1800);
       toast({ title: 'Đã sao chép', description: which === 'code' ? 'Mã mời đã vào clipboard.' : 'Link mời đã vào clipboard.' });
@@ -115,6 +142,7 @@ const Referral = () => {
     if (navigator.share) {
       try {
         await navigator.share({ title: 'GeoPro', text: 'Dùng GeoPro giải & vẽ hình 3D — nhập mã của mình để được giảm 10%!', url: shareLink });
+        trackEvent('share_click', { channel: 'native_share', surface: 'referral' });
         return;
       } catch {
         /* người dùng huỷ share → rơi xuống copy */
@@ -152,6 +180,15 @@ const Referral = () => {
     const amount = data?.commissionAvailable || 0;
     if (amount <= 0) return;
     if (!data?.payoutAccount) { toast({ title: 'Thêm tài khoản ngân hàng trước khi rút', variant: 'destructive' }); return; }
+    // Chặn sớm cho đỡ một vòng mạng; máy chủ vẫn kiểm lại (nguồn sự thật là DB).
+    if (amount < minWithdrawal) {
+      toast({
+        title: `Chưa đủ ngưỡng rút ${fmtVnd(minWithdrawal)}`,
+        description: `Bạn đang có ${fmtVnd(amount)}. Tích thêm hoa hồng rồi rút một lần cho gọn.`,
+        variant: 'destructive',
+      });
+      return;
+    }
     setWithdrawing(true);
     try {
       const { data: sd } = await supabase.auth.getSession();
@@ -282,10 +319,10 @@ const Referral = () => {
                     <Wallet className="w-5 h-5" />
                   </div>
                   <div>
-                    <div className="text-2xl font-bold tabular-nums">{fmtVnd(data?.commissionAvailable ?? 0)}</div>
+                    <div className="text-2xl font-bold tabular-nums">{fmtVnd(available)}</div>
                     <p className="text-sm text-muted-foreground">
-                      hoa hồng khả dụng
-                      {data && data.commissionPending > 0 ? ` · ${fmtVnd(data.commissionPending)} đang chờ` : ''}
+                      hoa hồng rút được
+                      {pending > 0 ? ` · ${fmtVnd(pending)} đang treo` : ''}
                     </p>
                   </div>
                 </CardContent>
@@ -301,17 +338,49 @@ const Referral = () => {
               <CardContent className="space-y-4">
                 {/* Số dư + nút rút */}
                 <div className="flex items-center justify-between gap-3 rounded-lg bg-primary/5 border border-primary/15 p-3">
-                  <div>
-                    <div className="text-2xl font-bold tabular-nums text-amber-600 dark:text-amber-400">{fmtVnd(data?.commissionAvailable ?? 0)}</div>
+                  <div className="min-w-0">
+                    <div className="text-2xl font-bold tabular-nums text-amber-600 dark:text-amber-400">{fmtVnd(available)}</div>
                     <p className="text-xs text-muted-foreground">
-                      có thể rút{data && data.commissionPending > 0 ? ` · ${fmtVnd(data.commissionPending)} đang chờ` : ''}
+                      có thể rút
+                      {belowMin ? ` · cần tối thiểu ${fmtVnd(minWithdrawal)}` : ''}
                     </p>
                   </div>
-                  <Button onClick={withdrawAll} disabled={withdrawing || !data?.commissionAvailable || !data?.payoutAccount}>
+                  <Button
+                    onClick={withdrawAll}
+                    disabled={withdrawing || !available || belowMin || !data?.payoutAccount}
+                  >
                     {withdrawing ? <Loader2 className="w-4 h-4 animate-spin mr-1.5" /> : <ArrowDownToLine className="w-4 h-4 mr-1.5" />}
                     Rút toàn bộ
                   </Button>
                 </div>
+
+                {/* Tiền đang treo — nói rõ BAO GIỜ rút được, đừng để người mời phải đoán. */}
+                {pending > 0 && (
+                  <div className="flex items-start gap-2.5 rounded-lg border border-amber-500/25 bg-amber-500/5 p-3 text-sm">
+                    <Clock className="w-4 h-4 mt-0.5 flex-none text-amber-600 dark:text-amber-400" />
+                    <div className="min-w-0">
+                      <span className="font-medium tabular-nums">{fmtVnd(pending)}</span> đang treo
+                      {matureIn ? <> — rút được <span className="font-medium">{matureIn}</span></> : null}.
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        Mỗi khoản hoa hồng treo {holdDays} ngày kể từ khi bạn của bạn thanh toán,
+                        để xử lý các trường hợp hoàn tiền hoặc khiếu nại.
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Lượt bị gắn cờ — báo trung thực thay vì im lặng nuốt mất tiền. */}
+                {(data?.flaggedCount ?? 0) > 0 && (
+                  <div className="flex items-start gap-2.5 rounded-lg border border-border/60 bg-muted/40 p-3 text-sm">
+                    <ShieldAlert className="w-4 h-4 mt-0.5 flex-none text-muted-foreground" />
+                    <div className="min-w-0">
+                      <span className="font-medium">{data?.flaggedCount} lượt</span> đang chờ đối soát thủ công.
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        Hệ thống chống gian lận đánh dấu để kiểm tra. Nếu hợp lệ, hoa hồng sẽ được cộng sau khi đối soát.
+                      </p>
+                    </div>
+                  </div>
+                )}
 
                 {/* Tài khoản ngân hàng */}
                 {data?.payoutAccount && !editingAccount ? (
@@ -382,7 +451,8 @@ const Referral = () => {
                   {[
                     'Gửi mã hoặc link cho bạn bè.',
                     'Bạn của bạn nhập mã khi mua gói → được giảm 10%.',
-                    'Bạn nhận 60% hoa hồng vào ví, rút về ngân hàng.',
+                    `Bạn nhận 60% hoa hồng, treo ${holdDays} ngày rồi rút được.`,
+                    `Rút về ngân hàng khi ví đạt tối thiểu ${fmtVnd(minWithdrawal)}.`,
                   ].map((step, i) => (
                     <li key={i} className="flex gap-3">
                       <span className="flex-none w-6 h-6 rounded-full bg-primary/10 text-primary text-sm font-semibold grid place-items-center">{i + 1}</span>

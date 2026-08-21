@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   ArrowLeft, ShieldCheck, AlertTriangle, MessageSquare, BarChart3,
-  Loader2, Inbox, RefreshCw, Users, Receipt, Copy, BadgeCheck, KeyRound, Banknote,
+  Loader2, Inbox, RefreshCw, Users, Receipt, Copy, BadgeCheck, KeyRound, Banknote, ShieldAlert,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -27,6 +27,7 @@ import { OrdersTab } from '@/components/admin/OrdersTab';
 import { GoldenTab } from '@/components/admin/GoldenTab';
 import { TestApiKeyTab } from '@/components/admin/TestApiKeyTab';
 import { WithdrawalsTab } from '@/components/admin/WithdrawalsTab';
+import { ReferralsTab } from '@/components/admin/ReferralsTab';
 import { RedrawGoldenButton } from '@/components/admin/RedrawGoldenButton';
 
 type ProblemReport = Tables<'problem_reports'>;
@@ -367,6 +368,9 @@ const Admin = () => {
             <TabsTrigger value="withdrawals" className="shrink-0 gap-1.5">
               <Banknote className="h-4 w-4" /> Rút tiền
             </TabsTrigger>
+            <TabsTrigger value="referrals" className="shrink-0 gap-1.5">
+              <ShieldAlert className="h-4 w-4" /> Đối soát mã mời
+            </TabsTrigger>
           </TabsList>
 
           {/* ── Tab 1 — Bài lỗi ──────────────────────────────────────────── */}
@@ -619,6 +623,10 @@ const Admin = () => {
 
           <TabsContent value="withdrawals">
             <WithdrawalsTab />
+          </TabsContent>
+
+          <TabsContent value="referrals">
+            <ReferralsTab />
           </TabsContent>
 
           <TabsContent value="test-apikey">

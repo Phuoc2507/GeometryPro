@@ -4,7 +4,9 @@ import { withSentry, reportServerError } from './_lib/sentry.js';
 import { validateReferral, referralReasonText } from './_lib/referralCore.js';
 
 // Phase 1 — Mã mời: trả về mã mời của user (sinh nếu chưa có) + vài số liệu cho
-// trang "Giới thiệu bạn". CHƯA đụng tới tiền hoa hồng thật (đó là Phase 3).
+// trang "Giới thiệu bạn".
+// Phase 6 — trước khi đọc số dư, "chín" các khoản đã hết thời gian treo. Làm LƯỜI ở
+// đây (thay vì cron) vì người mời chỉ quan tâm số dư đúng vào lúc họ mở trang này.
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.VITE_SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -55,6 +57,11 @@ async function handler(req, res) {
       .from('profiles')
       .upsert({ user_id: user.id }, { onConflict: 'user_id', ignoreDuplicates: true });
 
+    // Chín các khoản đã tới hạn TRƯỚC khi đọc số dư (Phase 6). Hỏng thì bỏ qua —
+    // số dư hiển thị sẽ thiếu phần vừa tới hạn, nhưng trang vẫn mở được.
+    const { error: matureErr } = await supabase.rpc('mature_commissions', { p_user_id: user.id });
+    if (matureErr) console.warn('[referral] mature_commissions:', matureErr.message);
+
     // Đọc mã hiện có + số dư ví.
     let { data: profile } = await supabase
       .from('profiles')
@@ -98,6 +105,32 @@ async function handler(req, res) {
       .eq('user_id', user.id)
       .maybeSingle();
 
+    // Tham số rào chắn (Phase 6) — client cần để hiện đúng ngưỡng/thời gian treo
+    // thay vì chôn con số trong giao diện rồi lệch khi admin chỉnh ở DB.
+    const { data: cfgRows } = await supabase
+      .from('pricing_config')
+      .select('key, value')
+      .in('key', ['referral_min_withdrawal', 'referral_hold_days']);
+    const cfg = Object.fromEntries((cfgRows || []).map((r) => [r.key, Number(r.value)]));
+
+    // Khoản treo sắp chín sớm nhất — để trả lời đúng câu "bao giờ rút được?".
+    const { data: nextPending } = await supabase
+      .from('referrals')
+      .select('mature_at')
+      .eq('referrer_id', user.id)
+      .eq('status', 'pending')
+      .not('mature_at', 'is', null)
+      .order('mature_at', { ascending: true })
+      .limit(1)
+      .maybeSingle();
+
+    // Số lượt đang chờ admin duyệt (bị bộ lọc chống gian lận gắn cờ).
+    const { count: flaggedCount } = await supabase
+      .from('referrals')
+      .select('id', { count: 'exact', head: true })
+      .eq('referrer_id', user.id)
+      .eq('status', 'flagged');
+
     // Lịch sử rút tiền gần đây.
     const { data: withdrawals } = await supabase
       .from('withdrawals')
@@ -113,6 +146,10 @@ async function handler(req, res) {
       commissionPending: profile?.commission_pending || 0,
       payoutAccount: payoutAccount || null,
       withdrawals: withdrawals || [],
+      minWithdrawal: cfg.referral_min_withdrawal ?? 100000,
+      holdDays: cfg.referral_hold_days ?? 7,
+      nextMatureAt: nextPending?.mature_at || null,
+      flaggedCount: flaggedCount || 0,
     });
   } catch (error) {
     await reportServerError(error, { route: 'referral' });

@@ -114,6 +114,44 @@ export const resolveWithdrawal = (
   adminNote?: string,
 ) => adminApi<{ ok: boolean; status: string }>('resolve-withdrawal', { withdrawalId, actionType, transferRef, adminNote });
 
+// ── Lượt giới thiệu (Phase 6: hàng đợi đối soát chống gian lận) ──────────────
+export type ReferralStatus = 'pending' | 'confirmed' | 'flagged' | 'rejected' | 'clawed_back';
+
+export interface AdminReferral {
+  id: string;
+  referrer_id: string;
+  invitee_id: string | null;
+  code: string;
+  order_code: number | null;
+  status: ReferralStatus;
+  /** Vì sao bị gắn cờ: payer_account_reused | monthly_cap_exceeded | payer_is_referrer_bank_account */
+  flag_reason: string | null;
+  discount_amount: number;
+  commission_amount: number;
+  mature_at: string | null;
+  created_at: string;
+  confirmed_at: string | null;
+  payer_account_number: string | null;
+  payer_account_bank: string | null;
+  note: string | null;
+  referrer_name: string | null;
+  referrer_email: string | null;
+  invitee_name: string | null;
+  invitee_email: string | null;
+}
+export interface ListReferralsResult { referrals: AdminReferral[]; page: number; hasMore: boolean }
+
+export const listReferrals = (page = 1, status: ReferralStatus | 'all' = 'flagged', perPage = 30) =>
+  adminApi<ListReferralsResult>('list-referrals', { page, perPage, status });
+
+export const reviewReferral = (
+  referralId: string,
+  actionType: 'approve' | 'reject',
+  adminNote?: string,
+) => adminApi<{ ok: boolean; status: string; amount: number; recovered?: number }>(
+  'review-referral', { referralId, actionType, adminNote },
+);
+
 // ── Hình chuẩn (golden) ──────────────────────────────────────────────────────
 export interface SaveGoldenParams {
   prompt: string;

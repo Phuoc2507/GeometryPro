@@ -32,6 +32,8 @@ async function handler(req, res) {
       case 'delete-golden': return await deleteGolden(admin, req, res);
       case 'list-withdrawals':   return await listWithdrawals(admin, req, res);
       case 'resolve-withdrawal': return await resolveWithdrawal(admin, req, res);
+      case 'list-referrals':     return await listReferrals(admin, req, res);
+      case 'review-referral':    return await reviewReferral(admin, req, res);
       default:             return res.status(400).json({ error: 'Hành động không hợp lệ' });
     }
   } catch (error) {
@@ -393,6 +395,72 @@ async function resolveWithdrawal(admin, req, res) {
   });
   if (error) return res.status(500).json({ error: error.message });
   if (!data?.ok) return res.status(400).json({ error: data?.err || 'Không xử lý được yêu cầu' });
+  return res.json(data);
+}
+
+// ── list-referrals: lượt giới thiệu, mặc định chỉ các lượt BỊ GẮN CỜ (Phase 6) ──
+// Đây là hàng đợi đối soát: bộ lọc chống farm đánh dấu, người thật quyết định.
+async function listReferrals(admin, req, res) {
+  const page = clampPage(req.body?.page);
+  const perPage = clampPerPage(req.body?.perPage);
+  const from = (page - 1) * perPage;
+  // 'all' để xem toàn bộ; mặc định chỉ lấy hàng đợi cần xử lý.
+  const status = typeof req.body?.status === 'string' ? req.body.status : 'flagged';
+
+  let query = admin
+    .from('referrals')
+    .select('id, referrer_id, invitee_id, code, order_code, status, flag_reason, discount_amount, commission_amount, mature_at, created_at, confirmed_at, payer_account_number, payer_account_bank, note')
+    .order('created_at', { ascending: false })
+    .range(from, from + perPage);
+  if (status !== 'all') query = query.eq('status', status);
+
+  const { data: rows, error } = await query;
+  if (error) return res.status(500).json({ error: error.message });
+
+  const all = rows || [];
+  const hasMore = all.length > perPage;
+  const pageRows = all.slice(0, perPage);
+
+  // Tên/email của CẢ người mời lẫn người được mời — đối soát cần nhìn hai đầu.
+  const userIds = [...new Set(pageRows.flatMap((r) => [r.referrer_id, r.invitee_id]).filter(Boolean))];
+  const nameMap = {};
+  const emailMap = {};
+  if (userIds.length) {
+    const { data: profs } = await admin.from('profiles').select('user_id, display_name').in('user_id', userIds);
+    for (const p of profs || []) nameMap[p.user_id] = p.display_name;
+    await Promise.all(userIds.map(async (uid) => {
+      try {
+        const { data } = await admin.auth.admin.getUserById(uid);
+        if (data?.user?.email) emailMap[uid] = data.user.email;
+      } catch { /* bỏ qua nếu không lấy được email */ }
+    }));
+  }
+
+  const referrals = pageRows.map((r) => ({
+    ...r,
+    referrer_name: nameMap[r.referrer_id] ?? null,
+    referrer_email: emailMap[r.referrer_id] ?? null,
+    invitee_name: nameMap[r.invitee_id] ?? null,
+    invitee_email: emailMap[r.invitee_id] ?? null,
+  }));
+
+  return res.json({ referrals, page, hasMore });
+}
+
+// ── review-referral: duyệt (cho chín ngay) hoặc thu hồi một lượt ──────────────
+async function reviewReferral(admin, req, res) {
+  const id = String(req.body?.referralId || '');
+  const actionType = req.body?.actionType;
+  if (!id || !['approve', 'reject'].includes(actionType)) {
+    return res.status(400).json({ error: 'Tham số không hợp lệ' });
+  }
+  const { data, error } = await admin.rpc('review_referral', {
+    p_referral_id: id,
+    p_action: actionType,
+    p_note: req.body?.adminNote || null,
+  });
+  if (error) return res.status(500).json({ error: error.message });
+  if (!data?.ok) return res.status(400).json({ error: data?.err || 'Không xử lý được lượt giới thiệu' });
   return res.json(data);
 }
 
