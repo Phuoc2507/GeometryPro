@@ -14,6 +14,8 @@ const PROBLEMS = {
   kinematics: 'Một ô tô chuyển động thẳng nhanh dần đều, vận tốc đầu 10 m/s, gia tốc 2 m/s². Tính quãng đường đi được sau 5 s.',
   waves: 'Một sóng cơ truyền trên dây với bước sóng 40 cm và tần số 500 Hz. Tính vận tốc truyền sóng và độ lệch pha giữa hai điểm cách nhau 17 cm.',
   efield: 'Hai điện tích điểm đặt tại A và B. Tính cường độ điện trường tại điểm M do các điện tích điểm gây ra.',
+  ac: 'Đặt điện áp xoay chiều u = 200cos(100πt) V vào đoạn mạch RLC nối tiếp gồm điện trở R = 50 Ω, cuộn cảm và tụ điện. Tính tổng trở và cường độ dòng điện hiệu dụng.',
+  gasHeat: 'Một mol khí lý tưởng ở 27°C, áp suất 2 atm, nén đẳng nhiệt đến thể tích 3 lít. Tính áp suất khí sau khi nén.',
 };
 
 describe('Định tuyến Lý end-to-end (deterministic) — 4 chương đã nối route', () => {
@@ -24,11 +26,21 @@ describe('Định tuyến Lý end-to-end (deterministic) — 4 chương đã n�
     });
   }
 
-  it('cả 6 chương Lý ĐÃ có bộ dịch (prompt non-null) — nhận đề chữ end-to-end', () => {
+  it('cả 8 chương Lý ĐÃ có bộ dịch (prompt non-null) — nhận đề chữ end-to-end', () => {
     const wired = wiredPhysicsChapters();
-    for (const ch of ['kinematics', 'dynamics', 'circuit', 'oscillation', 'waves', 'efield']) {
+    for (const ch of ['kinematics', 'dynamics', 'circuit', 'oscillation', 'waves', 'efield', 'ac', 'gasHeat']) {
       expect(wired).toContain(ch);
     }
+  });
+
+  it('phân biệt AC vs DC: đề xoay chiều → ac, đề một chiều → circuit (không lẫn)', () => {
+    expect(classifyPhysicsChapter('Đặt điện áp xoay chiều vào mạch RLC nối tiếp, cuộn cảm và tụ điện, tính tổng trở.')).toBe('ac');
+    expect(classifyPhysicsChapter('Mạch điện một chiều gồm R1 nối tiếp R2, hiệu điện thế 12 V, tính cường độ dòng điện.')).toBe('circuit');
+  });
+
+  it('gas-heat mang "mol" (tín hiệu Hóa) vẫn route physics, KHÔNG rơi chem', () => {
+    expect(classifySubject('Một mol khí lý tưởng đẳng nhiệt, tính thể tích.')).toBe('physics');
+    expect(classifySubject('Hòa tan 5,4 gam Al trong dung dịch HCl dư thu 0,3 mol khí H2.')).toBe('chem');
   });
 });
 

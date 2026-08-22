@@ -116,6 +116,22 @@ const EFIELD_LEXICAL = [
   [/lực (?:cu-?lông|coulomb|tương tác)/, MED], [/điện môi/, WEAK],
 ];
 
+// ── ĐIỆN XOAY CHIỀU (ac) — từ khóa AC-riêng (cảm/dung kháng, tổng trở, tụ/cuộn) PHẢI thắng dc-circuit ─
+const AC_LEXICAL = [
+  [/điện xoay chiều|xoay chiều/, STRONG], [/cảm kháng/, STRONG], [/dung kháng/, STRONG],
+  [/tổng trở/, STRONG], [/cuộn cảm/, STRONG], [/\btụ điện\b/, STRONG], [/mạch rlc|\brlc\b/, STRONG],
+  [/cộng hưởng/, MED], [/hệ số công suất/, MED], [/độ lệch pha/, MED], [/hiệu dụng/, MED],
+];
+
+// ── KHÍ LÝ TƯỞNG + NHIỆT (gasHeat) — đẳng quá trình/nhiệt lượng/chuyển thể đặc trưng ─
+const GASHEAT_LEXICAL = [
+  [/khí lý tưởng|khí lí tưởng/, STRONG], [/đẳng nhiệt/, STRONG], [/đẳng áp/, STRONG],
+  [/đẳng tích/, STRONG], [/phương trình trạng thái/, STRONG], [/cla-?pê-?rôn|clapeyron/, STRONG],
+  [/nhiệt lượng/, STRONG], [/nhiệt dung riêng/, STRONG], [/nóng chảy/, STRONG], [/hóa hơi|hoá hơi/, STRONG],
+  [/cân bằng nhiệt/, STRONG], [/nhiệt nóng chảy|nhiệt hóa hơi|nhiệt hoá hơi/, STRONG],
+  [/áp suất/, MED], [/thể tích khí/, MED],
+];
+
 function lexicalScore(lowerText, table) {
   let s = 0;
   for (const [re, w] of table) if (re.test(lowerText)) s += w;
@@ -128,7 +144,7 @@ const CONFIDENT_MIN = 3;
 /**
  * Chương Vật lý của một đề (giả định đề ĐÃ là physics). Mặc định an toàn 'kinematics'.
  * @param {string} problem đề tiếng Việt (chuỗi thô)
- * @returns {'kinematics'|'dynamics'|'circuit'|'oscillation'|'waves'|'efield'}
+ * @returns {'kinematics'|'dynamics'|'circuit'|'oscillation'|'waves'|'efield'|'ac'|'gasHeat'}
  */
 export function classifyPhysicsChapter(problem) {
   if (!problem || typeof problem !== 'string' || !problem.trim()) return 'kinematics';
@@ -139,15 +155,20 @@ export function classifyPhysicsChapter(problem) {
   const dyn = lexicalScore(lower, DYNAMICS_LEXICAL);
   const waves = lexicalScore(lower, WAVE_LEXICAL);
   const efield = lexicalScore(lower, EFIELD_LEXICAL);
+  const ac = lexicalScore(lower, AC_LEXICAL);
+  const gasHeat = lexicalScore(lower, GASHEAT_LEXICAL);
   const kin = lexicalScore(lower, KINEMATICS_LEXICAL);
 
-  // Ứng viên "khác động học" mạnh nhất.
+  // Ứng viên "khác động học" mạnh nhất. AC cộng thêm điểm circuit-riêng vào ac để CHẮC vượt dc-circuit
+  // (đề AC luôn có "điện trở/mạch" của circuit; từ khóa AC-riêng đủ mạnh nhưng cộng dồn cho chắc thắng).
   const others = [
     ['oscillation', osc],
     ['circuit', circuit],
     ['dynamics', dyn],
     ['waves', waves],
     ['efield', efield],
+    ['ac', ac > 0 ? ac + circuit : ac],
+    ['gasHeat', gasHeat],
   ];
   others.sort((a, b) => b[1] - a[1]);
   const [topName, topScore] = others[0];
@@ -169,5 +190,7 @@ export function physicsChapterScores(problem) {
     oscillation: lexicalScore(lower, OSC_LEXICAL),
     waves: lexicalScore(lower, WAVE_LEXICAL),
     efield: lexicalScore(lower, EFIELD_LEXICAL),
+    ac: lexicalScore(lower, AC_LEXICAL),
+    gasHeat: lexicalScore(lower, GASHEAT_LEXICAL),
   };
 }

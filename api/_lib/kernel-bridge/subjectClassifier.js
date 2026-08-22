@@ -108,6 +108,14 @@ const PHYS_LEXICAL = [
   // ĐIỆN TRƯỜNG TĨNH (D37 — đã gỡ khỏi stop-words):
   [/điện trường/, STRONG], [/cường độ điện trường/, STRONG], [/điện tích điểm/, STRONG],
   [/đường sức/, STRONG], [/tĩnh điện/, STRONG], [/\bđiện tích\b/, MED],
+  // ĐIỆN XOAY CHIỀU (D38):
+  [/điện xoay chiều|xoay chiều/, STRONG], [/cảm kháng/, STRONG], [/dung kháng/, STRONG],
+  [/tổng trở/, STRONG], [/cuộn cảm/, STRONG], [/mạch rlc/, STRONG],
+  // KHÍ LÝ TƯỞNG + NHIỆT (D38) — QUAN TRỌNG: đề gas/nhiệt hay có "mol" (tín hiệu Hóa) nên PHẢI đủ mạnh
+  // để thắng chem, tránh gas-heat bị route nhầm sang Hóa rồi abstain.
+  [/khí lý tưởng|khí lí tưởng/, STRONG], [/đẳng nhiệt/, STRONG], [/đẳng áp/, STRONG], [/đẳng tích/, STRONG],
+  [/nhiệt lượng/, STRONG], [/nhiệt dung riêng/, STRONG], [/cân bằng nhiệt/, STRONG],
+  [/phương trình trạng thái/, STRONG], [/nhiệt nóng chảy|nhiệt hóa hơi|nhiệt hoá hơi/, STRONG],
 ];
 
 // ── HÌNH HỌC — từ khóa tiếng Việt (để tính điểm nền; mặc định vẫn là geometry) ──
