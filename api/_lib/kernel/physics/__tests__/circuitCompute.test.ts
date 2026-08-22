@@ -38,7 +38,7 @@ describe('circuitCompute — R/I/U/P + unit engine ghi', () => {
     expect(a.approx).toBeCloseTo(0.6667, 3);
   });
   it('voltage khối P23 → 4 V', () => {
-    (solved.root as { items: CircuitNode[] }).items[1].name; // P23 chưa tên → test qua R2 U
+    // P23 (khối song song) chưa đặt tên → kiểm U qua R2 (cùng hiệu điện thế).
     expect(one(solved, { kind: 'voltage', of: 'R2' }).text).toBe('4');
   });
   it('power của R1 → U·I = 8·2 = 16 W', () => {

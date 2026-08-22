@@ -155,7 +155,7 @@ export const DynamicsPlanSchema = z
 
     // (4) hanging body phải nằm trong string (không hệ treo đơn); không mu/incline/motion.
     const inString = new Set<string>();
-    for (const s of strings) inString.add(s.between[0]), inString.add(s.between[1]);
+    for (const s of strings) { inString.add(s.between[0]); inString.add(s.between[1]); }
     for (const b of bodies) {
       if (b.on === 'hanging' && !inString.has(b.name)) issue(`vật treo "${b.name}" phải nằm trong một dây (v1 không có hệ treo đơn / thang máy)`);
     }

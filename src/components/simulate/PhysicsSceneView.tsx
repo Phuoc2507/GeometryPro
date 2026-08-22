@@ -71,7 +71,7 @@ export function agentGeoPositionAt(
               .replace('vy', String(vy))
               .replace('vz', String(vz))
               .replace(/t\^2/g, '(t*t)');
-            // eslint-disable-next-line no-new-func -- cùng cách AnimatedAgent đánh giá biểu thức quỹ đạo của engine.
+            // Dùng new Function như AnimatedAgent để đánh giá biểu thức quỹ đạo của engine.
             const fn = new Function('t', `return ${replaced}`) as (t: number) => number;
             return Number(fn(dt));
           };

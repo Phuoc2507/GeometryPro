@@ -38,7 +38,6 @@ describe('classifySubject — bảng đề vàng + hình học demo', () => {
       const got = classifySubject(problem);
       // In điểm để dễ chẩn khi lệch (không assert điểm, chỉ assert nhãn).
       if (got !== expected) {
-        // eslint-disable-next-line no-console
         console.error(`${id} scores`, subjectScores(problem), '→', got, 'expected', expected);
       }
       expect(got).toBe(expected);

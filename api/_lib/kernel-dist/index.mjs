@@ -9812,7 +9812,10 @@ var DynamicsPlanSchema = external_exports.object({
     for (const b of bodies) if (b.v0 !== 0) issue(`h\u1EC7 2 v\u1EADt v1 ph\u1EA3i xu\u1EA5t ph\xE1t t\u1EEB ngh\u1EC9 (v\u1EADt "${b.name}" khai v0 = ${b.v0})`);
   }
   const inString = /* @__PURE__ */ new Set();
-  for (const s of strings) inString.add(s.between[0]), inString.add(s.between[1]);
+  for (const s of strings) {
+    inString.add(s.between[0]);
+    inString.add(s.between[1]);
+  }
   for (const b of bodies) {
     if (b.on === "hanging" && !inString.has(b.name)) issue(`v\u1EADt treo "${b.name}" ph\u1EA3i n\u1EB1m trong m\u1ED9t d\xE2y (v1 kh\xF4ng c\xF3 h\u1EC7 treo \u0111\u01A1n / thang m\xE1y)`);
   }
