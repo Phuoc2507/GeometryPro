@@ -114,6 +114,47 @@ function CopyBtn({ text }: { text: string }) {
   );
 }
 
+// ── "Copy tất cả": gom cả danh sách (theo bộ lọc đang xem) thành TEXT gọn để dán đi phân tích ──
+// Chỉ lấy các trường hữu ích cho gom nhóm lỗi; cắt bớt prompt/message dài để text không phình.
+function reportsToText(rows: ProblemReport[]): string {
+  const stamp = new Date().toISOString().slice(0, 16);
+  const head = `### BÀI LỖI — ${rows.length} mục (mới nhất trước) · copy ${stamp}`;
+  const body = rows.map((r, i) => {
+    const when = (r.created_at || '').slice(0, 16);
+    const prompt = (r.prompt || '(không có chữ — có thể đề bằng ảnh)').slice(0, 500);
+    const err = (r.error_message || '—').slice(0, 300);
+    return `[${i + 1}] ${when} | ${r.endpoint} | mode=${r.mode ?? '-'} | stage=${r.error_stage ?? '-'} | ảnh=${r.image_provided ? 'có' : 'không'} | status=${r.status}\nĐề: ${prompt}\nLỗi: ${err}`;
+  }).join('\n\n');
+  return `${head}\n\n${body}`;
+}
+
+function feedbackToText(rows: UserFeedback[]): string {
+  const stamp = new Date().toISOString().slice(0, 16);
+  const head = `### FEEDBACK — ${rows.length} mục (mới nhất trước) · copy ${stamp}`;
+  const body = rows.map((f, i) => {
+    const when = (f.created_at || '').slice(0, 16);
+    const msg = (f.message || '').slice(0, 800);
+    const p = f.prompt ? `\nĐề kèm: ${f.prompt.slice(0, 300)}` : '';
+    const page = f.page_path ? ` | page=${f.page_path}` : '';
+    return `[${i + 1}] ${when} | kind=${f.kind} | status=${f.status}${page}\nNội dung: ${msg}${p}`;
+  }).join('\n\n');
+  return `${head}\n\n${body}`;
+}
+
+// Nút gom-và-copy cả danh sách. Dựng text LÚC bấm (không serialize mỗi lần render).
+function CopyAllButton({ count, getText }: { count: number; getText: () => string }) {
+  const onClick = async () => {
+    if (count === 0) return;
+    try { await navigator.clipboard.writeText(getText()); toast.success(`Đã copy ${count} mục`); }
+    catch { toast.error('Không copy được (trình duyệt chặn clipboard)'); }
+  };
+  return (
+    <Button variant="outline" size="sm" className="gap-1.5" disabled={count === 0} onClick={onClick}>
+      <Copy className="h-3.5 w-3.5" /> Copy tất cả ({count})
+    </Button>
+  );
+}
+
 // Bộ lọc theo trạng thái (thêm mục "Tất cả").
 function StatusFilter({ value, onChange }: { value: 'all' | Status; onChange: (v: 'all' | Status) => void }) {
   return (
@@ -381,6 +422,7 @@ const Admin = () => {
                 </div>
                 <div className="flex shrink-0 items-center gap-2">
                   <StatusFilter value={reportFilter} onChange={setReportFilter} />
+                  <CopyAllButton count={shownReports.length} getText={() => reportsToText(shownReports)} />
                   <Button variant="outline" size="sm" onClick={fetchReports} disabled={loadingReports} className="gap-1.5">
                     <RefreshCw className={`h-3.5 w-3.5 ${loadingReports ? 'animate-spin' : ''}`} /> Làm mới
                   </Button>
@@ -443,6 +485,7 @@ const Admin = () => {
                 </div>
                 <div className="flex shrink-0 items-center gap-2">
                   <StatusFilter value={feedbackFilter} onChange={setFeedbackFilter} />
+                  <CopyAllButton count={shownFeedback.length} getText={() => feedbackToText(shownFeedback)} />
                   <Button variant="outline" size="sm" onClick={fetchFeedback} disabled={loadingFeedback} className="gap-1.5">
                     <RefreshCw className={`h-3.5 w-3.5 ${loadingFeedback ? 'animate-spin' : ''}`} /> Làm mới
                   </Button>
