@@ -101,6 +101,21 @@ const KINEMATICS_LEXICAL = [
   [/\bkm\/h\b/, WEAK],
 ];
 
+// ── SÓNG CƠ & SÓNG ÂM (waves) — "sóng" đặc trưng, tách khỏi dao động ─────────────
+const WAVE_LEXICAL = [
+  [/sóng cơ/, STRONG], [/sóng âm/, STRONG], [/bước sóng/, STRONG], [/giao thoa/, STRONG],
+  [/sóng dừng/, STRONG], [/cường độ âm|mức cường độ âm/, STRONG], [/bụng sóng|nút sóng/, STRONG],
+  [/truyền sóng|lan truyền/, STRONG], [/\bsóng\b/, MED], [/hai nguồn|hai loa|nguồn kết hợp/, MED],
+  [/\bpha\b/, WEAK],
+];
+
+// ── ĐIỆN TRƯỜNG TĨNH (efield) — điện trường/điện tích đặc trưng, tách khỏi mạch điện ─
+const EFIELD_LEXICAL = [
+  [/điện trường/, STRONG], [/cường độ điện trường/, STRONG], [/điện tích điểm/, STRONG],
+  [/đường sức/, STRONG], [/tĩnh điện/, STRONG], [/\bđiện tích\b/, MED],
+  [/lực (?:cu-?lông|coulomb|tương tác)/, MED], [/điện môi/, WEAK],
+];
+
 function lexicalScore(lowerText, table) {
   let s = 0;
   for (const [re, w] of table) if (re.test(lowerText)) s += w;
@@ -113,7 +128,7 @@ const CONFIDENT_MIN = 3;
 /**
  * Chương Vật lý của một đề (giả định đề ĐÃ là physics). Mặc định an toàn 'kinematics'.
  * @param {string} problem đề tiếng Việt (chuỗi thô)
- * @returns {'kinematics'|'dynamics'|'circuit'|'oscillation'}
+ * @returns {'kinematics'|'dynamics'|'circuit'|'oscillation'|'waves'|'efield'}
  */
 export function classifyPhysicsChapter(problem) {
   if (!problem || typeof problem !== 'string' || !problem.trim()) return 'kinematics';
@@ -122,6 +137,8 @@ export function classifyPhysicsChapter(problem) {
   const osc = lexicalScore(lower, OSC_LEXICAL);
   const circuit = lexicalScore(lower, CIRCUIT_LEXICAL);
   const dyn = lexicalScore(lower, DYNAMICS_LEXICAL);
+  const waves = lexicalScore(lower, WAVE_LEXICAL);
+  const efield = lexicalScore(lower, EFIELD_LEXICAL);
   const kin = lexicalScore(lower, KINEMATICS_LEXICAL);
 
   // Ứng viên "khác động học" mạnh nhất.
@@ -129,6 +146,8 @@ export function classifyPhysicsChapter(problem) {
     ['oscillation', osc],
     ['circuit', circuit],
     ['dynamics', dyn],
+    ['waves', waves],
+    ['efield', efield],
   ];
   others.sort((a, b) => b[1] - a[1]);
   const [topName, topScore] = others[0];
@@ -148,5 +167,7 @@ export function physicsChapterScores(problem) {
     dynamics: lexicalScore(lower, DYNAMICS_LEXICAL),
     circuit: lexicalScore(lower, CIRCUIT_LEXICAL),
     oscillation: lexicalScore(lower, OSC_LEXICAL),
+    waves: lexicalScore(lower, WAVE_LEXICAL),
+    efield: lexicalScore(lower, EFIELD_LEXICAL),
   };
 }

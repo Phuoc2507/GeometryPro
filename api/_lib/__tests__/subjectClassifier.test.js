@@ -61,12 +61,12 @@ describe('classifySubject — biên & rỗng', () => {
   });
 });
 
-describe('classifySubject — STOP-words chương chưa hỗ trợ (không route Lý/Hóa)', () => {
-  // Các cụm này thuộc chương engine v0 CHƯA phục vụ ⇒ phải hạ về geometry (KHÔNG đánh cược translator).
-  it('"ion trong điện trường" → KHÔNG phải physics (hạ geometry)', () => {
-    const got = classifySubject('Một ion chuyển động trong điện trường đều với vận tốc đầu 2 m/s, tính gia tốc của ion.');
-    expect(got).not.toBe('physics');
-    expect(got).toBe('geometry');
+describe('classifySubject — STOP-words chương CÒN LẠI chưa hỗ trợ (không route Lý/Hóa)', () => {
+  // Các cụm này thuộc chương engine CHƯA phục vụ ⇒ phải hạ về geometry (KHÔNG đánh cược translator).
+  // LƯU Ý (D37): "điện trường" ĐÃ GỠ khỏi stop-words (efield phục vụ tĩnh điện) ⇒ nay route physics;
+  // đề điện trường ngoài phạm vi engine (vd hạt chuyển động) sẽ TỰ ABSTAIN ở tầng engine (an toàn).
+  it('"cường độ điện trường tại điểm" (efield ĐÃ nối) → physics', () => {
+    expect(classifySubject('Tính cường độ điện trường tại điểm M do điện tích điểm q gây ra.')).toBe('physics');
   });
   it('đề có "từ trường" + tín hiệu động học → geometry', () => {
     expect(classifySubject('Hạt mang điện bay vào từ trường đều với vận tốc 10 m/s, tính quãng đường.')).toBe('geometry');

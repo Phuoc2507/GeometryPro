@@ -12,6 +12,8 @@ import {
   runCircuit, CircuitPlanSchema,
   runDynamics, DynamicsPlanSchema,
   runOscillation, OscillationPlanSchema,
+  runWaves, WavePlanSchema,
+  runEfield, EFieldPlanSchema,
   chem,
 } from '../kernel-dist/index.mjs';
 import { callVilao } from '../vilao.js';
@@ -20,6 +22,8 @@ import { PHYSICS_TRANSLATOR_PROMPT } from './physicsTranslatorPrompt.js';
 import { CIRCUIT_TRANSLATOR_PROMPT } from './circuitTranslatorPrompt.js';
 import { DYNAMICS_TRANSLATOR_PROMPT } from './dynamicsTranslatorPrompt.js';
 import { OSCILLATION_TRANSLATOR_PROMPT } from './oscillationTranslatorPrompt.js';
+import { WAVES_TRANSLATOR_PROMPT } from './wavesTranslatorPrompt.js';
+import { EFIELD_TRANSLATOR_PROMPT } from './efieldTranslatorPrompt.js';
 import { CHEM_TRANSLATOR_PROMPT } from './chemTranslatorPrompt.js';
 import { postcheckPhysics, postcheckChem } from './planPostcheck.js';
 
@@ -115,13 +119,15 @@ const PHYSICS_CHAPTERS = {
   dynamics: { label: 'động lực học', schema: DynamicsPlanSchema, run: runDynamics, prompt: DYNAMICS_TRANSLATOR_PROMPT, scene: sceneMotion, postcheck: postcheckPhysics },
   circuit: { label: 'mạch điện', schema: CircuitPlanSchema, run: runCircuit, prompt: CIRCUIT_TRANSLATOR_PROMPT, scene: sceneCircuit, postcheck: NO_POSTCHECK },
   oscillation: { label: 'dao động', schema: OscillationPlanSchema, run: runOscillation, prompt: OSCILLATION_TRANSLATOR_PROMPT, scene: sceneMotion, postcheck: NO_POSTCHECK },
+  waves: { label: 'sóng cơ', schema: WavePlanSchema, run: runWaves, prompt: WAVES_TRANSLATOR_PROMPT, scene: sceneMotion, postcheck: NO_POSTCHECK },
+  efield: { label: 'điện trường', schema: EFieldPlanSchema, run: runEfield, prompt: EFIELD_TRANSLATOR_PROMPT, scene: sceneMotion, postcheck: NO_POSTCHECK },
 };
 
 // Auto-nhận chương TỪ PLAN (dry-run/test cấp plan trần): schema các chương RỜI NHAU (kinematics op
 // mover1d/free_fall/projectile; dynamics body/force/string; oscillation oscillator; circuit có source+circuit,
 // KHÔNG ops) ⇒ safeParse đúng một chương. Thứ tự thử: circuit → oscillation → dynamics → kinematics.
 function detectChapterFromPlan(plan) {
-  for (const ch of ['circuit', 'oscillation', 'dynamics', 'kinematics']) {
+  for (const ch of ['circuit', 'oscillation', 'waves', 'efield', 'dynamics', 'kinematics']) {
     if (PHYSICS_CHAPTERS[ch].schema.safeParse(plan).success) return ch;
   }
   return 'kinematics'; // không khớp cái nào ⇒ để kinematics ném lỗi schema rõ ràng

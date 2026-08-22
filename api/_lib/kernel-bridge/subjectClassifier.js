@@ -102,6 +102,12 @@ const PHYS_LEXICAL = [
   // ĐỘNG LỰC HỌC (dấu hiệu LỰC/MA SÁT/RÒNG RỌC — phân biệt với động học thuần):
   [/lực ma sát/, STRONG], [/hệ số ma sát/, STRONG], [/mặt phẳng nghiêng|mặt nghiêng/, STRONG],
   [/ròng rọc/, STRONG], [/lực kéo/, STRONG], [/lực căng/, STRONG], [/\bma sát\b/, MED],
+  // SÓNG CƠ & SÓNG ÂM (D37):
+  [/sóng cơ/, STRONG], [/sóng âm/, STRONG], [/bước sóng/, STRONG], [/giao thoa/, STRONG],
+  [/sóng dừng/, STRONG], [/mức cường độ âm|cường độ âm/, STRONG], [/bụng sóng|nút sóng/, STRONG],
+  // ĐIỆN TRƯỜNG TĨNH (D37 — đã gỡ khỏi stop-words):
+  [/điện trường/, STRONG], [/cường độ điện trường/, STRONG], [/điện tích điểm/, STRONG],
+  [/đường sức/, STRONG], [/tĩnh điện/, STRONG], [/\bđiện tích\b/, MED],
 ];
 
 // ── HÌNH HỌC — từ khóa tiếng Việt (để tính điểm nền; mặc định vẫn là geometry) ──
@@ -181,12 +187,12 @@ function lexicalScore(lowerText, table) {
 // hơn — dịch lệch ngữ cảnh sang động học/phản ứng rồi cho đáp SAI. An toàn hơn: hạ về 'geometry' để
 // frontend chạy luồng Toán (vẫn tự abstain nếu ngoài phạm vi). Chiều nguy hiểm duy nhất của classifier
 // là geometry/khác → physics/chem (đánh cược translator); stop-words khoá đúng chiều đó.
-// D35 (cập nhật D28): mạch điện / động lực học / dao động NAY ĐÃ nối route (dispatch theo chương +
-// bộ dịch riêng) ⇒ từ khóa của chúng ĐÃ mở trong PHYS_LEXICAL. Nhưng ĐIỆN TRƯỜNG/TỪ TRƯỜNG/HẠT NHÂN/
-// PHÓNG XẠ/ĐIỆN PHÂN vẫn CHƯA có bộ dịch (efield đang code, chưa nối) ⇒ GIỮ stop-words để không route
-// sang physics rồi abstain (thà rơi geometry/Toán). Mở dần từng chương khi bộ dịch chương đó sẵn.
-// LƯU Ý DẤU: "điện tích" (đ) KHÁC "diện tích" (d) của hình học ⇒ regex /điện tích/ không bắt nhầm.
-const STOP_WORDS_RE = /điện trường|từ trường|điện tích|cảm ứng từ|hạt nhân|phóng xạ|điện phân/;
+// D37 (cập nhật D35): mạch điện/động lực/dao động/SÓNG CƠ/ĐIỆN TRƯỜNG nay ĐÃ nối route (dispatch theo
+// chương + bộ dịch riêng) ⇒ từ khóa của chúng ĐÃ mở trong PHYS_LEXICAL, và "điện trường"/"điện tích" ĐÃ
+// GỠ khỏi stop-words (efield phục vụ được). CÒN LẠI chưa có engine: TỪ TRƯỜNG/CẢM ỨNG TỪ/HẠT NHÂN/PHÓNG
+// XẠ/ĐIỆN PHÂN ⇒ GIỮ stop-words để không route sang physics rồi abstain (thà rơi geometry/Toán). Đề dính
+// "từ trường" (vd hạt điện tích trong từ trường) vẫn bị stop TRƯỚC khi chấm điểm ⇒ không nhận nhầm efield.
+const STOP_WORDS_RE = /từ trường|cảm ứng từ|hạt nhân|phóng xạ|điện phân/;
 
 // Ngưỡng quyết định
 const CONFIDENT_MIN = 3; // dưới mức này ⇒ tín hiệu Lý/Hóa quá yếu ⇒ mặc định geometry

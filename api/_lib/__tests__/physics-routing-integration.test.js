@@ -12,6 +12,8 @@ const PROBLEMS = {
   dynamics: 'Một vật khối lượng 2 kg đặt trên mặt phẳng nghiêng góc 30°, hệ số ma sát 0,2. Tính gia tốc của vật khi trượt xuống.',
   oscillation: 'Một con lắc lò xo dao động điều hòa với biên độ 4 cm, chu kỳ 0,2 s. Viết phương trình dao động và tính vận tốc cực đại.',
   kinematics: 'Một ô tô chuyển động thẳng nhanh dần đều, vận tốc đầu 10 m/s, gia tốc 2 m/s². Tính quãng đường đi được sau 5 s.',
+  waves: 'Một sóng cơ truyền trên dây với bước sóng 40 cm và tần số 500 Hz. Tính vận tốc truyền sóng và độ lệch pha giữa hai điểm cách nhau 17 cm.',
+  efield: 'Hai điện tích điểm đặt tại A và B. Tính cường độ điện trường tại điểm M do các điện tích điểm gây ra.',
 };
 
 describe('Định tuyến Lý end-to-end (deterministic) — 4 chương đã nối route', () => {
@@ -22,12 +24,11 @@ describe('Định tuyến Lý end-to-end (deterministic) — 4 chương đã n�
     });
   }
 
-  it('cả 4 chương Lý ĐÃ có bộ dịch (prompt non-null) — nhận đề chữ end-to-end', () => {
+  it('cả 6 chương Lý ĐÃ có bộ dịch (prompt non-null) — nhận đề chữ end-to-end', () => {
     const wired = wiredPhysicsChapters();
-    expect(wired).toContain('kinematics');
-    expect(wired).toContain('dynamics');
-    expect(wired).toContain('circuit');
-    expect(wired).toContain('oscillation');
+    for (const ch of ['kinematics', 'dynamics', 'circuit', 'oscillation', 'waves', 'efield']) {
+      expect(wired).toContain(ch);
+    }
   });
 });
 
@@ -38,8 +39,12 @@ describe('Không hồi quy định tuyến môn khác + chương chưa nối', (
   it('đề Hóa vẫn → chem', () => {
     expect(classifySubject('Hòa tan 5,4 gam Al trong dung dịch HCl dư. Tính thể tích khí H2 thoát ra ở đktc.')).toBe('chem');
   });
-  it('điện trường (efield CHƯA nối) vẫn stop-word → geometry (thà rơi Toán còn hơn abstain)', () => {
-    expect(classifySubject('Xác định cường độ điện trường tại điểm M do điện tích điểm gây ra.')).toBe('geometry');
-    expect(wiredPhysicsChapters()).not.toContain('efield');
+  it('từ trường / hạt nhân (CHƯA có engine) vẫn stop-word → geometry (thà rơi Toán còn hơn abstain)', () => {
+    expect(classifySubject('Một hạt điện tích chuyển động trong từ trường đều, xác định lực Lorentz.')).toBe('geometry');
+    expect(classifySubject('Tính năng lượng liên kết hạt nhân urani, phóng xạ alpha.')).toBe('geometry');
+    // các chương này CHƯA có trong danh sách wired (chưa build engine)
+    const wired = wiredPhysicsChapters();
+    expect(wired).not.toContain('magnetism');
+    expect(wired).not.toContain('nuclear');
   });
 });
