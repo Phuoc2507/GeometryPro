@@ -61,5 +61,7 @@ export { runOscillation, type OscillationResult } from './physics/runOscillation
 export { OscillationPlanSchema, type OscillationPlan } from './physics/oscillationSchema';
 export { runWaves, type WaveResult } from './physics/runWaves';                  // sóng cơ & sóng âm lớp 11
 export { WavePlanSchema, type WavePlan } from './physics/waveSchema';
+export { runEfield, type EFieldResult } from './physics/runEfield';              // điện trường lớp 11
+export { EFieldPlanSchema, type EFieldPlan } from './physics/efieldSchema';
 // Hóa vô cơ THPT: dán đề Hóa → phản ứng + hiện tượng + đáp số (namespace tránh trùng tên).
 export * as chem from './chem/index';

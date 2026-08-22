@@ -280,8 +280,8 @@ var ZodError = class _ZodError extends Error {
   constructor(issues) {
     super();
     this.issues = [];
-    this.addIssue = (sub5) => {
-      this.issues = [...this.issues, sub5];
+    this.addIssue = (sub6) => {
+      this.issues = [...this.issues, sub6];
     };
     this.addIssues = (subs = []) => {
       this.issues = [...this.issues, ...subs];
@@ -348,13 +348,13 @@ var ZodError = class _ZodError extends Error {
   flatten(mapper = (issue) => issue.message) {
     const fieldErrors = {};
     const formErrors = [];
-    for (const sub5 of this.issues) {
-      if (sub5.path.length > 0) {
-        const firstEl = sub5.path[0];
+    for (const sub6 of this.issues) {
+      if (sub6.path.length > 0) {
+        const firstEl = sub6.path[0];
         fieldErrors[firstEl] = fieldErrors[firstEl] || [];
-        fieldErrors[firstEl].push(mapper(sub5));
+        fieldErrors[firstEl].push(mapper(sub6));
       } else {
-        formErrors.push(mapper(sub5));
+        formErrors.push(mapper(sub6));
       }
     }
     return { formErrors, fieldErrors };
@@ -4982,17 +4982,17 @@ function extractSquare(r2) {
   }
   return { rad, factor };
 }
-function makeExact(num2, den, radicand = 1) {
+function makeExact(num3, den, radicand = 1) {
   if (den === 0n) throw new Error("Exact denominator cannot be zero");
-  if (num2 === 0n) return { num: 0n, den: 1n, radicand: 1 };
+  if (num3 === 0n) return { num: 0n, den: 1n, radicand: 1 };
   if (den < 0n) {
-    num2 = -num2;
+    num3 = -num3;
     den = -den;
   }
   const { rad, factor } = extractSquare(radicand);
-  num2 *= factor;
-  const g = bgcd(num2, den);
-  return { num: num2 / g, den: den / g, radicand: rad };
+  num3 *= factor;
+  const g = bgcd(num3, den);
+  return { num: num3 / g, den: den / g, radicand: rad };
 }
 function exactToApprox(e) {
   return Number(e.num) / Number(e.den) * Math.sqrt(e.radicand);
@@ -5014,9 +5014,9 @@ function addExact(a, b) {
   if (a.num === 0n) return b;
   if (b.num === 0n) return a;
   if (a.radicand !== b.radicand) return null;
-  const num2 = a.num * b.den + b.num * a.den;
+  const num3 = a.num * b.den + b.num * a.den;
   const den = a.den * b.den;
-  return makeExact(num2, den, a.radicand);
+  return makeExact(num3, den, a.radicand);
 }
 function subExact(a, b) {
   return addExact(a, negExact(b));
@@ -5030,9 +5030,9 @@ function divExact(a, b) {
   if (b.num === 0n) throw new Error("Exact division by zero");
   const radicand = a.radicand * b.radicand;
   if (radicand > MAX_SAFE_RADICAND) return null;
-  const num2 = a.num * b.den;
+  const num3 = a.num * b.den;
   const den = a.den * b.num * BigInt(b.radicand);
-  return makeExact(num2, den, radicand);
+  return makeExact(num3, den, radicand);
 }
 function sqrtExact(a) {
   if (a.radicand !== 1) return null;
@@ -6497,8 +6497,8 @@ function segmentForLine(le, points) {
     const vv = v.x * v.x + v.y * v.y + v.z * v.z;
     const vd = v.x * d.x + v.y * d.y + v.z * d.z;
     const perp2 = vv - vd * vd / dd;
-    const scale3 = Math.max(1, Math.abs(p0.x), Math.abs(p0.y), Math.abs(p0.z), Math.sqrt(vv));
-    const tol2 = (1e-6 * scale3) ** 2;
+    const scale4 = Math.max(1, Math.abs(p0.x), Math.abs(p0.y), Math.abs(p0.z), Math.sqrt(vv));
+    const tol2 = (1e-6 * scale4) ** 2;
     if (perp2 <= tol2) onLine.push({ label, t: vd / dd });
   }
   if (onLine.length < 2) return null;
@@ -7062,12 +7062,12 @@ function asRational(x, maxDen) {
 function fmtRational(p2, q) {
   return q === 1 ? `${p2}` : `${p2}/${q}`;
 }
-function fmtSurdTerm(num2, den, rad) {
-  const coeff = num2 === 1 ? `\u221A${rad}` : `${num2}\u221A${rad}`;
+function fmtSurdTerm(num3, den, rad) {
+  const coeff = num3 === 1 ? `\u221A${rad}` : `${num3}\u221A${rad}`;
   return den === 1 ? coeff : `${coeff}/${den}`;
 }
-function fmtPiTerm(num2, den) {
-  const coeff = num2 === 1 ? "\u03C0" : `${num2}\u03C0`;
+function fmtPiTerm(num3, den) {
+  const coeff = num3 === 1 ? "\u03C0" : `${num3}\u03C0`;
   return den === 1 ? coeff : `${coeff}/${den}`;
 }
 function recognizeConstant(x) {
@@ -7422,8 +7422,8 @@ function runAnalysis(raw) {
   const mkAnswer2 = (val) => {
     const display = Number.isFinite(val) ? val * answerScale : val;
     const nice = Number.isFinite(display) ? recognizeConstant(display) : null;
-    const num2 = nice ? nice.text : fmtNum2(display);
-    return { approx: display, text: num2 + answerUnit, approximate: !nice };
+    const num3 = nice ? nice.text : fmtNum2(display);
+    return { approx: display, text: num3 + answerUnit, approximate: !nice };
   };
   const fitAt = (env) => {
     const coeffs = {};
@@ -8148,10 +8148,10 @@ function vesselVolume(segs) {
   const valid = validateVesselSegments(segs);
   const closed = segs.reduce((acc, s) => acc + vesselSegmentVolume(s), 0);
   const domain = [segs[0]?.x0 ?? 0, segs[segs.length - 1]?.x1 ?? 0];
-  const num2 = revolutionVolumeDisk(vesselProfile(segs), domain);
-  const gap = Math.abs(closed - num2.value);
+  const num3 = revolutionVolumeDisk(vesselProfile(segs), domain);
+  const gap = Math.abs(closed - num3.value);
   const agree = gap <= 1e-5 * Math.max(1, Math.abs(closed));
-  return { value: closed, numeric: num2.value, gap, verified: valid.ok && agree, reason: valid.ok ? void 0 : valid.reason };
+  return { value: closed, numeric: num3.value, gap, verified: valid.ok && agree, reason: valid.ok ? void 0 : valid.reason };
 }
 function buildVesselSolid(id, segs, opts = {}) {
   const { value, gap, verified } = vesselVolume(segs);
@@ -8638,7 +8638,7 @@ function pickMin(roots, min, exclusive) {
   for (const r2 of roots) if (exclusive ? r2.approx > min + EPS_T : r2.approx >= min - EPS_T) return r2;
   return null;
 }
-var backsub = (kind, detail, residual, scale3) => ({ kind, detail, residual, pass: Math.abs(residual) <= EPS_SELF * scale3 });
+var backsub = (kind, detail, residual, scale4) => ({ kind, detail, residual, pass: Math.abs(residual) <= EPS_SELF * scale4 });
 var info = (detail) => ({ kind: "info", detail, residual: 0, pass: true, severity: "info" });
 function trustBound(m) {
   if (m.op.op === "mover1d") {
@@ -8682,7 +8682,7 @@ var posClamped = (m, axis, tS) => {
   return { s: evalQuadS(q, tau), n: evalQuadN(q, tau.approx) };
 };
 function computePhysicsQuery(motions, query, units) {
-  const need = (name) => {
+  const need2 = (name) => {
     const m = motions.get(name);
     if (!m) throw new Error(`V\u1EADt "${name}" ch\u01B0a khai b\xE1o trong ops`);
     return m;
@@ -8691,7 +8691,7 @@ function computePhysicsQuery(motions, query, units) {
   try {
     switch (query.kind) {
       case "position_at": {
-        const m = need(query.of);
+        const m = need2(query.of);
         const tS = qtyTime(query.t, query.tUnit, units);
         if (tS.approx < m.t0.approx - EPS_T) {
           const q0 = quadOf(m, query.axis ?? mainAxis(m));
@@ -8704,7 +8704,7 @@ function computePhysicsQuery(motions, query, units) {
       }
       case "velocity_at":
       case "impact_velocity": {
-        const m = need(query.of);
+        const m = need2(query.of);
         const checks = [];
         let tau, tauN;
         if (query.kind === "impact_velocity") {
@@ -8732,14 +8732,14 @@ function computePhysicsQuery(motions, query, units) {
         return { ok: true, answer: mkAnswer(query.kind, speed, speedN, unit, query.label), checks };
       }
       case "time_to_ground": {
-        const m = need(query.of);
+        const m = need2(query.of);
         const g = groundTau(m);
         if ("problem" in g) return { ok: false, problem: g.problem };
         const checks = [backsub("backsub", `y(t_\u0111\u1EA5t)=0 c\u1EE7a "${m.name}"`, evalQuadN(m.y, g.tauN), scaleOf(m.y))];
         return { ok: true, answer: mkAnswer(query.kind, add2(m.t0, g.tau), m.t0.approx + g.tauN, unit, query.label), checks, tSolved: m.t0.approx + g.tauN };
       }
       case "range": {
-        const m = need(query.of);
+        const m = need2(query.of);
         const g = groundTau(m);
         if ("problem" in g) return { ok: false, problem: g.problem };
         const r2 = sub2(evalQuadS(m.x, g.tau), evalQuadS(m.x, rat(0n)));
@@ -8748,7 +8748,7 @@ function computePhysicsQuery(motions, query, units) {
         return { ok: true, answer: mkAnswer(query.kind, r2, rN, unit, query.label), checks, tSolved: m.t0.approx + g.tauN };
       }
       case "max_height": {
-        const m = need(query.of);
+        const m = need2(query.of);
         if (m.y.k2.approx >= -EPS_T) return { ok: false, problem: `max_height: "${m.name}" kh\xF4ng c\xF3 \u0111\u1EC9nh (y kh\xF4ng ph\u1EA3i parabol m\u1EDF xu\u1ED1ng)` };
         const tauStar = neg(div(m.y.k1, mul(rat(2n), m.y.k2)));
         if (tauStar.approx < -EPS_T) return { ok: false, problem: "max_height: \u0111\u1EC9nh tr\u01B0\u1EDBc l\xFAc xu\u1EA5t ph\xE1t (v\u1EADt kh\xF4ng \u0111i l\xEAn)" };
@@ -8765,19 +8765,19 @@ function computePhysicsQuery(motions, query, units) {
       }
       case "meet_time":
       case "meet_position": {
-        const ma = need(query.a), mb = need(query.b);
+        const ma = need2(query.a), mb = need2(query.b);
         const aX = expandAbs(ma.x, ma.t0), bX = expandAbs(mb.x, mb.t0);
         const aY = expandAbs(ma.y, ma.t0), bY = expandAbs(mb.y, mb.t0);
         const dX = subQuad(aX, bX), dY = subQuad(aY, bY);
         const hasMotion = (q) => Math.abs(q.k1.approx) + Math.abs(q.k2.approx) > 1e-15;
         const tMin = Math.max(ma.t0.approx, mb.t0.approx);
         const tMinS = ma.t0.approx >= mb.t0.approx ? ma.t0 : mb.t0;
-        const scale3 = Math.max(scaleOf(aX), scaleOf(bX), scaleOf(aY), scaleOf(bY));
+        const scale4 = Math.max(scaleOf(aX), scaleOf(bX), scaleOf(aY), scaleOf(bY));
         let axis;
         if (hasMotion(dX)) axis = "x";
         else if (hasMotion(dY)) axis = "y";
         else {
-          if (Math.abs(dX.k0.approx) <= EPS_SELF * scale3 && Math.abs(dY.k0.approx) <= EPS_SELF * scale3) {
+          if (Math.abs(dX.k0.approx) <= EPS_SELF * scale4 && Math.abs(dY.k0.approx) <= EPS_SELF * scale4) {
             const checks2 = [info(`hai v\u1EADt chuy\u1EC3n \u0111\u1ED9ng tr\xF9ng nhau ho\xE0n to\xE0n \u2014 tr\u1EA3 th\u1EDDi \u0111i\u1EC3m s\u1EDBm nh\u1EA5t c\u1EA3 hai c\xF9ng xu\u1EA5t ph\xE1t t = ${fmtNum4(tMin)} ${units.time} (meet_time inclusive t=t\u2080)`)];
             if (query.kind === "meet_time") return { ok: true, answer: mkAnswer(query.kind, tMinS, tMin, unit, query.label), checks: checks2, tSolved: tMin };
             return { ok: true, answer: mkAnswer(query.kind, evalQuadS(aX, tMinS), evalQuadN(aX, tMin), unit, query.label), checks: checks2, tSolved: tMin };
@@ -8792,18 +8792,18 @@ function computePhysicsQuery(motions, query, units) {
         const tN = rootsN[0];
         if (!t || tN === void 0) return { ok: false, problem: `"${query.a}" v\xE0 "${query.b}" kh\xF4ng g\u1EB7p nhau sau khi c\u1EA3 hai xu\u1EA5t ph\xE1t` };
         const residOther = evalQuadN(dOther, tN);
-        if (Math.abs(residOther) > EPS_SELF * scale3) {
+        if (Math.abs(residOther) > EPS_SELF * scale4) {
           return { ok: false, problem: `"${query.a}" v\xE0 "${query.b}" kh\xF4ng th\u1EF1c s\u1EF1 g\u1EB7p nhau (l\u1EC7ch nhau ${fmtNum4(Math.abs(residOther))} ${units.length} tr\xEAn tr\u1EE5c c\xF2n l\u1EA1i t\u1EA1i t=${fmtNum4(tN)})` };
         }
         const resid = Math.hypot(evalQuadN(dPrim, tN), residOther);
-        const checks = [backsub("backsub", `pos_${query.a}(t_g\u1EB7p) = pos_${query.b}(t_g\u1EB7p)`, resid, scale3)];
+        const checks = [backsub("backsub", `pos_${query.a}(t_g\u1EB7p) = pos_${query.b}(t_g\u1EB7p)`, resid, scale4)];
         if (rootsN.length > 1 && rootsN[1] > tN + EPS_T) checks.push(info(`c\xF2n nghi\u1EC7m g\u1EB7p l\u1EA7n 2: t\u2082 = ${fmtNum4(rootsN[1])} ${units.time} (tr\u1EA3 nghi\u1EC7m \u0111\u1EA7u)`));
         if (tN <= tMin + EPS_T) checks.push(info(`g\u1EB7p ngay t\u1EA1i th\u1EDDi \u0111i\u1EC3m xu\u1EA5t ph\xE1t t = t\u2080 = ${fmtNum4(tMin)} ${units.time}: hai v\u1EADt \u1EDF c\xF9ng v\u1ECB tr\xED ngay l\xFAc b\u1EAFt \u0111\u1EA7u (quy \u01B0\u1EDBc meet_time inclusive t=t\u2080)`));
         if (query.kind === "meet_time") return { ok: true, answer: mkAnswer(query.kind, t, tN, unit, query.label), checks, tSolved: tN };
         return { ok: true, answer: mkAnswer(query.kind, evalQuadS(qa, t), evalQuadN(qa, tN), unit, query.label), checks, tSolved: tN };
       }
       case "distance_between_at": {
-        const ma = need(query.a), mb = need(query.b);
+        const ma = need2(query.a), mb = need2(query.b);
         const tS = qtyTime(query.t, query.tUnit, units);
         const ax = posClamped(ma, "x", tS), bx = posClamped(mb, "x", tS);
         const ay = posClamped(ma, "y", tS), by = posClamped(mb, "y", tS);
@@ -8812,7 +8812,7 @@ function computePhysicsQuery(motions, query, units) {
         return { ok: true, answer: mkAnswer(query.kind, dist, Math.hypot(ax.n - bx.n, ay.n - by.n), unit, query.label), checks: warnBeyond([ma, mb], tS.approx) };
       }
       case "time_when": {
-        const m = need(query.of);
+        const m = need2(query.of);
         const q = quadOf(m, query.axis ?? mainAxis(m));
         const posS = qtyLength(query.position, query.xUnit, units);
         if (Math.abs(q.k1.approx) < 1e-15 && Math.abs(q.k2.approx) < 1e-15) {
@@ -8831,7 +8831,7 @@ function computePhysicsQuery(motions, query, units) {
       }
       case "time_when_velocity":
       case "position_when_velocity": {
-        const m = need(query.of);
+        const m = need2(query.of);
         const axis = query.component ?? mainAxis(m);
         const q = quadOf(m, axis);
         const dq = derivQuad(q);
@@ -9232,7 +9232,7 @@ var CircuitPlanSchema = external_exports.object({
 var EPS_SELF2 = 1e-6;
 var ONE = rat(1n);
 var ZERO2 = rat(0n);
-function leafR(node, sub5) {
+function leafR(node, sub6) {
   if (node.kind === "resistor") {
     const base = scalarFromNumber(node.ohms);
     return node.unit === "kohm" ? mul(base, rat(1000n)) : base;
@@ -9241,30 +9241,30 @@ function leafR(node, sub5) {
     const U = scalarFromNumber(node.ratedVolts);
     return div(mul(U, U), scalarFromNumber(node.ratedWatts));
   }
-  if (sub5 && sub5.name === node.name) return sub5.R;
+  if (sub6 && sub6.name === node.name) return sub6.R;
   throw new Error(`unknown_resistor "${node.name}" ch\u01B0a c\xF3 gi\xE1 tr\u1ECB \u2014 ch\u1EC9 h\u1EE3p l\u1EC7 tr\xEAn \u0111\u01B0\u1EDDng M\xF6bius (\xA77.5)`);
 }
-function leafRN(node, sub5) {
+function leafRN(node, sub6) {
   if (node.kind === "resistor") return node.ohms * (node.unit === "kohm" ? 1e3 : 1);
   if (node.kind === "lamp") return node.ratedVolts * node.ratedVolts / node.ratedWatts;
-  if (sub5 && sub5.name === node.name) return sub5.Rn;
+  if (sub6 && sub6.name === node.name) return sub6.Rn;
   throw new Error(`unknown_resistor "${node.name}" ch\u01B0a c\xF3 gi\xE1 tr\u1ECB`);
 }
-function reduceR(node, sub5) {
-  if (node.kind === "series") return node.items.map((i) => reduceR(i, sub5)).reduce((a, b) => add2(a, b), ZERO2);
+function reduceR(node, sub6) {
+  if (node.kind === "series") return node.items.map((i) => reduceR(i, sub6)).reduce((a, b) => add2(a, b), ZERO2);
   if (node.kind === "parallel") {
-    const invSum = node.items.map((i) => div(ONE, reduceR(i, sub5))).reduce((a, b) => add2(a, b), ZERO2);
+    const invSum = node.items.map((i) => div(ONE, reduceR(i, sub6))).reduce((a, b) => add2(a, b), ZERO2);
     return div(ONE, invSum);
   }
-  return leafR(node, sub5);
+  return leafR(node, sub6);
 }
-function reduceRN(node, sub5) {
-  if (node.kind === "series") return node.items.reduce((s, i) => s + reduceRN(i, sub5), 0);
-  if (node.kind === "parallel") return 1 / node.items.reduce((s, i) => s + 1 / reduceRN(i, sub5), 0);
-  return leafRN(node, sub5);
+function reduceRN(node, sub6) {
+  if (node.kind === "series") return node.items.reduce((s, i) => s + reduceRN(i, sub6), 0);
+  if (node.kind === "parallel") return 1 / node.items.reduce((s, i) => s + 1 / reduceRN(i, sub6), 0);
+  return leafRN(node, sub6);
 }
-function distribute(node, drive, sub5, vals, byName, lampInfo) {
-  const R = reduceR(node, sub5), Rn = reduceRN(node, sub5);
+function distribute(node, drive, sub6, vals, byName, lampInfo) {
+  const R = reduceR(node, sub6), Rn = reduceRN(node, sub6);
   let I, U, In, Un;
   if (drive.mode === "I") {
     I = drive.valS;
@@ -9281,10 +9281,10 @@ function distribute(node, drive, sub5, vals, byName, lampInfo) {
   vals.set(node, { kind, R, I, U, P: mul(U, I), Rn, In, Un, Pn: Un * In });
   if (node.kind === "series") {
     if (node.name) byName.set(node.name, node);
-    for (const it of node.items) distribute(it, { mode: "I", valS: I, valN: In }, sub5, vals, byName, lampInfo);
+    for (const it of node.items) distribute(it, { mode: "I", valS: I, valN: In }, sub6, vals, byName, lampInfo);
   } else if (node.kind === "parallel") {
     if (node.name) byName.set(node.name, node);
-    for (const it of node.items) distribute(it, { mode: "U", valS: U, valN: Un }, sub5, vals, byName, lampInfo);
+    for (const it of node.items) distribute(it, { mode: "U", valS: U, valN: Un }, sub6, vals, byName, lampInfo);
   } else {
     byName.set(node.name, node);
     if (node.kind === "lamp") {
@@ -9293,16 +9293,16 @@ function distribute(node, drive, sub5, vals, byName, lampInfo) {
     }
   }
 }
-function solveCircuit(source, root, sub5) {
+function solveCircuit(source, root, sub6) {
   const emfN = source.emf, rN = source.r ?? 0;
   const emf = scalarFromNumber(emfN), r2 = scalarFromNumber(rN);
-  const rTotal = reduceR(root, sub5), rTotalN = reduceRN(root, sub5);
+  const rTotal = reduceR(root, sub6), rTotalN = reduceRN(root, sub6);
   const iMain = div(emf, add2(rTotal, r2)), iMainN = emfN / (rTotalN + rN);
   const uExternal = mul(iMain, rTotal), uExternalN = iMainN * rTotalN;
   const vals = /* @__PURE__ */ new Map();
   const byName = /* @__PURE__ */ new Map();
   const lampInfo = /* @__PURE__ */ new Map();
-  distribute(root, { mode: "I", valS: iMain, valN: iMainN }, sub5, vals, byName, lampInfo);
+  distribute(root, { mode: "I", valS: iMain, valN: iMainN }, sub6, vals, byName, lampInfo);
   return { emf, r: r2, emfN, rN, rTotal, rTotalN, iMain, iMainN, uExternal, uExternalN, root, vals, byName, lampInfo };
 }
 function rowOf(solved, of) {
@@ -10083,20 +10083,20 @@ function solveTwoBody(bodies, gS, gN, checks, violations, meta) {
       st.weight = mul(mb.s, gS);
       st.weightN = mb.n * gN;
     }
-    let resid, scale3;
+    let resid, scale4;
     if (b.on === "hanging") {
       if (b === downB) {
         resid = sub2(sub2(mul(mb.s, gS), T), mul(mb.s, a));
       } else {
         resid = sub2(sub2(T, mul(mb.s, gS)), mul(mb.s, a));
       }
-      scale3 = mb.n * gN;
+      scale4 = mb.n * gN;
     } else {
       const fr = st.friction ?? ZERO4;
       resid = sub2(sub2(T, fr), mul(mb.s, a));
-      scale3 = Math.max(1, TN);
+      scale4 = Math.max(1, TN);
     }
-    checks.push(resCheck2("newton_axis", `thay-a-ng\u01B0\u1EE3c "${b.name}": \u03A3F \u2212 m\xB7a`, resid, Math.max(1, Math.abs(scale3))));
+    checks.push(resCheck2("newton_axis", `thay-a-ng\u01B0\u1EE3c "${b.name}": \u03A3F \u2212 m\xB7a`, resid, Math.max(1, Math.abs(scale4))));
     out.set(b.name, st);
   }
   meta.horizonNote = "m\xF4 h\xECnh b\u1ECF qua gi\u1EDBi h\u1EA1n h\xE0nh tr\xECnh d\xE2y/\u0111\u1ED9 cao \u2014 \u0111\xE1p h\u1EE3p l\u1EC7 trong ph\u1EA1m vi l\xFD t\u01B0\u1EDFng h\xF3a c\u1EE7a \u0111\u1EC1";
@@ -11628,11 +11628,11 @@ function metersOf(value, rUnit, base) {
   const from = rUnit ?? base;
   return from === "cm" ? mul(scalarFromNumber(value), rat(1n, 100n)) : scalarFromNumber(value);
 }
-function sciToScalar(sci) {
-  if (typeof sci === "number") return scalarFromNumber(sci);
-  const d = sci.d ?? 1;
-  const exp = sci.exp ?? 0;
-  const base = scalarFromNumber(sci.n);
+function sciToScalar(sci2) {
+  if (typeof sci2 === "number") return scalarFromNumber(sci2);
+  const d = sci2.d ?? 1;
+  const exp = sci2.exp ?? 0;
+  const base = scalarFromNumber(sci2.n);
   const p10 = pow10Scalar(exp);
   return div(mul(base, p10), rat(BigInt(d)));
 }
@@ -12268,6 +12268,598 @@ function dispatchQuery(q, waveByName, soundByName, base) {
   return computeWaveQuery(s, q, base);
 }
 
+// api/_lib/kernel/physics/efield.ts
+var CHARGE_TO_SI = {
+  C: rat(1n),
+  mC: rat(1n, 1000n),
+  uC: rat(1n, 1000000n),
+  nC: rat(1n, 1000000000n),
+  pC: rat(1n, 1000000000000n)
+};
+var FIELD_TO_SI = { "V/m": rat(1n), "N/C": rat(1n), "V/cm": rat(100n) };
+var VOLT_TO_SI = { V: rat(1n), kV: rat(1000n) };
+var MASS_TO_SI = { kg: rat(1n), g: rat(1n, 1000n) };
+var LEN_TO_SI2 = { m: rat(1n), cm: rat(1n, 100n), mm: rat(1n, 1000n) };
+var CHARGE_N = { C: 1, mC: 1e-3, uC: 1e-6, nC: 1e-9, pC: 1e-12 };
+var FIELD_N = { "V/m": 1, "N/C": 1, "V/cm": 100 };
+var VOLT_N = { V: 1, kV: 1e3 };
+var MASS_N = { kg: 1, g: 1e-3 };
+var LEN_N = { m: 1, cm: 0.01, mm: 1e-3 };
+var need = (tbl, u, dim) => {
+  const f = tbl[u];
+  if (f === void 0) throw new Error(`\u0111\u01A1n v\u1ECB ${dim} "${u}" ngo\xE0i b\u1EA3ng \u0111\u1ED5i`);
+  return f;
+};
+var qtyCharge = (v, u) => mul(scalarFromNumber(v), need(CHARGE_TO_SI, u, "\u0111i\u1EC7n t\xEDch"));
+var qtyField = (v, u) => mul(scalarFromNumber(v), need(FIELD_TO_SI, u, "c\u01B0\u1EDDng \u0111\u1ED9 tr\u01B0\u1EDDng"));
+var qtyVolt = (v, u) => mul(scalarFromNumber(v), need(VOLT_TO_SI, u, "hi\u1EC7u \u0111i\u1EC7n th\u1EBF"));
+var qtyMass = (v, u) => mul(scalarFromNumber(v), need(MASS_TO_SI, u, "kh\u1ED1i l\u01B0\u1EE3ng"));
+var qtyLength2 = (v, u) => mul(scalarFromNumber(v), need(LEN_TO_SI2, u, "\u0111\u1ED9 d\xE0i"));
+var qtyChargeN = (v, u) => v * need(CHARGE_N, u, "\u0111i\u1EC7n t\xEDch");
+var qtyFieldN = (v, u) => v * need(FIELD_N, u, "c\u01B0\u1EDDng \u0111\u1ED9 tr\u01B0\u1EDDng");
+var qtyVoltN = (v, u) => v * need(VOLT_N, u, "hi\u1EC7u \u0111i\u1EC7n th\u1EBF");
+var qtyMassN = (v, u) => v * need(MASS_N, u, "kh\u1ED1i l\u01B0\u1EE3ng");
+var qtyLengthN = (v, u) => v * need(LEN_N, u, "\u0111\u1ED9 d\xE0i");
+var K = rat(9000000000n);
+var absS2 = (s) => (s.exact ? s.exact.num < 0n : s.approx < 0) ? neg(s) : s;
+var signS = (s) => s.exact ? s.exact.num < 0n ? -1 : s.exact.num > 0n ? 1 : 0 : s.approx < 0 ? -1 : s.approx > 0 ? 1 : 0;
+var r2S = (p2, s) => {
+  const dx = sub2(p2.x, s.x), dy = sub2(p2.y, s.y);
+  return add2(mul(dx, dx), mul(dy, dy));
+};
+function isCollinear(P, srcs) {
+  const s0 = srcs[0];
+  const wx = sub2(P.x, s0.x), wy = sub2(P.y, s0.y);
+  for (let i = 1; i < srcs.length; i++) {
+    const ax = sub2(srcs[i].x, s0.x), ay = sub2(srcs[i].y, s0.y);
+    if (!isZeroS(sub2(mul(wx, ay), mul(wy, ax)))) return false;
+  }
+  return true;
+}
+function isSymmetricRational(P, srcs) {
+  if (srcs.length !== 2) return false;
+  const [A, B] = srcs;
+  if (cmpScalar(absS2(A.q), absS2(B.q)) !== 0) return false;
+  const rA2 = r2S(P, A), rB2 = r2S(P, B);
+  if (cmpScalar(rA2, rB2) !== 0) return false;
+  const rA = sqrt(rA2);
+  return rA.exact !== null && rA.exact.radicand === 1;
+}
+function classify(P, srcs) {
+  if (srcs.length <= 1) return "single";
+  if (isCollinear(P, srcs)) return "collinear";
+  if (isSymmetricRational(P, srcs)) return "symmetric_rational";
+  return "none";
+}
+var axisPhrase = (vx, vy) => {
+  const ax = Math.abs(vx), ay = Math.abs(vy);
+  if (ax < 1e-12 && ay < 1e-12) return "tri\u1EC7t ti\xEAu (E = 0)";
+  if (ay < 1e-9 * Math.max(1, ax)) return vx > 0 ? "theo chi\u1EC1u d\u01B0\u01A1ng tr\u1EE5c Ox" : "theo chi\u1EC1u \xE2m tr\u1EE5c Ox";
+  if (ax < 1e-9 * Math.max(1, ay)) return vy > 0 ? "theo chi\u1EC1u d\u01B0\u01A1ng tr\u1EE5c Oy" : "theo chi\u1EC1u \xE2m tr\u1EE5c Oy";
+  return "xi\xEAn (kh\xF4ng d\u1ECDc tr\u1EE5c to\u1EA1 \u0111\u1ED9)";
+};
+function fieldAt(kEff, kEffN, P, PN, srcs) {
+  for (const s of srcs) if (isZeroS(r2S(P, s))) throw new Error(`\u0111i\u1EC3m kh\u1EA3o s\xE1t tr\xF9ng v\u1ECB tr\xED \u0111i\u1EC7n t\xEDch "${s.name}" (r = 0)`);
+  const cls = classify(P, srcs);
+  if (cls === "single") {
+    const s = srcs[0];
+    const r2 = r2S(P, s);
+    const r2n = (PN.x - s.xN) ** 2 + (PN.y - s.yN) ** 2;
+    const mag = div(mul(kEff, absS2(s.q)), r2);
+    const magN = kEffN * Math.abs(s.qN) / r2n;
+    const dir = signS(s.q) >= 0 ? `h\u01B0\u1EDBng ra xa \u0111i\u1EC7n t\xEDch ${s.name}` : `h\u01B0\u1EDBng v\u1EC1 ph\xEDa \u0111i\u1EC7n t\xEDch ${s.name}`;
+    return { mag, magN, direction: dir, cls };
+  }
+  if (cls === "collinear") {
+    const s0 = srcs[0];
+    const wx = sub2(P.x, s0.x), wy = sub2(P.y, s0.y);
+    const wxN = PN.x - s0.xN, wyN = PN.y - s0.yN;
+    const nx = neg(wy), ny = wx;
+    const nxN = -wyN, nyN = wxN;
+    let net = rat(0n), netN = 0, perp = rat(0n), perpN = 0;
+    for (const s of srcs) {
+      const dx = sub2(P.x, s.x), dy = sub2(P.y, s.y);
+      const dxN = PN.x - s.xN, dyN = PN.y - s.yN;
+      const r2 = add2(mul(dx, dx), mul(dy, dy));
+      const r2n = dxN * dxN + dyN * dyN;
+      const dotw = add2(mul(dx, wx), mul(dy, wy));
+      const sg2 = signS(dotw);
+      net = add2(net, mul(div(mul(kEff, s.q), r2), rat(BigInt(sg2))));
+      netN += kEffN * s.qN * sg2 / r2n;
+      const dotn = add2(mul(dx, nx), mul(dy, ny));
+      const dotnN = dxN * nxN + dyN * nyN;
+      perp = add2(perp, mul(dotn, dotn));
+      perpN += dotnN * dotnN;
+    }
+    const mag = absS2(net), magN = Math.abs(netN);
+    const sg = netN >= 0 ? 1 : -1;
+    const dir = isZeroS(mag) ? "tri\u1EC7t ti\xEAu (E = 0)" : `${axisPhrase(sg * wxN, sg * wyN)} (d\u1ECDc tr\u1EE5c n\u1ED1i c\xE1c \u0111i\u1EC7n t\xEDch)`;
+    return { mag, magN, direction: dir, cls, perp, perpN };
+  }
+  if (cls === "symmetric_rational") {
+    let Ex = rat(0n), Ey = rat(0n), ExN = 0, EyN = 0;
+    for (const s of srcs) {
+      const dx = sub2(P.x, s.x), dy = sub2(P.y, s.y);
+      const dxN = PN.x - s.xN, dyN = PN.y - s.yN;
+      const r2 = add2(mul(dx, dx), mul(dy, dy));
+      const r3 = sqrt(r2), r32 = mul(r2, r3);
+      const r2n = dxN * dxN + dyN * dyN, r3n = r2n * Math.sqrt(r2n);
+      const coef = div(mul(kEff, s.q), r32), coefN = kEffN * s.qN / r3n;
+      Ex = add2(Ex, mul(coef, dx));
+      Ey = add2(Ey, mul(coef, dy));
+      ExN += coefN * dxN;
+      EyN += coefN * dyN;
+    }
+    const mag = sqrt(add2(mul(Ex, Ex), mul(Ey, Ey)));
+    const magN = Math.hypot(ExN, EyN);
+    const rA2 = r2S(P, srcs[0]), rB2 = r2S(P, srcs[1]);
+    const symmResidual = Math.abs(exactToApprox(rA2.exact) - exactToApprox(rB2.exact));
+    return { mag, magN, direction: `${axisPhrase(ExN, EyN)} (d\u1ECDc tr\u1EE5c \u0111\u1ED1i x\u1EE9ng)`, cls, symmResidual };
+  }
+  throw new Error(
+    "c\u1EA5u h\xECnh ch\u1ED3ng ch\u1EA5t kh\xF4ng thu\u1ED9c l\u1EDBp exact-\u0111\u01B0\u1EE3c (ch\u1EC9 h\u1ED7 tr\u1EE3 th\u1EB3ng h\xE0ng, c\u1EB7p \u0111\u1ED1i x\u1EE9ng \u0111\u1EB3ng c\u1EF1 to\u1EA1-\u0111\u1ED9-h\u1EEFu-t\u1EC9, ho\u1EB7c field_symmetric g\xF3c \u0111\u1EB9p) \u2014 v1 abstain (\xA714.2)"
+  );
+}
+function fieldSymmetric(kEff, kEffN, absQ, absQN, r2, r2n, angleDeg, qSign) {
+  if (isZeroS(r2)) throw new Error("r = 0 cho field_symmetric (ngu\u1ED3n tr\xF9ng \u0111i\u1EC3m kh\u1EA3o s\xE1t)");
+  const E2 = div(mul(kEff, absQ), r2), EN = kEffN * absQN / r2n;
+  const { cos } = trigOf(angleDeg);
+  const cosN = Math.cos(angleDeg * Math.PI / 180);
+  const inside = mul(mul(rat(2n), mul(E2, E2)), add2(rat(1n), cos));
+  const insideN = 2 * EN * EN * (1 + cosN);
+  const mag = sqrt(inside), magN = Math.sqrt(insideN);
+  const dir = qSign >= 0 ? "d\u1ECDc tr\u1EE5c \u0111\u1ED1i x\u1EE9ng (trung tr\u1EF1c ngu\u1ED3n\u2013ngu\u1ED3n), h\u01B0\u1EDBng ra xa" : "d\u1ECDc tr\u1EE5c \u0111\u1ED1i x\u1EE9ng (trung tr\u1EF1c ngu\u1ED3n\u2013ngu\u1ED3n), h\u01B0\u1EDBng v\u1EC1 ngu\u1ED3n";
+  return { mag, magN, direction: dir, cls: "symmetric_rational" };
+}
+
+// api/_lib/kernel/physics/efieldSchema.ts
+var Num7 = external_exports.number().finite();
+var Name3 = external_exports.string().min(1).regex(/^[A-Za-z0-9_]+$/);
+var Pt = external_exports.tuple([Num7, Num7]);
+var ChargeUnit = external_exports.enum(["C", "mC", "uC", "nC", "pC"]);
+var LenUnit3 = external_exports.enum(["m", "cm", "mm"]);
+var FieldUnit = external_exports.enum(["V/m", "N/C", "V/cm"]);
+var VoltUnit = external_exports.enum(["V", "kV"]);
+var MassUnit = external_exports.enum(["kg", "g"]);
+var Charge = external_exports.object({ value: Num7, unit: ChargeUnit.default("C") });
+var Dist = external_exports.object({ value: Num7, unit: LenUnit3.default("m") });
+var PointChargeOp = external_exports.object({ op: external_exports.literal("point_charge"), name: Name3, q: Charge, at: Pt.default([0, 0]) });
+var UniformFieldOp = external_exports.object({
+  op: external_exports.literal("uniform_field"),
+  name: Name3,
+  E: external_exports.object({ value: Num7.positive(), unit: FieldUnit.default("V/m") }).optional(),
+  fromVoltage: external_exports.object({ U: external_exports.object({ value: Num7.positive(), unit: VoltUnit.default("V") }), d: Dist }).optional(),
+  direction: external_exports.enum(["up", "down", "left", "right", "x", "y"]).default("x")
+});
+var ChargedBodyOp = external_exports.object({
+  op: external_exports.literal("charged_body"),
+  name: Name3,
+  q: Charge,
+  mass: external_exports.object({ value: Num7.positive(), unit: MassUnit.default("kg") }).optional()
+});
+var EFieldOpSchema = external_exports.discriminatedUnion("op", [PointChargeOp, UniformFieldOp, ChargedBodyOp]);
+var EFieldQuerySchema = external_exports.discriminatedUnion("kind", [
+  external_exports.object({ kind: external_exports.literal("coulomb_force"), a: Name3, b: Name3, label: external_exports.string().optional() }),
+  external_exports.object({ kind: external_exports.literal("field_at"), at: Pt, by: external_exports.array(Name3).optional(), label: external_exports.string().optional() }),
+  external_exports.object({ kind: external_exports.literal("field_symmetric"), sources: external_exports.array(Name3).length(2), r: Dist, angleBetweenDeg: Num7, label: external_exports.string().optional() }),
+  external_exports.object({ kind: external_exports.literal("force_on_test"), q: Charge, at: Pt, by: external_exports.array(Name3).optional(), label: external_exports.string().optional() }),
+  external_exports.object({ kind: external_exports.literal("potential_at"), at: Pt, by: external_exports.array(Name3).optional(), label: external_exports.string().optional() }),
+  external_exports.object({ kind: external_exports.literal("electric_force"), body: Name3, field: Name3, label: external_exports.string().optional() }),
+  external_exports.object({ kind: external_exports.literal("work"), body: Name3, field: Name3, d: Dist, label: external_exports.string().optional() }),
+  external_exports.object({ kind: external_exports.literal("voltage"), field: Name3, d: Dist, label: external_exports.string().optional() }),
+  external_exports.object({ kind: external_exports.literal("potential_energy"), body: Name3, U: external_exports.object({ value: Num7, unit: VoltUnit.default("V") }), label: external_exports.string().optional() }),
+  external_exports.object({ kind: external_exports.literal("equilibrium_field"), body: Name3, g: Num7.positive().default(10), label: external_exports.string().optional() }),
+  external_exports.object({ kind: external_exports.literal("acceleration"), body: Name3, field: Name3, label: external_exports.string().optional() }),
+  external_exports.object({ kind: external_exports.literal("speed_after"), body: Name3, field: Name3, d: Dist, label: external_exports.string().optional() })
+]);
+var EFieldPlanSchema = external_exports.object({
+  problemName: external_exports.string().min(1),
+  units: external_exports.object({ length: LenUnit3.default("m") }).default({}),
+  epsilon: Num7.positive().default(1),
+  ops: external_exports.array(EFieldOpSchema).min(1),
+  queries: external_exports.array(EFieldQuerySchema).min(1),
+  asserts: external_exports.array(external_exports.object({ query: EFieldQuerySchema, equals: Num7, tol: Num7.positive().optional() })).default([]),
+  knowledgeTags: external_exports.array(external_exports.string()).default([])
+}).superRefine((plan, ctx) => {
+  const add5 = (message) => ctx.addIssue({ code: external_exports.ZodIssueCode.custom, message });
+  const lenU = plan.units.length;
+  const opKind = /* @__PURE__ */ new Map();
+  for (const op of plan.ops) {
+    if (opKind.has(op.name)) add5(`t\xEAn "${op.name}" tr\xF9ng \u2014 m\u1ECDi t\xEAn ops ph\u1EA3i duy nh\u1EA5t`);
+    opKind.set(op.name, op.op);
+  }
+  const pointOp = /* @__PURE__ */ new Map();
+  for (const op of plan.ops) if (op.op === "point_charge") pointOp.set(op.name, { at: op.at, q: op.q });
+  const isKind = (n, k, where) => {
+    if (!opKind.has(n)) {
+      add5(`${where}: t\xEAn "${n}" kh\xF4ng t\u1ED3n t\u1EA1i trong ops`);
+      return false;
+    }
+    if (opKind.get(n) !== k) {
+      add5(`${where}: "${n}" ph\u1EA3i l\xE0 ${k}`);
+      return false;
+    }
+    return true;
+  };
+  const readFields = /* @__PURE__ */ new Set();
+  for (const q of plan.queries) {
+    if (q.kind === "electric_force" || q.kind === "work" || q.kind === "voltage" || q.kind === "acceleration" || q.kind === "speed_after") readFields.add(q.field);
+  }
+  for (const op of plan.ops) {
+    if (op.op !== "uniform_field") continue;
+    const hasE = op.E !== void 0, hasV = op.fromVoltage !== void 0;
+    if (hasE && hasV) add5(`uniform_field "${op.name}": ch\u1EC9 khai M\u1ED8T trong {E, fromVoltage}`);
+    if (!hasE && !hasV && readFields.has(op.name)) add5(`uniform_field "${op.name}": thi\u1EBFu c\u1EA3 E l\u1EABn fromVoltage nh\u01B0ng c\xF3 query \u0111\u1ECDc tr\u01B0\u1EDDng n\xE0y`);
+  }
+  const needMass = (n, where) => {
+    if (isKind(n, "charged_body", where)) {
+      const op = plan.ops.find((o) => o.name === n);
+      if (op && op.op === "charged_body" && op.mass === void 0) add5(`${where}: v\u1EADt "${n}" c\u1EA7n khai mass`);
+    }
+  };
+  const gateSuper = (at, by, where) => {
+    const names = by && by.length ? by : [...pointOp.keys()];
+    for (const n of names) isKind(n, "point_charge", where);
+    const srcs = names.map((n) => pointOp.get(n)).filter((p2) => !!p2);
+    if (srcs.length < 2) return;
+    const P = { x: qtyLength2(at[0], lenU), y: qtyLength2(at[1], lenU) };
+    const xyq = srcs.map((s) => ({ x: qtyLength2(s.at[0], lenU), y: qtyLength2(s.at[1], lenU), q: qtyCharge(s.q.value, s.q.unit) }));
+    if (classify(P, xyq) === "none")
+      add5(`${where}: c\u1EA5u h\xECnh ch\u1ED3ng ch\u1EA5t kh\xF4ng thu\u1ED9c l\u1EDBp exact-\u0111\u01B0\u1EE3c (ch\u1EC9 h\u1ED7 tr\u1EE3 th\u1EB3ng h\xE0ng, c\u1EB7p \u0111\u1ED1i x\u1EE9ng \u0111\u1EB3ng c\u1EF1 to\u1EA1-\u0111\u1ED9-h\u1EEFu-t\u1EC9, ho\u1EB7c field_symmetric g\xF3c \u0111\u1EB9p) \u2014 v1 abstain (\xA714.2)`);
+  };
+  for (const q of plan.queries.concat(plan.asserts.map((a) => a.query))) {
+    switch (q.kind) {
+      case "coulomb_force":
+        isKind(q.a, "point_charge", "coulomb_force.a");
+        isKind(q.b, "point_charge", "coulomb_force.b");
+        break;
+      case "field_at":
+        gateSuper(q.at, q.by, "field_at");
+        break;
+      case "force_on_test":
+        gateSuper(q.at, q.by, "force_on_test");
+        break;
+      case "potential_at":
+        (q.by && q.by.length ? q.by : [...pointOp.keys()]).forEach((n) => isKind(n, "point_charge", "potential_at.by"));
+        break;
+      case "field_symmetric": {
+        const okA = isKind(q.sources[0], "point_charge", "field_symmetric.sources"), okB = isKind(q.sources[1], "point_charge", "field_symmetric.sources");
+        if (okA && okB) {
+          const A = pointOp.get(q.sources[0]), B = pointOp.get(q.sources[1]);
+          if (A && B) {
+            const qa = qtyCharge(A.q.value, A.q.unit).approx, qb = qtyCharge(B.q.value, B.q.unit).approx;
+            if (Math.abs(Math.abs(qa) - Math.abs(qb)) > 1e-18) add5("field_symmetric: |q_A| ph\u1EA3i b\u1EB1ng |q_B| (\u0111\u1ED1i x\u1EE9ng \u0111\u1EB3ng ngu\u1ED3n)");
+          }
+        }
+        if (q.r.value <= 0) add5("field_symmetric: r ph\u1EA3i > 0");
+        break;
+      }
+      case "electric_force":
+        isKind(q.body, "charged_body", "electric_force.body");
+        isKind(q.field, "uniform_field", "electric_force.field");
+        break;
+      case "work":
+        isKind(q.body, "charged_body", "work.body");
+        isKind(q.field, "uniform_field", "work.field");
+        break;
+      case "voltage":
+        isKind(q.field, "uniform_field", "voltage.field");
+        break;
+      case "potential_energy":
+        isKind(q.body, "charged_body", "potential_energy.body");
+        break;
+      case "equilibrium_field":
+        needMass(q.body, "equilibrium_field.body");
+        break;
+      case "acceleration":
+        needMass(q.body, "acceleration.body");
+        isKind(q.field, "uniform_field", "acceleration.field");
+        break;
+      case "speed_after":
+        needMass(q.body, "speed_after.body");
+        isKind(q.field, "uniform_field", "speed_after.field");
+        break;
+    }
+  }
+});
+
+// api/_lib/kernel/physics/efieldCompute.ts
+var EPS_SELF6 = 1e-6;
+var SUP = { "-": "\u207B", "0": "\u2070", "1": "\xB9", "2": "\xB2", "3": "\xB3", "4": "\u2074", "5": "\u2075", "6": "\u2076", "7": "\u2077", "8": "\u2078", "9": "\u2079" };
+var sup = (n) => String(n).split("").map((c) => SUP[c]).join("");
+function factor2and5(den) {
+  let a = 0, b = 0, d = den;
+  while (d % 2n === 0n) {
+    d /= 2n;
+    a++;
+  }
+  while (d % 5n === 0n) {
+    d /= 5n;
+    b++;
+  }
+  return { a, b, rest: d };
+}
+function sci(numAbs, k) {
+  const digits = numAbs.toString();
+  const d = digits.length;
+  let mant = d === 1 ? digits : `${digits[0]}.${digits.slice(1)}`;
+  if (mant.includes(".")) mant = mant.replace(/0+$/, "").replace(/\.$/, "");
+  const exp = d - 1 - k;
+  const mantVN = mant.replace(".", ",");
+  return mantVN === "1" ? `10${sup(exp)}` : `${mantVN}\xB710${sup(exp)}`;
+}
+function decimalStr(numAbs, k) {
+  if (k === 0) return numAbs.toString();
+  const s = numAbs.toString().padStart(k + 1, "0");
+  const intPart = s.slice(0, s.length - k);
+  const frac = s.slice(s.length - k).replace(/0+$/, "");
+  return frac ? `${intPart},${frac}` : intPart;
+}
+function fmtNum10(x) {
+  if (!Number.isFinite(x)) return "(l\u1ED7i)";
+  if (x !== 0 && Math.abs(x) < 1e-3) return parseFloat(x.toPrecision(4)).toString();
+  const digits = Math.abs(x) >= 1e3 ? 2 : 4;
+  return parseFloat(x.toFixed(digits)).toString();
+}
+function displayEField(s) {
+  const e = s.exact;
+  if (e === null) {
+    const n = recognizeConstant(s.approx);
+    return n ? n.text : fmtNum10(s.approx);
+  }
+  if (e.radicand !== 1) return displayExact(e);
+  const sign = e.num < 0n ? "-" : "";
+  const numAbs = e.num < 0n ? -e.num : e.num;
+  const { a, b, rest } = factor2and5(e.den);
+  if (rest !== 1n) return displayExact(e);
+  const k = Math.max(a, b);
+  const M = numAbs * 2n ** BigInt(k - a) * 5n ** BigInt(k - b);
+  const v = Math.abs(exactToApprox(e));
+  if (v !== 0 && (v >= 1e4 || v < 0.01)) return sign + sci(M, k);
+  return sign + decimalStr(M, k);
+}
+function mkEAns(kind, s, floatRef, unit, label, direction) {
+  const tol = 1e-6 * Math.max(1, Math.abs(floatRef));
+  if (s.exact !== null && Math.abs(exactToApprox(s.exact) - floatRef) <= tol)
+    return { label, kind, text: displayEField(s), approx: exactToApprox(s.exact), unit, approximate: false, direction };
+  const nice = Number.isFinite(floatRef) ? recognizeConstant(floatRef) : null;
+  return { label, kind, text: nice ? nice.text : fmtNum10(floatRef), approx: floatRef, unit, approximate: !nice, direction };
+}
+var getPoint = (ent, n) => {
+  const p2 = ent.points.get(n);
+  if (!p2) throw new Error(`kh\xF4ng t\xECm th\u1EA5y \u0111i\u1EC7n t\xEDch \u0111i\u1EC3m "${n}"`);
+  return p2;
+};
+var getBody = (ent, n) => {
+  const b = ent.bodies.get(n);
+  if (!b) throw new Error(`kh\xF4ng t\xECm th\u1EA5y v\u1EADt t\xEDch \u0111i\u1EC7n "${n}"`);
+  return b;
+};
+function getFieldE(ent, n) {
+  const f = ent.fields.get(n);
+  if (!f) throw new Error(`kh\xF4ng t\xECm th\u1EA5y \u0111i\u1EC7n tr\u01B0\u1EDDng \u0111\u1EC1u "${n}"`);
+  if (f.E === null) throw new Error(`\u0111i\u1EC7n tr\u01B0\u1EDDng "${n}" ch\u01B0a khai E (c\u1EA7n cho query \u0111\u1ECDc tr\u01B0\u1EDDng)`);
+  return { E: f.E, EN: f.EN };
+}
+var ptOf = (p2) => ({ x: p2.x, y: p2.y });
+var scale3 = (x) => 1e-6 * Math.max(1, Math.abs(x));
+function sourcesOf(ent, by) {
+  if (by && by.length) return by.map((n) => getPoint(ent, n));
+  return [...ent.points.values()];
+}
+function fieldOutFrom(ent, at, by) {
+  const P = { x: qtyLength2(at[0], ent.lengthUnit), y: qtyLength2(at[1], ent.lengthUnit) };
+  const PN = { x: qtyLengthN(at[0], ent.lengthUnit), y: qtyLengthN(at[1], ent.lengthUnit) };
+  const fo = fieldAt(ent.kEff, ent.kEffN, P, PN, sourcesOf(ent, by));
+  const checks = [];
+  if (fo.cls === "collinear" && fo.perp)
+    checks.push({ kind: "symmetry", detail: "th\xE0nh ph\u1EA7n \u22A5 tr\u1EE5c h\u1EE3p l\u1EF1c = 0 (th\u1EB3ng h\xE0ng)", residual: fo.perpN ?? 0, pass: isZeroS(fo.perp) });
+  if (fo.cls === "symmetric_rational")
+    checks.push({ kind: "symmetry", detail: "c\u1EB7p \u0111\u1ED1i x\u1EE9ng \u0111\u1EB3ng c\u1EF1 (r_A\xB2=r_B\xB2, |q_A|=|q_B|)", residual: fo.symmResidual ?? 0, pass: (fo.symmResidual ?? 0) <= EPS_SELF6 });
+  return { fo, checks };
+}
+function computeEFieldQuery(ent, query) {
+  try {
+    switch (query.kind) {
+      case "coulomb_force": {
+        const a = getPoint(ent, query.a), b = getPoint(ent, query.b);
+        const r2 = r2S(ptOf(a), ptOf(b));
+        if (isZeroS(r2)) return { ok: false, problem: `hai \u0111i\u1EC7n t\xEDch "${a.name}","${b.name}" tr\xF9ng v\u1ECB tr\xED (r = 0)` };
+        const r2n = (a.xN - b.xN) ** 2 + (a.yN - b.yN) ** 2;
+        const F = div(mul(mul(ent.kEff, absS2(a.q)), absS2(b.q)), r2);
+        const FN = ent.kEffN * Math.abs(a.qN) * Math.abs(b.qN) / r2n;
+        const attract = signS(a.q) * signS(b.q) < 0;
+        const dir = attract ? "hai \u0111i\u1EC7n t\xEDch h\xFAt nhau" : "hai \u0111i\u1EC7n t\xEDch \u0111\u1EA9y nhau";
+        return { ok: true, answer: mkEAns("coulomb_force", F, FN, "N", query.label, dir), checks: [] };
+      }
+      case "field_at": {
+        const { fo, checks } = fieldOutFrom(ent, query.at, query.by);
+        return { ok: true, answer: mkEAns("field_at", fo.mag, fo.magN, "V/m", query.label, fo.direction), checks };
+      }
+      case "force_on_test": {
+        const { fo, checks } = fieldOutFrom(ent, query.at, query.by);
+        const q = qtyCharge(query.q.value, query.q.unit), qN = qtyChargeN(query.q.value, query.q.unit);
+        const F = mul(absS2(q), fo.mag), FN = Math.abs(qN) * fo.magN;
+        const dir = signS(q) >= 0 ? `c\xF9ng chi\u1EC1u E (${fo.direction})` : `ng\u01B0\u1EE3c chi\u1EC1u E`;
+        return { ok: true, answer: mkEAns("force_on_test", F, FN, "N", query.label, dir), checks };
+      }
+      case "field_symmetric": {
+        const a = getPoint(ent, query.sources[0]), b = getPoint(ent, query.sources[1]);
+        if (signS(a.q) === 0) return { ok: false, problem: "\u0111i\u1EC7n t\xEDch ngu\u1ED3n b\u1EB1ng 0" };
+        const absQ = absS2(a.q), absQN = Math.abs(a.qN);
+        const r2 = qtyLength2(query.r.value, query.r.unit), rN = qtyLengthN(query.r.value, query.r.unit);
+        const r22 = mul(r2, r2), r2n = rN * rN;
+        const fo = fieldSymmetric(ent.kEff, ent.kEffN, absQ, absQN, r22, r2n, query.angleBetweenDeg, signS(a.q));
+        const checks = [{ kind: "symmetry", detail: "\u0111\u1ED1i x\u1EE9ng qua g\xF3c khai t\u01B0\u1EDDng minh (field_symmetric)", residual: 0, pass: true }];
+        return { ok: true, answer: mkEAns("field_symmetric", fo.mag, fo.magN, "V/m", query.label, fo.direction), checks };
+      }
+      case "potential_at": {
+        const srcs = sourcesOf(ent, query.by);
+        const P = { x: qtyLength2(query.at[0], ent.lengthUnit), y: qtyLength2(query.at[1], ent.lengthUnit) };
+        const PN = { x: qtyLengthN(query.at[0], ent.lengthUnit), y: qtyLengthN(query.at[1], ent.lengthUnit) };
+        let V = rat(0n), VN = 0;
+        for (const s of srcs) {
+          const r2 = r2S(P, ptOf(s));
+          if (isZeroS(r2)) return { ok: false, problem: `\u0111i\u1EC3m kh\u1EA3o s\xE1t tr\xF9ng "${s.name}" (r=0)` };
+          const r3 = sqrt(r2), rN = Math.sqrt((PN.x - s.xN) ** 2 + (PN.y - s.yN) ** 2);
+          V = add2(V, div(mul(ent.kEff, s.q), r3));
+          VN += ent.kEffN * s.qN / rN;
+        }
+        return { ok: true, answer: mkEAns("potential_at", V, VN, "V", query.label), checks: [] };
+      }
+      case "electric_force": {
+        const body = getBody(ent, query.body), { E: E2, EN } = getFieldE(ent, query.field);
+        const F = mul(absS2(body.q), E2), FN = Math.abs(body.qN) * EN;
+        const dir = signS(body.q) >= 0 ? "c\xF9ng chi\u1EC1u \u0111\u01B0\u1EDDng s\u1EE9c" : "ng\u01B0\u1EE3c chi\u1EC1u \u0111\u01B0\u1EDDng s\u1EE9c";
+        return { ok: true, answer: mkEAns("electric_force", F, FN, "N", query.label, dir), checks: [] };
+      }
+      case "work": {
+        const body = getBody(ent, query.body), { E: E2, EN } = getFieldE(ent, query.field);
+        const d = qtyLength2(query.d.value, query.d.unit), dN = qtyLengthN(query.d.value, query.d.unit);
+        const A = mul(mul(body.q, E2), d), AN = body.qN * EN * dN;
+        const dir = AN >= 0 ? "l\u1EF1c \u0111i\u1EC7n sinh c\xF4ng (A > 0)" : "l\u1EF1c \u0111i\u1EC7n nh\u1EADn c\xF4ng (A < 0)";
+        return { ok: true, answer: mkEAns("work", A, AN, "J", query.label, dir), checks: [] };
+      }
+      case "voltage": {
+        const { E: E2, EN } = getFieldE(ent, query.field);
+        const d = qtyLength2(query.d.value, query.d.unit), dN = qtyLengthN(query.d.value, query.d.unit);
+        const U = mul(E2, d), UN = EN * dN;
+        return { ok: true, answer: mkEAns("voltage", U, UN, "V", query.label), checks: [] };
+      }
+      case "potential_energy": {
+        const body = getBody(ent, query.body);
+        const U = qtyVolt(query.U.value, query.U.unit), UN = qtyVoltN(query.U.value, query.U.unit);
+        const W = mul(body.q, U), WN = body.qN * UN;
+        const dir = WN >= 0 ? "th\u1EBF n\u0103ng t\u0103ng" : "th\u1EBF n\u0103ng gi\u1EA3m";
+        return { ok: true, answer: mkEAns("potential_energy", W, WN, "J", query.label, dir), checks: [] };
+      }
+      case "equilibrium_field": {
+        const body = getBody(ent, query.body);
+        if (body.mass === null) return { ok: false, problem: `v\u1EADt "${body.name}" thi\u1EBFu kh\u1ED1i l\u01B0\u1EE3ng cho c\xE2n b\u1EB1ng` };
+        if (signS(body.q) === 0) return { ok: false, problem: `\u0111i\u1EC7n t\xEDch "${body.name}" = 0, kh\xF4ng gi\u1EA3i \u0111\u01B0\u1EE3c E c\xE2n b\u1EB1ng` };
+        const g = scalarFromNumber(query.g), gN = query.g;
+        const E2 = div(mul(body.mass, g), absS2(body.q));
+        const EN = body.massN * gN / Math.abs(body.qN);
+        const backResid = Math.abs(Math.abs(body.qN) * EN - body.massN * gN);
+        const dir = signS(body.q) >= 0 ? "th\u1EB3ng \u0111\u1EE9ng, h\u01B0\u1EDBng l\xEAn (c\xE2n tr\u1ECDng l\u1EF1c)" : "th\u1EB3ng \u0111\u1EE9ng, h\u01B0\u1EDBng xu\u1ED1ng (c\xE2n tr\u1ECDng l\u1EF1c)";
+        const checks = [{ kind: "equilibrium_backsub", detail: "|q|\xB7E \u2212 m\xB7g = 0", residual: backResid, pass: backResid <= scale3(body.massN * gN) }];
+        return { ok: true, answer: mkEAns("equilibrium_field", E2, EN, "V/m", query.label, dir), checks };
+      }
+      case "acceleration": {
+        const body = getBody(ent, query.body), { E: E2, EN } = getFieldE(ent, query.field);
+        if (body.mass === null) return { ok: false, problem: `v\u1EADt "${body.name}" thi\u1EBFu kh\u1ED1i l\u01B0\u1EE3ng cho gia t\u1ED1c` };
+        const a = div(mul(absS2(body.q), E2), body.mass), aN = Math.abs(body.qN) * EN / body.massN;
+        return { ok: true, answer: mkEAns("acceleration", a, aN, "m/s\xB2", query.label, "d\u1ECDc \u0111\u01B0\u1EDDng s\u1EE9c"), checks: [] };
+      }
+      case "speed_after": {
+        const body = getBody(ent, query.body), { E: E2, EN } = getFieldE(ent, query.field);
+        if (body.mass === null) return { ok: false, problem: `v\u1EADt "${body.name}" thi\u1EBFu kh\u1ED1i l\u01B0\u1EE3ng cho t\u1ED1c \u0111\u1ED9` };
+        const d = qtyLength2(query.d.value, query.d.unit), dN = qtyLengthN(query.d.value, query.d.unit);
+        const inside = div(mul(mul(rat(2n), absS2(body.q)), mul(E2, d)), body.mass);
+        const insideN = 2 * Math.abs(body.qN) * EN * dN / body.massN;
+        const v = sqrt(inside), vN = Math.sqrt(insideN);
+        const backResid = Math.abs(0.5 * body.massN * vN * vN - Math.abs(body.qN) * EN * dN);
+        const checks = [{ kind: "kinetic_backsub", detail: "\xBD\xB7m\xB7v\xB2 \u2212 |q|\xB7E\xB7d = 0", residual: backResid, pass: backResid <= scale3(Math.abs(body.qN) * EN * dN) }];
+        return { ok: true, answer: mkEAns("speed_after", v, vN, "m/s", query.label), checks };
+      }
+      default: {
+        query;
+        return { ok: false, problem: `query kind kh\xF4ng h\u1ED7 tr\u1EE3: ${query.kind}` };
+      }
+    }
+  } catch (e) {
+    return { ok: false, problem: e.message };
+  }
+}
+
+// api/_lib/kernel/physics/runEfield.ts
+var TOL_ASSERT6 = 1e-3;
+function buildEntities(plan) {
+  const lenU = plan.units.length;
+  const points = /* @__PURE__ */ new Map();
+  const fields = /* @__PURE__ */ new Map();
+  const bodies = /* @__PURE__ */ new Map();
+  for (const op of plan.ops) {
+    if (op.op === "point_charge") {
+      points.set(op.name, {
+        name: op.name,
+        q: qtyCharge(op.q.value, op.q.unit),
+        qN: qtyChargeN(op.q.value, op.q.unit),
+        x: qtyLength2(op.at[0], lenU),
+        y: qtyLength2(op.at[1], lenU),
+        xN: qtyLengthN(op.at[0], lenU),
+        yN: qtyLengthN(op.at[1], lenU)
+      });
+    } else if (op.op === "uniform_field") {
+      let E2 = null, EN = NaN;
+      if (op.E) {
+        E2 = qtyField(op.E.value, op.E.unit);
+        EN = qtyFieldN(op.E.value, op.E.unit);
+      } else if (op.fromVoltage) {
+        const U = qtyVolt(op.fromVoltage.U.value, op.fromVoltage.U.unit), d = qtyLength2(op.fromVoltage.d.value, op.fromVoltage.d.unit);
+        E2 = div(U, d);
+        EN = qtyVoltN(op.fromVoltage.U.value, op.fromVoltage.U.unit) / qtyLengthN(op.fromVoltage.d.value, op.fromVoltage.d.unit);
+      }
+      fields.set(op.name, { name: op.name, E: E2, EN, direction: op.direction });
+    } else {
+      bodies.set(op.name, {
+        name: op.name,
+        q: qtyCharge(op.q.value, op.q.unit),
+        qN: qtyChargeN(op.q.value, op.q.unit),
+        mass: op.mass ? qtyMass(op.mass.value, op.mass.unit) : null,
+        massN: op.mass ? qtyMassN(op.mass.value, op.mass.unit) : NaN
+      });
+    }
+  }
+  const epsilon = scalarFromNumber(plan.epsilon);
+  return { points, fields, bodies, kEff: div(K, epsilon), kEffN: 9e9 / plan.epsilon, epsilon: plan.epsilon, lengthUnit: lenU };
+}
+function runEfield(raw) {
+  const parsed = EFieldPlanSchema.safeParse(raw);
+  if (!parsed.success) {
+    const iss = parsed.error.issues[0];
+    const detail = iss ? `${iss.path.length ? `${iss.path.join(".")}: ` : ""}${iss.message}` : "schema";
+    return {
+      ok: false,
+      answers: [],
+      checks: [],
+      violations: [],
+      errors: [{ message: `Invalid efield plan: ${detail}` }],
+      geometry: null,
+      meta: { epsilon: 1, units: { length: "m" }, knowledgeTags: [] }
+    };
+  }
+  const plan = parsed.data;
+  const meta = { epsilon: plan.epsilon, units: { length: plan.units.length }, knowledgeTags: plan.knowledgeTags };
+  const ent = buildEntities(plan);
+  const answers = [];
+  const checks = [];
+  const errors = [];
+  for (const [qi, q] of plan.queries.entries()) {
+    const r2 = computeEFieldQuery(ent, q);
+    if (r2.ok === false) {
+      errors.push({ message: `query ${q.kind}: ${r2.problem}` });
+      continue;
+    }
+    answers.push({ ...r2.answer, queryIndex: qi });
+    for (const c of r2.checks) checks.push(c);
+  }
+  for (const c of checks) if (!c.pass) errors.push({ message: `t\u1EF1 ki\u1EC3m FAIL: ${c.detail} (residual ${c.residual.toExponential(2)})` });
+  const violations = [];
+  for (const a of plan.asserts) {
+    const r2 = computeEFieldQuery(ent, a.query);
+    if (r2.ok === false) {
+      errors.push({ message: `assert ${a.query.kind}: ${r2.problem}` });
+      continue;
+    }
+    const tol = (a.tol ?? TOL_ASSERT6) * Math.max(1, Math.abs(a.equals));
+    const delta = Math.abs(r2.answer.approx - a.equals);
+    if (delta > tol) violations.push({ assert: a.query.kind, expected: a.equals, got: r2.answer.approx, delta });
+  }
+  const ok = violations.length === 0 && errors.length === 0 && answers.length === plan.queries.length && answers.every((a) => Number.isFinite(a.approx));
+  return { ok, answers, checks, violations, errors, geometry: null, meta };
+}
+
 // api/_lib/kernel/chem/index.ts
 var chem_exports = {};
 __export(chem_exports, {
@@ -12299,8 +12891,8 @@ __export(chem_exports, {
 });
 
 // api/_lib/kernel/chem/rat.ts
-function rat2(num2, den = 1n) {
-  return makeExact(num2, den, 1);
+function rat2(num3, den = 1n) {
+  return makeExact(num3, den, 1);
 }
 var R0 = rat2(0n);
 var R1 = rat2(1n);
@@ -12367,9 +12959,9 @@ function parseDecimal(x) {
     throw new Error(`parseDecimal: "${s}" d\xF9ng d\u1EA5u CH\u1EA4M v\u1EDBi \u0111\xFAng 3 ch\u1EEF s\u1ED1 th\u1EADp ph\xE2n \u2014 nh\u1EADp nh\u1EB1ng d\u1EA5u ph\xE2n c\xE1ch ngh\xECn ki\u1EC3u VN ("2.500"=2500); h\xE3y d\xF9ng d\u1EA5u PH\u1EA8Y cho ph\u1EA7n th\u1EADp ph\xE2n ho\u1EB7c vi\u1EBFt s\u1ED1 nguy\xEAn`);
   }
   const frac = fracPart ?? "";
-  const num2 = BigInt(intPart + frac) * (sign === "-" ? -1n : 1n);
+  const num3 = BigInt(intPart + frac) * (sign === "-" ? -1n : 1n);
   const den = 10n ** BigInt(frac.length);
-  return rat2(num2, den);
+  return rat2(num3, den);
 }
 
 // api/_lib/kernel/chem/planSchema.ts
@@ -14579,6 +15171,7 @@ export {
   CircuitPlanSchema,
   ConstructionOpSchema,
   DynamicsPlanSchema,
+  EFieldPlanSchema,
   EdgeOpSchema,
   FootOpSchema,
   IntersectOpSchema,
@@ -14628,6 +15221,7 @@ export {
   runAny,
   runCircuit,
   runDynamics,
+  runEfield,
   runOscillation,
   runPhysics,
   runPlan,
