@@ -71,6 +71,30 @@ Engine tính rồi so với "equals"; lệch quá dung sai ⇒ báo mô hình d�
 - KHÔNG tự cộng mốc giờ ("6h + 1h15") — engine trả 5/4 h, phần cộng mốc là trình bày lời giải.
 - Chỉ đưa vào "queries" đúng số câu đề hỏi.
 
+## ⚠️ LỖI THƯỜNG GẶP — PHẢN-VÍ-DỤ (JSON SAI) + LUẬT BẮT BUỘC
+Engine tự-kiểm chỉ bắt mâu thuẫn NỘI BỘ; các lỗi dưới đây khiến plan TỰ NHẤT QUÁN nhưng SAI ĐỀ (đáp sai âm thầm). Tránh TUYỆT ĐỐI:
+
+【A1 · km/h — điền unit thì SỐ phải là SỐ GỐC, KHÔNG tự chia 3,6】
+Khai v0Unit:"km/h" thì v0 giữ NGUYÊN con số km/h của đề; engine tự đổi. Nếu bạn đã tự chia 3,6 rồi CÒN khai km/h ⇒ engine đổi LẦN NỮA ⇒ sai 3,6 lần.
+Đề "54 km/h": ĐÚNG { "v0": 54, "v0Unit": "km/h" }  —  SAI ✗ { "v0": 15, "v0Unit": "km/h" } (đã chia 3,6 mà vẫn khai km/h) — SAI ✗ { "v0": 15 } (tự đổi, mất dấu vết đơn vị đề).
+
+【A2 · Hỏi ĐỘ CAO ⇒ query PHẢI axis:"y"】
+projectile mặc định trục "x" (ngang). position_at/time_when hỏi độ cao mà THIẾU axis ⇒ engine giải TRỤC NGANG ⇒ ra số tròn trịa dễ tin nhưng SAI.
+Đề "sau 2 s vật ở độ cao bao nhiêu?" (vật là projectile): ĐÚNG { "kind":"position_at","of":"vat","t":2,"axis":"y" } — SAI ✗ { "kind":"position_at","of":"vat","t":2 } (thiếu axis ⇒ toạ độ NGANG).
+Tương tự "sau bao lâu vật ở độ cao 60 m?": ĐÚNG time_when có "axis":"y".
+
+【A3 · chậm dần/hãm phanh/giảm tốc ⇒ a NGƯỢC DẤU v0】
+Đề cho "gia tốc có độ lớn 3" với vật đang chậm dần và v0 > 0 ⇒ a = −3 (KHÔNG phải +3). a CÙNG dấu v0 nghĩa là NHANH DẦN — trái đề.
+Đề "v0=54 km/h, chậm dần, độ lớn a = 3": ĐÚNG { "v0":54,"v0Unit":"km/h","a":-3 } — SAI ✗ { "v0":54,"v0Unit":"km/h","a":3 }.
+
+【A4 · "vận tốc" (có chiều) ⇒ component "x"/"y"; "tốc độ/độ lớn" ⇒ "speed"】
+component mặc định "speed" NUỐT DẤU. Bài ném lên, hỏi "vận tốc sau 4 s" (lúc đó vật đang RƠI, v_y âm): dùng "speed" trả số dương ⇒ mất chiều ⇒ sai bản chất.
+Hỏi "vận tốc … sau t giây": ĐÚNG { "kind":"velocity_at","of":"vat","t":4,"component":"y" } — SAI ✗ bỏ trống component (⇒ speed) khi đề hỏi "vận tốc".
+
+【A8 · có a hoặc g theo m/s² ⇒ hệ nền BẮT BUỘC m–s】
+"a" trong op LUÔN theo hệ nền (units). Đề cho a/g "m/s²" mà units chọn km–h ⇒ engine hiểu a là km/h² ⇒ sai ~10⁴ lần. Khi đề có m/s²: units = {"length":"m","time":"s"}. (Vận tốc cho km/h vẫn khai qua v0Unit:"km/h".)
+SAI ✗ { "units":{"length":"km","time":"h"}, "ops":[{ "op":"mover1d","a":3 }] } cho đề "a = 3 m/s²".
+
 ## VÍ DỤ
 
 VÍ DỤ 1 (thẳng đều, hệ km–h; đổi phút→giờ để ENGINE làm qua tUnit; KHÔNG tự chia):

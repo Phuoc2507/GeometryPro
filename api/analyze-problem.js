@@ -10,6 +10,8 @@ import {
 } from './_lib/kernel-bridge/solveSubject.js';
 import { withSentry, reportServerError } from './_lib/sentry.js';
 import { logBrokenProblem } from './_lib/brokenProblemLog.js';
+import { getAccount } from './_lib/credits.js';
+import { ruleFor } from './_lib/entitlements.js';
 
 // ── AUTH-CHỈ-KIỂM (D22): xác thực Bearer token mà KHÔNG tiêu quota/credit ────────
 // Vì sao KHÔNG dùng resolveAiAccess: hàm đó LUÔN gọi checkAndConsume → trừ quota (gói free) hoặc
@@ -46,7 +48,47 @@ async function resolveAuthNoCharge(req) {
   if (error || !user) {
     return { ok: false, status: 401, code: 'invalid_token', message: 'Phiên đăng nhập không hợp lệ' };
   }
+
+  // ── CHẶN TÀI KHOẢN BỊ KHÓA (KHÔNG trừ credit theo D22) ────────────────────────
+  // Chỉ ĐỌC profiles (bắt chước getAccount ở aiAccess/credits), KHÔNG gọi checkAndConsume (không tiêu).
+  // "blocked": tài khoản admin đặt sang tier lạ/không khai báo ⇒ ruleFor(...).mode === 'blocked'
+  // (entitlements mặc định blocked cho tier không có trong POLICY). "hết hạn": effectiveTier tự hạ về
+  // 'free' ⇒ VẪN được dùng (đúng D22 — miễn phí cho người đăng nhập). Lỗi đọc DB ⇒ fail-OPEN (không
+  // chặn người dùng hợp lệ vì DB chập chờn; chi phí LLM đã có rate-limit chặn riêng ở handler).
+  try {
+    const account = await getAccount(user.id);
+    if (account && ruleFor(account.tier, 'solve').mode === 'blocked') {
+      return { ok: false, status: 403, code: 'account_blocked', message: 'Tài khoản của bạn hiện không dùng được tính năng này.' };
+    }
+  } catch {
+    /* fail-open: bỏ qua lỗi đọc profiles, không chặn nhầm người dùng hợp lệ */
+  }
+
   return { ok: true, userId: user.id };
+}
+
+// ── RATE-LIMIT THÔ in-memory (D29) — chống ĐỐT TIỀN LLM khi token rò rỉ gọi vô hạn ─────────────────
+// KHÔNG phải quota tính tiền (giữ D22 "không trừ credit"); chỉ trần chống lạm dụng. Cửa sổ trượt 60 s,
+// mặc định 30 req/phút/userId. State in-memory theo tiến trình (đủ cho tính năng ẩn; reset khi deploy).
+const RL_WINDOW_MS = 60_000;
+const RL_MAX = 30;
+const rlHits = new Map(); // userId -> number[] (mốc thời gian ms trong cửa sổ)
+let rlLastSweep = 0;
+function rateLimitOk(userId) {
+  const now = Date.now();
+  // Quét dọn định kỳ để Map không phình theo số user (xóa entry hết hạn).
+  if (now - rlLastSweep > RL_WINDOW_MS) {
+    for (const [k, ts] of rlHits) {
+      const kept = ts.filter((t) => now - t < RL_WINDOW_MS);
+      if (kept.length) rlHits.set(k, kept); else rlHits.delete(k);
+    }
+    rlLastSweep = now;
+  }
+  const arr = (rlHits.get(userId) || []).filter((t) => now - t < RL_WINDOW_MS);
+  if (arr.length >= RL_MAX) { rlHits.set(userId, arr); return false; }
+  arr.push(now);
+  rlHits.set(userId, arr);
+  return true;
 }
 
 async function handler(req, res) {
@@ -86,6 +128,11 @@ async function handler(req, res) {
   const auth = await resolveAuthNoCharge(req);
   if (!auth.ok) return res.status(auth.status).json({ error: auth.message, code: auth.code });
 
+  // D29: rate-limit thô/userId chống đốt tiền LLM (KHÔNG trừ credit). Vượt trần ⇒ 429.
+  if (!rateLimitOk(auth.userId)) {
+    return res.status(429).json({ error: 'Bạn thao tác quá nhanh, vui lòng thử lại sau ít phút.', code: 'rate_limited' });
+  }
+
   try {
     const out = detected === 'physics'
       ? await solvePhysicsProblem(problem.trim())
@@ -111,9 +158,10 @@ async function handler(req, res) {
       errorMessage: error instanceof Error ? error.message : 'engine-mode failed',
       errorStage: 'exception', durationMs: Date.now() - startedAt,
     });
-    return res.status(500).json({
-      error: error instanceof Error ? error.message : 'engine-mode failed',
-    });
+    // [THẤP] KHÔNG lộ error.message nội bộ ra client. Log chi tiết ở server (Sentry + console),
+    // trả thông điệp CHUNG cho người dùng.
+    console.error('[analyze-problem] lỗi xử lý:', error instanceof Error ? (error.stack || error.message) : error);
+    return res.status(500).json({ error: 'Lỗi xử lý, vui lòng thử lại' });
   }
 }
 

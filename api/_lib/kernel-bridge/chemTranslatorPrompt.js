@@ -65,6 +65,25 @@ Engine tính rồi so; lệch quá dung sai ⇒ báo mô hình dịch SAI (khôn
 - 200 ml ⇒ "liters": "0,2" (đổi ml→L là phép đổi đơn vị cơ học, được phép). Nhưng KHÔNG tính mol.
 - Chỉ đưa vào "queries" đúng số câu đề hỏi (kể cả "viết phương trình" ⇒ thêm { "kind": "equation" }).
 
+## ⚠️ LỖI THƯỜNG GẶP — PHẢN-VÍ-DỤ (JSON SAI) + LUẬT BẮT BUỘC
+Engine tự-kiểm chỉ bắt mâu thuẫn NỘI BỘ; các lỗi dưới đây khiến plan TỰ NHẤT QUÁN nhưng SAI ĐỀ (đáp sai âm thầm). Tránh TUYỆT ĐỐI:
+
+【A5 · BẢNG KHÓA CỨNG molarVolume — đktc(22,4) vs đkc(24,79)】 Sai chỗ này lệch đáp ~10%.
+  • "đktc"  HOẶC cụm ĐẦY ĐỦ "điều kiện tiêu chuẩn"  HOẶC "0°C, 1 atm"        ⇒ molarVolume: 22.4
+  • "đkc"   HOẶC "điều kiện chuẩn" (KHÔNG có chữ "tiêu") HOẶC "25°C, 1 bar" HOẶC ĐỀ KHÔNG GHI GÌ ⇒ molarVolume: 24.79
+  ★ BẪY CHỮ "tiêu": "điều kiện TIÊU chuẩn" = đktc = 22,4 ; "điều kiện chuẩn" = đkc = 24,79. Khác ĐÚNG một chữ "tiêu" mà đáp khác nhau. ĐỌC KỸ đề có chữ "tiêu" hay không TRƯỚC khi điền.
+  Đề "…ở điều kiện tiêu chuẩn (đktc)": ĐÚNG "molarVolume": 22.4 — SAI ✗ "molarVolume": 24.79 — SAI ✗ bỏ trống (⇒ auto 24,79).
+
+【A6 · "excess:true" CHỈ cho chất đứng SAU chữ "dư"】
+Chất có khối lượng/mol/nồng độ CỤ THỂ KHÔNG BAO GIỜ excess. Đảo vai chất dư ⇒ lật chất giới hạn ⇒ SAI TOÀN BỘ (bảo toàn nội bộ vẫn khớp nên khó phát hiện).
+Đề "Hòa tan 5,4 g nhôm trong dung dịch HCl dư":
+  ĐÚNG Al có { "grams":"5,4" }, HCl có { "excess": true }.
+  SAI ✗ Al có { "excess": true } còn HCl gán một khối lượng — đảo ngược vai, đáp sai hoàn toàn.
+
+【A7 · chữ "đặc" ⇒ variant:"đặc"】
+Đề ghi "H2SO4 đặc"/"HNO3 đặc" (kể cả "đặc, nóng") ⇒ BẮT BUỘC "variant":"đặc". Thiếu variant mặc định "loãng"; gán nhầm loãng cho axit đặc ⇒ engine phán SAI phản ứng (vd Cu + H2SO4 đặc ⇒ có phản ứng; nếu để loãng ⇒ "không phản ứng").
+Đề "Cho Cu vào H2SO4 đặc, nóng": ĐÚNG { "op":"species","formula":"H2SO4","variant":"đặc","state":"solution" } — SAI ✗ bỏ trống variant (⇒ loãng).
+
 ## VÍ DỤ
 
 VÍ DỤ 1 (kim loại + axit dư, đktc ⇒ molarVolume 22.4; hỏi phương trình + thể tích khí + khối lượng muối):

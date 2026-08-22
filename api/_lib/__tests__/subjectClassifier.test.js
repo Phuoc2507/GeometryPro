@@ -60,3 +60,28 @@ describe('classifySubject — biên & rỗng', () => {
     expect(s.chem).toBe(0); // A1B1C1 toàn hoa+số ⇒ regex công thức bỏ qua
   });
 });
+
+describe('classifySubject — STOP-words chương chưa hỗ trợ (không route Lý/Hóa)', () => {
+  // Các cụm này thuộc chương engine v0 CHƯA phục vụ ⇒ phải hạ về geometry (KHÔNG đánh cược translator).
+  it('"ion trong điện trường" → KHÔNG phải physics (hạ geometry)', () => {
+    const got = classifySubject('Một ion chuyển động trong điện trường đều với vận tốc đầu 2 m/s, tính gia tốc của ion.');
+    expect(got).not.toBe('physics');
+    expect(got).toBe('geometry');
+  });
+  it('đề có "từ trường" + tín hiệu động học → geometry', () => {
+    expect(classifySubject('Hạt mang điện bay vào từ trường đều với vận tốc 10 m/s, tính quãng đường.')).toBe('geometry');
+  });
+  it('"phóng xạ hạt nhân" → geometry (không physics)', () => {
+    expect(classifySubject('Tính chu kì bán rã của một chất phóng xạ hạt nhân.')).toBe('geometry');
+  });
+  it('"điện phân dung dịch CuSO4" → geometry (không chem, dù nhiều từ Hóa)', () => {
+    // Đề này giàu tín hiệu Hóa (dung dịch, CuSO4, khối lượng) nhưng "điện phân" ngoài engine ⇒ chặn.
+    expect(classifySubject('Điện phân dung dịch CuSO4 với điện cực trơ, tính khối lượng kim loại bám ở catot.')).toBe('geometry');
+  });
+  it('KHÔNG bắt nhầm "diện tích" (d) của hình học thành "điện tích" (đ)', () => {
+    // Đề hình học có "diện tích" phải giữ nguyên phân loại, không bị stop-word chặn.
+    expect(classifySubject('Cho hình chóp S.ABCD, tính diện tích thiết diện qua trung điểm các cạnh.')).toBe('geometry');
+    // Xác nhận stop-word KHÔNG kích hoạt trên "diện tích": đề Lý có "diện tích" vẫn là physics.
+    expect(classifySubject('Một vật rơi tự do từ độ cao 80 m, bỏ qua diện tích cản. Lấy g = 10 m/s². Tính thời gian rơi.')).toBe('physics');
+  });
+});

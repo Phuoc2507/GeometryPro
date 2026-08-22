@@ -7,6 +7,8 @@ const mocks = vi.hoisted(() => ({
   solvePhysicsPlan: vi.fn(() => ({ subject: 'physics', ok: true, answers: [] })),
   solveChemPlan: vi.fn(() => ({ subject: 'chem', ok: true, answers: [] })),
   getUser: vi.fn(),
+  profile: null,       // hàng profiles getAccount đọc (null ⇒ getAccount trả tier 'free')
+  profileError: null,  // lỗi đọc profiles (để test fail-open)
 }));
 
 vi.mock('../kernel-bridge/solveSubject.js', () => ({
@@ -15,8 +17,16 @@ vi.mock('../kernel-bridge/solveSubject.js', () => ({
   solvePhysicsPlan: mocks.solvePhysicsPlan,
   solveChemPlan: mocks.solveChemPlan,
 }));
+// Mock supabase: auth.getUser + from('profiles')…maybeSingle (getAccount trong resolveAuthNoCharge dùng).
 vi.mock('@supabase/supabase-js', () => ({
-  createClient: () => ({ auth: { getUser: mocks.getUser } }),
+  createClient: () => ({
+    auth: { getUser: mocks.getUser },
+    from: () => ({
+      select: () => ({
+        eq: () => ({ maybeSingle: async () => ({ data: mocks.profile, error: mocks.profileError }) }),
+      }),
+    }),
+  }),
 }));
 vi.mock('../sentry.js', () => ({
   withSentry: (handler) => handler,          // passthrough để test gọi thẳng handler
@@ -46,7 +56,9 @@ async function loadHandler() {
 
 describe('analyze-problem route', () => {
   beforeEach(() => {
-    for (const m of Object.values(mocks)) m.mockReset?.();
+    for (const m of Object.values(mocks)) m?.mockReset?.();
+    mocks.profile = null;
+    mocks.profileError = null;
     mocks.solvePhysicsPlan.mockReturnValue({ subject: 'physics', ok: true, answers: [] });
     mocks.solveChemPlan.mockReturnValue({ subject: 'chem', ok: true, answers: [] });
   });
@@ -90,6 +102,65 @@ describe('analyze-problem route', () => {
     expect(res.statusCode).toBe(401);
     expect(res.body.code).toBe('invalid_token');
     expect(mocks.solveChemProblem).not.toHaveBeenCalled();
+  });
+
+  it('tài khoản bị khóa (tier lạ ⇒ entitlement blocked) → 403, KHÔNG gọi engine (D22: không trừ credit)', async () => {
+    mocks.getUser.mockResolvedValue({ data: { user: { id: 'u-blocked' } }, error: null });
+    mocks.profile = { plan_tier: 'banned', plan_code: 'banned', plan_expires_at: '2099-01-01T00:00:00Z', plan_credits: 0, purchased_credits: 0 };
+    const handler = await loadHandler();
+    const res = response();
+    await handler({ method: 'POST', headers: { authorization: 'Bearer tok' }, body: { problem: PHYS } }, res);
+    expect(res.statusCode).toBe(403);
+    expect(res.body.code).toBe('account_blocked');
+    expect(mocks.solvePhysicsProblem).not.toHaveBeenCalled();
+  });
+
+  it('gói HẾT HẠN → hạ về free → VẪN dùng được (đúng D22 miễn phí cho người đăng nhập)', async () => {
+    mocks.getUser.mockResolvedValue({ data: { user: { id: 'u-expired' } }, error: null });
+    mocks.profile = { plan_tier: 'teacher', plan_code: 'teacher', plan_expires_at: '2000-01-01T00:00:00Z', plan_credits: 0, purchased_credits: 0 };
+    mocks.solvePhysicsProblem.mockResolvedValue({ subject: 'physics', ok: true, answers: [{ text: '6 m/s' }], plan: {} });
+    const handler = await loadHandler();
+    const res = response();
+    await handler({ method: 'POST', headers: { authorization: 'Bearer tok' }, body: { problem: PHYS } }, res);
+    expect(mocks.solvePhysicsProblem).toHaveBeenCalledOnce();
+    expect(res.body).toMatchObject({ mode: 'engine', ok: true });
+  });
+
+  it('lỗi đọc profiles → fail-OPEN (không chặn nhầm người dùng hợp lệ)', async () => {
+    mocks.getUser.mockResolvedValue({ data: { user: { id: 'u-dberr' } }, error: null });
+    mocks.profileError = { message: 'db down' }; // getAccount trả null ⇒ bỏ qua block-check
+    mocks.solvePhysicsProblem.mockResolvedValue({ subject: 'physics', ok: true, answers: [], plan: {} });
+    const handler = await loadHandler();
+    const res = response();
+    await handler({ method: 'POST', headers: { authorization: 'Bearer tok' }, body: { problem: PHYS } }, res);
+    expect(mocks.solvePhysicsProblem).toHaveBeenCalledOnce();
+  });
+
+  it('rate-limit thô: quá 30 req/phút/userId → 429 (chống đốt tiền LLM, D29)', async () => {
+    mocks.getUser.mockResolvedValue({ data: { user: { id: 'u-rl' } }, error: null });
+    mocks.solvePhysicsProblem.mockResolvedValue({ subject: 'physics', ok: true, answers: [], plan: {} });
+    const handler = await loadHandler();
+    let lastStatus = 200;
+    let sawRateLimit = false;
+    for (let i = 0; i < 35; i += 1) {
+      const res = response();
+      await handler({ method: 'POST', headers: { authorization: 'Bearer tok' }, body: { problem: PHYS } }, res);
+      lastStatus = res.statusCode;
+      if (res.statusCode === 429) { sawRateLimit = true; break; }
+    }
+    expect(sawRateLimit).toBe(true);
+    expect(lastStatus).toBe(429);
+  });
+
+  it('map error.message ở catch cuối → thông điệp chung (không lộ nội bộ)', async () => {
+    mocks.getUser.mockResolvedValue({ data: { user: { id: 'u-err' } }, error: null });
+    mocks.solvePhysicsProblem.mockRejectedValue(new Error('SECRET internal stacktrace detail'));
+    const handler = await loadHandler();
+    const res = response();
+    await handler({ method: 'POST', headers: { authorization: 'Bearer tok' }, body: { problem: PHYS } }, res);
+    expect(res.statusCode).toBe(500);
+    expect(res.body.error).toBe('Lỗi xử lý, vui lòng thử lại');
+    expect(res.body.error).not.toMatch(/SECRET/);
   });
 
   it('dry-run { plan, subject } chạy engine ở dev; 404 ở production', async () => {

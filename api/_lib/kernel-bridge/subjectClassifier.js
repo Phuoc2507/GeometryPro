@@ -160,6 +160,17 @@ function lexicalScore(lowerText, table) {
   return s;
 }
 
+// ── STOP-WORDS: chương ENGINE CHƯA CÓ ⇒ KHÔNG route sang Lý/Hóa ─────────────────
+// Đề chứa các cụm này thuộc chương engine v0 chưa phục vụ (điện trường/từ trường/hạt nhân/phóng xạ/
+// điện phân…). Nếu route sang physics/chem, translator hoặc ABSTAIN (tốn 1 lượt LLM vô ích) hoặc — tệ
+// hơn — dịch lệch ngữ cảnh sang động học/phản ứng rồi cho đáp SAI. An toàn hơn: hạ về 'geometry' để
+// frontend chạy luồng Toán (vẫn tự abstain nếu ngoài phạm vi). Chiều nguy hiểm duy nhất của classifier
+// là geometry/khác → physics/chem (đánh cược translator); stop-words khoá đúng chiều đó.
+// D28: TUYỆT ĐỐI KHÔNG thêm từ khóa MẠCH ĐIỆN vào đây hay PHYS_LEXICAL — route CHƯA mở nhánh circuit;
+// nếu nhận đề mạch sang physics thì động học sẽ abstain (tệ hơn để rơi geometry). Mở nhánh circuit TRƯỚC.
+// LƯU Ý DẤU: "điện tích" (đ) KHÁC "diện tích" (d) của hình học ⇒ regex /điện tích/ không bắt nhầm.
+const STOP_WORDS_RE = /điện trường|từ trường|điện tích|cảm ứng từ|hạt nhân|phóng xạ|điện phân/;
+
 // Ngưỡng quyết định
 const CONFIDENT_MIN = 3; // dưới mức này ⇒ tín hiệu Lý/Hóa quá yếu ⇒ mặc định geometry
 const STRONG_MIN = 4;    // "mạnh" (để xét mơ hồ Lý-Hóa)
@@ -173,6 +184,10 @@ const AMBIG_DELTA = 2;   // |chem − phys| ≤ 2 và cả hai mạnh ⇒ 'unkno
 export function classifySubject(problem) {
   if (!problem || typeof problem !== 'string' || !problem.trim()) return 'geometry';
   const lower = problem.toLowerCase();
+
+  // Chương chưa hỗ trợ (điện trường/từ trường/hạt nhân/phóng xạ/điện phân…) ⇒ KHÔNG đánh cược
+  // translator: hạ thẳng về 'geometry' (luồng Toán tự abstain). Chặn TRƯỚC khi chấm điểm môn.
+  if (STOP_WORDS_RE.test(lower)) return 'geometry';
 
   const chem = lexicalScore(lower, CHEM_LEXICAL) + formulaScore(problem);
   const phys = lexicalScore(lower, PHYS_LEXICAL);

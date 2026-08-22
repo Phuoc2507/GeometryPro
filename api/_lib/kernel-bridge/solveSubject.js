@@ -6,6 +6,7 @@ import { runPhysics, PhysicsPlanSchema, chem } from '../kernel-dist/index.mjs';
 import { callVilao } from '../vilao.js';
 import { PHYSICS_TRANSLATOR_PROMPT } from './physicsTranslatorPrompt.js';
 import { CHEM_TRANSLATOR_PROMPT } from './chemTranslatorPrompt.js';
+import { postcheckPhysics, postcheckChem } from './planPostcheck.js';
 
 const { runChem, ChemPlanSchema } = chem; // chem là namespace export của bundle
 
@@ -118,6 +119,30 @@ function translateFailure(subject, e) {
   };
 }
 
+// Hậu-kiểm REJECT ⇒ object ok:false GIỮ plan (để route log lại) — engine KHÔNG được chạy.
+function postcheckFailure(subject, plan, reason) {
+  return {
+    subject, plan, ok: false, answers: [], violations: [],
+    errors: [{ message: reason, stage: 'postcheck' }],
+    trace: [], scene: null,
+    postcheck: { ok: false, reason },
+  };
+}
+
+// Hậu-kiểm WARN ⇒ đính MỀM vào trace (dạng check severity:'warn', KHÔNG thành error) + field warnings.
+function attachWarnings(solved, warnings) {
+  if (!warnings || !warnings.length) return solved;
+  const softChecks = warnings.map((message) => ({
+    kind: 'postcheck', detail: message, residual: 0, pass: false, severity: 'warn',
+  }));
+  return {
+    ...solved,
+    trace: [...(solved.trace || []), ...softChecks],
+    warnings: [...(solved.warnings || []), ...warnings],
+    postcheck: { ok: true, warnings },
+  };
+}
+
 export async function solvePhysicsProblem(problem, options = {}) {
   let plan;
   try {
@@ -125,7 +150,11 @@ export async function solvePhysicsProblem(problem, options = {}) {
   } catch (e) {
     return translateFailure('physics', e);
   }
-  return { plan, ...solvePhysicsPlan(plan) };
+  // HẬU-KIỂM tất định: chạy NGAY SAU safeParse (trong translate), TRƯỚC engine.
+  // Reject cứng ⇒ trả ok:false, KHÔNG chạy engine (chống "đáp sai âm thầm").
+  const pc = postcheckPhysics(problem, plan);
+  if (!pc.ok) return postcheckFailure('physics', plan, pc.reason);
+  return attachWarnings({ plan, ...solvePhysicsPlan(plan) }, pc.warnings);
 }
 
 export async function solveChemProblem(problem, options = {}) {
@@ -135,5 +164,7 @@ export async function solveChemProblem(problem, options = {}) {
   } catch (e) {
     return translateFailure('chem', e);
   }
-  return { plan, ...solveChemPlan(plan) };
+  const pc = postcheckChem(problem, plan);
+  if (!pc.ok) return postcheckFailure('chem', plan, pc.reason);
+  return attachWarnings({ plan, ...solveChemPlan(plan) }, pc.warnings);
 }
