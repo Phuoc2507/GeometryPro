@@ -184,6 +184,17 @@ Pipeline: spec (3 agent) → phản biện thiết kế (2 agent) → sửa spec
   phút/user để chống đốt tiền LLM (token rò rỉ). KHÔNG phải quota tính tiền —
   vẫn đúng "không trừ credit". Nếu bạn thấy thừa (tính năng đã ẩn) thì bỏ được.
 
+- **D30 · SỰ CỐ quota lần 2 (03:2x UTC): agent dao động bị ngắt giữa chừng.**
+  Khác lần 1 (D12): chỉ 1 agent, thiệt hại nhỏ. Đã cứu: piScalar.ts nền xong
+  + 60 test xanh → commit riêng f6e1809 (nền dùng chung waves/efield). Phần
+  oscillation dở (oscillation.ts/schema/scene, thiếu runOscillation + test) →
+  WIP commit fb4264a (ghi rõ CHƯA nghiệm thu, để không mất khi container tái
+  chế). Giờ 03:27 UTC đã qua mốc reset 3:20 → thử 1 agent hoàn thiện dao động;
+  nếu quota chưa hồi hẳn thì chờ + đặt send_later.
+- **ĐIỂM NỐI FRONTEND XONG (57a7212):** dán đề Lý/Hóa vào ô Toán → trang
+  /simulate. tsc + build production OK. Toàn bộ chuỗi người dùng giao đã khép
+  trừ chương dao động (đang hoàn thiện). Cần user test thủ công với VILAO_API_KEY.
+
 ## Quyết định chờ ghi tiếp (sẽ bổ sung trong đêm)
 
 - Phân xử 5 điểm lệch giữa spec kiến trúc và spec Lý (theo khuyến nghị phản biện).
