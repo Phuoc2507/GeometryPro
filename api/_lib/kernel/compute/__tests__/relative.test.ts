@@ -9,6 +9,7 @@ function line(px: bigint, py: bigint, pz: bigint, dx: bigint, dy: bigint, dz: bi
   return lineFromPointDir(ratVec(px, py, pz), ratVec(dx, dy, dz));
 }
 function P(x: bigint, y: bigint, z: bigint) { return pointFromCoords(ratVec(x, y, z)); }
+type Ok = Extract<ReturnType<typeof computeRelativePosition>, { ok: true }>;
 
 describe('computeRelativePosition — đường-đường', () => {
   it('chéo nhau', () => {
@@ -48,6 +49,32 @@ describe('computeRelativePosition — điểm-cầu', () => {
     expect((computeRelativePosition(P(0n, 0n, 0n), sphere) as Ok).answer.relation).toBe('điểm nằm trong');
     expect((computeRelativePosition(P(2n, 0n, 0n), sphere) as Ok).answer.relation).toBe('điểm nằm trên');
     expect((computeRelativePosition(P(3n, 0n, 0n), sphere) as Ok).answer.relation).toBe('điểm nằm ngoài');
+  });
+});
+
+describe('computeRelativePosition — điểm-đường (mới)', () => {
+  const L = line(0n, 0n, 0n, 1n, 0n, 0n); // trục Ox
+  it('điểm nằm trên đường', () => {
+    expect((computeRelativePosition(P(5n, 0n, 0n), L) as Ok).answer.relation).toBe('điểm nằm trên đường');
+  });
+  it('điểm nằm ngoài đường', () => {
+    expect((computeRelativePosition(P(0n, 1n, 0n), L) as Ok).answer.relation).toBe('điểm nằm ngoài đường');
+  });
+  it('đối xứng thứ tự (đường-điểm)', () => {
+    expect((computeRelativePosition(L, P(5n, 0n, 0n)) as Ok).answer.relation).toBe('điểm nằm trên đường');
+  });
+});
+
+describe('computeRelativePosition — điểm-mặt (mới)', () => {
+  const PL = planeFromCoeffs(rat(0n), rat(0n), rat(1n), rat(0n)); // mặt z=0
+  it('điểm nằm trên mặt', () => {
+    expect((computeRelativePosition(P(1n, 2n, 0n), PL) as Ok).answer.relation).toBe('điểm nằm trên mặt');
+  });
+  it('điểm nằm ngoài mặt', () => {
+    expect((computeRelativePosition(P(1n, 2n, 3n), PL) as Ok).answer.relation).toBe('điểm nằm ngoài mặt');
+  });
+  it('đối xứng thứ tự (mặt-điểm)', () => {
+    expect((computeRelativePosition(PL, P(1n, 2n, 0n)) as Ok).answer.relation).toBe('điểm nằm trên mặt');
   });
 });
 

@@ -6140,6 +6140,12 @@ function relSphereLine(s, l) {
   const c = cmpScalar(dSq, s.r2);
   return rel(c < 0 ? "c\u1EAFt nhau" : c === 0 ? "ti\u1EBFp x\xFAc" : "r\u1EDDi nhau");
 }
+function relPointLine(pt2, l) {
+  return isZeroVec(crossV(subV(pt2.p, l.p), l.dir)) ? rel("\u0111i\u1EC3m n\u1EB1m tr\xEAn \u0111\u01B0\u1EDDng") : rel("\u0111i\u1EC3m n\u1EB1m ngo\xE0i \u0111\u01B0\u1EDDng");
+}
+function relPointPlane(pt2, pl) {
+  return isZeroS(planeSigned2(pl, pt2.p)) ? rel("\u0111i\u1EC3m n\u1EB1m tr\xEAn m\u1EB7t") : rel("\u0111i\u1EC3m n\u1EB1m ngo\xE0i m\u1EB7t");
+}
 function computeRelativePosition(a, b) {
   const deg = firstDegenerate([a, b]);
   if (deg) return { ok: false, problem: deg };
@@ -6165,6 +6171,14 @@ function computeRelativePosition(a, b) {
       return { ok: true, answer: relSphereLine(a, b) };
     case "line-sphere":
       return { ok: true, answer: relSphereLine(b, a) };
+    case "point-line":
+      return { ok: true, answer: relPointLine(a, b) };
+    case "line-point":
+      return { ok: true, answer: relPointLine(b, a) };
+    case "point-plane":
+      return { ok: true, answer: relPointPlane(a, b) };
+    case "plane-point":
+      return { ok: true, answer: relPointPlane(b, a) };
     default:
       return { ok: false, problem: `relative position not supported for ${key}` };
   }

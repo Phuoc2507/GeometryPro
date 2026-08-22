@@ -125,6 +125,10 @@ CHƯA cố định tới đồng dạng; (3) đáp cần SUY-RA-tập-hợp / bi
 - Vị trí tương đối: { "kind": "relative_position", "a": "S", "b": "P" } — trả một TỪ:
   "song song" | "cắt nhau" | "chéo nhau" | "trùng nhau" | "đường nằm trên mặt". Đây là query PHÂN BIỆT
   được "song song" với "đường nằm trên mặt" (assert parallel chỉ kiểm góc≈0 nên KHÔNG phân biệt được).
+  • ĐIỂM vs ĐƯỜNG (điểm có thuộc đường không — vd "mũi tên đi qua điểm A", "A nằm trên d"):
+    { "kind": "relative_position", "a": "A", "b": "d" } ⇒ "điểm nằm trên đường" | "điểm nằm ngoài đường".
+  • ĐIỂM vs MẶT (điểm có thuộc mặt phẳng không): { "kind": "relative_position", "a": "A", "b": "ABCD" }
+    ⇒ "điểm nằm trên mặt" | "điểm nằm ngoài mặt".
 - Đọc toạ độ MỘT điểm engine dựng: { "kind": "point_coord", "target": "F", "axis": "x" } (axis "x"|"y"|"z").
 - Giao: { "kind": "intersection", "a": "d", "b": "P" } — đường×mặt trả {result:"point", point};
   MẶT×MẶT trả {result:"line", line:{p,dir}} (đáp giao tuyến LÀ ĐƯỜNG). KHÔNG hỗ trợ đường×đường.
