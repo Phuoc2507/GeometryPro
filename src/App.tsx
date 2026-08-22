@@ -24,6 +24,7 @@ const Admin = React.lazy(() => import('./pages/Admin'));
 const AdminFeedbackView = React.lazy(() => import('./pages/AdminFeedbackView'));
 const TestResultView = React.lazy(() => import('./pages/TestResultView'));
 const ProblemTypeCatalog = React.lazy(() => import('./pages/ProblemTypeCatalog'));
+const Simulate = React.lazy(() => import('./pages/Simulate'));
 const Pricing = React.lazy(() => import('./pages/Pricing'));
 const Referral = React.lazy(() => import('./pages/Referral'));
 const TeamManage = React.lazy(() => import('./pages/TeamManage'));
@@ -123,6 +124,7 @@ function App() {
                     <Route path="/dieu-khoan" element={<Terms />} />
                     <Route path="/quyen-rieng-tu" element={<Privacy />} />
                     <Route path="/s/:id" element={<SharedView />} />
+                    <Route path="/simulate" element={<Simulate />} />
                     {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                     <Route path="*" element={<NotFound />} />
                   </Routes>

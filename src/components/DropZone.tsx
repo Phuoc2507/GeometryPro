@@ -1,8 +1,10 @@
 import { useRef, useCallback, useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Hexagon, Sparkles, Camera, Upload, Clipboard, Send, Type } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { useGeometryOptional } from '@/context/GeometryContext';
+import { detectSubject } from '@/lib/subjectPrefilter';
 import { DrawModeSelector, DrawMode } from '@/components/DrawModeSelector';
 import { AnimatedBackground } from '@/components/AnimatedBackground';
 import {
@@ -16,6 +18,7 @@ import { demoResults } from '@/data/demoResults';
 
 export function DropZone() {
   const context = useGeometryOptional();
+  const navigate = useNavigate();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const [isDragging, setIsDragging] = useState(false);
@@ -136,14 +139,23 @@ export function DropZone() {
       // Not a valid JSON, continue normal flow
     }
 
+    // Tự nhận diện môn (bộ lọc từ khóa, không gọi AI). Đề Lý/Hóa → chuyển sang
+    // trang mô phỏng riêng /simulate; đề Toán (mặc định) → luồng hình học y nguyên.
+    const trimmed = textPrompt.trim();
+    if (detectSubject(trimmed) !== 'geometry') {
+      navigate('/simulate', { state: { problem: trimmed } });
+      setTextPrompt('');
+      return;
+    }
+
     // Instead of opening modal, directly call context
     if (drawMode === 'advance') {
-      context.analyzeAdvance(textPrompt.trim());
+      context.analyzeAdvance(trimmed);
     } else {
-      context.queueAnalyzeText(textPrompt.trim(), drawMode);
+      context.queueAnalyzeText(trimmed, drawMode);
     }
     setTextPrompt('');
-  }, [textPrompt, context, drawMode]);
+  }, [textPrompt, context, drawMode, navigate]);
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
