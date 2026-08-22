@@ -150,8 +150,10 @@ export async function solveProblem(problem, options = {}) {
   const result = { plan, ...solvePlan(plan) };
   result.tier = classifyTier(result); // MỘT nguồn sự thật; draw/solve thừa hưởng object này.
 
-  // A1 — ĐỐI CHIẾU 2 ĐƯỜNG (gated qua env KERNEL_CROSSCHECK='on'; mặc định TẮT ⇒ không tốn thêm).
-  if (String(process.env.KERNEL_CROSSCHECK || '').trim() === 'on' && result.ok && result.answers?.length) {
+  // A1 — ĐỐI CHIẾU 2 ĐƯỜNG: dịch đề LẦN 2 độc lập rồi so đáp số. Lệch ⇒ hạ "chưa kiểm chứng"
+  // (chống "đã kiểm chứng nhưng sai" do AI dịch sai nhất quán). Chỉ chạy khi engine ĐÃ giải (L1)
+  // nên chỉ tốn thêm 1 lượt DỊCH (rẻ) đúng ở chỗ cần chắc chắn. Tắt bằng env KERNEL_CROSSCHECK='off'.
+  if (String(process.env.KERNEL_CROSSCHECK || 'on').trim() !== 'off' && result.ok && result.answers?.length) {
     try {
       const r2 = solvePlan(await planFromProblem(problem, options));
       const a1text = result.answers[0]?.text;

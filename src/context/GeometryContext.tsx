@@ -743,13 +743,15 @@ export function GeometryProvider({ children }: { children: React.ReactNode }) {
       if (step2?.geometry && step2.geometry.points?.length > 0) {
         finishWithGeometry(step2.geometry);
       } else {
-        finishWithGeometry(PYRAMID_MOCK_DATA);
+        dispatch({ type: 'CLEAR_GEOMETRY' });
+        refreshProfile();
+        toast({ title: 'Chưa vẽ được từ ảnh', description: 'Chưa dựng được hình từ ảnh này. Thử chụp rõ hơn hoặc gõ đề bằng chữ.', variant: 'destructive', duration: 8000 });
       }
     } catch (error) {
       toast({ title: "Lỗi", description: "Không thể xử lý hình ảnh", variant: "destructive" });
       dispatch({ type: 'CLEAR_GEOMETRY' });
     }
-  }, [finishWithGeometry, openAuthModal, openUpgradeModal]);
+  }, [finishWithGeometry, openAuthModal, openUpgradeModal, refreshProfile]);
 
   const analyzeText = useCallback(async (prompt: string, mode: DrawMode = 'quick') => {
     const sessionId = ++scanSessionRef.current;
@@ -823,14 +825,16 @@ export function GeometryProvider({ children }: { children: React.ReactNode }) {
         if (step2.llmPrompt) geomToSave.llmPrompt = step2.llmPrompt;
         finishWithGeometry(geomToSave);
       } else {
-        finishWithGeometry(PYRAMID_MOCK_DATA);
+        dispatch({ type: 'CLEAR_GEOMETRY' });
+        refreshProfile();
+        toast({ title: 'Chưa vẽ được hình', description: 'Đề này AI chưa dựng được. Thử “Vẽ kỹ” hoặc gõ đề rõ hơn.', variant: 'destructive', duration: 8000 });
       }
     } catch (error) {
       if (scanSessionRef.current !== sessionId) return;
       toast({ title: "Lỗi", description: "Không thể xử lý đề bài", variant: "destructive" });
       dispatch({ type: 'CLEAR_GEOMETRY' });
     }
-  }, [finishWithGeometry, openAuthModal, openUpgradeModal]);
+  }, [finishWithGeometry, openAuthModal, openUpgradeModal, refreshProfile]);
 
   const queueAnalyzeText = useCallback((prompt: string, mode: DrawMode = 'detailed') => {
     const id = `q_${Date.now()}_${++queueIdCounter}`;
@@ -913,15 +917,23 @@ export function GeometryProvider({ children }: { children: React.ReactNode }) {
         }
 
         const step2 = data?.step2;
-        let geometry: GeometryData;
 
-        if (step2?.geometry && step2.geometry.points?.length > 0) {
-          geometry = { ...step2.geometry };
-          geometry.llmPrompt = step2.llmPrompt || prompt;
-        } else {
-          geometry = PYRAMID_MOCK_DATA;
-          geometry.llmPrompt = prompt;
+        // AI KHÔNG dựng được hình (không có điểm nào) → KHÔNG hiện hình chóp giả kèm "Vẽ xong".
+        // Trước đây rơi về PYRAMID_MOCK_DATA làm người dùng tưởng đã vẽ đúng — mất niềm tin.
+        if (!step2?.geometry || !(step2.geometry.points && step2.geometry.points.length > 0)) {
+          dispatch({ type: 'QUEUE_UPDATE', id, updates: { status: 'error', progress: 0, statusText: 'Chưa vẽ được', error: 'Chưa vẽ được hình từ đề này' } });
+          refreshProfile();  // đồng bộ số dư (server hoàn credit khi không dựng được hình)
+          toast({
+            title: 'Chưa vẽ được hình',
+            description: 'Đề này AI chưa dựng được. Thử chế độ “Vẽ kỹ”, hoặc gõ đề rõ hơn (đủ dữ kiện, mỗi lần một hình).',
+            variant: 'destructive',
+            duration: 8000,
+          });
+          return;
         }
+
+        let geometry: GeometryData = { ...step2.geometry };
+        geometry.llmPrompt = step2.llmPrompt || prompt;
 
         if (!geometry.latexCode) {
           geometry = { ...geometry, latexCode: generateLatexCode(geometry) };
@@ -1055,20 +1067,27 @@ export function GeometryProvider({ children }: { children: React.ReactNode }) {
         }
 
         const step2 = data?.step2;
-        let geometry: GeometryData;
 
-        if (step2?.geometry && step2.geometry.points?.length > 0) {
-          geometry = { ...step2.geometry };
-          geometry.llmPrompt = data?.step1?.text || step2.llmPrompt || "Đề bài từ ảnh";
-        } else {
-          geometry = PYRAMID_MOCK_DATA;
-          geometry.llmPrompt = data?.step1?.text || "Đề bài từ ảnh";
+        // Đọc ảnh nhưng KHÔNG dựng được hình → báo rõ + hoàn credit, đừng hiện hình chóp giả.
+        if (!step2?.geometry || !(step2.geometry.points && step2.geometry.points.length > 0)) {
+          dispatch({ type: 'QUEUE_UPDATE', id, updates: { status: 'error', progress: 0, statusText: 'Chưa vẽ được', error: 'Chưa dựng được hình từ ảnh' } });
+          refreshProfile();
+          toast({
+            title: 'Chưa vẽ được từ ảnh',
+            description: 'Chưa đọc/dựng được hình từ ảnh này. Thử chụp rõ hơn, cắt sát khung đề, hoặc gõ đề bằng chữ.',
+            variant: 'destructive',
+            duration: 8000,
+          });
+          return;
         }
+
+        let geometry: GeometryData = { ...step2.geometry };
+        geometry.llmPrompt = data?.step1?.text || step2.llmPrompt || "Đề bài từ ảnh";
 
         if (!geometry.latexCode) {
           geometry = { ...geometry, latexCode: generateLatexCode(geometry) };
         }
-        
+
         if (data.step1?.tags) {
           geometry = { ...geometry, tags: data.step1.tags };
         }
