@@ -17,6 +17,9 @@ import {
 import { callVilao } from '../vilao.js';
 import { classifyPhysicsChapter } from './physicsChapterClassifier.js';
 import { PHYSICS_TRANSLATOR_PROMPT } from './physicsTranslatorPrompt.js';
+import { CIRCUIT_TRANSLATOR_PROMPT } from './circuitTranslatorPrompt.js';
+import { DYNAMICS_TRANSLATOR_PROMPT } from './dynamicsTranslatorPrompt.js';
+import { OSCILLATION_TRANSLATOR_PROMPT } from './oscillationTranslatorPrompt.js';
 import { CHEM_TRANSLATOR_PROMPT } from './chemTranslatorPrompt.js';
 import { postcheckPhysics, postcheckChem } from './planPostcheck.js';
 
@@ -109,9 +112,9 @@ function sceneCircuit(r) {
 const NO_POSTCHECK = () => ({ ok: true, warnings: [] });
 const PHYSICS_CHAPTERS = {
   kinematics: { label: 'động học', schema: PhysicsPlanSchema, run: runPhysics, prompt: PHYSICS_TRANSLATOR_PROMPT, scene: sceneMotion, postcheck: postcheckPhysics },
-  dynamics: { label: 'động lực học', schema: DynamicsPlanSchema, run: runDynamics, prompt: null, scene: sceneMotion, postcheck: postcheckPhysics },
-  circuit: { label: 'mạch điện', schema: CircuitPlanSchema, run: runCircuit, prompt: null, scene: sceneCircuit, postcheck: NO_POSTCHECK },
-  oscillation: { label: 'dao động', schema: OscillationPlanSchema, run: runOscillation, prompt: null, scene: sceneMotion, postcheck: NO_POSTCHECK },
+  dynamics: { label: 'động lực học', schema: DynamicsPlanSchema, run: runDynamics, prompt: DYNAMICS_TRANSLATOR_PROMPT, scene: sceneMotion, postcheck: postcheckPhysics },
+  circuit: { label: 'mạch điện', schema: CircuitPlanSchema, run: runCircuit, prompt: CIRCUIT_TRANSLATOR_PROMPT, scene: sceneCircuit, postcheck: NO_POSTCHECK },
+  oscillation: { label: 'dao động', schema: OscillationPlanSchema, run: runOscillation, prompt: OSCILLATION_TRANSLATOR_PROMPT, scene: sceneMotion, postcheck: NO_POSTCHECK },
 };
 
 // Auto-nhận chương TỪ PLAN (dry-run/test cấp plan trần): schema các chương RỜI NHAU (kinematics op
@@ -122,6 +125,12 @@ function detectChapterFromPlan(plan) {
     if (PHYSICS_CHAPTERS[ch].schema.safeParse(plan).success) return ch;
   }
   return 'kinematics'; // không khớp cái nào ⇒ để kinematics ném lỗi schema rõ ràng
+}
+
+// Test/telemetry: các chương Lý ĐÃ có bộ dịch (prompt non-null) ⇒ nhận đề chữ end-to-end (không abstain
+// "chưa mở bộ dịch"). Chương có engine nhưng prompt=null KHÔNG liệt kê (chưa dùng qua đề chữ được).
+export function wiredPhysicsChapters() {
+  return Object.entries(PHYSICS_CHAPTERS).filter(([, e]) => e.prompt != null).map(([k]) => k);
 }
 
 export async function physicsPlanFromProblem(problem, options = {}) {

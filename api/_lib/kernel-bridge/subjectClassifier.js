@@ -87,6 +87,21 @@ const PHYS_LEXICAL = [
   [/\bvật\b/, WEAK],
   [/khởi hành/, WEAK],
   [/độ cao/, WEAK],
+
+  // ── CÁC CHƯƠNG LÝ ĐÃ NỐI ROUTE (D32/D35): mạch điện · động lực học · dao động ──
+  // Nay dispatch theo chương (physicsChapterClassifier) đã hoạt động + bộ dịch 3 chương đã có,
+  // nên MỞ từ khóa để đề các chương này ĐẠT 'physics' (trước đây rơi geometry). Chỉ chọn dấu hiệu
+  // KHÔNG mơ hồ với hình học/hóa (VD "điện trở"/"con lắc" đặc trưng Lý; tránh "mặt phẳng" trần vốn của geo).
+  // MẠCH ĐIỆN:
+  [/điện trở/, STRONG], [/hiệu điện thế/, STRONG], [/cường độ dòng điện/, STRONG],
+  [/suất điện động/, STRONG], [/mắc (?:nối tiếp|song song)/, STRONG], [/ampe kế|vôn kế/, STRONG],
+  [/\bdòng điện\b/, MED], [/mạch điện|mạch ngoài/, MED], [/điện trở trong/, STRONG],
+  // DAO ĐỘNG:
+  [/dao động điều h[òo]a/, STRONG], [/con lắc/, STRONG], [/\bbiên độ\b/, STRONG],
+  [/\bli độ\b/, STRONG], [/tần số góc/, STRONG], [/\bdao động\b/, MED], [/chu kỳ|chu kì/, WEAK],
+  // ĐỘNG LỰC HỌC (dấu hiệu LỰC/MA SÁT/RÒNG RỌC — phân biệt với động học thuần):
+  [/lực ma sát/, STRONG], [/hệ số ma sát/, STRONG], [/mặt phẳng nghiêng|mặt nghiêng/, STRONG],
+  [/ròng rọc/, STRONG], [/lực kéo/, STRONG], [/lực căng/, STRONG], [/\bma sát\b/, MED],
 ];
 
 // ── HÌNH HỌC — từ khóa tiếng Việt (để tính điểm nền; mặc định vẫn là geometry) ──
@@ -166,8 +181,10 @@ function lexicalScore(lowerText, table) {
 // hơn — dịch lệch ngữ cảnh sang động học/phản ứng rồi cho đáp SAI. An toàn hơn: hạ về 'geometry' để
 // frontend chạy luồng Toán (vẫn tự abstain nếu ngoài phạm vi). Chiều nguy hiểm duy nhất của classifier
 // là geometry/khác → physics/chem (đánh cược translator); stop-words khoá đúng chiều đó.
-// D28: TUYỆT ĐỐI KHÔNG thêm từ khóa MẠCH ĐIỆN vào đây hay PHYS_LEXICAL — route CHƯA mở nhánh circuit;
-// nếu nhận đề mạch sang physics thì động học sẽ abstain (tệ hơn để rơi geometry). Mở nhánh circuit TRƯỚC.
+// D35 (cập nhật D28): mạch điện / động lực học / dao động NAY ĐÃ nối route (dispatch theo chương +
+// bộ dịch riêng) ⇒ từ khóa của chúng ĐÃ mở trong PHYS_LEXICAL. Nhưng ĐIỆN TRƯỜNG/TỪ TRƯỜNG/HẠT NHÂN/
+// PHÓNG XẠ/ĐIỆN PHÂN vẫn CHƯA có bộ dịch (efield đang code, chưa nối) ⇒ GIỮ stop-words để không route
+// sang physics rồi abstain (thà rơi geometry/Toán). Mở dần từng chương khi bộ dịch chương đó sẵn.
 // LƯU Ý DẤU: "điện tích" (đ) KHÁC "diện tích" (d) của hình học ⇒ regex /điện tích/ không bắt nhầm.
 const STOP_WORDS_RE = /điện trường|từ trường|điện tích|cảm ứng từ|hạt nhân|phóng xạ|điện phân/;
 
