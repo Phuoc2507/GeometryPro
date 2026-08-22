@@ -195,6 +195,15 @@ Pipeline: spec (3 agent) → phản biện thiết kế (2 agent) → sửa spec
   /simulate. tsc + build production OK. Toàn bộ chuỗi người dùng giao đã khép
   trừ chương dao động (đang hoàn thiện). Cần user test thủ công với VILAO_API_KEY.
 
+- **D31 · [NGƯỜI DÙNG] Chọn "A" — phủ tiếp thế mạnh (vùng tính được), chưa làm
+  fallback-LLM (b).** Nguyên tắc phân tầng nhãn (đã-kiểm-chứng vs tham-khảo) được
+  đồng ý về TƯ DUY nhưng chưa code — để sau khi phủ đủ thế mạnh. Batch phủ đầu:
+  (1) phản biện 2 spec đã có (sóng cơ, điện trường) để mở đường code; (2) viết
+  lại 2 spec MẤT trong sự cố quota lần 1 (khí lý tưởng+nhiệt Lý 12, hữu cơ đốt
+  cháy Hóa); (3) viết spec điện xoay chiều Lý 12 (đỉnh đề thi ĐH, chưa có).
+  Sau phản biện waves/efield → code chúng. Nhắc: mạch điện/động lực/dao động
+  vẫn CHƯA nối route (task nối-app còn nợ, làm sau khi phủ thêm).
+
 ## Quyết định chờ ghi tiếp (sẽ bổ sung trong đêm)
 
 - Phân xử 5 điểm lệch giữa spec kiến trúc và spec Lý (theo khuyến nghị phản biện).
