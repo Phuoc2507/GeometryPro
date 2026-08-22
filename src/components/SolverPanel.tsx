@@ -508,7 +508,10 @@ function SolveResultViewImpl({
   const [guess, setGuess] = useState('');
   const [verdict, setVerdict] = useState<GradeVerdict | null>(null);
   const [showGrade, setShowGrade] = useState(false); // compact: hiện ô tự chấm khi bấm
-  const canGrade = result.answer_value != null && Number.isFinite(result.answer_value);
+  const level = result.tier?.level ?? verifiedToLevel(result.verified);
+  // CHỈ cho tự-chấm khi đáp số ĐÃ ĐƯỢC ENGINE KIỂM (mức 1). Ở mức 2/3, answer_value là con số AI
+  // đoán → chấm theo nó có thể phán "Chính xác 🎉" cho đáp sai, hoặc "Chưa đúng" cho đáp đúng.
+  const canGrade = level === 1 && result.answer_value != null && Number.isFinite(result.answer_value);
   // Bài mới -> ẩn lại đáp số & xoá ô nhập.
   useEffect(() => {
     setGuess('');
@@ -526,7 +529,6 @@ function SolveResultViewImpl({
     }
   }, [guess, result.answer_value]);
 
-  const level = result.tier?.level ?? verifiedToLevel(result.verified);
   const meta = safetyTierMeta(level);
   const TierIcon = meta.icon;
   const reasonMsg = result.tier?.reason?.message ?? result.verify_error;

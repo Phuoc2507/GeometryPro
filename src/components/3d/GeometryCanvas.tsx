@@ -1,5 +1,5 @@
 import { useRef, useEffect, useMemo, useCallback, useState, type ComponentRef } from 'react';
-import { Hexagon, Crosshair, Hand, X } from 'lucide-react';
+import { Hexagon, Crosshair, Hand, X, ShieldCheck, TriangleAlert } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Canvas, useThree } from '@react-three/fiber';
 import { OrbitControls, Grid, Environment, Html } from '@react-three/drei';
@@ -620,6 +620,27 @@ export function GeometryCanvas({
           >
             <Crosshair className="w-5 h-5" />
           </button>
+
+          {/* Huy hiệu KIỂM CHỨNG — cho biết hình do engine dựng & tự kiểm ràng buộc (confidence=1)
+              hay chỉ AI vẽ (chưa kiểm). Ẩn với khối "Vẽ kỹ" (advanceScene) vì đó là luồng khác. */}
+          {!isBuilding && !geometry.advanceScene && (() => {
+            const engineVerified = geometry.confidence === 1;
+            return (
+              <div
+                title={engineVerified
+                  ? 'Engine đã tính toạ độ chính xác và tự kiểm mọi ràng buộc của đề.'
+                  : 'Hình do AI dựng, chưa được engine kiểm chứng — hãy soi lại trước khi dùng.'}
+                className={`absolute bottom-4 left-4 z-20 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium glass border shadow-sm ${
+                  engineVerified
+                    ? 'border-emerald-500/40 text-emerald-600 dark:text-emerald-400'
+                    : 'border-amber-500/40 text-amber-600 dark:text-amber-400'
+                }`}
+              >
+                {engineVerified ? <ShieldCheck className="w-3.5 h-3.5" /> : <TriangleAlert className="w-3.5 h-3.5" />}
+                {engineVerified ? 'Engine đã kiểm ✓' : 'AI vẽ — chưa kiểm'}
+              </div>
+            );
+          })()}
         </>
       )}
     </div>
