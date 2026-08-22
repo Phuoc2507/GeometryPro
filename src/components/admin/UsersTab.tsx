@@ -64,6 +64,9 @@ export function UsersTab() {
 
   const toggleRole = useCallback(async (u: AdminUser) => {
     const next = u.role === 'admin' ? 'user' : 'admin';
+    // Đổi quyền admin là thao tác nhạy cảm → xác nhận, nêu rõ ai và vai trò mới.
+    const who = u.email || u.id;
+    if (!window.confirm(next === 'admin' ? `Cấp quyền QUẢN TRỊ cho ${who}?` : `Gỡ quyền quản trị của ${who}?`)) return;
     try {
       await setRole(u.id, next);
       toast.success(next === 'admin' ? 'Đã cấp quyền quản trị' : 'Đã gỡ quyền quản trị');
@@ -201,6 +204,8 @@ function GrantCreditDialog({ user, onClose, onGranted }: {
     if (!user) return;
     const n = Number(amount);
     if (!Number.isFinite(n) || n === 0) { toast.error('Nhập số credit (khác 0). Dùng số âm để trừ.'); return; }
+    // Trừ credit là thao tác giảm tài sản người dùng → xác nhận.
+    if (n < 0 && !window.confirm(`Trừ ${Math.abs(n)} credit của ${user.email || user.id}?`)) return;
     setSubmitting(true);
     try {
       const res = await grantCredit(user.id, n, reason.trim() || undefined, idemKey);

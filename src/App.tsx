@@ -62,19 +62,31 @@ function GlobalUpgradeModal() {
 // "đã trả tiền mà chưa thấy gì" khi webhook về trễ.
 function PaymentSuccessHandler() {
   const [params, setParams] = useSearchParams();
-  const { refreshProfile, credits, tier, profile } = useAuth();
+  const { refreshProfile, credits, tier, profile, isLoading } = useAuth();
   // Ref soi giá trị mới nhất trong vòng lặp async (state không cập nhật giữa các lần lặp).
   const sigRef = useRef({ credits, tier, exp: profile?.plan_expires_at ?? null });
   useEffect(() => {
     sigRef.current = { credits, tier, exp: profile?.plan_expires_at ?? null };
   }, [credits, tier, profile?.plan_expires_at]);
 
+  // Nhớ "đây là lượt quay về sau thanh toán" NGAY lúc mount rồi dọn param, để refresh không kích lại.
+  const isPaymentReturn = useRef(params.get('payment') === 'success');
+  const startedRef = useRef(false);
   useEffect(() => {
-    if (params.get('payment') !== 'success') return;
-    // Đã mua xong → xoá mã mời đã lưu (ưu đãi chỉ cho đơn đầu, tránh dính "not_first" lần sau).
+    if (!isPaymentReturn.current) return;
     try { localStorage.removeItem('geo3d:ref'); } catch { /* bỏ qua */ }
+    if (params.get('payment')) { params.delete('payment'); setParams(params, { replace: true }); }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-    const before = { ...sigRef.current };
+  // CHỜ hồ sơ tải xong rồi mới chốt mốc so sánh. Nếu chốt lúc profile còn null (credits=0, tier=free),
+  // khi hồ sơ trước-thanh-toán tải lên (vd đã có 20 credit) sẽ bị hiểu nhầm là "đã cộng" → báo nhầm.
+  const profileLoaded = !isLoading && !!profile;
+  useEffect(() => {
+    if (!isPaymentReturn.current || startedRef.current || !profileLoaded) return;
+    startedRef.current = true;
+
+    const before = { ...sigRef.current };  // mốc = trạng thái TRƯỚC khi webhook cộng
     const changed = () => {
       const s = sigRef.current;
       return s.credits > before.credits || s.tier !== before.tier || s.exp !== before.exp;
@@ -107,11 +119,8 @@ function PaymentSuccessHandler() {
     };
     poll(0);
 
-    params.delete('payment');
-    setParams(params, { replace: true });
     return () => { cancelled = true; timers.forEach(clearTimeout); };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [profileLoaded, refreshProfile]);
   return null;
 }
 

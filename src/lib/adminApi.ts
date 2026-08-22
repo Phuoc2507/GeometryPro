@@ -2,6 +2,7 @@
 // Gọi endpoint quản trị /api/admin kèm Bearer token (giống lối /api/delete-account).
 // Server tự kiểm role='admin' — client chỉ là lớp tiện ích, không nắm bảo mật.
 import { supabase } from '@/integrations/supabase/client';
+import { fetchWithTimeout } from '@/lib/fetchWithTimeout';
 
 export interface AdminUser {
   id: string;
@@ -163,11 +164,11 @@ export const redrawProblem = async (prompt: string, maxAttempts = 1): Promise<Re
   const token = data.session?.access_token;
   if (!token) throw new Error('Bạn cần đăng nhập lại');
 
-  const res = await fetch('/api/admin-redraw', {
+  const res = await fetchWithTimeout('/api/admin-redraw', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
     body: JSON.stringify({ prompt, maxAttempts }),
-  });
+  }, 120000);  // vẽ lại bằng AI có thể lâu; vẫn cần trần để không kẹt spinner mãi
   const body = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(body?.error || 'Lỗi máy chủ khi vẽ lại');
   return body.candidate as RedrawCandidate;

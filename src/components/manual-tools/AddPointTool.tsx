@@ -24,9 +24,10 @@ export function AddPointTool({ onAdd, existingLabels }: AddPointToolProps) {
     return `P${existingLabels.length + 1}`;
   };
 
+  const num = (s: string) => { const n = parseFloat(s); return Number.isFinite(n) ? n : 0; };
   const handleAdd = () => {
     const l = label.trim() || nextLabel();
-    onAdd(l, parseFloat(x) || 0, parseFloat(y) || 0, parseFloat(z) || 0);
+    onAdd(l, num(x), num(y), num(z));
     setLabel('');
     setX('0');
     setY('0');

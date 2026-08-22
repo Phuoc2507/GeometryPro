@@ -551,6 +551,11 @@ export function GeometryProvider({ children }: { children: React.ReactNode }) {
             const url = new URL(window.location.href);
             url.searchParams.set('id', newId);
             window.history.replaceState({}, '', url.toString());
+            // Trong lúc CHỜ tạo mục (addToHistory là 1 vòng mạng), người dùng có thể đã thêm điểm
+            // khác — các sửa đó bị bỏ qua vì seedingRef đang bật. Lưu NGAY trạng thái mới nhất để
+            // không mất (mục vừa tạo chỉ chứa trạng thái lúc bắt đầu seed).
+            const latest = stateRef.current.geometry;
+            if (latest && latest !== geometry) void updateGeometryData(newId, latest);
           }
         } finally {
           seedingRef.current = false;
@@ -1248,12 +1253,27 @@ export function GeometryProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const addPoint = useCallback((label: string, x: number, y: number, z: number) => {
-    const id = label.toUpperCase();
+    const id = label.trim().toUpperCase();
+    if (!id) return;
+    // Chống TRÙNG tên: id trùng → 2 điểm cùng id ⇒ xoá 1 xoá cả 2 + cảnh báo React key. Chặn sớm.
+    const pts = stateRef.current.geometry?.points || [];
+    if (pts.some((p) => p.id === id)) {
+      toast({ title: 'Trùng tên điểm', description: `Đã có điểm "${id}". Hãy đặt tên khác.`, variant: 'destructive' });
+      return;
+    }
+    // label = id để tên hiển thị và id luôn khớp (tránh lệch làm hỏng đường nối & xuất TikZ).
     requestPersist();
-    dispatch({ type: 'ADD_POINT', point: { id, label, x, y, z } });
+    dispatch({ type: 'ADD_POINT', point: { id, label: id, x, y, z } });
   }, [requestPersist]);
 
   const addLine = useCallback((fromId: string, toId: string, style: 'solid' | 'dashed') => {
+    if (fromId === toId) return;  // không nối điểm với chính nó
+    // Chống TRÙNG đường (kể cả đảo đầu-cuối) → tránh key trùng và cạnh chồng.
+    const lines = stateRef.current.geometry?.lines || [];
+    if (lines.some((l) => (l.from === fromId && l.to === toId) || (l.from === toId && l.to === fromId))) {
+      toast({ title: 'Đường đã có', description: `Đã nối ${fromId}${toId}.` });
+      return;
+    }
     const id = `line_${fromId}_${toId}`;
     requestPersist();
     dispatch({ type: 'ADD_LINE', line: { id, from: fromId, to: toId, style } });
@@ -1306,6 +1326,10 @@ export function GeometryProvider({ children }: { children: React.ReactNode }) {
     const orderedPoints = polygon.sourceIndices.map((index) => pts[index]);
     const id = `plane_${orderedPointIds.join('_')}`;
     const label = `(${orderedPoints.map(p => p.label).join('')})`;
+    // Chống TRÙNG mặt phẳng: cùng tập điểm (không kể thứ tự) → bỏ qua, tránh key trùng.
+    const wanted = [...orderedPointIds].sort().join('|');
+    const dup = (geo.planes || []).some((pl) => [...(pl.pointIds || [])].sort().join('|') === wanted);
+    if (dup) { toast({ title: 'Mặt phẳng đã có', description: `Đã có mặt ${label}.` }); return false; }
     requestPersist();
     dispatch({
       type: 'ADD_PLANE',

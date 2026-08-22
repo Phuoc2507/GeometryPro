@@ -16,10 +16,14 @@ export function EquationTool({ onAdd }: EquationToolProps) {
     // Parse mặt phẳng linh hoạt: cho phép thiếu số hạng và MỌI thứ tự — z=3, x=2, 2x-y=6,
     // y+x+z=3… (trước đây bắt buộc đủ x,y,z đúng thứ tự nên gõ z=3 là báo sai).
     const cleaned = eq.replace(/\s/g, '').toLowerCase();
+    // Chỉ chấp nhận ký tự hợp lệ (x,y,z, số, dấu). Ký tự lạ → sai định dạng (không "nuốt" âm thầm).
+    if (!/^[xyz0-9+\-.=]+$/.test(cleaned)) return null;
     const eqIdx = cleaned.indexOf('=');
-    if (eqIdx < 0) return null;
+    if (eqIdx < 0 || cleaned.indexOf('=', eqIdx + 1) >= 0) return null;  // phải có đúng 1 dấu '='
     const lhs = cleaned.slice(0, eqIdx);
-    const rhsVal = parseFloat(cleaned.slice(eqIdx + 1));
+    const rhs = cleaned.slice(eqIdx + 1);
+    if (/[xyz]/.test(rhs)) return null;  // vế phải phải là hằng số (vd x=3z chưa hỗ trợ)
+    const rhsVal = parseFloat(rhs);
     if (!lhs || !Number.isFinite(rhsVal)) return null;
 
     const coeff: Record<'x' | 'y' | 'z', number> = { x: 0, y: 0, z: 0 };
