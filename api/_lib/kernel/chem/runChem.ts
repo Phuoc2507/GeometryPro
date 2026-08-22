@@ -15,6 +15,7 @@ import {
 } from './reactionDB';
 import { MOLAR_VOLUMES, amountToMol, parsePositive, react, type LedgerRow, type Violation } from './stoich';
 import { buildScene, EMPTY_SCENE, type ChemScene, type SceneSpeciesInput } from './scene';
+import { runOrganic, hasOrganicOp } from './organic'; // DIFF 2(a): dispatch nhánh hữu cơ
 import {
   type Rat, R0, rat, addR, subR, mulR, divR, cmpR, absR, isZeroR, parseDecimal, ratToString, ratApprox,
 } from './rat';
@@ -25,6 +26,8 @@ export type ChemAnswer = {
   approx: number | null;
   unit: string;
   text: string;
+  formula?: string;      // DIFF 2(b): CTPT/CTĐGN (nhánh hữu cơ) — optional, KHÔNG phá v0
+  candidates?: string[]; // DIFF 2(b): danh sách CTPT khi đa nghiệm
 };
 
 export type ChemLedgerEntry = {
@@ -153,6 +156,18 @@ export function runChem(input: unknown): ChemResult {
     return bail(`ChemPlan không hợp lệ: ${zodMessages(parsed.error).join('; ')}`);
   }
   const plan: ChemPlan = parsed.data;
+
+  // DIFF 2(a) — DISPATCH SỚM nhánh hữu cơ, TRƯỚC toàn bộ pipeline species/mix v0. Plan vô
+  // cơ v0 KHÔNG chứa op hữu cơ ⇒ rẽ else y cũ (151 test v0 không đổi một dòng logic).
+  // DIFF 2(c) — lưới cuối try/catch: mọi Error của engine hữu cơ → errors[], KHÔNG throw.
+  if (hasOrganicOp(plan)) {
+    try {
+      return runOrganic(plan, EMPTY_SCENE);
+    } catch (e) {
+      return bail(`lỗi engine hữu cơ (lưới cuối): ${e instanceof Error ? e.message : String(e)}`);
+    }
+  }
+
   const vm = MOLAR_VOLUMES[plan.molarVolume];
   const vmLabel = plan.molarVolume === 22.4 ? 'đktc, 22,4 L/mol' : 'đkc, 24,79 L/mol';
 

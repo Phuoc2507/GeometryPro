@@ -6,10 +6,16 @@
 // tuần tự (mix.of + nhiều mix) — thấy of/nhiều mix thì runChem trả lỗi "v1".
 import { z } from 'zod';
 import { R0, cmpR, parseDecimal } from './rat';
+// DIFF 1(b) — nới ChemPlan sang HÓA HỮU CƠ: 4 op + query hữu cơ (§12). organicSchema TỰ
+// CHỨA Qty/AmountSchema (cách-ly-vòng, xem đầu file đó) nên đây là phụ thuộc MỘT CHIỀU.
+import {
+  OrganicUnknownOp, CombustionOp, MeasureOp, EsterHydrolysisOp, OrganicQueries, ORGANIC_OP_NAMES,
+} from './organicSchema';
 
 // "5,6" | 5.6 | 50 → parseDecimal (§4). Từ chối ngay tại schema nếu không đọc được
 // hoặc ≤ 0 — mọi lượng đề cho trong Hóa THPT đều dương.
-const Qty = z.union([z.number(), z.string()]).superRefine((v, ctx) => {
+// DIFF 1(a) — EXPORT Qty (đang là const nội bộ) cho bề mặt công khai pack (§12).
+export const Qty = z.union([z.number(), z.string()]).superRefine((v, ctx) => {
   try {
     const r = parseDecimal(v);
     if (cmpR(r, R0) <= 0) {
@@ -53,6 +59,8 @@ export const ChemQuerySchema = z.union([
   z.object({ kind: z.literal('remaining'), of: z.string() }), // chất dư còn lại (mol + gam)
   z.object({ kind: z.literal('phenomena') }),
   z.object({ kind: z.literal('equation') }),
+  // DIFF 1(c) — query hữu cơ (molecular_formula / empirical_formula / degree_unsaturation / oxygen_needed).
+  ...OrganicQueries,
 ]);
 
 // tol: dung sai TƯƠNG ĐỐI khi đối chiếu dữ kiện đề (F10) — default 1e-3 tại runChem.
@@ -61,15 +69,35 @@ export const ChemQuerySchema = z.union([
 export const ChemAssertSchema = z.union([
   z.object({ kind: z.literal('given_mass'), of: z.string(), grams: Qty, tol: Qty.optional() }),
   z.object({ kind: z.literal('given_mol'), of: z.string(), mol: Qty, tol: Qty.optional() }),
+  // DIFF 1(d) — assert CTPT đề cho (chống ảo giác): engine so ATOM-MAP CTPT tính vs đề khai.
+  z.object({ kind: z.literal('given_formula'), of: z.string(), formula: z.string().min(1) }),
 ]);
 
 export const ChemPlanSchema = z.object({
-  ops: z.array(z.union([SpeciesOpSchema, MixOpSchema])).min(1),
+  // DIFF 1(c) — union ops nới 4 op hữu cơ (plan thuần vô cơ v0 KHÔNG chứa chúng ⇒ không đổi).
+  ops: z.array(z.union([SpeciesOpSchema, MixOpSchema, OrganicUnknownOp, CombustionOp, MeasureOp, EsterHydrolysisOp])).min(1),
   // LLM đọc từ đề: "đktc" (0°C, 1 atm — chương trình cũ) → 22.4; "đkc" (25°C, 1 bar —
   // GDPT 2018) → 24.79. Default = 24,79 (chương trình hiện hành).
   molarVolume: z.union([z.literal(22.4), z.literal(24.79)]).default(24.79),
   queries: z.array(ChemQuerySchema).min(1),
   asserts: z.array(ChemAssertSchema).default([]),
+}).superRefine((plan, ctx) => {
+  // DIFF 1(e) — refine CẤP PLAN (§8): plan HOẶC thuần vô cơ HOẶC thuần hữu cơ, CẤM trộn;
+  // combustion.of / measure.of phải khớp một organic_unknown.name.
+  const hasOrganic = plan.ops.some((o) => ORGANIC_OP_NAMES.has(o.op));
+  const hasInorganic = plan.ops.some((o) => o.op === 'species' || o.op === 'mix');
+  if (hasOrganic && hasInorganic) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'CẤM trộn op hữu cơ (organic_unknown/combustion/measure/ester_hydrolysis) với op vô cơ (species/mix) trong một plan — hai pipeline tách bạch (§8)' });
+  }
+  const names = new Set(plan.ops.filter((o) => o.op === 'organic_unknown').map((o) => (o as { name: string }).name));
+  for (const o of plan.ops) {
+    if (o.op === 'combustion' || o.op === 'measure') {
+      const of = (o as { of: string }).of;
+      if (!names.has(of)) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, message: `${o.op}.of = "${of}" không khớp organic_unknown.name nào trong plan` });
+      }
+    }
+  }
 });
 
 export type ChemPlan = z.infer<typeof ChemPlanSchema>;

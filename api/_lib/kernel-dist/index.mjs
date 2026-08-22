@@ -7883,8 +7883,8 @@ function revolutionVolumeDisk(outer, domain, inner, axisY = 0) {
   const gi = inner ? compileProfile(inner) : null;
   const f = (x) => {
     const ro = go(x) - axisY;
-    const ri = gi ? gi(x) - axisY : 0;
-    return Math.PI * Math.abs(ro * ro - ri * ri);
+    const ri2 = gi ? gi(x) - axisY : 0;
+    return Math.PI * Math.abs(ro * ro - ri2 * ri2);
   };
   return integrate(f, a, b);
 }
@@ -13905,6 +13905,18 @@ function solveHeat(b, from, to) {
   const checks = [], violations = [];
   const rf = RANK[from.phase], rt = RANK[to.phase];
   const m = b.mass;
+  const phaseTempOk = (label, ph, T) => {
+    const Tm = b.meltTemp, Ts = b.boilTemp;
+    if (ph === "solid" && Tm && cmpQ(T, Tm) > 0) return `${label} khai pha R\u1EAEN nh\u01B0ng nhi\u1EC7t \u0111\u1ED9 ${T.n}K > m\u1ED1c n\xF3ng ch\u1EA3y ${Tm.n}K`;
+    if (ph === "liquid" && Tm && cmpQ(T, Tm) < 0) return `${label} khai pha L\u1ECENG nh\u01B0ng nhi\u1EC7t \u0111\u1ED9 ${T.n}K < m\u1ED1c n\xF3ng ch\u1EA3y ${Tm.n}K`;
+    if (ph === "liquid" && Ts && cmpQ(T, Ts) > 0) return `${label} khai pha L\u1ECENG nh\u01B0ng nhi\u1EC7t \u0111\u1ED9 ${T.n}K > m\u1ED1c s\xF4i ${Ts.n}K`;
+    if (ph === "gas" && Ts && cmpQ(T, Ts) < 0) return `${label} khai pha H\u01A0I nh\u01B0ng nhi\u1EC7t \u0111\u1ED9 ${T.n}K < m\u1ED1c s\xF4i ${Ts.n}K`;
+    return null;
+  };
+  for (const msg of [phaseTempOk("\u0111i\u1EC3m \u0111\u1EA7u", from.phase, from.T), phaseTempOk("\u0111i\u1EC3m cu\u1ED1i", to.phase, to.T)]) {
+    if (msg) violations.push({ id: "pha-lech-nhiet-do", message: `heat: ${msg}` });
+  }
+  if (violations.length) return { value: q(rat(0n), 0), checks, violations };
   const forward = rt > rf || rt === rf && cmpQ(to.T, from.T) > 0;
   if (!forward) {
     violations.push({ id: "chieu-gia-nhiet-nghich", message: `heat: t\u1EEB (${from.phase},${from.T.n}K) \u0111\u1EBFn (${to.phase},${to.T.n}K) kh\xF4ng t\u0103ng enthalpy` });
@@ -14293,7 +14305,7 @@ function parseDecimal(x) {
   return rat2(num3, den);
 }
 
-// api/_lib/kernel/chem/planSchema.ts
+// api/_lib/kernel/chem/organicSchema.ts
 var Qty = external_exports.union([external_exports.number(), external_exports.string()]).superRefine((v, ctx) => {
   try {
     const r2 = parseDecimal(v);
@@ -14312,10 +14324,99 @@ var AmountSchema = external_exports.union([
   external_exports.object({ solution_percent: external_exports.object({ massGrams: Qty, percent: Qty }) }),
   external_exports.object({ excess: external_exports.literal(true) })
 ]);
+var ProductAmount = external_exports.union([
+  external_exports.object({ grams: Qty }),
+  external_exports.object({ mol: Qty }),
+  external_exports.object({ liters_gas: Qty })
+]);
+var ElementSet = external_exports.enum(["C", "H", "O", "N"]);
+var OrganicClass = external_exports.enum([
+  "ankan",
+  "anken",
+  "ankin",
+  "ancol-no-don",
+  "axit-no-don",
+  "este-no-don",
+  "amin-no-don",
+  "none"
+]);
+var OrganicUnknownOp = external_exports.object({
+  op: external_exports.literal("organic_unknown"),
+  name: external_exports.string().min(1),
+  // 'A'
+  sample: ProductAmount.optional(),
+  // khối lượng/mol mẫu đem đốt (route O qua m; M qua m/n)
+  contains: external_exports.array(ElementSet).optional(),
+  // tập nguyên tố ĐỀ khẳng định (vd ['C','H','O']); vắng ⇒ suy
+  class: OrganicClass.default("none")
+  // gợi ý dãy đồng đẳng (ràng buộc k, O, N)
+});
+var CombustionOp = external_exports.object({
+  op: external_exports.literal("combustion"),
+  of: external_exports.string().min(1),
+  // tên chất bị đốt (khớp organic_unknown.name)
+  co2: ProductAmount.optional(),
+  h2o: external_exports.union([external_exports.object({ grams: Qty }), external_exports.object({ mol: Qty })]).optional(),
+  // KHÔNG liters_gas (§15.1)
+  n2: ProductAmount.optional(),
+  o2: ProductAmount.optional()
+  // O2 TIÊU THỤ (tùy chọn — route O (b) + tự kiểm khối lượng)
+});
+var MeasureOp = external_exports.object({
+  op: external_exports.literal("measure"),
+  of: external_exports.string().min(1),
+  kind: external_exports.enum(["vapor_density", "molar_mass"]),
+  ref: external_exports.union([external_exports.literal("H2"), external_exports.literal("air"), external_exports.string()]).optional(),
+  // so H2/kk/khí khác
+  value: Qty,
+  // d hoặc M — SỐ ĐO đề cho
+  tol: Qty.optional()
+  // F10: có tol ⇒ dữ kiện làm tròn (tol tương đối); vắng ⇒ exact
+});
+var EsterHydrolysisOp = external_exports.object({
+  op: external_exports.literal("ester_hydrolysis"),
+  ester: external_exports.string().min(1),
+  // 'CH3COOC2H5' — công thức cô đặc (đọc, KHÔNG tính)
+  alcohol: external_exports.string().min(1),
+  // 'C2H5OH' — nửa ancol tách ra R′OH
+  acid: external_exports.string().min(1).optional(),
+  // H2: nửa axit RCOOH — bật GUARD ĐỘC LẬP este hóa (§15.7b)
+  base: external_exports.literal("NaOH").default("NaOH"),
+  // v1 chỉ NaOH
+  esterAmount: AmountSchema.optional(),
+  baseAmount: AmountSchema.optional()
+});
+var OrganicQueries = [
+  external_exports.object({ kind: external_exports.literal("molecular_formula"), of: external_exports.string() }),
+  external_exports.object({ kind: external_exports.literal("empirical_formula"), of: external_exports.string() }),
+  external_exports.object({ kind: external_exports.literal("degree_unsaturation"), of: external_exports.string() }),
+  external_exports.object({ kind: external_exports.literal("oxygen_needed"), of: external_exports.string(), as: external_exports.enum(["mol", "liters_gas"]).default("mol") })
+];
+var ORGANIC_OP_NAMES = /* @__PURE__ */ new Set(["organic_unknown", "combustion", "measure", "ester_hydrolysis"]);
+
+// api/_lib/kernel/chem/planSchema.ts
+var Qty2 = external_exports.union([external_exports.number(), external_exports.string()]).superRefine((v, ctx) => {
+  try {
+    const r2 = parseDecimal(v);
+    if (cmpR(r2, R0) <= 0) {
+      ctx.addIssue({ code: external_exports.ZodIssueCode.custom, message: `l\u01B0\u1EE3ng ch\u1EA5t ph\u1EA3i > 0 (nh\u1EADn "${v}")` });
+    }
+  } catch (e) {
+    ctx.addIssue({ code: external_exports.ZodIssueCode.custom, message: e instanceof Error ? e.message : String(e) });
+  }
+});
+var AmountSchema2 = external_exports.union([
+  external_exports.object({ grams: Qty2 }),
+  external_exports.object({ mol: Qty2 }),
+  external_exports.object({ liters_gas: Qty2 }),
+  external_exports.object({ solution: external_exports.object({ molarity: Qty2, liters: Qty2 }) }),
+  external_exports.object({ solution_percent: external_exports.object({ massGrams: Qty2, percent: Qty2 }) }),
+  external_exports.object({ excess: external_exports.literal(true) })
+]);
 var SpeciesOpSchema = external_exports.object({
   op: external_exports.literal("species"),
   formula: external_exports.string().min(1),
-  amount: AmountSchema.optional(),
+  amount: AmountSchema2.optional(),
   // bỏ trống = định tính (bài hỏi hiện tượng)
   // vắng ⇒ suy theo bảng luật F20 (kim loại/oxit → solid; muối tan + amount solution
   // → solution; muối không tan → solid; khí danh sách đóng → gas; mơ hồ → bắt khai).
@@ -14338,19 +14439,39 @@ var ChemQuerySchema = external_exports.union([
   external_exports.object({ kind: external_exports.literal("remaining"), of: external_exports.string() }),
   // chất dư còn lại (mol + gam)
   external_exports.object({ kind: external_exports.literal("phenomena") }),
-  external_exports.object({ kind: external_exports.literal("equation") })
+  external_exports.object({ kind: external_exports.literal("equation") }),
+  // DIFF 1(c) — query hữu cơ (molecular_formula / empirical_formula / degree_unsaturation / oxygen_needed).
+  ...OrganicQueries
 ]);
 var ChemAssertSchema = external_exports.union([
-  external_exports.object({ kind: external_exports.literal("given_mass"), of: external_exports.string(), grams: Qty, tol: Qty.optional() }),
-  external_exports.object({ kind: external_exports.literal("given_mol"), of: external_exports.string(), mol: Qty, tol: Qty.optional() })
+  external_exports.object({ kind: external_exports.literal("given_mass"), of: external_exports.string(), grams: Qty2, tol: Qty2.optional() }),
+  external_exports.object({ kind: external_exports.literal("given_mol"), of: external_exports.string(), mol: Qty2, tol: Qty2.optional() }),
+  // DIFF 1(d) — assert CTPT đề cho (chống ảo giác): engine so ATOM-MAP CTPT tính vs đề khai.
+  external_exports.object({ kind: external_exports.literal("given_formula"), of: external_exports.string(), formula: external_exports.string().min(1) })
 ]);
 var ChemPlanSchema = external_exports.object({
-  ops: external_exports.array(external_exports.union([SpeciesOpSchema, MixOpSchema])).min(1),
+  // DIFF 1(c) — union ops nới 4 op hữu cơ (plan thuần vô cơ v0 KHÔNG chứa chúng ⇒ không đổi).
+  ops: external_exports.array(external_exports.union([SpeciesOpSchema, MixOpSchema, OrganicUnknownOp, CombustionOp, MeasureOp, EsterHydrolysisOp])).min(1),
   // LLM đọc từ đề: "đktc" (0°C, 1 atm — chương trình cũ) → 22.4; "đkc" (25°C, 1 bar —
   // GDPT 2018) → 24.79. Default = 24,79 (chương trình hiện hành).
   molarVolume: external_exports.union([external_exports.literal(22.4), external_exports.literal(24.79)]).default(24.79),
   queries: external_exports.array(ChemQuerySchema).min(1),
   asserts: external_exports.array(ChemAssertSchema).default([])
+}).superRefine((plan, ctx) => {
+  const hasOrganic = plan.ops.some((o) => ORGANIC_OP_NAMES.has(o.op));
+  const hasInorganic = plan.ops.some((o) => o.op === "species" || o.op === "mix");
+  if (hasOrganic && hasInorganic) {
+    ctx.addIssue({ code: external_exports.ZodIssueCode.custom, message: "C\u1EA4M tr\u1ED9n op h\u1EEFu c\u01A1 (organic_unknown/combustion/measure/ester_hydrolysis) v\u1EDBi op v\xF4 c\u01A1 (species/mix) trong m\u1ED9t plan \u2014 hai pipeline t\xE1ch b\u1EA1ch (\xA78)" });
+  }
+  const names = new Set(plan.ops.filter((o) => o.op === "organic_unknown").map((o) => o.name));
+  for (const o of plan.ops) {
+    if (o.op === "combustion" || o.op === "measure") {
+      const of = o.of;
+      if (!names.has(of)) {
+        ctx.addIssue({ code: external_exports.ZodIssueCode.custom, message: `${o.op}.of = "${of}" kh\xF4ng kh\u1EDBp organic_unknown.name n\xE0o trong plan` });
+      }
+    }
+  }
 });
 
 // api/_lib/kernel/chem/atomicMass.ts
@@ -15804,6 +15925,644 @@ function buildScene2(input) {
   return { vessels, events, captions };
 }
 
+// api/_lib/kernel/chem/balance.ts
+function bgcd3(a, b) {
+  a = a < 0n ? -a : a;
+  b = b < 0n ? -b : b;
+  while (b) [a, b] = [b, a % b];
+  return a || 1n;
+}
+function balance(reactants, products) {
+  let parsed;
+  try {
+    parsed = [...reactants, ...products].map((f) => parseFormula(f));
+  } catch (e) {
+    return { ok: false, problem: e instanceof Error ? e.message : String(e) };
+  }
+  const nR = reactants.length;
+  const nCols = parsed.length;
+  if (nCols < 2) return { ok: false, problem: "c\u1EA7n \xEDt nh\u1EA5t 2 ch\u1EA5t" };
+  const elements = [];
+  for (const counts of parsed) {
+    for (const el of counts.keys()) if (!elements.includes(el)) elements.push(el);
+  }
+  const A = elements.map(
+    (el) => parsed.map((counts, j) => {
+      const n = BigInt(counts.get(el) ?? 0);
+      return rat2(j < nR ? n : -n);
+    })
+  );
+  const pivotColOfRow = [];
+  let row = 0;
+  for (let col = 0; col < nCols && row < A.length; col++) {
+    let pivot = -1;
+    for (let r2 = row; r2 < A.length; r2++) {
+      if (!isZeroR(A[r2][col])) {
+        pivot = r2;
+        break;
+      }
+    }
+    if (pivot === -1) continue;
+    [A[row], A[pivot]] = [A[pivot], A[row]];
+    const pv = A[row][col];
+    for (let c = 0; c < nCols; c++) A[row][c] = divR(A[row][c], pv);
+    for (let r2 = 0; r2 < A.length; r2++) {
+      if (r2 === row || isZeroR(A[r2][col])) continue;
+      const factor = A[r2][col];
+      for (let c = 0; c < nCols; c++) A[r2][c] = subR(A[r2][c], mulR(factor, A[row][c]));
+    }
+    pivotColOfRow.push(col);
+    row++;
+  }
+  const rank = pivotColOfRow.length;
+  const nullity = nCols - rank;
+  if (nullity === 0) {
+    return { ok: false, problem: "kh\xF4ng c\xE2n b\u1EB1ng \u0111\u01B0\u1EE3c (\u0111\u1EC1 sai ho\u1EB7c thi\u1EBFu ch\u1EA5t)" };
+  }
+  if (nullity >= 2) {
+    return { ok: false, problem: "h\u1EC7 ph\u1EA3n \u1EE9ng kh\xF4ng x\xE1c \u0111\u1ECBnh duy nh\u1EA5t (tr\u1ED9n \u2265 2 ph\u1EA3n \u1EE9ng \u0111\u1ED9c l\u1EADp)" };
+  }
+  const freeCol = [...Array(nCols).keys()].find((c) => !pivotColOfRow.includes(c));
+  const x = Array.from({ length: nCols }, () => R0);
+  x[freeCol] = R1;
+  pivotColOfRow.forEach((pc, r2) => {
+    x[pc] = subR(R0, A[r2][freeCol]);
+  });
+  let lcm = 1n;
+  for (const v of x) lcm = lcm / bgcd3(lcm, v.den) * v.den;
+  let ints = x.map((v) => v.num * lcm / v.den);
+  let gcd3 = 0n;
+  for (const v of ints) gcd3 = bgcd3(gcd3, v);
+  ints = ints.map((v) => v / gcd3);
+  if (ints.every((v) => v < 0n)) ints = ints.map((v) => -v);
+  if (ints.some((v) => v <= 0n)) {
+    return { ok: false, problem: "h\u1EC7 s\u1ED1 kh\xF4ng to\xE0n d\u01B0\u01A1ng \u2014 c\xF3 ch\u1EA5t \u0111\u1EB7t nh\u1EA7m v\u1EBF ho\u1EB7c kh\xF4ng tham gia" };
+  }
+  return { ok: true, coefficients: ints.map((v) => Number(v)) };
+}
+
+// api/_lib/kernel/chem/organic.ts
+var ri = (n) => rat2(BigInt(n));
+var TWO = ri(2);
+var TOL_CAP = rat2(1n, 50n);
+function bgcd4(a, b) {
+  a = a < 0n ? -a : a;
+  b = b < 0n ? -b : b;
+  while (b) [a, b] = [b, a % b];
+  return a || 1n;
+}
+var atomMap = (formula) => parseFormula(formula);
+function sameAtomMap(a, b) {
+  const keys = /* @__PURE__ */ new Set([...a.keys(), ...b.keys()]);
+  for (const k of keys) if ((a.get(k) ?? 0) !== (b.get(k) ?? 0)) return false;
+  return true;
+}
+function addMaps(a, b) {
+  const o = new Map(a);
+  for (const [e, c] of b) o.set(e, (o.get(e) ?? 0) + c);
+  return o;
+}
+function subMaps(a, b) {
+  const o = new Map(a);
+  for (const [e, c] of b) o.set(e, (o.get(e) ?? 0) - c);
+  return o;
+}
+function mapToFormula(m) {
+  const rank = (e) => e === "C" ? 0 : e === "H" ? 1 : 2;
+  const els = [...m.keys()].filter((e) => (m.get(e) ?? 0) > 0);
+  els.sort((a, b) => rank(a) !== rank(b) ? rank(a) - rank(b) : a < b ? -1 : a > b ? 1 : 0);
+  let s = "";
+  for (const e of els) {
+    const c = m.get(e);
+    s += e + (c > 1 ? String(c) : "");
+  }
+  return s;
+}
+function candFormula(c) {
+  let s = "";
+  const put = (el, n) => {
+    if (n > 0) s += el + (n > 1 ? String(n) : "");
+  };
+  put("C", c.C);
+  put("H", c.H);
+  put("O", c.O);
+  put("N", c.N);
+  return s;
+}
+function kOf(c) {
+  return (2 * c.C + 2 + c.N - c.H) / 2;
+}
+function valenceOK(c) {
+  const { C: x, H: y, O: z, N: t } = c;
+  if (x < 1 || y < 1) return false;
+  const num3 = 2 * x + 2 + t - y;
+  if (num3 < 0 || num3 % 2 !== 0) return false;
+  const k = num3 / 2;
+  if (((y - t) % 2 + 2) % 2 !== 0) return false;
+  if (y > 2 * x + 2 + t) return false;
+  if (z === 0 && t === 0 && k >= 1 && x < 2) return false;
+  return true;
+}
+function empiricalOf(c) {
+  const arr = [c.C, c.H, c.O, c.N].filter((v) => v > 0);
+  let g = 0n;
+  for (const v of arr) g = bgcd4(g, BigInt(v));
+  const gg = g === 0n ? 1n : g;
+  return candFormula({
+    C: Number(BigInt(c.C) / gg),
+    H: Number(BigInt(c.H) / gg),
+    O: Number(BigInt(c.O) / gg),
+    N: Number(BigInt(c.N) / gg)
+  });
+}
+var CLASS_TABLE = {
+  "ankan": { k: 0, oCount: 0, nCount: 0, hOfN: (n) => 2 * n + 2, minC: 1, hasO: false, hasN: false },
+  "anken": { k: 1, oCount: 0, nCount: 0, hOfN: (n) => 2 * n, minC: 2, hasO: false, hasN: false },
+  "ankin": { k: 2, oCount: 0, nCount: 0, hOfN: (n) => 2 * n - 2, minC: 2, hasO: false, hasN: false },
+  "ancol-no-don": { k: 0, oCount: 1, nCount: 0, hOfN: (n) => 2 * n + 2, minC: 1, hasO: true, hasN: false },
+  "axit-no-don": { k: 1, oCount: 2, nCount: 0, hOfN: (n) => 2 * n, minC: 1, hasO: true, hasN: false },
+  "este-no-don": { k: 1, oCount: 2, nCount: 0, hOfN: (n) => 2 * n, minC: 2, hasO: true, hasN: false },
+  "amin-no-don": { k: 0, oCount: 0, nCount: 1, hOfN: (n) => 2 * n + 3, minC: 1, hasO: false, hasN: true }
+};
+function buildModel(unknown, plan, vm, trace) {
+  const name = unknown.name;
+  const comb = plan.ops.find((o) => o.op === "combustion" && o.of === name);
+  const meas = plan.ops.find((o) => o.op === "measure" && o.of === name);
+  let co2 = null, h2o = null, n2 = null, o2 = null;
+  try {
+    if (comb?.co2) co2 = amountToMol("CO2", comb.co2, vm);
+    if (comb?.h2o) h2o = amountToMol("H2O", comb.h2o, vm);
+    if (comb?.n2) n2 = amountToMol("N2", comb.n2, vm);
+    if (comb?.o2) o2 = amountToMol("O2", comb.o2, vm);
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : String(e) };
+  }
+  let sampleMol = null, sampleMassG = null;
+  const s = unknown.sample;
+  try {
+    if (s) {
+      if ("mol" in s) sampleMol = parsePositive(s.mol, `s\u1ED1 mol m\u1EABu ${name}`);
+      else if ("grams" in s) sampleMassG = parsePositive(s.grams, `kh\u1ED1i l\u01B0\u1EE3ng m\u1EABu ${name}`);
+      else if ("liters_gas" in s) sampleMol = divR(parsePositive(s.liters_gas, `th\u1EC3 t\xEDch m\u1EABu ${name}`), vm);
+    }
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : String(e) };
+  }
+  let M = null;
+  if (meas) {
+    try {
+      const val = parseDecimal(meas.value);
+      let tol = meas.tol !== void 0 ? parseDecimal(meas.tol) : R0;
+      const exact = meas.tol === void 0;
+      if (cmpR(tol, TOL_CAP) > 0) {
+        trace.push(`measure.tol=${ratToString(tol)} v\u01B0\u1EE3t tr\u1EA7n \u2014 ch\u1EB7n v\u1EC1 ${ratToString(TOL_CAP)} (review H7)`);
+        tol = TOL_CAP;
+      }
+      if (meas.kind === "molar_mass") {
+        M = { value: val, tol, exact };
+      } else {
+        if (!meas.ref) return { ok: false, error: `measure vapor_density c\u1EE7a ${name} thi\u1EBFu 'ref' (H2/air/kh\xED)` };
+        const Mref = meas.ref === "H2" ? TWO : meas.ref === "air" ? ri(29) : molarMass(meas.ref);
+        M = { value: mulR(val, Mref), tol, exact };
+      }
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : String(e) };
+    }
+  }
+  const contains = unknown.contains ? new Set(unknown.contains) : null;
+  return { ok: true, model: { name, klass: unknown.class, contains, co2, h2o, n2, o2, sampleMol, sampleMassG, M } };
+}
+function determineSampleOxygen(model) {
+  const nC = model.co2;
+  const nH = model.h2o ? mulR(TWO, model.h2o) : null;
+  const nN = model.n2 ? mulR(TWO, model.n2) : R0;
+  if (!nC || !nH) return { ok: false, error: "thi\u1EBFu s\u1ED1 \u0111o CO2 ho\u1EB7c H2O \u2014 kh\xF4ng l\u1EADp \u0111\u01B0\u1EE3c CT\u0110GN (ch\u1EA5t ch\u01B0a khai class)" };
+  if (cmpR(nC, R0) <= 0 || cmpR(nH, R0) <= 0) return { ok: false, error: "mol C ho\u1EB7c H \u2264 0 \u2014 d\u1EEF ki\u1EC7n m\xE2u thu\u1EABn" };
+  let nOa = null, nOb = null;
+  if (model.sampleMassG) {
+    const num3 = subR(subR(subR(model.sampleMassG, mulR(ri(12), nC)), nH), mulR(ri(14), nN));
+    nOa = divR(num3, ri(16));
+  }
+  if (model.o2) nOb = subR(addR(mulR(TWO, nC), model.h2o), mulR(TWO, model.o2));
+  if (nOa && nOb && cmpR(nOa, nOb) !== 0) {
+    return { ok: false, error: "hai route t\xEDnh O (kh\u1ED1i l\u01B0\u1EE3ng m\u1EABu vs b\u1EA3o to\xE0n O2) L\u1EC6CH \u2014 d\u1EEF ki\u1EC7n m\xE2u thu\u1EABn" };
+  }
+  let nO = nOa ?? nOb;
+  if (nO === null) {
+    if (model.contains) {
+      if (model.contains.has("O")) return { ok: false, error: "\u0111\u1EC1 khai ch\u1EE9a O nh\u01B0ng thi\u1EBFu d\u1EEF ki\u1EC7n \u0111\u1ECBnh l\u01B0\u1EE3ng O (c\u1EA7n m m\u1EABu, O2 ti\xEAu th\u1EE5, ho\u1EB7c class ch\u1EE9a O)" };
+      nO = R0;
+    } else {
+      return { ok: false, error: "kh\xF4ng x\xE1c \u0111\u1ECBnh \u0111\u01B0\u1EE3c O: thi\u1EBFu m m\u1EABu / O2 / class / contains \u2014 engine KH\xD4NG m\u1EB7c \u0111\u1ECBnh O = 0" };
+    }
+  }
+  if (cmpR(nO, R0) < 0) return { ok: false, error: "kh\u1ED1i l\u01B0\u1EE3ng C + H (+N) v\u01B0\u1EE3t kh\u1ED1i l\u01B0\u1EE3ng m\u1EABu \u21D2 nO < 0 \u2014 d\u1EEF ki\u1EC7n m\xE2u thu\u1EABn ho\u1EB7c ch\u1EA5t kh\xF4ng ch\u1EC9 ch\u1EE9a C,H,O" };
+  if (model.contains && !model.contains.has("O") && cmpR(nO, R0) > 0) {
+    return { ok: false, error: "kh\u1ED1i l\u01B0\u1EE3ng m\u1EABu > mC + mH \u21D2 h\u1EE3p ch\u1EA5t C\xD3 oxi, nh\u01B0ng \u0111\u1EC1 khai ch\u1EC9 ch\u1EE9a C,H \u2014 khai THI\u1EBEU nguy\xEAn t\u1ED1 O (\xA710.4)" };
+  }
+  return { ok: true, nC, nH, nN, nO };
+}
+function reduceEmpirical(m) {
+  const order = ["C", "H", "O", "N"];
+  let lcm = 1n;
+  for (const e of order) if (!isZeroR(m[e])) lcm = lcm / bgcd4(lcm, m[e].den) * m[e].den;
+  const ints = { C: 0n, H: 0n, O: 0n, N: 0n };
+  for (const e of order) ints[e] = isZeroR(m[e]) ? 0n : m[e].num * lcm / m[e].den;
+  let g = 0n;
+  for (const e of order) if (ints[e] !== 0n) g = bgcd4(g, ints[e]);
+  const gg = g === 0n ? 1n : g;
+  return { C: Number(ints.C / gg), H: Number(ints.H / gg), O: Number(ints.O / gg), N: Number(ints.N / gg) };
+}
+function deriveAnchorNA(cand, model) {
+  if (model.sampleMol) return model.sampleMol;
+  if (model.co2 && cand.C > 0) return divR(model.co2, ri(cand.C));
+  if (model.sampleMassG) return divR(model.sampleMassG, molarMass(candFormula(cand)));
+  if (model.n2 && cand.N > 0) return divR(mulR(TWO, model.n2), ri(cand.N));
+  if (model.h2o && cand.H > 0) return divR(mulR(TWO, model.h2o), ri(cand.H));
+  return null;
+}
+function reconstructOK(cand, nA, model) {
+  const F = candFormula(cand);
+  if (model.co2 && cmpR(mulR(ri(cand.C), nA), model.co2) !== 0) return false;
+  if (model.h2o && cmpR(mulR(divR(ri(cand.H), TWO), nA), model.h2o) !== 0) return false;
+  if (model.n2 && cmpR(mulR(divR(ri(cand.N), TWO), nA), model.n2) !== 0) return false;
+  if (model.o2) {
+    const perMol = subR(addR(ri(cand.C), divR(ri(cand.H), ri(4))), divR(ri(cand.O), TWO));
+    if (cmpR(mulR(perMol, nA), model.o2) !== 0) return false;
+  }
+  if (model.sampleMassG && cmpR(mulR(nA, molarMass(F)), model.sampleMassG) !== 0) return false;
+  if (model.sampleMol && cmpR(nA, model.sampleMol) !== 0) return false;
+  if (model.M) {
+    const Mc = molarMass(F);
+    if (model.M.exact) {
+      if (cmpR(Mc, model.M.value) !== 0) return false;
+    } else {
+      const diff = absR(subR(Mc, model.M.value));
+      const limit = mulR(model.M.tol, absR(model.M.value));
+      if (cmpR(diff, limit) > 0) return false;
+    }
+  }
+  return true;
+}
+function solveFormula(model, trace) {
+  const klass = model.klass;
+  let template;
+  let minC = 1;
+  let empiricalStr;
+  if (klass !== "none") {
+    const spec = CLASS_TABLE[klass];
+    if (model.contains) {
+      if (spec.hasO !== model.contains.has("O") || spec.hasN !== model.contains.has("N")) {
+        return { kind: "error", error: `lo\u1EA1i ch\u1EA5t "${klass}" m\xE2u thu\u1EABn t\u1EADp nguy\xEAn t\u1ED1 khai (contains) \u2014 ki\u1EC3m l\u1EA1i \u0111\u1EC1` };
+      }
+    }
+    minC = spec.minC;
+    template = (n) => ({ C: n, H: spec.hOfN(n), O: spec.oCount, N: spec.nCount });
+  } else {
+    const ox = determineSampleOxygen(model);
+    if (!ox.ok) return { kind: "error", error: ox.error };
+    const emp = reduceEmpirical({ C: ox.nC, H: ox.nH, O: ox.nO, N: ox.nN });
+    empiricalStr = candFormula(emp);
+    template = (n) => ({ C: emp.C * n, H: emp.H * n, O: emp.O * n, N: emp.N * n });
+    minC = 1;
+  }
+  const kept = [];
+  for (let n = minC; n <= 30; n++) {
+    const cand = template(n);
+    if (!valenceOK(cand)) continue;
+    const nA = deriveAnchorNA(cand, model);
+    if (nA === null || cmpR(nA, R0) <= 0) continue;
+    if (reconstructOK(cand, nA, model)) kept.push({ cand, nA });
+  }
+  if (kept.length === 1) {
+    const { cand, nA } = kept[0];
+    const formula = candFormula(cand);
+    if (model.n2 && model.co2 && cand.N > 0) {
+      const routeN = divR(mulR(TWO, model.n2), ri(cand.N));
+      if (cmpR(routeN, nA) === 0) trace.push("amin: hai route n_A (2\xB7nN2 v\xE0 nCO2/x) kh\u1EDBp exact");
+    }
+    return { kind: "unique", formula, empirical: empiricalStr ?? empiricalOf(cand), k: kOf(cand), cand, nA, M: molarMass(formula) };
+  }
+  if (kept.length >= 2) {
+    return { kind: "multi", empirical: empiricalStr, candidates: kept.map((x) => candFormula(x.cand)) };
+  }
+  return { kind: "error", error: "kh\xF4ng CTPT n\xE0o th\u1ECFa d\u1EEF ki\u1EC7n \u2014 \u0111\u1EC1/m\xF4 h\xECnh m\xE2u thu\u1EABn (ki\u1EC3m s\u1ED1 \u0111o, class, t\u1EC9 kh\u1ED1i)" };
+}
+function combustionProducts(cand, nA, formula) {
+  const rows = [{ formula, mol: nA, gas: false }];
+  if (cand.C > 0) rows.push({ formula: "CO2", mol: mulR(ri(cand.C), nA), gas: true });
+  if (cand.H > 0) rows.push({ formula: "H2O", mol: mulR(divR(ri(cand.H), TWO), nA), gas: false });
+  if (cand.N > 0) rows.push({ formula: "N2", mol: mulR(divR(ri(cand.N), TWO), nA), gas: true });
+  const perMol = subR(addR(ri(cand.C), divR(ri(cand.H), ri(4))), divR(ri(cand.O), TWO));
+  rows.push({ formula: "O2", mol: mulR(perMol, nA), gas: true });
+  return rows;
+}
+function fmtVN(x, maxDp = 4) {
+  const factor = 10 ** maxDp;
+  const rounded = Math.round(x * factor) / factor;
+  let s = rounded.toString();
+  if (/e/i.test(s)) s = rounded.toFixed(maxDp);
+  return s.replace(".", ",");
+}
+var ORG_GAS = /* @__PURE__ */ new Set(["CO2", "N2", "O2"]);
+function answerCombustion(queries, sol, model, vm, vmLabel, errors) {
+  const answers = [];
+  const products = sol.kind === "unique" ? combustionProducts(sol.cand, sol.nA, sol.formula) : null;
+  const err = (m) => {
+    errors.push({ message: m });
+    return null;
+  };
+  for (const q2 of queries) {
+    const of = "of" in q2 ? q2.of : "";
+    let a = null;
+    if (q2.kind === "empirical_formula") {
+      if (sol.kind === "unique" || sol.kind === "multi") {
+        const emp = sol.empirical;
+        if (emp) a = { query: q2, exact: emp, approx: null, unit: "", text: `CT\u0110GN c\u1EE7a ${of} l\xE0 ${emp}`, formula: emp };
+        else a = err(`kh\xF4ng l\u1EADp \u0111\u01B0\u1EE3c CT\u0110GN c\u1EE7a ${of} (thi\u1EBFu t\u1EC9 l\u1EC7 nguy\xEAn t\u1ED1)`);
+      } else a = err(`kh\xF4ng l\u1EADp \u0111\u01B0\u1EE3c CT\u0110GN c\u1EE7a ${of}: ${sol.error}`);
+    } else if (q2.kind === "molecular_formula") {
+      if (sol.kind === "unique") {
+        a = {
+          query: q2,
+          exact: sol.formula,
+          approx: null,
+          unit: "",
+          formula: sol.formula,
+          text: `CTPT c\u1EE7a ${of} l\xE0 ${sol.formula} (M = ${fmtVN(ratApprox(sol.M))}; CT\u0110GN ${sol.empirical}; k = ${sol.k})`
+        };
+      } else if (sol.kind === "multi") {
+        const shown = sol.candidates.slice(0, 8).join(", ") + (sol.candidates.length > 8 ? ", \u2026" : "");
+        a = {
+          query: q2,
+          exact: null,
+          approx: null,
+          unit: "",
+          candidates: sol.candidates,
+          text: `\u0111\u1EC1 thi\u1EBFu d\u1EEF ki\u1EC7n: ${sol.candidates.length} CTPT c\xF9ng th\u1ECFa (${shown}); c\u1EA7n M/t\u1EC9 kh\u1ED1i \u0111\u1EC3 ch\u1ED1t duy nh\u1EA5t`
+        };
+      } else a = err(`kh\xF4ng ch\u1ED1t \u0111\u01B0\u1EE3c CTPT c\u1EE7a ${of}: ${sol.error}`);
+    } else if (q2.kind === "degree_unsaturation") {
+      if (sol.kind === "unique") a = { query: q2, exact: String(sol.k), approx: sol.k, unit: "", text: `\u0111\u1ED9 b\u1EA5t b\xE3o h\xF2a k c\u1EE7a ${of} = ${sol.k}` };
+      else a = err(`ch\u01B0a ch\u1ED1t CTPT \u21D2 ch\u01B0a t\xEDnh \u0111\u01B0\u1EE3c k c\u1EE7a ${of}`);
+    } else if (q2.kind === "oxygen_needed") {
+      if (sol.kind !== "unique") a = err(`ch\u01B0a ch\u1ED1t CTPT \u21D2 ch\u01B0a t\xEDnh \u0111\u01B0\u1EE3c O2 c\u1EA7n \u0111\u1ED1t ${of}`);
+      else {
+        const prods = ["CO2", "H2O"];
+        if (sol.cand.N > 0) prods.push("N2");
+        const b = balance([sol.formula, "O2"], prods);
+        if (!b.ok) a = err(`kh\xF4ng c\xE2n b\u1EB1ng \u0111\u01B0\u1EE3c PT \u0111\u1ED1t ${sol.formula}: ${b.problem}`);
+        else {
+          const perMol = divR(ri(b.coefficients[1]), ri(b.coefficients[0]));
+          const molO2 = mulR(perMol, sol.nA);
+          if (q2.as === "liters_gas") {
+            const v = mulR(molO2, vm);
+            a = { query: q2, exact: ratToString(v), approx: ratApprox(v), unit: "L", text: `V(O2) c\u1EA7n \u0111\u1ED1t ${of} = ${fmtVN(ratApprox(v))} l\xEDt (${vmLabel})` };
+          } else {
+            a = { query: q2, exact: ratToString(molO2), approx: ratApprox(molO2), unit: "mol", text: `n(O2) c\u1EA7n \u0111\u1ED1t ${of} = ${fmtVN(ratApprox(molO2))} mol` };
+          }
+        }
+      }
+    } else {
+      if (!products) {
+        a = err(`ch\u01B0a ch\u1ED1t CTPT \u21D2 ch\u01B0a d\u1EF1ng \u0111\u01B0\u1EE3c l\u01B0\u1EE3ng s\u1EA3n ph\u1EA9m cho truy v\u1EA5n ${q2.kind} ${of}`);
+      } else {
+        const tMap = atomMap(of);
+        const row = products.find((p2) => sameAtomMap(atomMap(p2.formula), tMap));
+        if (!row) a = err(`"${of}" kh\xF4ng thu\u1ED9c s\u1EA3n ph\u1EA9m \u0111\u1ED1t (CO2/H2O/N2/O2) hay ch\u1EA5t A \u2014 ki\u1EC3m l\u1EA1i 'of' c\u1EE7a query ${q2.kind}`);
+        else if (q2.kind === "mol") a = { query: q2, exact: ratToString(row.mol), approx: ratApprox(row.mol), unit: "mol", text: `n(${of}) = ${fmtVN(ratApprox(row.mol))} mol` };
+        else if (q2.kind === "mass") {
+          const m = mulR(row.mol, molarMass(row.formula));
+          a = { query: q2, exact: ratToString(m), approx: ratApprox(m), unit: "g", text: `m(${of}) = ${fmtVN(ratApprox(m))} g` };
+        } else if (q2.kind === "volume_gas") {
+          if (!row.gas || !ORG_GAS.has(row.formula)) a = err(`"${of}" kh\xF4ng ph\u1EA3i ch\u1EA5t kh\xED \u1EDF \u0111i\u1EC1u ki\u1EC7n th\u01B0\u1EDDng \u2014 kh\xF4ng quy ra th\u1EC3 t\xEDch kh\xED (n\u01B0\u1EDBc l\xE0 ch\u1EA5t l\u1ECFng, \xA715.1)`);
+          else {
+            const v = mulR(row.mol, vm);
+            a = { query: q2, exact: ratToString(v), approx: ratApprox(v), unit: "L", text: `V(${of}) = ${fmtVN(ratApprox(v))} l\xEDt (${vmLabel})` };
+          }
+        } else a = err(`truy v\u1EA5n ${q2.kind} ch\u01B0a h\u1ED7 tr\u1EE3 \u1EDF nh\xE1nh \u0111\u1ED1t ch\xE1y h\u1EEFu c\u01A1 v1`);
+      }
+    }
+    if (a) answers.push(a);
+  }
+  return answers;
+}
+function runCombustion(unknown, plan, emptyScene, trace, errors, violations, vm, vmLabel) {
+  const built = buildModel(unknown, plan, vm, trace);
+  if (!built.ok) {
+    errors.push({ message: built.error });
+    return finish(false);
+  }
+  const model = built.model;
+  const sol = solveFormula(model, trace);
+  if (sol.kind === "unique") trace.push(`CTPT ${model.name} = ${sol.formula} (CT\u0110GN ${sol.empirical}, k=${sol.k}, M=${ratToString(sol.M)})`);
+  const wantsMolecular = plan.queries.some((q2) => q2.kind === "molecular_formula");
+  if (sol.kind === "multi" && wantsMolecular) {
+    violations.push({ law: "\u0111\u1EC1 thi\u1EBFu d\u1EEF ki\u1EC7n", detail: `${sol.candidates.length} CTPT c\xF9ng th\u1ECFa (${sol.candidates.slice(0, 8).join(", ")}${sol.candidates.length > 8 ? ", \u2026" : ""}) \u2014 c\u1EA7n M/t\u1EC9 kh\u1ED1i \u0111\u1EC3 ch\u1ED1t duy nh\u1EA5t` });
+  }
+  const assertProducts = sol.kind === "unique" ? combustionProducts(sol.cand, sol.nA, sol.formula) : null;
+  for (const as of plan.asserts) {
+    if (as.kind === "given_formula") {
+      if (as.of !== model.name) {
+        errors.push({ message: `assert given_formula: '${as.of}' kh\xF4ng kh\u1EDBp ch\u1EA5t ch\u01B0a bi\u1EBFt '${model.name}'` });
+        continue;
+      }
+      if (sol.kind === "unique") {
+        if (sameAtomMap(atomMap(sol.formula), atomMap(as.formula))) trace.push(`given_formula kh\u1EDBp: ${sol.formula}`);
+        else violations.push({ law: `given_formula ${as.of}`, detail: `engine t\xEDnh CTPT = ${sol.formula} nh\u01B0ng \u0111\u1EC1 khai ${as.formula} \u2014 m\xF4 h\xECnh l\u1EC7ch d\u1EEF ki\u1EC7n, KH\xD4NG x\xE1c nh\u1EADn` });
+      } else {
+        violations.push({ law: `given_formula ${as.of}`, detail: `\u0111\u1EC1 khai CTPT ${as.formula} nh\u01B0ng engine ch\u01B0a ch\u1ED1t \u0111\u01B0\u1EE3c CTPT duy nh\u1EA5t \u2014 kh\xF4ng x\xE1c nh\u1EADn` });
+      }
+      continue;
+    }
+    if (!assertProducts) {
+      errors.push({ message: `assert ${as.kind} ${as.of}: ch\u01B0a ch\u1ED1t CTPT \u21D2 kh\xF4ng d\u1EF1ng \u0111\u01B0\u1EE3c l\u01B0\u1EE3ng \u0111\u1EC3 \u0111\u1ED1i chi\u1EBFu` });
+      continue;
+    }
+    const row = assertProducts.find((p2) => sameAtomMap(atomMap(p2.formula), atomMap(as.of)));
+    if (!row) {
+      errors.push({ message: `assert ${as.kind}: '${as.of}' kh\xF4ng thu\u1ED9c s\u1EA3n ph\u1EA9m \u0111\u1ED1t (CO2/H2O/N2/O2) hay ch\u1EA5t A` });
+      continue;
+    }
+    let given;
+    try {
+      given = parsePositive(as.kind === "given_mass" ? as.grams : as.mol, `assert ${as.of}`);
+    } catch (e) {
+      errors.push({ message: e instanceof Error ? e.message : String(e) });
+      continue;
+    }
+    const computed = as.kind === "given_mass" ? mulR(row.mol, molarMass(row.formula)) : row.mol;
+    const tolR = parseDecimal(as.tol ?? 1e-3);
+    if (cmpR(absR(subR(computed, given)), mulR(tolR, absR(given))) > 0) {
+      violations.push({ law: `${as.kind} ${as.of}`, detail: `\u0111\u1EC1 cho ${ratToString(given)} nh\u01B0ng engine t\xEDnh ${ratToString(computed)} \u2014 l\u1EC7ch qu\xE1 tol t\u01B0\u01A1ng \u0111\u1ED1i ${ratToString(tolR)}, m\xF4 h\xECnh l\u1EC7ch d\u1EEF ki\u1EC7n` });
+    } else trace.push(`assert ${as.kind}(${as.of}) kh\u1EDBp: ${ratToString(computed)} \u2248 ${ratToString(given)}`);
+  }
+  const answers = answerCombustion(plan.queries, sol, model, vm, vmLabel, errors);
+  return { ok: errors.length === 0 && violations.length === 0, reactions: [], ledger: [], answers, scene: emptyScene, violations, errors, trace };
+}
+function applyAmount(formula, amount, mols, excessSet, vm) {
+  if (!amount) return null;
+  if (typeof amount === "object" && amount !== null && "excess" in amount) {
+    excessSet.add(formula);
+    return null;
+  }
+  try {
+    mols.set(formula, amountToMol(formula, amount, vm));
+    return null;
+  } catch (e) {
+    return e instanceof Error ? e.message : String(e);
+  }
+}
+function runEster(op, plan, emptyScene, trace, errors, violations, vm, vmLabel) {
+  const done = (ok, reactions2, ledger2, answers2) => ({ ok, reactions: reactions2, ledger: ledger2, answers: answers2, scene: emptyScene, violations, errors, trace });
+  const fail4 = (msg) => {
+    errors.push({ message: msg });
+    return done(false, [], [], []);
+  };
+  let esterAtoms, alcoholAtoms;
+  try {
+    esterAtoms = atomMap(op.ester);
+    alcoholAtoms = atomMap(op.alcohol);
+  } catch (e) {
+    return fail4(e instanceof Error ? e.message : String(e));
+  }
+  const naohAtoms = atomMap("NaOH");
+  const h2oAtoms = atomMap("H2O");
+  if (op.acid) {
+    let acidAtoms;
+    try {
+      acidAtoms = atomMap(op.acid);
+    } catch (e) {
+      return fail4(e instanceof Error ? e.message : String(e));
+    }
+    const expected = subMaps(addMaps(acidAtoms, alcoholAtoms), h2oAtoms);
+    if (!sameAtomMap(expected, esterAtoms)) {
+      violations.push({ law: "gh\xE9p este (este h\xF3a ng\u01B0\u1EE3c)", detail: `axit "${op.acid}" + ancol "${op.alcohol}" \u2212 H2O = ${mapToFormula(expected)} \u2260 este "${op.ester}" (${mapToFormula(esterAtoms)}) \u2014 khai SAI n\u1EEDa axit/ancol, KH\xD4NG tr\u1EA3 \u0111\xE1p s\u1ED1` });
+      return done(false, [], [], []);
+    }
+    trace.push("guard este h\xF3a kh\u1EDBp: axit + ancol \u2212 H2O = ester");
+  } else {
+    trace.push('C\u1EA2NH B\xC1O (review H2): kh\xF4ng khai "acid" \u21D2 KH\xD4NG c\xF3 guard \u0111\u1ED9c l\u1EADp cho n\u1EEDa ancol; \u0111\u1ECDc nh\u1EA7m ancol \u21D2 kh\u1ED1i l\u01B0\u1EE3ng mu\u1ED1i c\xF3 th\u1EC3 sai \xE2m th\u1EA7m. Khuy\u1EBFn ngh\u1ECB khai acid.');
+  }
+  const saltAtoms = subMaps(addMaps(esterAtoms, naohAtoms), alcoholAtoms);
+  for (const [el, c] of saltAtoms) {
+    if (c < 0) {
+      violations.push({ law: "r\xE1p mu\u1ED1i", detail: `mu\u1ED1i r\xE1p ra s\u1ED1 nguy\xEAn t\u1EED ${el} = ${c} < 0 \u2014 n\u1EEDa ancol kh\xF4ng kh\u1EDBp este` });
+      return done(false, [], [], []);
+    }
+  }
+  const saltFormula = mapToFormula(saltAtoms);
+  const bal = balance([op.ester, "NaOH"], [saltFormula, op.alcohol]);
+  if (!bal.ok) return fail4(`kh\xF4ng c\xE2n b\u1EB1ng \u0111\u01B0\u1EE3c th\u1EE7y ph\xE2n este: ${bal.problem} \u2014 ngo\xE0i ph\u1EA1m vi este \u0111\u01A1n ch\u1EE9c 1:1 (v1)`);
+  if (bal.coefficients.some((c) => c !== 1)) return fail4(`h\u1EC7 s\u1ED1 th\u1EE7y ph\xE2n ${bal.coefficients.join(":")} \u2260 1:1:1:1 \u2014 kh\xF4ng ph\u1EA3i este \u0111\u01A1n ch\u1EE9c, m\u1EA1ch h\u1EDF, th\u1EE7y ph\xE2n \u0111\u01A1n gi\u1EA3n (v1)`);
+  const record = {
+    id: "ORG-ester",
+    reactants: [{ formula: op.ester, coeff: 1 }, { formula: "NaOH", coeff: 1 }],
+    products: [{ formula: saltFormula, coeff: 1, state: "solution" }, { formula: op.alcohol, coeff: 1, state: "liquid" }],
+    conditions: [],
+    medium: "dd",
+    type: "trao \u0111\u1ED5i",
+    redox: false,
+    phenomena: ["este b\u1ECB th\u1EE7y ph\xE2n trong dung d\u1ECBch ki\u1EC1m (x\xE0 ph\xF2ng h\xF3a)"],
+    tags: ["hoa/12/este-lipit/thuy-phan-este"]
+  };
+  const mols = /* @__PURE__ */ new Map();
+  const excessSet = /* @__PURE__ */ new Set();
+  const e1 = applyAmount(op.ester, op.esterAmount, mols, excessSet, vm);
+  if (e1) return fail4(e1);
+  const e2 = applyAmount("NaOH", op.baseAmount, mols, excessSet, vm);
+  if (e2) return fail4(e2);
+  const outcome = react(record, mols, excessSet);
+  if (!outcome.ok) {
+    if (outcome.outOfScope) return fail4(outcome.outOfScope.message);
+    violations.push(...outcome.violations);
+    errors.push({ message: "t\u1EF1 ki\u1EC3m b\u1EA3o to\xE0n (react v0) th\u1EA5t b\u1EA1i \u2014 kh\xF4ng tr\u1EA3 \u0111\xE1p s\u1ED1" });
+    return done(false, [], [], []);
+  }
+  trace.push(`\u03BE(th\u1EE7y ph\xE2n) = ${ratToString(outcome.xi)} mol; mu\u1ED1i r\xE1p = ${saltFormula} (M = ${ratToString(molarMass(saltFormula))})`);
+  const stateOf = (f) => f === op.ester ? "liquid" : f === "NaOH" ? "solution" : f === saltFormula ? "solution" : f === op.alcohol ? "liquid" : "solution";
+  const ledger = outcome.ledger.map((row) => serializeRow(row, stateOf(row.formula)));
+  const answers = [];
+  for (const q2 of plan.queries) {
+    const of = "of" in q2 ? q2.of : "";
+    if (q2.kind === "equation") {
+      answers.push({ query: q2, exact: null, approx: null, unit: "", text: esterEquation(record) });
+      continue;
+    }
+    if (q2.kind === "phenomena") {
+      answers.push({ query: q2, exact: null, approx: null, unit: "", text: record.phenomena.join("; ") });
+      continue;
+    }
+    if (q2.kind !== "mass" && q2.kind !== "mol" && q2.kind !== "volume_gas" && q2.kind !== "remaining") {
+      errors.push({ message: `truy v\u1EA5n ${q2.kind} ch\u01B0a h\u1ED7 tr\u1EE3 \u1EDF nh\xE1nh este th\u1EE7y ph\xE2n v1` });
+      continue;
+    }
+    const tMap = atomMap(of);
+    const row = outcome.ledger.find((r2) => sameAtomMap(atomMap(r2.formula), tMap));
+    if (!row) {
+      errors.push({ message: `"${of}" kh\xF4ng c\xF3 trong ph\u1EA3n \u1EE9ng th\u1EE7y ph\xE2n \u2014 ki\u1EC3m l\u1EA1i 'of' c\u1EE7a query ${q2.kind}` });
+      continue;
+    }
+    if (row.after === null) {
+      errors.push({ message: `"${of}" khai d\u01B0 (excess) \u2014 l\u01B0\u1EE3ng v\xF4 h\u1EA1n, kh\xF4ng truy v\u1EA5n ${q2.kind}` });
+      continue;
+    }
+    if (q2.kind === "mol") answers.push({ query: q2, exact: ratToString(row.after), approx: ratApprox(row.after), unit: "mol", text: `n(${of}) = ${fmtVN(ratApprox(row.after))} mol` });
+    else if (q2.kind === "mass") {
+      const m = mulR(row.after, molarMass(row.formula));
+      answers.push({ query: q2, exact: ratToString(m), approx: ratApprox(m), unit: "g", text: `m(${of}) = ${fmtVN(ratApprox(m))} g` });
+    } else if (q2.kind === "remaining") {
+      const g = mulR(row.after, molarMass(row.formula));
+      answers.push({ query: q2, exact: ratToString(row.after), approx: ratApprox(row.after), unit: "mol", text: isZeroR(row.after) ? `${of} \u0111\xE3 ph\u1EA3n \u1EE9ng h\u1EBFt` : `${of} c\xF2n ${fmtVN(ratApprox(row.after))} mol (\u2248 ${fmtVN(ratApprox(g))} g)` });
+    } else errors.push({ message: `"${of}" \u2014 th\u1EC3 t\xEDch kh\xED kh\xF4ng \xE1p d\u1EE5ng cho mu\u1ED1i/ancol th\u1EE7y ph\xE2n (\xA715.1)` });
+  }
+  const reactions = [{ id: record.id, equation: esterEquation(record), coefficients: [1, 1, 1, 1] }];
+  return done(errors.length === 0 && violations.length === 0, reactions, ledger, answers);
+}
+function esterEquation(record) {
+  const side = (arr) => arr.map((x) => (x.coeff > 1 ? x.coeff : "") + x.formula).join(" + ");
+  return `${side(record.reactants)} \u2192 ${side(record.products)}`;
+}
+function serializeRow(row, state) {
+  return {
+    formula: row.formula,
+    state,
+    before: row.before === null ? null : ratToString(row.before),
+    consumed: ratToString(row.consumed),
+    produced: ratToString(row.produced),
+    after: row.after === null ? null : ratToString(row.after),
+    excess: row.excess
+  };
+}
+function hasOrganicOp(plan) {
+  return plan.ops.some((o) => ORGANIC_OP_NAMES.has(o.op));
+}
+function runOrganic(plan, emptyScene) {
+  const trace = [];
+  const errors = [];
+  const violations = [];
+  const bail = (msg) => {
+    errors.push({ message: msg });
+    return { ok: false, reactions: [], ledger: [], answers: [], scene: emptyScene, violations, errors, trace };
+  };
+  const vm = MOLAR_VOLUMES[plan.molarVolume];
+  const vmLabel = plan.molarVolume === 22.4 ? "\u0111ktc, 22,4 L/mol" : "\u0111kc, 24,79 L/mol";
+  try {
+    const esterOps = plan.ops.filter((o) => o.op === "ester_hydrolysis");
+    const unknownOps = plan.ops.filter((o) => o.op === "organic_unknown");
+    if (esterOps.length > 0) {
+      if (esterOps.length > 1) return bail("v1 ch\u1EC9 h\u1ED7 tr\u1EE3 M\u1ED8T ph\u1EA3n \u1EE9ng ester_hydrolysis m\u1ED7i plan");
+      if (unknownOps.length > 0) return bail("kh\xF4ng tr\u1ED9n ester_hydrolysis v\u1EDBi \u0111\u1ED1t ch\xE1y (organic_unknown) trong m\u1ED9t plan (v1)");
+      return runEster(esterOps[0], plan, emptyScene, trace, errors, violations, vm, vmLabel);
+    }
+    if (unknownOps.length === 0) return bail("plan h\u1EEFu c\u01A1 kh\xF4ng khai organic_unknown hay ester_hydrolysis");
+    if (unknownOps.length > 1) return bail("v1 ch\u1EC9 h\u1ED7 tr\u1EE3 M\u1ED8T ch\u1EA5t ch\u01B0a bi\u1EBFt (organic_unknown) m\u1ED7i plan");
+    return runCombustion(unknownOps[0], plan, emptyScene, trace, errors, violations, vm, vmLabel);
+  } catch (e) {
+    return bail(`l\u1ED7i engine h\u1EEFu c\u01A1: ${e instanceof Error ? e.message : String(e)}`);
+  }
+}
+
 // api/_lib/kernel/chem/runChem.ts
 var GAS_SET = /* @__PURE__ */ new Set(["H2", "O2", "N2", "Cl2", "CO", "CO2", "SO2", "SO3", "NO", "NO2", "NH3"]);
 var ACID_SOLUTIONS = /* @__PURE__ */ new Set(["HCl", "H2SO4", "HNO3"]);
@@ -15829,7 +16588,7 @@ function inferFixedState(op) {
   if (io && solubilityOf(io.cation, io.anion) === "khong_tan") return "solid";
   return null;
 }
-function fmtVN(x, maxDp = 4) {
+function fmtVN2(x, maxDp = 4) {
   const factor = 10 ** maxDp;
   const rounded = Math.round(x * factor) / factor;
   let s = rounded.toString();
@@ -15873,6 +16632,13 @@ function runChem(input) {
     return bail(`ChemPlan kh\xF4ng h\u1EE3p l\u1EC7: ${zodMessages(parsed.error).join("; ")}`);
   }
   const plan = parsed.data;
+  if (hasOrganicOp(plan)) {
+    try {
+      return runOrganic(plan, EMPTY_SCENE);
+    } catch (e) {
+      return bail(`l\u1ED7i engine h\u1EEFu c\u01A1 (l\u01B0\u1EDBi cu\u1ED1i): ${e instanceof Error ? e.message : String(e)}`);
+    }
+  }
   const vm = MOLAR_VOLUMES[plan.molarVolume];
   const vmLabel = plan.molarVolume === 22.4 ? "\u0111ktc, 22,4 L/mol" : "\u0111kc, 24,79 L/mol";
   const speciesOps = plan.ops.filter((o) => o.op === "species");
@@ -15908,23 +16674,23 @@ function runChem(input) {
         mol = amountToMol(op.formula, amount, vm);
         if ("grams" in amount) {
           pouredMassG = parsePositive(amount.grams, "kh\u1ED1i l\u01B0\u1EE3ng");
-          amountText = `${fmtVN(ratApprox(pouredMassG))} g`;
+          amountText = `${fmtVN2(ratApprox(pouredMassG))} g`;
         } else if ("mol" in amount) {
           pouredMassG = mulR(mol, molarMass(op.formula));
-          amountText = `${fmtVN(ratApprox(mol))} mol`;
+          amountText = `${fmtVN2(ratApprox(mol))} mol`;
         } else if ("liters_gas" in amount) {
           if (!GAS_SET.has(op.formula)) {
             return bail(`"${op.formula}" khai liters_gas nh\u01B0ng kh\xF4ng thu\u1ED9c danh s\xE1ch kh\xED \u0111\xF3ng \u2014 ki\u1EC3m tra l\u1EA1i \u0111\u1EC1/plan`);
           }
           pouredMassG = mulR(mol, molarMass(op.formula));
-          amountText = `${fmtVN(ratApprox(parsePositive(amount.liters_gas, "V")))} L kh\xED`;
+          amountText = `${fmtVN2(ratApprox(parsePositive(amount.liters_gas, "V")))} L kh\xED`;
         } else if ("solution" in amount) {
           solutionVolumeL = parsePositive(amount.solution.liters, "th\u1EC3 t\xEDch dung d\u1ECBch");
           pouredMassUnknownWhy = `dung d\u1ECBch ${op.formula} khai theo CM\xD7V \u2014 kh\xF4ng r\xF5 kh\u1ED1i l\u01B0\u1EE3ng dung d\u1ECBch`;
-          amountText = `${fmtVN(ratApprox(solutionVolumeL))} L dd`;
+          amountText = `${fmtVN2(ratApprox(solutionVolumeL))} L dd`;
         } else if ("solution_percent" in amount) {
           pouredMassG = parsePositive(amount.solution_percent.massGrams, "kh\u1ED1i l\u01B0\u1EE3ng dung d\u1ECBch");
-          amountText = `${fmtVN(ratApprox(pouredMassG))} g dd`;
+          amountText = `${fmtVN2(ratApprox(pouredMassG))} g dd`;
         }
       } catch (e) {
         return bail(e instanceof Error ? e.message : String(e));
@@ -16305,7 +17071,7 @@ function answerOne(q2, ctx) {
       exact: ratToString(row.after),
       approx: ratApprox(row.after),
       unit: "mol",
-      text: `n(${target}) = ${fmtVN(ratApprox(row.after))} mol`
+      text: `n(${target}) = ${fmtVN2(ratApprox(row.after))} mol`
     };
   }
   if (q2.kind === "mass") {
@@ -16315,7 +17081,7 @@ function answerOne(q2, ctx) {
       exact: ratToString(m),
       approx: ratApprox(m),
       unit: "g",
-      text: `m(${target}) = ${fmtVN(ratApprox(m))} g`
+      text: `m(${target}) = ${fmtVN2(ratApprox(m))} g`
     };
   }
   if (q2.kind === "volume_gas") {
@@ -16331,7 +17097,7 @@ function answerOne(q2, ctx) {
       exact: ratToString(v),
       approx: ratApprox(v),
       unit: "L",
-      text: `V(${target}) = ${fmtVN(ratApprox(v))} l\xEDt (${vmLabel})`
+      text: `V(${target}) = ${fmtVN2(ratApprox(v))} l\xEDt (${vmLabel})`
     };
   }
   if (q2.kind === "remaining") {
@@ -16344,7 +17110,7 @@ function answerOne(q2, ctx) {
       exact: ratToString(row.after),
       approx: ratApprox(row.after),
       unit: "mol",
-      text: `${target} d\u01B0 ${fmtVN(ratApprox(row.after))} mol (\u2248 ${fmtVN(ratApprox(g))} g)`
+      text: `${target} d\u01B0 ${fmtVN2(ratApprox(row.after))} mol (\u2248 ${fmtVN2(ratApprox(g))} g)`
     };
   }
   if (q2.as === "CM") {
@@ -16371,7 +17137,7 @@ function answerOne(q2, ctx) {
       exact: ratToString(cm),
       approx: ratApprox(cm),
       unit: "M",
-      text: `CM(${target}) = ${fmtVN(ratApprox(cm))}M (coi th\u1EC3 t\xEDch dung d\u1ECBch c\u1ED9ng t\xEDnh, V t\u1ED5ng = ${fmtVN(ratApprox(vTotal))} L)`
+      text: `CM(${target}) = ${fmtVN2(ratApprox(cm))}M (coi th\u1EC3 t\xEDch dung d\u1ECBch c\u1ED9ng t\xEDnh, V t\u1ED5ng = ${fmtVN2(ratApprox(vTotal))} L)`
     };
   }
   if (row.state !== "solution") {
@@ -16401,84 +17167,8 @@ function answerOne(q2, ctx) {
     exact: ratToString(cpct),
     approx: ratApprox(cpct),
     unit: "%",
-    text: `C%(${target}) = ${fmtVN(ratApprox(cpct), 2)}% (m_dd sau = t\u1ED5ng \u0111\u1ED5 v\xE0o \u2212 k\u1EBFt t\u1EE7a \u2212 kh\xED tho\xE1t ra \u2212 ch\u1EA5t r\u1EAFn d\u01B0 = ${fmtVN(ratApprox(mdd))} g)`
+    text: `C%(${target}) = ${fmtVN2(ratApprox(cpct), 2)}% (m_dd sau = t\u1ED5ng \u0111\u1ED5 v\xE0o \u2212 k\u1EBFt t\u1EE7a \u2212 kh\xED tho\xE1t ra \u2212 ch\u1EA5t r\u1EAFn d\u01B0 = ${fmtVN2(ratApprox(mdd))} g)`
   };
-}
-
-// api/_lib/kernel/chem/balance.ts
-function bgcd3(a, b) {
-  a = a < 0n ? -a : a;
-  b = b < 0n ? -b : b;
-  while (b) [a, b] = [b, a % b];
-  return a || 1n;
-}
-function balance(reactants, products) {
-  let parsed;
-  try {
-    parsed = [...reactants, ...products].map((f) => parseFormula(f));
-  } catch (e) {
-    return { ok: false, problem: e instanceof Error ? e.message : String(e) };
-  }
-  const nR = reactants.length;
-  const nCols = parsed.length;
-  if (nCols < 2) return { ok: false, problem: "c\u1EA7n \xEDt nh\u1EA5t 2 ch\u1EA5t" };
-  const elements = [];
-  for (const counts of parsed) {
-    for (const el of counts.keys()) if (!elements.includes(el)) elements.push(el);
-  }
-  const A = elements.map(
-    (el) => parsed.map((counts, j) => {
-      const n = BigInt(counts.get(el) ?? 0);
-      return rat2(j < nR ? n : -n);
-    })
-  );
-  const pivotColOfRow = [];
-  let row = 0;
-  for (let col = 0; col < nCols && row < A.length; col++) {
-    let pivot = -1;
-    for (let r2 = row; r2 < A.length; r2++) {
-      if (!isZeroR(A[r2][col])) {
-        pivot = r2;
-        break;
-      }
-    }
-    if (pivot === -1) continue;
-    [A[row], A[pivot]] = [A[pivot], A[row]];
-    const pv = A[row][col];
-    for (let c = 0; c < nCols; c++) A[row][c] = divR(A[row][c], pv);
-    for (let r2 = 0; r2 < A.length; r2++) {
-      if (r2 === row || isZeroR(A[r2][col])) continue;
-      const factor = A[r2][col];
-      for (let c = 0; c < nCols; c++) A[r2][c] = subR(A[r2][c], mulR(factor, A[row][c]));
-    }
-    pivotColOfRow.push(col);
-    row++;
-  }
-  const rank = pivotColOfRow.length;
-  const nullity = nCols - rank;
-  if (nullity === 0) {
-    return { ok: false, problem: "kh\xF4ng c\xE2n b\u1EB1ng \u0111\u01B0\u1EE3c (\u0111\u1EC1 sai ho\u1EB7c thi\u1EBFu ch\u1EA5t)" };
-  }
-  if (nullity >= 2) {
-    return { ok: false, problem: "h\u1EC7 ph\u1EA3n \u1EE9ng kh\xF4ng x\xE1c \u0111\u1ECBnh duy nh\u1EA5t (tr\u1ED9n \u2265 2 ph\u1EA3n \u1EE9ng \u0111\u1ED9c l\u1EADp)" };
-  }
-  const freeCol = [...Array(nCols).keys()].find((c) => !pivotColOfRow.includes(c));
-  const x = Array.from({ length: nCols }, () => R0);
-  x[freeCol] = R1;
-  pivotColOfRow.forEach((pc, r2) => {
-    x[pc] = subR(R0, A[r2][freeCol]);
-  });
-  let lcm = 1n;
-  for (const v of x) lcm = lcm / bgcd3(lcm, v.den) * v.den;
-  let ints = x.map((v) => v.num * lcm / v.den);
-  let gcd3 = 0n;
-  for (const v of ints) gcd3 = bgcd3(gcd3, v);
-  ints = ints.map((v) => v / gcd3);
-  if (ints.every((v) => v < 0n)) ints = ints.map((v) => -v);
-  if (ints.some((v) => v <= 0n)) {
-    return { ok: false, problem: "h\u1EC7 s\u1ED1 kh\xF4ng to\xE0n d\u01B0\u01A1ng \u2014 c\xF3 ch\u1EA5t \u0111\u1EB7t nh\u1EA7m v\u1EBF ho\u1EB7c kh\xF4ng tham gia" };
-  }
-  return { ok: true, coefficients: ints.map((v) => Number(v)) };
 }
 
 // api/_lib/kernel/index.ts
