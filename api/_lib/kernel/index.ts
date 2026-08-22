@@ -65,5 +65,7 @@ export { runEfield, type EFieldResult } from './physics/runEfield';             
 export { EFieldPlanSchema, type EFieldPlan } from './physics/efieldSchema';
 export { runAcCircuit, type AcResult } from './physics/runAcCircuit';            // điện xoay chiều RLC lớp 12
 export { AcPlanSchema, type AcPlan } from './physics/acSchema';
+export { runGasHeat, type GasHeatResult } from './physics/runGasHeat';           // khí lý tưởng + nhiệt lớp 12
+export { GasHeatPlanSchema, type GasHeatPlan } from './physics/gasHeatSchema';
 // Hóa vô cơ THPT: dán đề Hóa → phản ứng + hiện tượng + đáp số (namespace tránh trùng tên).
 export * as chem from './chem/index';

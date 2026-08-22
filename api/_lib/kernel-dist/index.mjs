@@ -4853,12 +4853,12 @@ function toExactForm(value, eps = EPS2) {
     const p2 = Math.round(v);
     return { text: sign < 0 ? `-${p2}` : `${p2}`, isExact: true, value };
   }
-  for (let q = 2; q <= MAX_DENOM; q++) {
-    const p2 = Math.round(v * q);
-    if (p2 > 0 && p2 <= MAX_NUMER * MAX_DENOM && Math.abs(v - p2 / q) < eps) {
-      const g = gcd(p2, q);
+  for (let q2 = 2; q2 <= MAX_DENOM; q2++) {
+    const p2 = Math.round(v * q2);
+    if (p2 > 0 && p2 <= MAX_NUMER * MAX_DENOM && Math.abs(v - p2 / q2) < eps) {
+      const g = gcd(p2, q2);
       const pp = p2 / g;
-      const qq = q / g;
+      const qq = q2 / g;
       const text = qq === 1 ? `${pp}` : `${pp}/${qq}`;
       return { text: sign < 0 ? `-${text}` : text, isExact: true, value };
     }
@@ -4866,14 +4866,14 @@ function toExactForm(value, eps = EPS2) {
   let best = null;
   for (const n of SQUAREFREE_RADICANDS) {
     const sq = Math.sqrt(n);
-    for (let q = 1; q <= MAX_DENOM; q++) {
-      const p2 = Math.round(v * q / sq);
+    for (let q2 = 1; q2 <= MAX_DENOM; q2++) {
+      const p2 = Math.round(v * q2 / sq);
       if (p2 <= 0 || p2 > MAX_NUMER) continue;
-      const candidate = p2 * sq / q;
+      const candidate = p2 * sq / q2;
       if (Math.abs(candidate - v) < eps) {
-        if (!best || q < best.q || q === best.q && n < best.n) {
-          const g = gcd(p2, q);
-          best = { p: p2 / g, q: q / g, n };
+        if (!best || q2 < best.q || q2 === best.q && n < best.n) {
+          const g = gcd(p2, q2);
+          best = { p: p2 / g, q: q2 / g, n };
         }
       }
     }
@@ -7050,17 +7050,17 @@ function gcd2(a, b) {
   return a || 1;
 }
 function asRational(x, maxDen) {
-  for (let q = 1; q <= maxDen; q++) {
-    const p2 = Math.round(x * q);
-    if (Math.abs(x - p2 / q) < EPS4) {
-      const g = gcd2(p2, q);
-      return { p: p2 / g, q: q / g };
+  for (let q2 = 1; q2 <= maxDen; q2++) {
+    const p2 = Math.round(x * q2);
+    if (Math.abs(x - p2 / q2) < EPS4) {
+      const g = gcd2(p2, q2);
+      return { p: p2 / g, q: q2 / g };
     }
   }
   return null;
 }
-function fmtRational(p2, q) {
-  return q === 1 ? `${p2}` : `${p2}/${q}`;
+function fmtRational(p2, q2) {
+  return q2 === 1 ? `${p2}` : `${p2}/${q2}`;
 }
 function fmtSurdTerm(num3, den, rad) {
   const coeff = num3 === 1 ? `\u221A${rad}` : `${num3}\u221A${rad}`;
@@ -8300,9 +8300,9 @@ function orderRing(pts, normal) {
   const uLen = norm(u0);
   const u = uLen < EPS5 ? [1, 0, 0] : scale2(u0, 1 / uLen);
   const v = cross2(normal, u);
-  return [...pts].sort((p2, q) => {
+  return [...pts].sort((p2, q2) => {
     const ap = Math.atan2(dot2(sub3(p2, c), v), dot2(sub3(p2, c), u));
-    const aq = Math.atan2(dot2(sub3(q, c), v), dot2(sub3(q, c), u));
+    const aq = Math.atan2(dot2(sub3(q2, c), v), dot2(sub3(q2, c), u));
     return ap - aq;
   });
 }
@@ -8534,13 +8534,13 @@ var SI = { length: "m", time: "s" };
 function motionOf(op, base = SI) {
   const S = scalarFromNumber;
   if (op.op === "mover1d") {
-    const q = {
+    const q2 = {
       k0: qtyLength(op.x0, op.xUnit, base),
       k1: qtyVelocity(op.v0, op.v0Unit, base),
       k2: mul(HALF, S(op.a))
     };
     const t0 = qtyTime(op.startAt, op.tUnit, base);
-    return op.axis === "y" ? { name: op.name, t0, x: ZERO(), y: q, op } : { name: op.name, t0, x: q, y: ZERO(), op };
+    return op.axis === "y" ? { name: op.name, t0, x: ZERO(), y: q2, op } : { name: op.name, t0, x: q2, y: ZERO(), op };
   }
   if (op.op === "free_fall") {
     return {
@@ -8562,25 +8562,25 @@ function motionOf(op, base = SI) {
   };
 }
 var mainAxis = (m) => m.op.op === "mover1d" ? m.op.axis : m.op.op === "free_fall" ? "y" : "x";
-function evalQuadS(q, tau) {
-  return add2(q.k0, add2(mul(q.k1, tau), mul(q.k2, mul(tau, tau))));
+function evalQuadS(q2, tau) {
+  return add2(q2.k0, add2(mul(q2.k1, tau), mul(q2.k2, mul(tau, tau))));
 }
-function evalQuadN(q, tau) {
-  return q.k0.approx + q.k1.approx * tau + q.k2.approx * tau * tau;
+function evalQuadN(q2, tau) {
+  return q2.k0.approx + q2.k1.approx * tau + q2.k2.approx * tau * tau;
 }
-function derivQuad(q) {
-  return { k0: q.k1, k1: mul(rat(2n), q.k2), k2: rat(0n) };
+function derivQuad(q2) {
+  return { k0: q2.k1, k1: mul(rat(2n), q2.k2), k2: rat(0n) };
 }
-function expandAbs(q, t0) {
-  const k0 = add2(sub2(q.k0, mul(q.k1, t0)), mul(q.k2, mul(t0, t0)));
-  const k1 = sub2(q.k1, mul(rat(2n), mul(q.k2, t0)));
-  return { k0, k1, k2: q.k2 };
+function expandAbs(q2, t0) {
+  const k0 = add2(sub2(q2.k0, mul(q2.k1, t0)), mul(q2.k2, mul(t0, t0)));
+  const k1 = sub2(q2.k1, mul(rat(2n), mul(q2.k2, t0)));
+  return { k0, k1, k2: q2.k2 };
 }
 function subQuad(a, b) {
   return { k0: sub2(a.k0, b.k0), k1: sub2(a.k1, b.k1), k2: sub2(a.k2, b.k2) };
 }
-function rootsFor(q, value) {
-  return solveQuadratic(q.k2, q.k1, sub2(q.k0, value)).sort((p2, r2) => p2.approx - r2.approx);
+function rootsFor(q2, value) {
+  return solveQuadratic(q2.k2, q2.k1, sub2(q2.k0, value)).sort((p2, r2) => p2.approx - r2.approx);
 }
 
 // api/_lib/kernel/physics/compute.ts
@@ -8625,9 +8625,9 @@ function mkAnswer(kind, s, floatRef, unit, label) {
   return { label, kind, text: unit ? `${numTxt} ${unit}` : numTxt, approx: floatRef, unit, approximate: !nice };
 }
 var quadOf = (m, axis) => axis === "x" ? m.x : m.y;
-var scaleOf = (q) => Math.max(1, Math.abs(q.k0.approx), Math.abs(q.k1.approx), Math.abs(q.k2.approx));
-function floatRootsFor(q, value) {
-  const a = q.k2.approx, b = q.k1.approx, c = q.k0.approx - value;
+var scaleOf = (q2) => Math.max(1, Math.abs(q2.k0.approx), Math.abs(q2.k1.approx), Math.abs(q2.k2.approx));
+function floatRootsFor(q2, value) {
+  const a = q2.k2.approx, b = q2.k1.approx, c = q2.k0.approx - value;
   if (Math.abs(a) < 1e-15) return Math.abs(b) < 1e-15 ? [] : [-c / b];
   const d = b * b - 4 * a * c;
   if (d < 0) return [];
@@ -8642,9 +8642,9 @@ var backsub = (kind, detail, residual, scale4) => ({ kind, detail, residual, pas
 var info = (detail) => ({ kind: "info", detail, residual: 0, pass: true, severity: "info" });
 function trustBound(m) {
   if (m.op.op === "mover1d") {
-    const q = quadOf(m, mainAxis(m));
-    if (Math.abs(q.k2.approx) < 1e-15) return null;
-    const tauStop = -q.k1.approx / (2 * q.k2.approx);
+    const q2 = quadOf(m, mainAxis(m));
+    if (Math.abs(q2.k2.approx) < 1e-15) return null;
+    const tauStop = -q2.k1.approx / (2 * q2.k2.approx);
     if (tauStop <= EPS_T) return null;
     return { tEnd: m.t0.approx + tauStop, moc: "d\u1EEBng" };
   }
@@ -8676,10 +8676,10 @@ function groundTau(m) {
   return { tau, tauN };
 }
 var posClamped = (m, axis, tS) => {
-  const q = quadOf(m, axis);
-  if (tS.approx <= m.t0.approx + EPS_T) return { s: evalQuadS(q, rat(0n)), n: evalQuadN(q, 0) };
+  const q2 = quadOf(m, axis);
+  if (tS.approx <= m.t0.approx + EPS_T) return { s: evalQuadS(q2, rat(0n)), n: evalQuadN(q2, 0) };
   const tau = sub2(tS, m.t0);
-  return { s: evalQuadS(q, tau), n: evalQuadN(q, tau.approx) };
+  return { s: evalQuadS(q2, tau), n: evalQuadN(q2, tau.approx) };
 };
 function computePhysicsQuery(motions, query, units) {
   const need2 = (name) => {
@@ -8698,9 +8698,9 @@ function computePhysicsQuery(motions, query, units) {
           const checks = [info(`t=${query.t} tr\u01B0\u1EDBc l\xFAc xu\u1EA5t ph\xE1t t\u2080=${fmtNum4(m.t0.approx)} c\u1EE7a "${m.name}" \u2014 theo quy \u01B0\u1EDBc \xA76.2 v\u1EADt \u0111\u1EE9ng y\xEAn t\u1EA1i v\u1ECB tr\xED \u0111\u1EA7u`)];
           return { ok: true, answer: mkAnswer(query.kind, evalQuadS(q0, rat(0n)), evalQuadN(q0, 0), unit, query.label), checks };
         }
-        const q = quadOf(m, query.axis ?? mainAxis(m));
+        const q2 = quadOf(m, query.axis ?? mainAxis(m));
         const tau = sub2(tS, m.t0);
-        return { ok: true, answer: mkAnswer(query.kind, evalQuadS(q, tau), evalQuadN(q, tau.approx), unit, query.label), checks: warnBeyond([m], tS.approx) };
+        return { ok: true, answer: mkAnswer(query.kind, evalQuadS(q2, tau), evalQuadN(q2, tau.approx), unit, query.label), checks: warnBeyond([m], tS.approx) };
       }
       case "velocity_at":
       case "impact_velocity": {
@@ -8769,7 +8769,7 @@ function computePhysicsQuery(motions, query, units) {
         const aX = expandAbs(ma.x, ma.t0), bX = expandAbs(mb.x, mb.t0);
         const aY = expandAbs(ma.y, ma.t0), bY = expandAbs(mb.y, mb.t0);
         const dX = subQuad(aX, bX), dY = subQuad(aY, bY);
-        const hasMotion = (q) => Math.abs(q.k1.approx) + Math.abs(q.k2.approx) > 1e-15;
+        const hasMotion = (q2) => Math.abs(q2.k1.approx) + Math.abs(q2.k2.approx) > 1e-15;
         const tMin = Math.max(ma.t0.approx, mb.t0.approx);
         const tMinS = ma.t0.approx >= mb.t0.approx ? ma.t0 : mb.t0;
         const scale4 = Math.max(scaleOf(aX), scaleOf(bX), scaleOf(aY), scaleOf(bY));
@@ -8813,19 +8813,19 @@ function computePhysicsQuery(motions, query, units) {
       }
       case "time_when": {
         const m = need2(query.of);
-        const q = quadOf(m, query.axis ?? mainAxis(m));
+        const q2 = quadOf(m, query.axis ?? mainAxis(m));
         const posS = qtyLength(query.position, query.xUnit, units);
-        if (Math.abs(q.k1.approx) < 1e-15 && Math.abs(q.k2.approx) < 1e-15) {
-          if (Math.abs(q.k0.approx - posS.approx) <= EPS_SELF * Math.max(scaleOf(q), Math.abs(posS.approx))) {
+        if (Math.abs(q2.k1.approx) < 1e-15 && Math.abs(q2.k2.approx) < 1e-15) {
+          if (Math.abs(q2.k0.approx - posS.approx) <= EPS_SELF * Math.max(scaleOf(q2), Math.abs(posS.approx))) {
             const checks2 = [info(`"${m.name}" \u0111\u1EE9ng y\xEAn v\xE0 LU\xD4N \u1EDF v\u1ECB tr\xED ${query.position} \u2014 tr\u1EA3 th\u1EDDi \u0111i\u1EC3m s\u1EDBm nh\u1EA5t t = t\u2080`)];
             return { ok: true, answer: mkAnswer(query.kind, m.t0, m.t0.approx, unit, query.label), checks: checks2, tSolved: m.t0.approx };
           }
-          return { ok: false, problem: `time_when: "${m.name}" \u0111\u1EE9ng y\xEAn t\u1EA1i ${fmtNum4(q.k0.approx)} ${units.length} \u2014 kh\xF4ng bao gi\u1EDD t\u1EDBi v\u1ECB tr\xED ${query.position}` };
+          return { ok: false, problem: `time_when: "${m.name}" \u0111\u1EE9ng y\xEAn t\u1EA1i ${fmtNum4(q2.k0.approx)} ${units.length} \u2014 kh\xF4ng bao gi\u1EDD t\u1EDBi v\u1ECB tr\xED ${query.position}` };
         }
-        const tau = pickMin(rootsFor(q, posS), 0, false);
-        const tauN = floatRootsFor(q, posS.approx).filter((r2) => r2 >= -EPS_T)[0];
+        const tau = pickMin(rootsFor(q2, posS), 0, false);
+        const tauN = floatRootsFor(q2, posS.approx).filter((r2) => r2 >= -EPS_T)[0];
         if (!tau || tauN === void 0) return { ok: false, problem: `time_when: "${m.name}" kh\xF4ng bao gi\u1EDD t\u1EDBi v\u1ECB tr\xED ${query.position}` };
-        const checks = [backsub("backsub", `coord(t) = ${query.position} c\u1EE7a "${m.name}"`, evalQuadN(q, tauN) - posS.approx, scaleOf(q))];
+        const checks = [backsub("backsub", `coord(t) = ${query.position} c\u1EE7a "${m.name}"`, evalQuadN(q2, tauN) - posS.approx, scaleOf(q2))];
         checks.push(...warnBeyond([m], m.t0.approx + tauN));
         return { ok: true, answer: mkAnswer(query.kind, add2(m.t0, tau), m.t0.approx + tauN, unit, query.label), checks, tSolved: m.t0.approx + tauN };
       }
@@ -8833,14 +8833,14 @@ function computePhysicsQuery(motions, query, units) {
       case "position_when_velocity": {
         const m = need2(query.of);
         const axis = query.component ?? mainAxis(m);
-        const q = quadOf(m, axis);
-        const dq = derivQuad(q);
+        const q2 = quadOf(m, axis);
+        const dq = derivQuad(q2);
         const valueS = qtyVelocity(query.value, query.vUnit, units);
         if (Math.abs(dq.k1.approx) < 1e-15) {
           if (Math.abs(dq.k0.approx - valueS.approx) <= EPS_T * scaleOf(dq)) {
             const checks2 = [info(`v_${axis} kh\xF4ng \u0111\u1ED5i v\xE0 \u0110\xDANG B\u1EB0NG ${query.value} \u2014 \u0111\u1EA1t ngay t\u1EEB l\xFAc xu\u1EA5t ph\xE1t t = t\u2080`)];
             if (query.kind === "time_when_velocity") return { ok: true, answer: mkAnswer(query.kind, m.t0, m.t0.approx, unit, query.label), checks: checks2, tSolved: m.t0.approx };
-            return { ok: true, answer: mkAnswer(query.kind, evalQuadS(q, rat(0n)), evalQuadN(q, 0), unit, query.label), checks: checks2, tSolved: m.t0.approx };
+            return { ok: true, answer: mkAnswer(query.kind, evalQuadS(q2, rat(0n)), evalQuadN(q2, 0), unit, query.label), checks: checks2, tSolved: m.t0.approx };
           }
           return { ok: false, problem: `${query.kind}: "${m.name}" c\xF3 v_${axis} kh\xF4ng \u0111\u1ED5i (a=0) \u2014 kh\xF4ng bao gi\u1EDD \u0111\u1EA1t v=${query.value}` };
         }
@@ -8852,7 +8852,7 @@ function computePhysicsQuery(motions, query, units) {
         if (query.kind === "time_when_velocity") {
           return { ok: true, answer: mkAnswer(query.kind, add2(m.t0, tau), m.t0.approx + tauN, unit, query.label), checks, tSolved: m.t0.approx + tauN };
         }
-        return { ok: true, answer: mkAnswer(query.kind, evalQuadS(q, tau), evalQuadN(q, tauN), unit, query.label), checks, tSolved: m.t0.approx + tauN };
+        return { ok: true, answer: mkAnswer(query.kind, evalQuadS(q2, tau), evalQuadN(q2, tauN), unit, query.label), checks, tSolved: m.t0.approx + tauN };
       }
       default: {
         query;
@@ -8929,8 +8929,8 @@ function buildScene(plan, motions, tPhys) {
       curves.push({ id: `traj_${m.name}`, type: "expr", plane: "xz", style: "dashed", color, params: {}, samples });
     }
     agents.push({ id: m.name, label, initialPosition: [it.x0, 0, it.y0], color, radius });
-    const rhs2 = (q) => {
-      const c0 = q.k0.approx, c1 = q.k1.approx * k, c2 = q.k2.approx * k * k;
+    const rhs2 = (q2) => {
+      const c0 = q2.k0.approx, c1 = q2.k1.approx * k, c2 = q2.k2.approx * k * k;
       let s = fmt(c0);
       if (c1 !== 0) s += ` + ${fmt(c1)}*t`;
       if (c2 !== 0) s += ` + ${fmt(c2)}*t*t`;
@@ -8973,14 +8973,14 @@ function buildCharts(plan, motions, tPhys, events) {
       const m = motions.get(name);
       if (!m) continue;
       const base = mainAxis(m) === "y" ? m.y : m.x;
-      const q = ch.kind === "x_t" ? base : derivQuad(base);
+      const q2 = ch.kind === "x_t" ? base : derivQuad(base);
       const t0 = m.t0.approx;
       if (tPhys <= t0 + EPS_T) continue;
-      const N = Math.abs(q.k2.approx) < 1e-15 ? 1 : 64;
+      const N = Math.abs(q2.k2.approx) < 1e-15 ? 1 : 64;
       const samples = [];
       for (let i = 0; i <= N; i++) {
         const t = t0 + (tPhys - t0) * i / N;
-        samples.push([t, evalQuadN(q, t - t0)]);
+        samples.push([t, evalQuadN(q2, t - t0)]);
       }
       series.push({ name, samples });
     }
@@ -9032,16 +9032,16 @@ function runPhysics(raw) {
   const answers = [];
   const checks = [];
   const events = [];
-  for (const [qi, q] of plan.queries.entries()) {
-    const r2 = computePhysicsQuery(motions, q, units);
+  for (const [qi, q2] of plan.queries.entries()) {
+    const r2 = computePhysicsQuery(motions, q2, units);
     if (r2.ok === false) {
-      errors.push({ message: `query ${q.kind}: ${r2.problem}` });
+      errors.push({ message: `query ${q2.kind}: ${r2.problem}` });
       continue;
     }
     answers.push({ ...r2.answer, queryIndex: qi });
     checks.push(...r2.checks);
     if (r2.tSolved !== void 0) {
-      const ev = { t: r2.tSolved, label: "label" in q && q.label || q.kind };
+      const ev = { t: r2.tSolved, label: "label" in q2 && q2.label || q2.kind };
       if (Number.isFinite(r2.answer.approx)) ev.value = r2.answer.approx;
       events.push(ev);
     }
@@ -9060,10 +9060,10 @@ function runPhysics(raw) {
     if (delta > tol) violations.push({ assert: a.query.kind, expected: a.equals, got: r2.answer.approx, delta });
   }
   let tPhys = 1;
-  for (const q of plan.queries) {
-    if ("t" in q && typeof q.t === "number") {
-      let tq = q.t;
-      const tu = q.tUnit;
+  for (const q2 of plan.queries) {
+    if ("t" in q2 && typeof q2.t === "number") {
+      let tq = q2.t;
+      const tu = q2.tUnit;
       if (tu) {
         try {
           tq = qtyTime(tq, tu, units).approx;
@@ -9207,7 +9207,7 @@ var CircuitPlanSchema = external_exports.object({
   if (maxDepth > 4) ctx.addIssue({ code: external_exports.ZodIssueCode.custom, message: `nh\xF3m s\xE2u ${maxDepth} t\u1EA7ng, v\u01B0\u1EE3t tr\u1EA7n 4 (v1)` });
   const unknowns = [...leafKinds.entries()].filter(([, k]) => k === "unknown_resistor").map(([n]) => n);
   if (unknowns.length > 1) ctx.addIssue({ code: external_exports.ZodIssueCode.custom, message: `c\xF3 ${unknowns.length} unknown_resistor, t\u1ED1i \u0111a 1 (v1)` });
-  const solveQs = plan.queries.filter((q) => q.kind === "solve_resistance");
+  const solveQs = plan.queries.filter((q2) => q2.kind === "solve_resistance");
   if (unknowns.length === 1 && solveQs.length !== 1)
     ctx.addIssue({ code: external_exports.ZodIssueCode.custom, message: `c\xF3 \u1EA9n "${unknowns[0]}" nh\u01B0ng ${solveQs.length} query solve_resistance (c\u1EA7n \u0111\xFAng 1)` });
   if (unknowns.length === 0 && solveQs.length > 0)
@@ -9216,15 +9216,15 @@ var CircuitPlanSchema = external_exports.object({
     if (sq.of && leafKinds.get(sq.of) !== "unknown_resistor")
       ctx.addIssue({ code: external_exports.ZodIssueCode.custom, message: `solve_resistance.of "${sq.of}" kh\xF4ng tr\u1ECF t\u1EDBi unknown_resistor` });
   }
-  for (const q of plan.queries) {
-    if (q.kind === "lamp_check" && leafKinds.get(q.of) !== "lamp")
-      ctx.addIssue({ code: external_exports.ZodIssueCode.custom, message: `lamp_check.of "${q.of}" kh\xF4ng tr\u1ECF t\u1EDBi l\xE1 lamp` });
+  for (const q2 of plan.queries) {
+    if (q2.kind === "lamp_check" && leafKinds.get(q2.of) !== "lamp")
+      ctx.addIssue({ code: external_exports.ZodIssueCode.custom, message: `lamp_check.of "${q2.of}" kh\xF4ng tr\u1ECF t\u1EDBi l\xE1 lamp` });
   }
   const checkRef = (of, where) => {
     if (of !== void 0 && !nameSet.has(of))
       ctx.addIssue({ code: external_exports.ZodIssueCode.custom, message: `${where} tr\u1ECF t\u1EDBi t\xEAn "${of}" kh\xF4ng t\u1ED3n t\u1EA1i trong c\xE2y` });
   };
-  for (const q of plan.queries) if ("of" in q) checkRef(q.of, `query ${q.kind}`);
+  for (const q2 of plan.queries) if ("of" in q2) checkRef(q2.of, `query ${q2.kind}`);
   for (const a of plan.asserts) if ("of" in a.query) checkRef(a.query.of, `assert ${a.query.kind}`);
 });
 
@@ -9627,7 +9627,7 @@ function runCircuit(raw) {
   let backsub2;
   try {
     if (unknownName) {
-      const sq = plan.queries.find((q) => q.kind === "solve_resistance");
+      const sq = plan.queries.find((q2) => q2.kind === "solve_resistance");
       if (!sq || sq.kind !== "solve_resistance") throw new Error("thi\u1EBFu query solve_resistance cho \u1EA9n");
       const targetN = sq.targetCurrent * (sq.targetCurrentUnit === "mA" ? 1e-3 : 1);
       const res = solveUnknown(plan.source, plan.circuit, unknownName, targetN);
@@ -9643,15 +9643,15 @@ function runCircuit(raw) {
     return { ok: false, answers: [], checks: [], violations: [], errors: [{ message: e.message }], geometry, table: [], circuitLayout: layout, meta: ZERO_META };
   }
   const answers = [];
-  for (const [qi, q] of plan.queries.entries()) {
-    const r2 = computeCircuitQuery(solved, q);
+  for (const [qi, q2] of plan.queries.entries()) {
+    const r2 = computeCircuitQuery(solved, q2);
     if (r2.ok === false) {
-      errors.push({ message: `query ${q.kind}: ${r2.problem}` });
+      errors.push({ message: `query ${q2.kind}: ${r2.problem}` });
       continue;
     }
     answers.push({ ...r2.answer, queryIndex: qi });
   }
-  const hasEfficiency = plan.queries.some((q) => q.kind === "efficiency") || plan.asserts.some((a) => a.query.kind === "efficiency");
+  const hasEfficiency = plan.queries.some((q2) => q2.kind === "efficiency") || plan.asserts.some((a) => a.query.kind === "efficiency");
   const checks = selfChecks(solved, { efficiency: hasEfficiency, backsub: backsub2 });
   if (solved.lampInfo.size > 0) checks.push({ kind: "assumption", detail: "R \u0111\xE8n coi nh\u01B0 kh\xF4ng \u0111\u1ED5i (R = U_\u0111m\xB2/P_\u0111m)", residual: 0, pass: true });
   for (const c of checks) if (!c.pass) errors.push({ message: `t\u1EF1 ki\u1EC3m FAIL: ${c.detail} (residual ${c.residual.toExponential(2)})` });
@@ -9815,10 +9815,10 @@ var DynamicsPlanSchema = external_exports.object({
   const refBody = (name, where) => {
     if (name !== void 0 && !byName.has(name)) issue(`${where} tr\u1ECF t\u1EDBi v\u1EADt "${name}" kh\xF4ng t\u1ED3n t\u1EA1i`);
   };
-  for (const q of plan.queries) {
-    if (q.kind === "acceleration") refBody(q.of, `query ${q.kind}`);
-    else if ("on" in q) refBody(q.on, `query ${q.kind}`);
-    else if ("of" in q) refBody(q.of, `query ${q.kind}`);
+  for (const q2 of plan.queries) {
+    if (q2.kind === "acceleration") refBody(q2.of, `query ${q2.kind}`);
+    else if ("on" in q2) refBody(q2.on, `query ${q2.kind}`);
+    else if ("of" in q2) refBody(q2.of, `query ${q2.kind}`);
   }
 });
 
@@ -10103,10 +10103,10 @@ function solveTwoBody(bodies, gS, gN, checks, violations, meta) {
   return out;
 }
 function bodyNeedsMotion(name, isSingle, plan) {
-  return plan.queries.some((q) => {
-    if (q.kind === "acceleration") return q.of === name || q.of === void 0 && isSingle;
-    if (q.kind === "force_value" && q.force === "net") return q.on === name;
-    if (q.kind === "velocity_at" || q.kind === "position_at" || q.kind === "time_when" || q.kind === "time_when_velocity" || q.kind === "velocity_after_distance" || q.kind === "distance_to_stop") return q.of === name;
+  return plan.queries.some((q2) => {
+    if (q2.kind === "acceleration") return q2.of === name || q2.of === void 0 && isSingle;
+    if (q2.kind === "force_value" && q2.force === "net") return q2.on === name;
+    if (q2.kind === "velocity_at" || q2.kind === "position_at" || q2.kind === "time_when" || q2.kind === "time_when_velocity" || q2.kind === "velocity_after_distance" || q2.kind === "distance_to_stop") return q2.of === name;
     return false;
   });
 }
@@ -10240,17 +10240,17 @@ function computeDynQuery(solved, query, isSingle) {
       case "position_at": {
         const b = bodyByName(query.of);
         const a = reqA(b);
-        const q = b.quad;
+        const q2 = b.quad;
         const t = query.t;
         const chk = [];
         let xS, xN, tEff = t;
         if (b.tStop !== null && t > b.tStop + 1e-9) {
           tEff = b.tStop;
-          xS = evalQuadS(q, scalarFromNumber(b.tStop));
+          xS = evalQuadS(q2, scalarFromNumber(b.tStop));
           xN = b.v0N * b.tStop + 0.5 * a.n * b.tStop * b.tStop;
           chk.push({ kind: "stop_domain", detail: `v\u1EADt \u0111\xE3 d\u1EEBng t\u1EA1i t = ${b.tStop.toFixed(4)} s, gi\u1EEF nguy\xEAn v\u1ECB tr\xED s_d\u1EEBng`, residual: 0, pass: true });
         } else {
-          xS = evalQuadS(q, scalarFromNumber(t));
+          xS = evalQuadS(q2, scalarFromNumber(t));
           xN = b.v0N * t + 0.5 * a.n * t * t;
         }
         return { ok: true, answer: mkAns2("position_at", xS, xN, "m", query.label), checks: chk, tSolved: tEff };
@@ -10258,15 +10258,15 @@ function computeDynQuery(solved, query, isSingle) {
       case "time_when": {
         const b = bodyByName(query.of);
         const a = reqA(b);
-        const q = b.quad;
+        const q2 = b.quad;
         if (b.tStop !== null) {
           const sStopN = b.v0N * b.tStop + 0.5 * a.n * b.tStop * b.tStop;
           if (query.position > sStopN + 1e-9) return { ok: false, problem: `v\u1EADt d\u1EEBng t\u1EA1i s_d\u1EEBng = ${sStopN.toFixed(4)} m, kh\xF4ng bao gi\u1EDD \u0111\u1EA1t v\u1ECB tr\xED ${query.position} m \u2014 ki\u1EC3m tra l\u1EA1i \u0111\u1EC1/plan` };
         }
-        const roots = rootsFor(q, scalarFromNumber(query.position));
+        const roots = rootsFor(q2, scalarFromNumber(query.position));
         const t = posRootsPositive(roots);
         if (t === null) return { ok: false, problem: `kh\xF4ng c\xF3 th\u1EDDi \u0111i\u1EC3m d\u01B0\u01A1ng \u0111\u1EC3 v\u1EADt \u1EDF v\u1ECB tr\xED ${query.position} m` };
-        const chk = [resCheck2("kinematic_back", `x(t) = ${query.position}`, sub2(evalQuadS(q, t), scalarFromNumber(query.position)), Math.max(1, query.position))];
+        const chk = [resCheck2("kinematic_back", `x(t) = ${query.position}`, sub2(evalQuadS(q2, t), scalarFromNumber(query.position)), Math.max(1, query.position))];
         return { ok: true, answer: mkAns2("time_when", t, t.approx, "s", query.label), checks: chk, tSolved: t.approx };
       }
       case "time_when_velocity": {
@@ -10499,10 +10499,10 @@ function runDynamics(raw) {
   const violations = solved.violations.map((v) => ({ id: v.id, message: v.message }));
   const answers = [];
   let tMax = 0;
-  for (const [qi, q] of plan.queries.entries()) {
-    const r2 = computeDynQuery(solved, q, isSingle);
+  for (const [qi, q2] of plan.queries.entries()) {
+    const r2 = computeDynQuery(solved, q2, isSingle);
     if (r2.ok === false) {
-      errors.push({ message: `query ${q.kind}: ${r2.problem}` });
+      errors.push({ message: `query ${q2.kind}: ${r2.problem}` });
       continue;
     }
     answers.push({ ...r2.answer, queryIndex: qi });
@@ -10510,7 +10510,7 @@ function runDynamics(raw) {
     for (const c of r2.checks) if (!c.pass) errors.push({ message: `t\u1EF1 ki\u1EC3m FAIL: ${c.detail} (residual ${c.residual.toExponential(2)})` });
     if (r2.tSolved !== void 0 && Number.isFinite(r2.tSolved)) tMax = Math.max(tMax, r2.tSolved);
   }
-  for (const q of plan.queries) if ("t" in q && typeof q.t === "number") tMax = Math.max(tMax, q.t);
+  for (const q2 of plan.queries) if ("t" in q2 && typeof q2.t === "number") tMax = Math.max(tMax, q2.t);
   solved.bodies.forEach((b) => {
     if (b.tStop !== null) tMax = Math.max(tMax, b.tStop);
   });
@@ -10632,13 +10632,13 @@ function EXACT_COS(pha) {
   if (pha.k !== 1) return null;
   const e = pha.s.exact;
   if (e === null || e.radicand !== 1) return null;
-  const p2 = e.num, q = e.den;
-  if (6n % q === 0n) {
-    const g = SIXTH[Number(bmod(p2 * (6n / q), 12n))];
+  const p2 = e.num, q2 = e.den;
+  if (6n % q2 === 0n) {
+    const g = SIXTH[Number(bmod(p2 * (6n / q2), 12n))];
     return { cos: fromExact(g.cos), sin: fromExact(g.sin) };
   }
-  if (4n % q === 0n) {
-    const g = FOURTH[Number(bmod(p2 * (4n / q), 8n))];
+  if (4n % q2 === 0n) {
+    const g = FOURTH[Number(bmod(p2 * (4n / q2), 8n))];
     return { cos: fromExact(g.cos), sin: fromExact(g.sin) };
   }
   return null;
@@ -10817,8 +10817,8 @@ var OscillationPlanSchema = external_exports.object({
     if (names.has(op.name)) issue(`v\u1EADt "${op.name}" khai b\xE1o 2 l\u1EA7n`);
     names.add(op.name);
   }
-  for (const q of plan.queries) {
-    if ("of" in q && q.of !== void 0 && !names.has(q.of)) issue(`query ${q.kind} tr\u1ECF v\u1EADt "${q.of}" kh\xF4ng t\u1ED3n t\u1EA1i`);
+  for (const q2 of plan.queries) {
+    if ("of" in q2 && q2.of !== void 0 && !names.has(q2.of)) issue(`query ${q2.kind} tr\u1ECF v\u1EADt "${q2.of}" kh\xF4ng t\u1ED3n t\u1EA1i`);
   }
 });
 
@@ -10948,11 +10948,11 @@ function normalizePhase(phi) {
   if (isZeroPi(phi)) return { s: rat(0n), k: 0 };
   if (phi.k !== 1 || phi.s.exact === null || phi.s.exact.radicand !== 1) return phi;
   let p2 = phi.s.exact.num;
-  const q = phi.s.exact.den;
-  const two = 2n * q;
+  const q2 = phi.s.exact.den;
+  const two = 2n * q2;
   p2 = (p2 % two + two) % two;
-  if (p2 > q) p2 -= two;
-  return p2 === 0n ? { s: rat(0n), k: 0 } : { s: rat(p2, q), k: 1 };
+  if (p2 > q2) p2 -= two;
+  return p2 === 0n ? { s: rat(0n), k: 0 } : { s: rat(p2, q2), k: 1 };
 }
 function resolveModel(op, base) {
   const checks = [];
@@ -11089,16 +11089,16 @@ function firstTimeAtX(model, xTarget, direction, label) {
   }
   return { ok: true, answer, checks, tSolved: tN };
 }
-function computeOscQuery(solved, q, base) {
+function computeOscQuery(solved, q2, base) {
   const m = solved.model;
   const reqA = () => m.A;
   const reqW = () => m.omega;
   const needAW = () => m.A === null ? `c\u1EA7n bi\xEAn \u0111\u1ED9 A c\u1EE7a "${m.name}" \u2014 \u0111\u1EC1 kh\xF4ng \u0111\u1EE7 d\u1EEF ki\u1EC7n ho\u1EB7c d\u1ECBch thi\u1EBFu` : m.omega === null ? `c\u1EA7n t\u1EA7n s\u1ED1 g\xF3c \u03C9 c\u1EE7a "${m.name}" \u2014 \u0111\u1EC1 kh\xF4ng \u0111\u1EE7 d\u1EEF ki\u1EC7n ho\u1EB7c d\u1ECBch thi\u1EBFu` : null;
   const needPhase = () => m.phi === null ? `c\u1EA7n pha ban \u0111\u1EA7u c\u1EE7a "${m.name}" \u2014 \u0111\u1EC1 thi\u1EBFu \u03C6 v\xE0 \u0111i\u1EC1u ki\u1EC7n \u0111\u1EA7u` : null;
-  switch (q.kind) {
+  switch (q2.kind) {
     case "omega": {
       if (m.omega === null) return { ok: false, problem: `c\u1EA7n \u03C9 c\u1EE7a "${m.name}"` };
-      return { ok: true, answer: mkAnsP("omega", m.omega, approxP(m.omega), "rad/s", q.label), checks: [] };
+      return { ok: true, answer: mkAnsP("omega", m.omega, approxP(m.omega), "rad/s", q2.label), checks: [] };
     }
     case "period": {
       if (m.omega === null) return { ok: false, problem: `c\u1EA7n \u03C9 \u0111\u1EC3 t\xEDnh chu k\u1EF3 c\u1EE7a "${m.name}"` };
@@ -11107,110 +11107,110 @@ function computeOscQuery(solved, q, base) {
       const f = divP(m.omega, TWO_PI);
       const prod = mulP(T, f);
       checks.push({ kind: "period_freq", detail: "T\xB7f = 1", residual: Math.abs(approxP(prod) - 1), pass: Math.abs(approxP(prod) - 1) <= EPS_SELF4 });
-      return { ok: true, answer: mkAnsP("period", T, approxP(T), "s", q.label), checks, tSolved: approxP(T) };
+      return { ok: true, answer: mkAnsP("period", T, approxP(T), "s", q2.label), checks, tSolved: approxP(T) };
     }
     case "frequency": {
       if (m.omega === null) return { ok: false, problem: `c\u1EA7n \u03C9 \u0111\u1EC3 t\xEDnh t\u1EA7n s\u1ED1 c\u1EE7a "${m.name}"` };
       const f = divP(m.omega, TWO_PI);
-      return { ok: true, answer: mkAnsP("frequency", f, approxP(f), "Hz", q.label), checks: [] };
+      return { ok: true, answer: mkAnsP("frequency", f, approxP(f), "Hz", q2.label), checks: [] };
     }
     case "amplitude": {
       if (m.A === null) return { ok: false, problem: `c\u1EA7n bi\xEAn \u0111\u1ED9 A c\u1EE7a "${m.name}"` };
-      return { ok: true, answer: mkAnsS("amplitude", m.A, m.A.approx, base, q.label), checks: [] };
+      return { ok: true, answer: mkAnsS("amplitude", m.A, m.A.approx, base, q2.label), checks: [] };
     }
     case "initial_phase": {
       const e = needPhase();
       if (e) return { ok: false, problem: e };
-      return { ok: true, answer: mkAnsP("initial_phase", m.phi, approxP(m.phi), "rad", q.label), checks: [] };
+      return { ok: true, answer: mkAnsP("initial_phase", m.phi, approxP(m.phi), "rad", q2.label), checks: [] };
     }
     case "vmax": {
       const e = needAW();
       if (e) return { ok: false, problem: e };
       const v = mulP(scalarToPi(m.A), m.omega);
-      const o = outVel(base, q.unit);
+      const o = outVel(base, q2.unit);
       const vc = mulP(v, scalarToPi(o.factor));
-      return { ok: true, answer: mkAnsP("vmax", vc, approxP(vc), o.unit, q.label), checks: [] };
+      return { ok: true, answer: mkAnsP("vmax", vc, approxP(vc), o.unit, q2.label), checks: [] };
     }
     case "amax": {
       const e = needAW();
       if (e) return { ok: false, problem: e };
       const a = mulP(scalarToPi(m.A), sqPi(m.omega));
-      const o = outAcc(base, q.unit);
+      const o = outAcc(base, q2.unit);
       const ac = mulP(a, scalarToPi(o.factor));
-      return { ok: true, answer: mkAnsP("amax", ac, approxP(ac), o.unit, q.label), checks: [] };
+      return { ok: true, answer: mkAnsP("amax", ac, approxP(ac), o.unit, q2.label), checks: [] };
     }
     case "x_at": {
       const e = needAW() || needPhase();
       if (e) return { ok: false, problem: e };
       const A = m.A, omega = m.omega, phi = m.phi;
-      const pha = phaseAt(m, toPiScalar(q.t));
+      const pha = phaseAt(m, toPiScalar(q2.t));
       const x = mul(A, cosP(pha));
-      const An = A.approx, wn = approxP(omega), phin = approxP(phi), tn = approxP(toPiScalar(q.t));
+      const An = A.approx, wn = approxP(omega), phin = approxP(phi), tn = approxP(toPiScalar(q2.t));
       const xn = evalXn(An, wn, phin, tn);
       const checks = [];
       checks.push({ kind: "x_bound", detail: "|x| \u2264 A", residual: Math.max(0, Math.abs(xn) - An), pass: Math.abs(xn) <= An * (1 + 1e-9) });
       const vn = evalVn(An, wn, phin, tn);
       const rel2 = vn * vn + wn * wn * xn * xn - wn * wn * An * An;
       checks.push({ kind: "indep_relation", detail: "v\xB2 + \u03C9\xB2x\xB2 = \u03C9\xB2A\xB2", residual: Math.abs(rel2), pass: Math.abs(rel2) <= EPS_SELF4 * Math.max(1, (wn * An) ** 2) });
-      return { ok: true, answer: mkAnsS("x_at", x, xn, base, q.label), checks, tSolved: tn };
+      return { ok: true, answer: mkAnsS("x_at", x, xn, base, q2.label), checks, tSolved: tn };
     }
     case "v_at": {
       const e = needAW() || needPhase();
       if (e) return { ok: false, problem: e };
       const A = m.A, omega = m.omega, phi = m.phi;
-      const pha = phaseAt(m, toPiScalar(q.t));
+      const pha = phaseAt(m, toPiScalar(q2.t));
       const v = negP(mulP(mulP(scalarToPi(A), omega), scalarToPi(sinP(pha))));
-      const o = outVel(base, q.unit);
+      const o = outVel(base, q2.unit);
       const vc = mulP(v, scalarToPi(o.factor));
-      const An = A.approx, wn = approxP(omega), phin = approxP(phi), tn = approxP(toPiScalar(q.t));
+      const An = A.approx, wn = approxP(omega), phin = approxP(phi), tn = approxP(toPiScalar(q2.t));
       const vn = evalVn(An, wn, phin, tn) * o.factor.approx;
       const vmaxN = An * wn * o.factor.approx;
       const checks = [{ kind: "v_bound", detail: "|v| \u2264 vmax", residual: Math.max(0, Math.abs(vn) - Math.abs(vmaxN)), pass: Math.abs(vn) <= Math.abs(vmaxN) * (1 + 1e-9) }];
-      return { ok: true, answer: mkAnsP("v_at", vc, vn, o.unit, q.label), checks, tSolved: tn };
+      return { ok: true, answer: mkAnsP("v_at", vc, vn, o.unit, q2.label), checks, tSolved: tn };
     }
     case "a_at": {
       const e = needAW() || needPhase();
       if (e) return { ok: false, problem: e };
       const A = m.A, omega = m.omega, phi = m.phi;
-      const pha = phaseAt(m, toPiScalar(q.t));
+      const pha = phaseAt(m, toPiScalar(q2.t));
       const x = mul(A, cosP(pha));
       const a = negP(mulP(sqPi(omega), scalarToPi(x)));
-      const o = outAcc(base, q.unit);
+      const o = outAcc(base, q2.unit);
       const ac = mulP(a, scalarToPi(o.factor));
-      const An = A.approx, wn = approxP(omega), phin = approxP(phi), tn = approxP(toPiScalar(q.t));
+      const An = A.approx, wn = approxP(omega), phin = approxP(phi), tn = approxP(toPiScalar(q2.t));
       const xn = evalXn(An, wn, phin, tn);
       const an = -wn * wn * xn * o.factor.approx;
       const amaxN = An * wn * wn * o.factor.approx;
       const checks = [{ kind: "a_bound", detail: "|a| \u2264 amax; a = \u2212\u03C9\xB2x", residual: Math.max(0, Math.abs(an) - Math.abs(amaxN)), pass: Math.abs(an) <= Math.abs(amaxN) * (1 + 1e-9) }];
-      return { ok: true, answer: mkAnsP("a_at", ac, an, o.unit, q.label), checks, tSolved: tn };
+      return { ok: true, answer: mkAnsP("a_at", ac, an, o.unit, q2.label), checks, tSolved: tn };
     }
     case "speed_at_x": {
       const e = needAW();
       if (e) return { ok: false, problem: e };
       const A = m.A, omega = m.omega;
-      if (Math.abs(q.x) > A.approx * (1 + 1e-9)) return { ok: false, problem: `|x| = ${Math.abs(q.x)} > A = ${fmtNum8(A.approx)} \u2014 li \u0111\u1ED9 ngo\xE0i bi\xEAn` };
-      const root = sqrt(sub2(mul(A, A), mul(scalarFromNumber(q.x), scalarFromNumber(q.x))));
+      if (Math.abs(q2.x) > A.approx * (1 + 1e-9)) return { ok: false, problem: `|x| = ${Math.abs(q2.x)} > A = ${fmtNum8(A.approx)} \u2014 li \u0111\u1ED9 ngo\xE0i bi\xEAn` };
+      const root = sqrt(sub2(mul(A, A), mul(scalarFromNumber(q2.x), scalarFromNumber(q2.x))));
       const v = mulP(omega, scalarToPi(root));
-      const o = outVel(base, q.unit);
+      const o = outVel(base, q2.unit);
       const vc = mulP(v, scalarToPi(o.factor));
-      return { ok: true, answer: mkAnsP("speed_at_x", vc, approxP(vc), o.unit, q.label), checks: [] };
+      return { ok: true, answer: mkAnsP("speed_at_x", vc, approxP(vc), o.unit, q2.label), checks: [] };
     }
     case "x_at_speed": {
       const e = needAW();
       if (e) return { ok: false, problem: e };
       const A = m.A, omega = m.omega;
-      const vBase = velToBase(q.v, q.vUnit, base);
+      const vBase = velToBase(q2.v, q2.vUnit, base);
       const vmaxN = A.approx * approxP(omega);
       if (vBase.approx > vmaxN * (1 + 1e-9)) return { ok: false, problem: `v = ${vBase.approx} > vmax = ${fmtNum8(vmaxN)} \u2014 v\u01B0\u1EE3t t\u1ED1c \u0111\u1ED9 c\u1EF1c \u0111\u1EA1i` };
       const vOverW = divP(scalarToPi(vBase), omega);
       const x = piToScalar(sqrtP(subP(scalarToPi(mul(A, A)), sqPi(vOverW))));
-      return { ok: true, answer: mkAnsS("x_at_speed", x, x.approx, base, q.label), checks: [] };
+      return { ok: true, answer: mkAnsS("x_at_speed", x, x.approx, base, q2.label), checks: [] };
     }
     case "x_where_energy_ratio": {
       if (m.A === null) return { ok: false, problem: `c\u1EA7n bi\xEAn \u0111\u1ED9 A c\u1EE7a "${m.name}"` };
-      const denom = sqrt(add2(rat(1n), scalarFromNumber(q.ratio)));
+      const denom = sqrt(add2(rat(1n), scalarFromNumber(q2.ratio)));
       const x = div(m.A, denom);
-      return { ok: true, answer: mkAnsS("x_where_energy_ratio", x, x.approx, base, q.label), checks: [] };
+      return { ok: true, answer: mkAnsS("x_where_energy_ratio", x, x.approx, base, q2.label), checks: [] };
     }
     case "energy_total": {
       const A = reqA();
@@ -11218,13 +11218,13 @@ function computeOscQuery(solved, q, base) {
       const Am = mul(A, cmToM(base));
       const E2 = energyAt(m, Am, base);
       if (!E2) return { ok: false, problem: `c\u1EA7n \u0111\u1ED9 c\u1EE9ng k HO\u1EB6C (kh\u1ED1i l\u01B0\u1EE3ng m v\xE0 \u03C9) \u0111\u1EC3 t\xEDnh n\u0103ng l\u01B0\u1EE3ng c\u1EE7a "${m.name}"` };
-      return { ok: true, answer: mkAnsP("energy_total", E2.E, E2.En, "J", q.label), checks: [] };
+      return { ok: true, answer: mkAnsP("energy_total", E2.E, E2.En, "J", q2.label), checks: [] };
     }
     case "energy_potential_at":
     case "energy_kinetic_at": {
       const A = reqA();
       if (A === null) return { ok: false, problem: `c\u1EA7n bi\xEAn \u0111\u1ED9 A c\u1EE7a "${m.name}"` };
-      const at = q.at;
+      const at = q2.at;
       let xLen;
       let xn;
       if (at.x !== void 0) {
@@ -11245,21 +11245,21 @@ function computeOscQuery(solved, q, base) {
       const Wt = energyAt(m, xm, base);
       if (!W || !Wt) return { ok: false, problem: `c\u1EA7n k HO\u1EB6C (m v\xE0 \u03C9) \u0111\u1EC3 t\xEDnh n\u0103ng l\u01B0\u1EE3ng c\u1EE7a "${m.name}"` };
       const checks = [];
-      if (q.kind === "energy_potential_at") {
-        return { ok: true, answer: mkAnsP("energy_potential_at", Wt.E, Wt.En, "J", q.label), checks };
+      if (q2.kind === "energy_potential_at") {
+        return { ok: true, answer: mkAnsP("energy_potential_at", Wt.E, Wt.En, "J", q2.label), checks };
       }
       const Wd = subP(W.E, Wt.E);
       const recon = addP(Wd, Wt.E);
       checks.push({ kind: "energy_conserve", detail: "W\u0111 + Wt = W", residual: Math.abs(approxP(recon) - W.En), pass: Math.abs(approxP(recon) - W.En) <= EPS_SELF4 * Math.max(1, W.En) });
-      return { ok: true, answer: mkAnsP("energy_kinetic_at", Wd, approxP(Wd), "J", q.label), checks };
+      return { ok: true, answer: mkAnsP("energy_kinetic_at", Wd, approxP(Wd), "J", q2.label), checks };
     }
     case "first_time_at_x": {
       const e = needAW() || needPhase();
       if (e) return { ok: false, problem: e };
-      return firstTimeAtX(m, q.x, q.direction ?? "any", q.label);
+      return firstTimeAtX(m, q2.x, q2.direction ?? "any", q2.label);
     }
   }
-  return { ok: false, problem: `query ${q.kind} ch\u01B0a h\u1ED7 tr\u1EE3` };
+  return { ok: false, problem: `query ${q2.kind} ch\u01B0a h\u1ED7 tr\u1EE3` };
 }
 
 // api/_lib/kernel/physics/oscillationScene.ts
@@ -11372,8 +11372,8 @@ function buildOscillationCharts(plan, models, tPhys) {
 // api/_lib/kernel/physics/runOscillation.ts
 var TOL_ASSERT4 = 1e-3;
 var ZERO_PLAYBACK = { durationSec: 0, timeScale: 1 };
-function timeOfQuery(q) {
-  const anyq = q;
+function timeOfQuery(q2) {
+  const anyq = q2;
   if (anyq.t !== void 0) return approxP(toPiScalar(anyq.t));
   if (anyq.at && anyq.at.t !== void 0) return approxP(toPiScalar(anyq.at.t));
   return null;
@@ -11415,15 +11415,15 @@ function runOscillation(raw) {
       for (const e of solved.errors) errors.push({ message: e.message });
     }
     models = plan.ops.map((op) => solvedByName.get(op.name).model);
-    for (const [qi, q] of plan.queries.entries()) {
-      const solved = solvedByName.get(q.of);
+    for (const [qi, q2] of plan.queries.entries()) {
+      const solved = solvedByName.get(q2.of);
       if (!solved) {
-        errors.push({ message: `query ${q.kind}: v\u1EADt "${q.of}" kh\xF4ng t\u1ED3n t\u1EA1i` });
+        errors.push({ message: `query ${q2.kind}: v\u1EADt "${q2.of}" kh\xF4ng t\u1ED3n t\u1EA1i` });
         continue;
       }
-      const r2 = computeOscQuery(solved, q, base);
+      const r2 = computeOscQuery(solved, q2, base);
       if (r2.ok === false) {
-        errors.push({ message: `query ${q.kind}: ${r2.problem}` });
+        errors.push({ message: `query ${q2.kind}: ${r2.problem}` });
         continue;
       }
       answers.push({ ...r2.answer, queryIndex: qi });
@@ -11435,8 +11435,8 @@ function runOscillation(raw) {
       const T = approxP(divP(TWO_PI, m.omega));
       if (Number.isFinite(T)) tPhys = Math.max(tPhys, 2 * T);
     }
-    for (const q of plan.queries) {
-      const t = timeOfQuery(q);
+    for (const q2 of plan.queries) {
+      const t = timeOfQuery(q2);
       if (t !== null && Number.isFinite(t)) tPhys = Math.max(tPhys, t);
     }
     tPhys = tPhys > 1e-9 ? tPhys : 1;
@@ -11581,8 +11581,8 @@ var WavePlanSchema = external_exports.object({
       if (n !== 1) issue(`ngu\u1ED3n \xE2m "${op.name}" c\u1EA7n \u0110\xDANG M\u1ED8T ngu\u1ED3n g\u1ED1c {power | intensity | level} (\u0111ang c\xF3 ${n})`);
     }
   }
-  for (const q of plan.queries) {
-    if ("of" in q && q.of !== void 0 && !names.has(q.of)) issue(`query ${q.kind} tr\u1ECF op "${q.of}" kh\xF4ng t\u1ED3n t\u1EA1i`);
+  for (const q2 of plan.queries) {
+    if ("of" in q2 && q2.of !== void 0 && !names.has(q2.of)) issue(`query ${q2.kind} tr\u1ECF op "${q2.of}" kh\xF4ng t\u1ED3n t\u1EA1i`);
   }
 });
 
@@ -11629,11 +11629,11 @@ function metersOf(value, rUnit, base) {
   const from = rUnit ?? base;
   return from === "cm" ? mul(scalarFromNumber(value), rat(1n, 100n)) : scalarFromNumber(value);
 }
-function sciToScalar(sci2) {
-  if (typeof sci2 === "number") return scalarFromNumber(sci2);
-  const d = sci2.d ?? 1;
-  const exp = sci2.exp ?? 0;
-  const base = scalarFromNumber(sci2.n);
+function sciToScalar(sci3) {
+  if (typeof sci3 === "number") return scalarFromNumber(sci3);
+  const d = sci3.d ?? 1;
+  const exp = sci3.exp ?? 0;
+  const base = scalarFromNumber(sci3.n);
   const p10 = pow10Scalar(exp);
   return div(mul(base, p10), rat(BigInt(d)));
 }
@@ -11703,12 +11703,12 @@ function pow10BigScalar(e) {
   return e >= 0n ? fromExact(makeExact(p2, 1n)) : fromExact(makeExact(1n, p2));
 }
 function floordivBig(a, b) {
-  const q = a / b, r2 = a % b;
-  return r2 !== 0n && a < 0n ? q - 1n : q;
+  const q2 = a / b, r2 = a % b;
+  return r2 !== 0n && a < 0n ? q2 - 1n : q2;
 }
 function ceildivBig(a, b) {
-  const q = a / b, r2 = a % b;
-  return r2 !== 0n && a > 0n ? q + 1n : q;
+  const q2 = a / b, r2 = a % b;
+  return r2 !== 0n && a > 0n ? q2 + 1n : q2;
 }
 function countIntOpen(loN, loD, hiN, hiD) {
   const smin = floordivBig(loN, loD) + 1n;
@@ -11761,11 +11761,11 @@ function resolveWaveModel(op, base) {
   const A = op.A !== void 0 ? scalarFromNumber(op.A) : null;
   return { model: { name: op.name, A, f, T, lambda, v, omega, spaceK, phi, dir, op }, checks, violations, errors };
 }
-function redundant(checks, violations, q, nb, na, vb, va) {
+function redundant(checks, violations, q2, nb, na, vb, va) {
   const d = Math.abs(vb - va);
   const pass = d <= EPS_SELF5 * Math.max(1, Math.abs(va));
-  checks.push({ kind: "rate_redundant", detail: `ngu\u1ED3n ${q} d\u01B0 "${nb}" kh\u1EDBp "${na}"`, residual: d, pass });
-  if (!pass) violations.push({ id: "nguon-du-lech", message: `ngu\u1ED3n ${q} "${nb}" (${vb.toFixed(4)}) l\u1EC7ch "${na}" (${va.toFixed(4)}) \u2014 d\u1ECBch sai \u0111\u1EC1` });
+  checks.push({ kind: "rate_redundant", detail: `ngu\u1ED3n ${q2} d\u01B0 "${nb}" kh\u1EDBp "${na}"`, residual: d, pass });
+  if (!pass) violations.push({ id: "nguon-du-lech", message: `ngu\u1ED3n ${q2} "${nb}" (${vb.toFixed(4)}) l\u1EC7ch "${na}" (${va.toFixed(4)}) \u2014 d\u1ECBch sai \u0111\u1EC1` });
 }
 function resolveSoundModel(op, base) {
   const I0 = sciToScalar(op.I0 ?? { n: 1, exp: -12 });
@@ -11826,19 +11826,19 @@ function levelOf(m, iv, label) {
   checks.push({ kind: "sound_level_inverse", detail: "10^(L/10) = I/I\u2080", residual: Math.abs(back - floatRatio), pass: Math.abs(back - floatRatio) <= EPS_SELF5 * Math.max(1, floatRatio) });
   return { ok: true, answer: mkAnsCert("sound_level", L, floatRef, "dB", label), checks };
 }
-function computeWaveQuery(solved, q, base) {
+function computeWaveQuery(solved, q2, base) {
   const m = solved.model;
-  switch (q.kind) {
+  switch (q2.kind) {
     case "speed": {
       if (m.v === null) return { ok: false, problem: `c\u1EA7n t\u1ED1c \u0111\u1ED9 v c\u1EE7a "${m.name}" \u2014 \u0111\u1EC1 thi\u1EBFu d\u1EEF ki\u1EC7n ho\u1EB7c d\u1ECBch thi\u1EBFu` };
-      const o = q.unit ? outSpeed(base, q.unit) : { factor: rat(1n), unit: `${base}/s` };
+      const o = q2.unit ? outSpeed(base, q2.unit) : { factor: rat(1n), unit: `${base}/s` };
       const v = mul(m.v, o.factor);
       const checks = [];
       if (m.lambda && m.f) {
         const vlf = mul(m.lambda, m.f);
         checks.push({ kind: "v_lambda_f", detail: "v = \u03BBf", residual: Math.abs(vlf.approx - m.v.approx), pass: Math.abs(vlf.approx - m.v.approx) <= EPS_SELF5 * Math.max(1, m.v.approx) });
       }
-      return { ok: true, answer: mkAnsS2("speed", v, v.approx, o.unit, q.label), checks };
+      return { ok: true, answer: mkAnsS2("speed", v, v.approx, o.unit, q2.label), checks };
     }
     case "wavelength": {
       if (m.lambda === null) return { ok: false, problem: `c\u1EA7n b\u01B0\u1EDBc s\xF3ng \u03BB c\u1EE7a "${m.name}" \u2014 \u0111\u1EC1 thi\u1EBFu d\u1EEF ki\u1EC7n ho\u1EB7c d\u1ECBch thi\u1EBFu` };
@@ -11847,11 +11847,11 @@ function computeWaveQuery(solved, q, base) {
         const lvf = div(m.v, m.f);
         checks.push({ kind: "lambda_v_f", detail: "\u03BB = v/f", residual: Math.abs(lvf.approx - m.lambda.approx), pass: Math.abs(lvf.approx - m.lambda.approx) <= EPS_SELF5 * Math.max(1, m.lambda.approx) });
       }
-      return { ok: true, answer: mkAnsS2("wavelength", m.lambda, m.lambda.approx, base, q.label), checks };
+      return { ok: true, answer: mkAnsS2("wavelength", m.lambda, m.lambda.approx, base, q2.label), checks };
     }
     case "frequency": {
       if (m.f === null) return { ok: false, problem: `c\u1EA7n t\u1EA7n s\u1ED1 f c\u1EE7a "${m.name}" \u2014 \u0111\u1EC1 thi\u1EBFu d\u1EEF ki\u1EC7n ho\u1EB7c d\u1ECBch thi\u1EBFu` };
-      return { ok: true, answer: mkAnsS2("frequency", m.f, m.f.approx, "Hz", q.label), checks: [] };
+      return { ok: true, answer: mkAnsS2("frequency", m.f, m.f.approx, "Hz", q2.label), checks: [] };
     }
     case "period": {
       if (m.T === null) return { ok: false, problem: `c\u1EA7n chu k\u1EF3 T (ho\u1EB7c f) c\u1EE7a "${m.name}"` };
@@ -11860,40 +11860,40 @@ function computeWaveQuery(solved, q, base) {
         const p2 = mul(m.T, m.f);
         checks.push({ kind: "period_freq", detail: "T\xB7f = 1", residual: Math.abs(p2.approx - 1), pass: Math.abs(p2.approx - 1) <= EPS_SELF5 });
       }
-      return { ok: true, answer: mkAnsS2("period", m.T, m.T.approx, "s", q.label), checks, tSolved: m.T.approx };
+      return { ok: true, answer: mkAnsS2("period", m.T, m.T.approx, "s", q2.label), checks, tSolved: m.T.approx };
     }
     case "displacement_at": {
       if (m.A === null) return { ok: false, problem: `c\u1EA7n bi\xEAn \u0111\u1ED9 A c\u1EE7a "${m.name}"` };
       if (m.omega === null || m.spaceK === null) return { ok: false, problem: `c\u1EA7n \u03C9 v\xE0 h\u1EC7 s\u1ED1 kh\xF4ng gian (\u03BB) c\u1EE7a "${m.name}" \u0111\u1EC3 t\xEDnh li \u0111\u1ED9` };
       const phi = m.phi ?? { s: rat(0n), k: 0 };
-      const tPi = toPiScalar(q.t);
-      const pha = phaseOf(m, q.x, tPi, phi);
+      const tPi = toPiScalar(q2.t);
+      const pha = phaseOf(m, q2.x, tPi, phi);
       const u = mul(m.A, cosP(pha));
       const An = m.A.approx, phaN = approxP(pha);
       const un = An * Math.cos(phaN);
       const checks = [{ kind: "u_bound", detail: "|u| \u2264 A", residual: Math.max(0, Math.abs(un) - An), pass: Math.abs(un) <= An * (1 + 1e-9) }];
-      return { ok: true, answer: mkAnsS2("displacement_at", u, un, base, q.label), checks, tSolved: approxP(tPi) };
+      return { ok: true, answer: mkAnsS2("displacement_at", u, un, base, q2.label), checks, tSolved: approxP(tPi) };
     }
     case "phase_difference": {
       if (m.spaceK === null) return { ok: false, problem: `c\u1EA7n b\u01B0\u1EDBc s\xF3ng \u03BB c\u1EE7a "${m.name}" \u0111\u1EC3 t\xEDnh \u0111\u1ED9 l\u1EC7ch pha` };
-      const dphi = mulP(m.spaceK, scalarToPi(scalarFromNumber(q.d)));
+      const dphi = mulP(m.spaceK, scalarToPi(scalarFromNumber(q2.d)));
       const checks = [];
       if (m.lambda) {
-        const ref = 2 * Math.PI * q.d / m.lambda.approx;
+        const ref = 2 * Math.PI * q2.d / m.lambda.approx;
         checks.push({ kind: "phase_diff", detail: "\u0394\u03C6 = 2\u03C0d/\u03BB", residual: Math.abs(approxP(dphi) - ref), pass: Math.abs(approxP(dphi) - ref) <= EPS_SELF5 * Math.max(1, ref) });
       }
-      return { ok: true, answer: mkAnsP2("phase_difference", dphi, approxP(dphi), "rad", q.label), checks };
+      return { ok: true, answer: mkAnsP2("phase_difference", dphi, approxP(dphi), "rad", q2.label), checks };
     }
     case "interference_count": {
       if (m.lambda === null) return { ok: false, problem: `c\u1EA7n b\u01B0\u1EDBc s\xF3ng \u03BB c\u1EE7a "${m.name}" \u0111\u1EC3 \u0111\u1EBFm giao thoa` };
-      const ab = ratioBig(scalarFromNumber(q.separation), m.lambda);
+      const ab = ratioBig(scalarFromNumber(q2.separation), m.lambda);
       if (ab === null) {
         solved.violations.push({ id: "lambda-vo-ti", message: `\u03BB v\xF4 t\u1EC9 \u2014 \u0111\u1EBFm giao thoa c\u1EA7n \u03BB h\u1EEFu t\u1EC9 ("${m.name}")` });
         return { ok: false, problem: `\u03BB v\xF4 t\u1EC9 \u2014 kh\xF4ng \u0111\u1EBFm \u0111\u01B0\u1EE3c giao thoa exact` };
       }
       const { P, Q } = ab;
       let n1, n2, kindTxt;
-      if (q.kind2 === "max") {
+      if (q2.kind2 === "max") {
         n1 = countIntOpen(-P, Q, P, Q);
         n2 = countIntOpenBrute(-P, Q, P, Q);
         kindTxt = "c\u1EF1c \u0111\u1EA1i";
@@ -11908,11 +11908,11 @@ function computeWaveQuery(solved, q, base) {
         solved.violations.push({ id: "dem-lech", message: `\u0111\u1EBFm giao thoa hai c\xE1ch l\u1EC7ch (${n1} vs ${n2})` });
         return { ok: false, problem: `\u0111\u1EBFm giao thoa hai c\xE1ch l\u1EC7ch` };
       }
-      return { ok: true, answer: mkAnsInt("interference_count", n1, q.label), checks };
+      return { ok: true, answer: mkAnsInt("interference_count", n1, q2.label), checks };
     }
     case "interference_point": {
       if (m.lambda === null) return { ok: false, problem: `c\u1EA7n b\u01B0\u1EDBc s\xF3ng \u03BB c\u1EE7a "${m.name}"` };
-      const delta = sub2(scalarFromNumber(q.d2), scalarFromNumber(q.d1));
+      const delta = sub2(scalarFromNumber(q2.d2), scalarFromNumber(q2.d1));
       const rr = div(delta, m.lambda).exact;
       const rn = delta.approx / m.lambda.approx;
       let text;
@@ -11922,36 +11922,36 @@ function computeWaveQuery(solved, q, base) {
         else if (rr.den === 2n && numAbs % 2n === 1n) text = `c\u1EF1c ti\u1EC3u (gi\u1EEFa b\u1EADc ${(numAbs - 1n) / 2n} v\xE0 ${(numAbs + 1n) / 2n})`;
         else text = `kh\xF4ng ph\u1EA3i v\xE2n (r = ${displayScalar(fromExact(rr))})`;
       } else text = `kh\xF4ng ph\u1EA3i v\xE2n (r \u2248 ${fmtNum9(rn)})`;
-      return { ok: true, answer: { label: q.label, kind: "interference_point", text, approx: Math.abs(rn), unit: "", approximate: rr === null }, checks: [] };
+      return { ok: true, answer: { label: q2.label, kind: "interference_point", text, approx: Math.abs(rn), unit: "", approximate: rr === null }, checks: [] };
     }
     case "standing_antinodes":
     case "standing_nodes": {
-      const k = standingK(m, q.length, q.boundary, q.loops, solved);
+      const k = standingK(m, q2.length, q2.boundary, q2.loops, solved);
       if (k === null) return { ok: false, problem: `kh\xF4ng x\xE1c \u0111\u1ECBnh \u0111\u01B0\u1EE3c s\u1ED1 b\xF3 s\xF3ng cho "${m.name}" (thi\u1EBFu \u03BB ho\u1EB7c \u03BB kh\xF4ng t\u1EA1o s\xF3ng d\u1EEBng \u1ED5n \u0111\u1ECBnh)` };
-      const antinodes = k, nodes = q.boundary === "one-free" ? k : k + 1;
-      const val = q.kind === "standing_antinodes" ? antinodes : nodes;
-      return { ok: true, answer: mkAnsInt(q.kind, val, q.label), checks: [{ kind: "standing_k", detail: `k = ${k} (${q.boundary})`, residual: 0, pass: true }] };
+      const antinodes = k, nodes = q2.boundary === "one-free" ? k : k + 1;
+      const val = q2.kind === "standing_antinodes" ? antinodes : nodes;
+      return { ok: true, answer: mkAnsInt(q2.kind, val, q2.label), checks: [{ kind: "standing_k", detail: `k = ${k} (${q2.boundary})`, residual: 0, pass: true }] };
     }
     case "standing_wavelength": {
-      const l = scalarFromNumber(q.length), k = BigInt(q.loops);
-      const lam = q.boundary === "one-free" ? div(mul(rat(4n), l), fromExact(makeExact(2n * k - 1n, 1n))) : div(mul(rat(2n), l), fromExact(makeExact(k, 1n)));
-      return { ok: true, answer: mkAnsS2("standing_wavelength", lam, lam.approx, base, q.label), checks: [] };
+      const l = scalarFromNumber(q2.length), k = BigInt(q2.loops);
+      const lam = q2.boundary === "one-free" ? div(mul(rat(4n), l), fromExact(makeExact(2n * k - 1n, 1n))) : div(mul(rat(2n), l), fromExact(makeExact(k, 1n)));
+      return { ok: true, answer: mkAnsS2("standing_wavelength", lam, lam.approx, base, q2.label), checks: [] };
     }
     case "standing_frequency": {
       if (m.v === null) return { ok: false, problem: `c\u1EA7n t\u1ED1c \u0111\u1ED9 v c\u1EE7a "${m.name}" \u0111\u1EC3 t\xEDnh t\u1EA7n s\u1ED1 s\xF3ng d\u1EEBng` };
-      const l = scalarFromNumber(q.length), k = BigInt(q.loops);
-      const lam = q.boundary === "one-free" ? div(mul(rat(4n), l), fromExact(makeExact(2n * k - 1n, 1n))) : div(mul(rat(2n), l), fromExact(makeExact(k, 1n)));
+      const l = scalarFromNumber(q2.length), k = BigInt(q2.loops);
+      const lam = q2.boundary === "one-free" ? div(mul(rat(4n), l), fromExact(makeExact(2n * k - 1n, 1n))) : div(mul(rat(2n), l), fromExact(makeExact(k, 1n)));
       const f = div(m.v, lam);
-      return { ok: true, answer: mkAnsS2("standing_frequency", f, f.approx, "Hz", q.label), checks: [{ kind: "standing_fv", detail: "f = v/\u03BB", residual: 0, pass: true }] };
+      return { ok: true, answer: mkAnsS2("standing_frequency", f, f.approx, "Hz", q2.label), checks: [{ kind: "standing_fv", detail: "f = v/\u03BB", residual: 0, pass: true }] };
     }
     case "standing_min_frequency": {
       if (m.v === null) return { ok: false, problem: `c\u1EA7n t\u1ED1c \u0111\u1ED9 v c\u1EE7a "${m.name}" \u0111\u1EC3 t\xEDnh t\u1EA7n s\u1ED1 c\u01A1 b\u1EA3n` };
-      const l = scalarFromNumber(q.length);
-      const f1 = q.boundary === "one-free" ? div(m.v, mul(rat(4n), l)) : div(m.v, mul(rat(2n), l));
-      return { ok: true, answer: mkAnsS2("standing_min_frequency", f1, f1.approx, "Hz", q.label), checks: [] };
+      const l = scalarFromNumber(q2.length);
+      const f1 = q2.boundary === "one-free" ? div(m.v, mul(rat(4n), l)) : div(m.v, mul(rat(2n), l));
+      return { ok: true, answer: mkAnsS2("standing_min_frequency", f1, f1.approx, "Hz", q2.label), checks: [] };
     }
   }
-  return { ok: false, problem: `query ${q.kind} kh\xF4ng \xE1p cho op s\xF3ng c\u01A1` };
+  return { ok: false, problem: `query ${q2.kind} kh\xF4ng \xE1p cho op s\xF3ng c\u01A1` };
 }
 function phaseOf(m, x, tPi, phi) {
   const wt = mulP(m.omega, tPi);
@@ -11984,49 +11984,49 @@ function outSpeed(base, unit) {
   const to = unit === "m/s" ? "m" : "cm";
   return { factor: lenFactor2(base, to), unit };
 }
-function computeSoundQuery(solved, q, base) {
+function computeSoundQuery(solved, q2, base) {
   const m = solved.model;
-  switch (q.kind) {
+  switch (q2.kind) {
     case "sound_intensity": {
-      const r2 = q.atDistance !== void 0 ? metersOf(q.atDistance, q.rUnit, base) : null;
+      const r2 = q2.atDistance !== void 0 ? metersOf(q2.atDistance, q2.rUnit, base) : null;
       const iv = intensityAt(m, r2);
       if ("problem" in iv) return { ok: false, problem: iv.problem };
       const checks = [];
-      if (iv.pi) return { ok: true, answer: mkAnsP2("sound_intensity", iv.pi, iv.approx, "W/m\xB2", q.label), checks };
-      return { ok: true, answer: mkAnsS2("sound_intensity", iv.exact, iv.approx, "W/m\xB2", q.label), checks };
+      if (iv.pi) return { ok: true, answer: mkAnsP2("sound_intensity", iv.pi, iv.approx, "W/m\xB2", q2.label), checks };
+      return { ok: true, answer: mkAnsS2("sound_intensity", iv.exact, iv.approx, "W/m\xB2", q2.label), checks };
     }
     case "sound_level": {
-      const r2 = q.atDistance !== void 0 ? metersOf(q.atDistance, q.rUnit, base) : null;
+      const r2 = q2.atDistance !== void 0 ? metersOf(q2.atDistance, q2.rUnit, base) : null;
       const iv = intensityAt(m, r2);
       if ("problem" in iv) return { ok: false, problem: iv.problem };
-      return levelOf(m, iv, q.label);
+      return levelOf(m, iv, q2.label);
     }
     case "sound_level_difference": {
       if (m.power === null && m.rRef === null) return { ok: false, problem: `c\u1EA7n ngu\u1ED3n \u0111i\u1EC3m (power ho\u1EB7c m\u1EE9c t\u1EA1i kho\u1EA3ng c\xE1ch) cho "${m.name}"` };
-      const rFrom = metersOf(q.fromDistance, q.rUnit, base), rTo = metersOf(q.toDistance, q.rUnit, base);
+      const rFrom = metersOf(q2.fromDistance, q2.rUnit, base), rTo = metersOf(q2.toDistance, q2.rUnit, base);
       const ratioR = div(rFrom, rTo);
       const ratioI = mul(ratioR, ratioR);
       const cand = log10Exact(ratioI);
       const floatRef = 10 * Math.log10(ratioI.approx);
       const dL = cand ? mul(rat(10n), cand) : num(floatRef);
       const checks = [{ kind: "level_diff", detail: "\u0394L = 20\xB7log\u2081\u2080(r_from/r_to)", residual: 0, pass: true }];
-      return { ok: true, answer: mkAnsCert("sound_level_difference", dL, floatRef, "dB", q.label), checks };
+      return { ok: true, answer: mkAnsCert("sound_level_difference", dL, floatRef, "dB", q2.label), checks };
     }
     case "distance_for_level": {
       if (m.levelRef === null || m.rRef === null) {
-        if (m.power !== null) return distanceFromPower(m, q.level, base, q.label);
+        if (m.power !== null) return distanceFromPower(m, q2.level, base, q2.label);
         return { ok: false, problem: `c\u1EA7n ngu\u1ED3n \u0111i\u1EC3m c\xF3 m\u1EE9c t\u1EA1i kho\u1EA3ng c\xE1ch cho "${m.name}"` };
       }
-      const expScal = div(sub2(m.levelRef, scalarFromNumber(q.level)), rat(20n));
-      const floatExp = (m.levelRef.approx - q.level) / 20;
+      const expScal = div(sub2(m.levelRef, scalarFromNumber(q2.level)), rat(20n));
+      const floatExp = (m.levelRef.approx - q2.level) / 20;
       const scaled = scaleByPow10(m.rRef, expScal, floatExp);
       const outFactor = base === "cm" ? rat(100n) : rat(1n);
       const rOut = mul(scaled.v, outFactor);
       const checks = [{ kind: "distance_level", detail: "r = rRef\xB710^((L_ref\u2212L)/20)", residual: 0, pass: true }];
-      return { ok: true, answer: mkAnsS2("distance_for_level", rOut, rOut.approx, base, q.label), checks };
+      return { ok: true, answer: mkAnsS2("distance_for_level", rOut, rOut.approx, base, q2.label), checks };
     }
   }
-  return { ok: false, problem: `query ${q.kind} kh\xF4ng \xE1p cho op s\xF3ng \xE2m` };
+  return { ok: false, problem: `query ${q2.kind} kh\xF4ng \xE1p cho op s\xF3ng \xE2m` };
 }
 function distanceFromPower(m, L, base, label) {
   const denom = 4 * Math.PI * m.I0.approx * Math.pow(10, L / 10);
@@ -12144,8 +12144,8 @@ function buildWaveCharts(base, waves, tPhys) {
 // api/_lib/kernel/physics/runWaves.ts
 var TOL_ASSERT5 = 1e-3;
 var ZERO_PLAYBACK2 = { durationSec: 0, timeScale: 1 };
-function timeOfQuery2(q) {
-  if (q.kind === "displacement_at") return approxP(toPiScalar(q.t));
+function timeOfQuery2(q2) {
+  if (q2.kind === "displacement_at") return approxP(toPiScalar(q2.t));
   return null;
 }
 function runWaves(raw) {
@@ -12190,10 +12190,10 @@ function runWaves(raw) {
         for (const e of s.errors) errors.push({ message: e.message });
       }
     }
-    for (const [qi, q] of plan.queries.entries()) {
-      const r2 = dispatchQuery(q, waveByName, soundByName, base);
+    for (const [qi, q2] of plan.queries.entries()) {
+      const r2 = dispatchQuery(q2, waveByName, soundByName, base);
       if (r2.ok === false) {
-        errors.push({ message: `query ${q.kind}: ${r2.problem}` });
+        errors.push({ message: `query ${q2.kind}: ${r2.problem}` });
         continue;
       }
       answers.push({ ...r2.answer, queryIndex: qi });
@@ -12202,8 +12202,8 @@ function runWaves(raw) {
       if (r2.tSolved !== void 0 && Number.isFinite(r2.tSolved)) tPhys = Math.max(tPhys, r2.tSolved);
     }
     for (const s of waveByName.values()) if (s.model.T && Number.isFinite(s.model.T.approx)) tPhys = Math.max(tPhys, 2 * s.model.T.approx);
-    for (const q of plan.queries) {
-      const t = timeOfQuery2(q);
+    for (const q2 of plan.queries) {
+      const t = timeOfQuery2(q2);
       if (t !== null && Number.isFinite(t)) tPhys = Math.max(tPhys, t);
     }
     tPhys = tPhys > 1e-9 ? tPhys : 1;
@@ -12257,16 +12257,16 @@ function runWaves(raw) {
     meta: { tPhys, playback, unitsNote: "per-quantity", length: base, models }
   };
 }
-function dispatchQuery(q, waveByName, soundByName, base) {
-  const of = "of" in q ? q.of : void 0;
-  if (SOUND_KINDS.has(q.kind)) {
+function dispatchQuery(q2, waveByName, soundByName, base) {
+  const of = "of" in q2 ? q2.of : void 0;
+  if (SOUND_KINDS.has(q2.kind)) {
     const s2 = soundByName.get(of);
-    if (!s2) return { ok: false, problem: waveByName.has(of) ? `query ${q.kind} tr\u1ECF "${of}" \u2014 sai lo\u1EA1i op (c\u1EA7n sound_source)` : `op "${of}" kh\xF4ng t\u1ED3n t\u1EA1i` };
-    return computeSoundQuery(s2, q, base);
+    if (!s2) return { ok: false, problem: waveByName.has(of) ? `query ${q2.kind} tr\u1ECF "${of}" \u2014 sai lo\u1EA1i op (c\u1EA7n sound_source)` : `op "${of}" kh\xF4ng t\u1ED3n t\u1EA1i` };
+    return computeSoundQuery(s2, q2, base);
   }
   const s = waveByName.get(of);
-  if (!s) return { ok: false, problem: soundByName.has(of) ? `query ${q.kind} tr\u1ECF "${of}" \u2014 sai lo\u1EA1i op (c\u1EA7n wave)` : `op "${of}" kh\xF4ng t\u1ED3n t\u1EA1i` };
-  return computeWaveQuery(s, q, base);
+  if (!s) return { ok: false, problem: soundByName.has(of) ? `query ${q2.kind} tr\u1ECF "${of}" \u2014 sai lo\u1EA1i op (c\u1EA7n wave)` : `op "${of}" kh\xF4ng t\u1ED3n t\u1EA1i` };
+  return computeWaveQuery(s, q2, base);
 }
 
 // api/_lib/kernel/physics/efield.ts
@@ -12462,40 +12462,40 @@ var EFieldPlanSchema = external_exports.object({
   asserts: external_exports.array(external_exports.object({ query: EFieldQuerySchema, equals: Num7, tol: Num7.positive().optional() })).default([]),
   knowledgeTags: external_exports.array(external_exports.string()).default([])
 }).superRefine((plan, ctx) => {
-  const add5 = (message) => ctx.addIssue({ code: external_exports.ZodIssueCode.custom, message });
+  const add6 = (message) => ctx.addIssue({ code: external_exports.ZodIssueCode.custom, message });
   const lenU = plan.units.length;
   const opKind = /* @__PURE__ */ new Map();
   for (const op of plan.ops) {
-    if (opKind.has(op.name)) add5(`t\xEAn "${op.name}" tr\xF9ng \u2014 m\u1ECDi t\xEAn ops ph\u1EA3i duy nh\u1EA5t`);
+    if (opKind.has(op.name)) add6(`t\xEAn "${op.name}" tr\xF9ng \u2014 m\u1ECDi t\xEAn ops ph\u1EA3i duy nh\u1EA5t`);
     opKind.set(op.name, op.op);
   }
   const pointOp = /* @__PURE__ */ new Map();
   for (const op of plan.ops) if (op.op === "point_charge") pointOp.set(op.name, { at: op.at, q: op.q });
   const isKind = (n, k, where) => {
     if (!opKind.has(n)) {
-      add5(`${where}: t\xEAn "${n}" kh\xF4ng t\u1ED3n t\u1EA1i trong ops`);
+      add6(`${where}: t\xEAn "${n}" kh\xF4ng t\u1ED3n t\u1EA1i trong ops`);
       return false;
     }
     if (opKind.get(n) !== k) {
-      add5(`${where}: "${n}" ph\u1EA3i l\xE0 ${k}`);
+      add6(`${where}: "${n}" ph\u1EA3i l\xE0 ${k}`);
       return false;
     }
     return true;
   };
   const readFields = /* @__PURE__ */ new Set();
-  for (const q of plan.queries) {
-    if (q.kind === "electric_force" || q.kind === "work" || q.kind === "voltage" || q.kind === "acceleration" || q.kind === "speed_after") readFields.add(q.field);
+  for (const q2 of plan.queries) {
+    if (q2.kind === "electric_force" || q2.kind === "work" || q2.kind === "voltage" || q2.kind === "acceleration" || q2.kind === "speed_after") readFields.add(q2.field);
   }
   for (const op of plan.ops) {
     if (op.op !== "uniform_field") continue;
     const hasE = op.E !== void 0, hasV = op.fromVoltage !== void 0;
-    if (hasE && hasV) add5(`uniform_field "${op.name}": ch\u1EC9 khai M\u1ED8T trong {E, fromVoltage}`);
-    if (!hasE && !hasV && readFields.has(op.name)) add5(`uniform_field "${op.name}": thi\u1EBFu c\u1EA3 E l\u1EABn fromVoltage nh\u01B0ng c\xF3 query \u0111\u1ECDc tr\u01B0\u1EDDng n\xE0y`);
+    if (hasE && hasV) add6(`uniform_field "${op.name}": ch\u1EC9 khai M\u1ED8T trong {E, fromVoltage}`);
+    if (!hasE && !hasV && readFields.has(op.name)) add6(`uniform_field "${op.name}": thi\u1EBFu c\u1EA3 E l\u1EABn fromVoltage nh\u01B0ng c\xF3 query \u0111\u1ECDc tr\u01B0\u1EDDng n\xE0y`);
   }
   const needMass = (n, where) => {
     if (isKind(n, "charged_body", where)) {
       const op = plan.ops.find((o) => o.name === n);
-      if (op && op.op === "charged_body" && op.mass === void 0) add5(`${where}: v\u1EADt "${n}" c\u1EA7n khai mass`);
+      if (op && op.op === "charged_body" && op.mass === void 0) add6(`${where}: v\u1EADt "${n}" c\u1EA7n khai mass`);
     }
   };
   const gateSuper = (at, by, where) => {
@@ -12506,59 +12506,59 @@ var EFieldPlanSchema = external_exports.object({
     const P = { x: qtyLength2(at[0], lenU), y: qtyLength2(at[1], lenU) };
     const xyq = srcs.map((s) => ({ x: qtyLength2(s.at[0], lenU), y: qtyLength2(s.at[1], lenU), q: qtyCharge(s.q.value, s.q.unit) }));
     if (classify(P, xyq) === "none")
-      add5(`${where}: c\u1EA5u h\xECnh ch\u1ED3ng ch\u1EA5t kh\xF4ng thu\u1ED9c l\u1EDBp exact-\u0111\u01B0\u1EE3c (ch\u1EC9 h\u1ED7 tr\u1EE3 th\u1EB3ng h\xE0ng, c\u1EB7p \u0111\u1ED1i x\u1EE9ng \u0111\u1EB3ng c\u1EF1 to\u1EA1-\u0111\u1ED9-h\u1EEFu-t\u1EC9, ho\u1EB7c field_symmetric g\xF3c \u0111\u1EB9p) \u2014 v1 abstain (\xA714.2)`);
+      add6(`${where}: c\u1EA5u h\xECnh ch\u1ED3ng ch\u1EA5t kh\xF4ng thu\u1ED9c l\u1EDBp exact-\u0111\u01B0\u1EE3c (ch\u1EC9 h\u1ED7 tr\u1EE3 th\u1EB3ng h\xE0ng, c\u1EB7p \u0111\u1ED1i x\u1EE9ng \u0111\u1EB3ng c\u1EF1 to\u1EA1-\u0111\u1ED9-h\u1EEFu-t\u1EC9, ho\u1EB7c field_symmetric g\xF3c \u0111\u1EB9p) \u2014 v1 abstain (\xA714.2)`);
   };
-  for (const q of plan.queries.concat(plan.asserts.map((a) => a.query))) {
-    switch (q.kind) {
+  for (const q2 of plan.queries.concat(plan.asserts.map((a) => a.query))) {
+    switch (q2.kind) {
       case "coulomb_force":
-        isKind(q.a, "point_charge", "coulomb_force.a");
-        isKind(q.b, "point_charge", "coulomb_force.b");
+        isKind(q2.a, "point_charge", "coulomb_force.a");
+        isKind(q2.b, "point_charge", "coulomb_force.b");
         break;
       case "field_at":
-        gateSuper(q.at, q.by, "field_at");
+        gateSuper(q2.at, q2.by, "field_at");
         break;
       case "force_on_test":
-        gateSuper(q.at, q.by, "force_on_test");
+        gateSuper(q2.at, q2.by, "force_on_test");
         break;
       case "potential_at":
-        (q.by && q.by.length ? q.by : [...pointOp.keys()]).forEach((n) => isKind(n, "point_charge", "potential_at.by"));
+        (q2.by && q2.by.length ? q2.by : [...pointOp.keys()]).forEach((n) => isKind(n, "point_charge", "potential_at.by"));
         break;
       case "field_symmetric": {
-        const okA = isKind(q.sources[0], "point_charge", "field_symmetric.sources"), okB = isKind(q.sources[1], "point_charge", "field_symmetric.sources");
+        const okA = isKind(q2.sources[0], "point_charge", "field_symmetric.sources"), okB = isKind(q2.sources[1], "point_charge", "field_symmetric.sources");
         if (okA && okB) {
-          const A = pointOp.get(q.sources[0]), B = pointOp.get(q.sources[1]);
+          const A = pointOp.get(q2.sources[0]), B = pointOp.get(q2.sources[1]);
           if (A && B) {
             const qa = qtyCharge(A.q.value, A.q.unit).approx, qb = qtyCharge(B.q.value, B.q.unit).approx;
-            if (Math.abs(Math.abs(qa) - Math.abs(qb)) > 1e-18) add5("field_symmetric: |q_A| ph\u1EA3i b\u1EB1ng |q_B| (\u0111\u1ED1i x\u1EE9ng \u0111\u1EB3ng ngu\u1ED3n)");
+            if (Math.abs(Math.abs(qa) - Math.abs(qb)) > 1e-18) add6("field_symmetric: |q_A| ph\u1EA3i b\u1EB1ng |q_B| (\u0111\u1ED1i x\u1EE9ng \u0111\u1EB3ng ngu\u1ED3n)");
           }
         }
-        if (q.r.value <= 0) add5("field_symmetric: r ph\u1EA3i > 0");
+        if (q2.r.value <= 0) add6("field_symmetric: r ph\u1EA3i > 0");
         break;
       }
       case "electric_force":
-        isKind(q.body, "charged_body", "electric_force.body");
-        isKind(q.field, "uniform_field", "electric_force.field");
+        isKind(q2.body, "charged_body", "electric_force.body");
+        isKind(q2.field, "uniform_field", "electric_force.field");
         break;
       case "work":
-        isKind(q.body, "charged_body", "work.body");
-        isKind(q.field, "uniform_field", "work.field");
+        isKind(q2.body, "charged_body", "work.body");
+        isKind(q2.field, "uniform_field", "work.field");
         break;
       case "voltage":
-        isKind(q.field, "uniform_field", "voltage.field");
+        isKind(q2.field, "uniform_field", "voltage.field");
         break;
       case "potential_energy":
-        isKind(q.body, "charged_body", "potential_energy.body");
+        isKind(q2.body, "charged_body", "potential_energy.body");
         break;
       case "equilibrium_field":
-        needMass(q.body, "equilibrium_field.body");
+        needMass(q2.body, "equilibrium_field.body");
         break;
       case "acceleration":
-        needMass(q.body, "acceleration.body");
-        isKind(q.field, "uniform_field", "acceleration.field");
+        needMass(q2.body, "acceleration.body");
+        isKind(q2.field, "uniform_field", "acceleration.field");
         break;
       case "speed_after":
-        needMass(q.body, "speed_after.body");
-        isKind(q.field, "uniform_field", "speed_after.field");
+        needMass(q2.body, "speed_after.body");
+        isKind(q2.field, "uniform_field", "speed_after.field");
         break;
     }
   }
@@ -12679,9 +12679,9 @@ function computeEFieldQuery(ent, query) {
       }
       case "force_on_test": {
         const { fo, checks } = fieldOutFrom(ent, query.at, query.by);
-        const q = qtyCharge(query.q.value, query.q.unit), qN = qtyChargeN(query.q.value, query.q.unit);
-        const F = mul(absS2(q), fo.mag), FN = Math.abs(qN) * fo.magN;
-        const dir = signS(q) >= 0 ? `c\xF9ng chi\u1EC1u E (${fo.direction})` : `ng\u01B0\u1EE3c chi\u1EC1u E`;
+        const q2 = qtyCharge(query.q.value, query.q.unit), qN = qtyChargeN(query.q.value, query.q.unit);
+        const F = mul(absS2(q2), fo.mag), FN = Math.abs(qN) * fo.magN;
+        const dir = signS(q2) >= 0 ? `c\xF9ng chi\u1EC1u E (${fo.direction})` : `ng\u01B0\u1EE3c chi\u1EC1u E`;
         return { ok: true, answer: mkEAns("force_on_test", F, FN, "N", query.label, dir), checks };
       }
       case "field_symmetric": {
@@ -12836,10 +12836,10 @@ function runEfield(raw) {
   const answers = [];
   const checks = [];
   const errors = [];
-  for (const [qi, q] of plan.queries.entries()) {
-    const r2 = computeEFieldQuery(ent, q);
+  for (const [qi, q2] of plan.queries.entries()) {
+    const r2 = computeEFieldQuery(ent, q2);
     if (r2.ok === false) {
-      errors.push({ message: `query ${q.kind}: ${r2.problem}` });
+      errors.push({ message: `query ${q2.kind}: ${r2.problem}` });
       continue;
     }
     answers.push({ ...r2.answer, queryIndex: qi });
@@ -12928,45 +12928,45 @@ var AcPlanSchema = external_exports.object({
   queries: external_exports.array(AcQuerySchema).min(1),
   asserts: external_exports.array(external_exports.object({ query: AcQuerySchema, equals: Num8, tol: Num8.positive().optional() })).default([])
 }).superRefine((plan, ctx) => {
-  const add5 = (message) => ctx.addIssue({ code: external_exports.ZodIssueCode.custom, message });
+  const add6 = (message) => ctx.addIssue({ code: external_exports.ZodIssueCode.custom, message });
   const hasF = plan.source.f !== void 0;
   const hasOmega = plan.source.omega !== void 0;
-  if (hasF === hasOmega) add5("ngu\u1ED3n ph\u1EA3i khai \u0111\xFAng M\u1ED8T trong {f, omega} (t\u1EA7n s\u1ED1)");
+  if (hasF === hasOmega) add6("ngu\u1ED3n ph\u1EA3i khai \u0111\xFAng M\u1ED8T trong {f, omega} (t\u1EA7n s\u1ED1)");
   const hasU = plan.source.U !== void 0;
   const hasU0 = plan.source.U0 !== void 0;
-  if (hasU === hasU0) add5("ngu\u1ED3n ph\u1EA3i khai \u0111\xFAng M\u1ED8T trong {U, U0} (\u0111i\u1EC7n \xE1p)");
+  if (hasU === hasU0) add6("ngu\u1ED3n ph\u1EA3i khai \u0111\xFAng M\u1ED8T trong {U, U0} (\u0111i\u1EC7n \xE1p)");
   const posSurd = (v, name) => {
     if (v === void 0) return;
     const val = typeof v === "number" ? v : v.n / (v.d ?? 1) * Math.sqrt(v.rad ?? 1);
-    if (!(val > 0)) add5(`${name} ph\u1EA3i > 0`);
+    if (!(val > 0)) add6(`${name} ph\u1EA3i > 0`);
   };
   posSurd(plan.source.U, "U");
   posSurd(plan.source.U0, "U0");
   const hasR = plan.R !== void 0;
   const hasL = plan.L !== void 0;
   const hasC = plan.C !== void 0;
-  if (!hasR && !hasL && !hasC) add5("m\u1EA1ch ph\u1EA3i c\xF3 \xEDt nh\u1EA5t m\u1ED9t ph\u1EA7n t\u1EED trong {R, L, C}");
+  if (!hasR && !hasL && !hasC) add6("m\u1EA1ch ph\u1EA3i c\xF3 \xEDt nh\u1EA5t m\u1ED9t ph\u1EA7n t\u1EED trong {R, L, C}");
   const needsLC = plan.queries.some(
-    (q) => q.kind === "resonance_frequency" || q.kind === "is_resonance" || q.kind === "solve_resonance" && q.target === "f"
+    (q2) => q2.kind === "resonance_frequency" || q2.kind === "is_resonance" || q2.kind === "solve_resonance" && q2.target === "f"
   );
-  if (needsLC && !(hasL && hasC)) add5("c\u1EA7n c\u1EA3 L v\xE0 C \u0111\u1EC3 x\xE9t/t\xEDnh c\u1ED9ng h\u01B0\u1EDFng (is_resonance/resonance_frequency/solve f)");
-  for (const q of plan.queries) {
-    if (q.kind !== "solve_resonance") continue;
-    if (q.target === "C" && !hasL) add5("solve_resonance{target:C} c\u1EA7n bi\u1EBFt L (v\xE0 t\u1EA7n s\u1ED1) \u0111\u1EC3 t\xECm C c\u1ED9ng h\u01B0\u1EDFng");
-    if (q.target === "L" && !hasC) add5("solve_resonance{target:L} c\u1EA7n bi\u1EBFt C (v\xE0 t\u1EA7n s\u1ED1) \u0111\u1EC3 t\xECm L c\u1ED9ng h\u01B0\u1EDFng");
+  if (needsLC && !(hasL && hasC)) add6("c\u1EA7n c\u1EA3 L v\xE0 C \u0111\u1EC3 x\xE9t/t\xEDnh c\u1ED9ng h\u01B0\u1EDFng (is_resonance/resonance_frequency/solve f)");
+  for (const q2 of plan.queries) {
+    if (q2.kind !== "solve_resonance") continue;
+    if (q2.target === "C" && !hasL) add6("solve_resonance{target:C} c\u1EA7n bi\u1EBFt L (v\xE0 t\u1EA7n s\u1ED1) \u0111\u1EC3 t\xECm C c\u1ED9ng h\u01B0\u1EDFng");
+    if (q2.target === "L" && !hasC) add6("solve_resonance{target:L} c\u1EA7n bi\u1EBFt C (v\xE0 t\u1EA7n s\u1ED1) \u0111\u1EC3 t\xECm L c\u1ED9ng h\u01B0\u1EDFng");
   }
   const needElem = (of, kind) => {
-    if (of === "L" && !hasL) add5(`${kind}{of:L} nh\u01B0ng m\u1EA1ch kh\xF4ng c\xF3 ph\u1EA7n t\u1EED L`);
-    if (of === "C" && !hasC) add5(`${kind}{of:C} nh\u01B0ng m\u1EA1ch kh\xF4ng c\xF3 ph\u1EA7n t\u1EED C`);
+    if (of === "L" && !hasL) add6(`${kind}{of:L} nh\u01B0ng m\u1EA1ch kh\xF4ng c\xF3 ph\u1EA7n t\u1EED L`);
+    if (of === "C" && !hasC) add6(`${kind}{of:C} nh\u01B0ng m\u1EA1ch kh\xF4ng c\xF3 ph\u1EA7n t\u1EED C`);
   };
-  for (const q of plan.queries) {
-    if (q.kind === "voltage" || q.kind === "write_voltage") needElem(q.of, q.kind);
-    if (q.kind === "impedance" && q.of) needElem(q.of, q.kind);
+  for (const q2 of plan.queries) {
+    if (q2.kind === "voltage" || q2.kind === "write_voltage") needElem(q2.of, q2.kind);
+    if (q2.kind === "impedance" && q2.of) needElem(q2.of, q2.kind);
   }
   for (const a of plan.asserts) {
-    const q = a.query;
-    if (q.kind === "voltage" || q.kind === "write_voltage") needElem(q.of, q.kind);
-    if (q.kind === "impedance" && q.of) needElem(q.of, q.kind);
+    const q2 = a.query;
+    if (q2.kind === "voltage" || q2.kind === "write_voltage") needElem(q2.of, q2.kind);
+    if (q2.kind === "impedance" && q2.of) needElem(q2.of, q2.kind);
   }
 });
 
@@ -13246,7 +13246,7 @@ function mk(kind, detail, resid, scale4) {
   const pass = exactZero || Math.abs(approx) <= EPS_SELF7 * Math.max(1, scale4);
   return { kind, detail, residual: exactZero ? 0 : approx, pass };
 }
-var hasKind = (plan, k) => plan.queries.some((q) => q.kind === k) || plan.asserts.some((a) => a.query.kind === k);
+var hasKind = (plan, k) => plan.queries.some((q2) => q2.kind === k) || plan.asserts.some((a) => a.query.kind === k);
 function selfChecks2(m, d, plan) {
   const checks = [];
   const Rp = scalarToPi(m.R);
@@ -13275,21 +13275,21 @@ function selfChecks2(m, d, plan) {
     const ZC0 = divP(scalarToPi(rat(1n)), mulP(w0, toLC(m.C)));
     checks.push(mk("K3", "Z_L(f\u2080) = Z_C(f\u2080)", subP(ZL0, ZC0), Math.max(1, m.n.ZL)));
   }
-  for (const q of plan.queries) {
-    if (q.kind !== "solve_resonance") continue;
-    const sol = solveResonance(m, q.target).pi;
+  for (const q2 of plan.queries) {
+    if (q2.kind !== "solve_resonance") continue;
+    const sol = solveResonance(m, q2.target).pi;
     let resid;
-    if (q.target === "f") {
+    if (q2.target === "f") {
       const w0 = mulP(TWO_PI, sol);
       resid = subP(mulP(w0, toLC(m.L)), divP(scalarToPi(rat(1n)), mulP(w0, toLC(m.C))));
-    } else if (q.target === "C") {
+    } else if (q2.target === "C") {
       const ZCp = divP(scalarToPi(rat(1n)), mulP(m.omega, sol));
       resid = subP(m.ZL, ZCp);
     } else {
       const ZLp = mulP(m.omega, sol);
       resid = subP(ZLp, m.ZC);
     }
-    checks.push(mk("K5", `solve_resonance{${q.target}} thay-ng\u01B0\u1EE3c Z_L=Z_C`, resid, Math.max(1, m.n.ZL || 1)));
+    checks.push(mk("K5", `solve_resonance{${q2.target}} thay-ng\u01B0\u1EE3c Z_L=Z_C`, resid, Math.max(1, m.n.ZL || 1)));
   }
   return checks;
 }
@@ -13405,10 +13405,10 @@ function runAcCircuit(raw) {
   try {
     model = resolveModel2(plan);
     derived = deriveAc(model);
-    for (const [qi, q] of plan.queries.entries()) {
-      const r2 = computeAcQuery(model, derived, q);
+    for (const [qi, q2] of plan.queries.entries()) {
+      const r2 = computeAcQuery(model, derived, q2);
       if (r2.ok === false) {
-        errors.push({ message: `query ${q.kind}: ${r2.problem}` });
+        errors.push({ message: `query ${q2.kind}: ${r2.problem}` });
         continue;
       }
       answers.push({ ...r2.answer, queryIndex: qi });
@@ -13447,6 +13447,746 @@ function runAcCircuit(raw) {
     unitsNote: "SI"
   } : ZERO_META3;
   return { ok, answers, checks, violations, errors, geometry, table, phasor, charts, meta };
+}
+
+// api/_lib/kernel/physics/gasHeatSchema.ts
+var Num9 = external_exports.number().finite();
+var Name4 = external_exports.string().min(1).regex(/^[A-Za-z0-9_]+$/);
+var PRES_UNITS = ["Pa", "kPa", "atm", "bar", "mmHg"];
+var VOL_UNITS = ["m3", "L", "mL", "cm3"];
+var TEMP_UNITS = ["C", "K"];
+var MASS_UNITS = ["kg", "g"];
+var LEN_UNITS = ["m", "cm"];
+var PresUnit = external_exports.enum(PRES_UNITS);
+var VolUnit = external_exports.enum(VOL_UNITS);
+var TempUnit = external_exports.enum(TEMP_UNITS);
+var MassUnit2 = external_exports.enum(MASS_UNITS);
+var LenUnit4 = external_exports.enum(LEN_UNITS);
+var Pressure = external_exports.object({ value: Num9.positive(), unit: PresUnit.default("Pa") });
+var Volume = external_exports.object({ value: Num9.positive(), unit: VolUnit.default("m3") });
+var Temp = external_exports.object({ value: Num9, unit: TempUnit.default("K") });
+var Mass = external_exports.object({ value: Num9.positive(), unit: MassUnit2.default("kg") });
+var Scal = external_exports.object({ value: Num9.positive() });
+var Hydrostatic = external_exports.object({
+  atmosphere: Pressure,
+  depth: external_exports.object({ value: Num9.positive(), unit: LenUnit4.default("m") }),
+  density: Scal.default({ value: 1e3 }),
+  // ρ (kg/m³); nước = 1000
+  g: Num9.positive().default(10)
+});
+var StateOp = external_exports.object({
+  op: external_exports.literal("state"),
+  name: Name4,
+  p: Pressure.optional(),
+  // BỎ TRỐNG = ẩn (state_value hỏi) HOẶC không xuất hiện trong luật
+  pFromDepth: Hydrostatic.optional(),
+  // thay cho p: engine tính p₀+ρgh (loại trừ p — superRefine)
+  V: Volume.optional(),
+  T: Temp.optional(),
+  // đẳng nhiệt có thể bỏ T cả hai trạng thái (triệt tiêu)
+  n: Scal.optional(),
+  // số mol (Clapeyron)
+  mass: Mass.optional(),
+  // khối lượng khí (Clapeyron; cần molarMass)
+  molarMass: Scal.optional()
+  // M (g/mol) — cầu mass↔mol
+});
+var ProcessOp = external_exports.object({
+  op: external_exports.literal("process"),
+  kind: external_exports.enum(["isothermal", "isochoric", "isobaric", "general"]),
+  from: Name4,
+  to: Name4
+});
+var ThermalBodyOp = external_exports.object({
+  op: external_exports.literal("thermal_body"),
+  name: Name4,
+  mass: Mass.optional(),
+  // BỎ TRỐNG ⇒ ẩn của mass_from_heat property=mass
+  c: Scal.optional(),
+  // nhiệt dung riêng đơn-pha J/(kg·K)
+  T0: Temp.optional(),
+  // nhiệt độ đầu (cân bằng nhiệt)
+  // chuyển thể (chuỗi một chất — CHỈ dùng ở query 'heat'):
+  cSolid: Scal.optional(),
+  cLiquid: Scal.optional(),
+  cGas: Scal.optional(),
+  meltTemp: Temp.optional(),
+  boilTemp: Temp.optional(),
+  latentMelt: Scal.optional(),
+  // λ (J/kg)
+  latentVapor: Scal.optional()
+  // L (J/kg)
+});
+var GasHeatOpSchema = external_exports.discriminatedUnion("op", [StateOp, ProcessOp, ThermalBodyOp]);
+var PhasePoint = external_exports.object({ phase: external_exports.enum(["solid", "liquid", "gas"]), temp: Temp });
+var GasHeatQuerySchema = external_exports.discriminatedUnion("kind", [
+  // KHÍ:
+  external_exports.object({ kind: external_exports.literal("state_value"), of: Name4, quantity: external_exports.enum(["p", "V", "T"]), unit: external_exports.string().optional(), label: external_exports.string().optional() }),
+  external_exports.object({ kind: external_exports.literal("clapeyron"), of: Name4, solveFor: external_exports.enum(["p", "V", "T", "amount", "mass"]), unit: external_exports.string().optional(), label: external_exports.string().optional() }),
+  // NHIỆT:
+  external_exports.object({ kind: external_exports.literal("heat"), of: Name4, from: PhasePoint, to: PhasePoint, label: external_exports.string().optional() }),
+  external_exports.object({ kind: external_exports.literal("equilibrium_temp"), unit: TempUnit.default("C"), label: external_exports.string().optional() }),
+  external_exports.object({ kind: external_exports.literal("mass_from_heat"), of: Name4, property: external_exports.enum(["mass", "c", "T0"]).default("mass"), Tf: Temp, unit: external_exports.string().optional(), label: external_exports.string().optional() })
+]);
+var GasHeatPlanBase = external_exports.object({
+  problemName: external_exports.string().min(1),
+  atmInPa: external_exports.union([external_exports.literal(101325), external_exports.literal(1e5)]).default(101325),
+  // 1 atm = ? Pa (đề khai)
+  R: Scal.optional(),
+  // D34-e: override tuỳ chọn; engine default 831/100 (SGK GDPT 2018)
+  ops: external_exports.array(GasHeatOpSchema).min(1),
+  queries: external_exports.array(GasHeatQuerySchema).min(1),
+  asserts: external_exports.array(external_exports.object({ query: GasHeatQuerySchema, equals: Num9, tol: Num9.positive().optional() })).default([]),
+  knowledgeTags: external_exports.array(external_exports.string()).default([])
+});
+var UNIT_TABLE = { p: PRES_UNITS, V: VOL_UNITS, T: TEMP_UNITS, mass: MASS_UNITS };
+var LATENT_KEYS = ["cSolid", "cLiquid", "cGas", "meltTemp", "boilTemp", "latentMelt", "latentVapor"];
+function refineGasHeat(plan, ctx) {
+  const issue = (message) => ctx.addIssue({ code: external_exports.ZodIssueCode.custom, message });
+  const states = plan.ops.filter((o) => o.op === "state");
+  const bodies = plan.ops.filter((o) => o.op === "thermal_body");
+  const processes = plan.ops.filter((o) => o.op === "process");
+  const stateBy = new Map(states.map((s) => [s.name, s]));
+  const bodyBy = new Map(bodies.map((b) => [b.name, b]));
+  const seen = /* @__PURE__ */ new Set();
+  for (const o of plan.ops) {
+    if (o.op === "process") continue;
+    if (seen.has(o.name)) issue(`t\xEAn "${o.name}" khai b\xE1o tr\xF9ng`);
+    seen.add(o.name);
+  }
+  for (const s of states) if (s.p !== void 0 && s.pFromDepth !== void 0) issue(`tr\u1EA1ng th\xE1i "${s.name}" khai C\u1EA2 p l\u1EABn pFromDepth (lo\u1EA1i tr\u1EEB nhau)`);
+  if (processes.length > 1) issue(`v1 ch\u1EC9 h\u1ED7 tr\u1EE3 M\u1ED8T qu\xE1 tr\xECnh (process) m\u1ED7i plan, nh\u1EADn ${processes.length}`);
+  for (const pr of processes) {
+    if (!stateBy.has(pr.from)) issue(`process.from tr\u1ECF tr\u1EA1ng th\xE1i "${pr.from}" kh\xF4ng t\u1ED3n t\u1EA1i`);
+    if (!stateBy.has(pr.to)) issue(`process.to tr\u1ECF tr\u1EA1ng th\xE1i "${pr.to}" kh\xF4ng t\u1ED3n t\u1EA1i`);
+    if (pr.from === pr.to) issue(`process n\u1ED1i hai tr\u1EA1ng th\xE1i tr\xF9ng "${pr.from}"`);
+  }
+  const hasQ = (s, qq) => qq === "p" ? s.p !== void 0 || s.pFromDepth !== void 0 : qq === "V" ? s.V !== void 0 : s.T !== void 0;
+  const LAW = {
+    isothermal: ["p", "V"],
+    isochoric: ["p", "T"],
+    isobaric: ["V", "T"],
+    general: ["p", "V", "T"]
+  };
+  const checkUnit = (u, dim) => {
+    if (u === void 0) return;
+    if (dim === "amount") {
+      if (u !== "mol") issue(`\u0111\u01A1n v\u1ECB s\u1ED1 mol ph\u1EA3i l\xE0 "mol", nh\u1EADn "${u}"`);
+      return;
+    }
+    if (dim === "c") {
+      if (u !== "J/(kg\xB7K)") issue(`\u0111\u01A1n v\u1ECB nhi\u1EC7t dung ri\xEAng ph\u1EA3i l\xE0 "J/(kg\xB7K)", nh\u1EADn "${u}"`);
+      return;
+    }
+    if (!UNIT_TABLE[dim].includes(u)) issue(`\u0111\u01A1n v\u1ECB "${u}" kh\xF4ng h\u1EE3p l\u1EC7 cho \u0111\u1EA1i l\u01B0\u1EE3ng ${dim} (b\u1EA3ng: ${UNIT_TABLE[dim].join(", ")})`);
+  };
+  for (const q2 of plan.queries) {
+    if (q2.kind === "state_value") {
+      const of = stateBy.get(q2.of);
+      if (!of) {
+        issue(`state_value.of tr\u1ECF tr\u1EA1ng th\xE1i "${q2.of}" kh\xF4ng t\u1ED3n t\u1EA1i`);
+        continue;
+      }
+      checkUnit(q2.unit, q2.quantity);
+      const procs = processes.filter((pr2) => pr2.from === q2.of || pr2.to === q2.of);
+      if (procs.length !== 1) {
+        issue(`state_value "${q2.of}" c\u1EA7n \u0111\xFAng M\u1ED8T qu\xE1 tr\xECnh ch\u1EE9a n\xF3 (nh\u1EADn ${procs.length})`);
+        continue;
+      }
+      const pr = procs[0];
+      const from = stateBy.get(pr.from), to = stateBy.get(pr.to);
+      if (!from || !to) continue;
+      const blanks = [];
+      for (const st of [from, to]) for (const lq of LAW[pr.kind]) if (!hasQ(st, lq)) blanks.push({ name: st.name, q: lq });
+      if (blanks.length !== 1) {
+        issue(`qu\xE1 tr\xECnh ${pr.kind} c\u1EA7n \u0110\xDANG M\u1ED8T \u1EA9n trong \u0111\u1EA1i l\u01B0\u1EE3ng c\u1EE7a lu\u1EADt, nh\u1EADn ${blanks.length}`);
+        continue;
+      }
+      const b = blanks[0];
+      if (b.name !== q2.of || b.q !== q2.quantity) issue(`\u1EA9n s\u1ED1 (${b.name}.${b.q}) kh\xF4ng kh\u1EDBp c\xE2u h\u1ECFi (${q2.of}.${q2.quantity})`);
+    } else if (q2.kind === "clapeyron") {
+      const of = stateBy.get(q2.of);
+      if (!of) {
+        issue(`clapeyron.of tr\u1ECF tr\u1EA1ng th\xE1i "${q2.of}" kh\xF4ng t\u1ED3n t\u1EA1i`);
+        continue;
+      }
+      const dimOf = q2.solveFor === "amount" ? "amount" : q2.solveFor === "mass" ? "mass" : q2.solveFor;
+      checkUnit(q2.unit, dimOf);
+      const nProvided = of.n !== void 0 || of.mass !== void 0 && of.molarMass !== void 0;
+      if (q2.solveFor === "p" && (of.p !== void 0 || of.pFromDepth !== void 0)) issue("clapeyron solveFor=p nh\u01B0ng p \u0111\xE3 cho (\u1EA9n ph\u1EA3i b\u1ECF tr\u1ED1ng)");
+      if (q2.solveFor === "V" && of.V !== void 0) issue("clapeyron solveFor=V nh\u01B0ng V \u0111\xE3 cho");
+      if (q2.solveFor === "T" && of.T !== void 0) issue("clapeyron solveFor=T nh\u01B0ng T \u0111\xE3 cho");
+      if (q2.solveFor === "amount" && of.n !== void 0) issue("clapeyron solveFor=amount nh\u01B0ng n \u0111\xE3 cho");
+      if ((q2.solveFor === "amount" || q2.solveFor === "mass") && !(of.p !== void 0 || of.pFromDepth !== void 0)) issue("clapeyron c\u1EA7n p (ho\u1EB7c pFromDepth) \u0111\u1EC3 t\xEDnh n/mass");
+      if ((q2.solveFor === "amount" || q2.solveFor === "mass") && of.V === void 0) issue("clapeyron c\u1EA7n V \u0111\u1EC3 t\xEDnh n/mass");
+      if ((q2.solveFor === "amount" || q2.solveFor === "mass") && of.T === void 0) issue("clapeyron c\u1EA7n T \u0111\u1EC3 t\xEDnh n/mass");
+      if (q2.solveFor === "mass" && of.molarMass === void 0) issue("clapeyron solveFor=mass c\u1EA7n molarMass (M)");
+      if ((q2.solveFor === "p" || q2.solveFor === "V" || q2.solveFor === "T") && !nProvided) issue(`clapeyron solveFor=${q2.solveFor} c\u1EA7n bi\u1EBFt n (ho\u1EB7c mass+molarMass)`);
+    } else if (q2.kind === "heat") {
+      if (!bodyBy.has(q2.of)) issue(`heat.of "${q2.of}" kh\xF4ng ph\u1EA3i v\u1EADt nhi\u1EC7t (thermal_body) ho\u1EB7c kh\xF4ng t\u1ED3n t\u1EA1i`);
+    } else if (q2.kind === "equilibrium_temp") {
+      if (bodies.length < 2) issue(`equilibrium_temp c\u1EA7n \u2265 2 v\u1EADt nhi\u1EC7t, nh\u1EADn ${bodies.length}`);
+      for (const b of bodies) {
+        if (b.mass === void 0 || b.c === void 0 || b.T0 === void 0) issue(`equilibrium_temp: v\u1EADt "${b.name}" thi\u1EBFu mass/c/T0`);
+        if (LATENT_KEYS.some((k) => b[k] !== void 0)) issue(`equilibrium_temp: v\u1EADt "${b.name}" c\xF3 tham s\u1ED1 chuy\u1EC3n th\u1EC3 \u2014 v1 ch\u1EB7n tr\u1ED9n chuy\u1EC3n-th\u1EC3-v\xE0o-c\xE2n-b\u1EB1ng (phi tuy\u1EBFn), h\xE3y t\xE1ch query 'heat'`);
+      }
+    } else if (q2.kind === "mass_from_heat") {
+      const of = bodyBy.get(q2.of);
+      if (!of) {
+        issue(`mass_from_heat.of "${q2.of}" kh\xF4ng ph\u1EA3i v\u1EADt nhi\u1EC7t (thermal_body) ho\u1EB7c kh\xF4ng t\u1ED3n t\u1EA1i`);
+        continue;
+      }
+      if (bodies.length < 2) issue(`mass_from_heat c\u1EA7n \u2265 2 v\u1EADt nhi\u1EC7t, nh\u1EADn ${bodies.length}`);
+      checkUnit(q2.unit, q2.property === "mass" ? "mass" : q2.property === "c" ? "c" : "T");
+      for (const b of bodies) if (LATENT_KEYS.some((k) => b[k] !== void 0)) issue(`mass_from_heat: v\u1EADt "${b.name}" c\xF3 tham s\u1ED1 chuy\u1EC3n th\u1EC3 \u2014 v1 ch\u1EB7n phi tuy\u1EBFn (ch\u1EC9 c\u1EA3m nhi\u1EC7t thu\u1EA7n)`);
+      const need2 = ["mass", "c", "T0"];
+      if (of[q2.property] !== void 0) issue(`mass_from_heat property=${q2.property} nh\u01B0ng "${q2.of}" \u0111\xE3 cho ${q2.property} (\u1EA9n ph\u1EA3i b\u1ECF tr\u1ED1ng)`);
+      for (const nk of need2) if (nk !== q2.property && of[nk] === void 0) issue(`mass_from_heat: v\u1EADt \u1EA9n "${q2.of}" c\u1EA7n ${nk}`);
+      for (const b of bodies) if (b.name !== q2.of) {
+        for (const nk of need2) if (b[nk] === void 0) issue(`mass_from_heat: v\u1EADt "${b.name}" thi\u1EBFu ${nk}`);
+      }
+    }
+  }
+}
+var GasHeatPlanSchema = GasHeatPlanBase.superRefine(refineGasHeat);
+
+// api/_lib/kernel/physics/gasHeat.ts
+var EPS_SELF8 = 1e-6;
+var PHYSICAL_VIOLATIONS4 = /* @__PURE__ */ new Set([
+  "nhiet-do-tuyet-doi-am",
+  "ap-suat-hoac-the-tich-am",
+  "t-cb-ngoai-khoang",
+  "khoi-luong-am",
+  "chieu-gia-nhiet-nghich",
+  "dang-qua-trinh-mau-thuan"
+]);
+var q = (s, n) => ({ s, n });
+var mulQ = (a, b) => ({ s: mul(a.s, b.s), n: a.n * b.n });
+var divQ = (a, b) => ({ s: div(a.s, b.s), n: a.n / b.n });
+var subQ = (a, b) => ({ s: sub2(a.s, b.s), n: a.n - b.n });
+var addQ = (a, b) => ({ s: add2(a.s, b.s), n: a.n + b.n });
+var negQ = (a) => ({ s: neg(a.s), n: -a.n });
+var isPos = (a) => a.s.exact !== null ? a.s.exact.num > 0n : a.n > 0;
+var isZero = (a) => a.s.exact !== null ? a.s.exact.num === 0n : Math.abs(a.n) < EPS_SELF8;
+function cmpQ(a, b) {
+  const d = subQ(a, b);
+  return isZero(d) ? 0 : d.s.exact !== null ? d.s.exact.num > 0n ? 1 : -1 : d.n > 0 ? 1 : -1;
+}
+function presToPa(u, atmInPa) {
+  switch (u) {
+    case "Pa":
+      return rat(1n);
+    case "kPa":
+      return rat(1000n);
+    case "bar":
+      return rat(100000n);
+    case "atm":
+      return rat(BigInt(atmInPa));
+    case "mmHg":
+      return rat(101325n, 760n);
+    default:
+      throw new Error(`\u0111\u01A1n v\u1ECB \xE1p su\u1EA5t "${u}" ngo\xE0i b\u1EA3ng \u0111\u1ED5i (Pa, kPa, atm, bar, mmHg)`);
+  }
+}
+var presToPaN = (u, atmInPa) => u === "Pa" ? 1 : u === "kPa" ? 1e3 : u === "bar" ? 1e5 : u === "atm" ? atmInPa : u === "mmHg" ? 101325 / 760 : NaN;
+function volToM3(u) {
+  switch (u) {
+    case "m3":
+      return rat(1n);
+    case "L":
+      return rat(1n, 1000n);
+    case "mL":
+    case "cm3":
+      return rat(1n, 1000000n);
+    default:
+      throw new Error(`\u0111\u01A1n v\u1ECB th\u1EC3 t\xEDch "${u}" ngo\xE0i b\u1EA3ng \u0111\u1ED5i (m3, L, mL, cm3)`);
+  }
+}
+var volToM3N = (u) => u === "m3" ? 1 : u === "L" ? 1e-3 : 1e-6;
+var massToKg = (u) => u === "g" ? rat(1n, 1000n) : rat(1n);
+var massToKgN = (u) => u === "g" ? 1e-3 : 1;
+var lenToM = (u) => u === "cm" ? rat(1n, 100n) : rat(1n);
+var lenToMN = (u) => u === "cm" ? 0.01 : 1;
+var qtyPressure = (v, u, atm) => q(mul(scalarFromNumber(v), presToPa(u, atm)), v * presToPaN(u, atm));
+var qtyVolume = (v, u) => q(mul(scalarFromNumber(v), volToM3(u)), v * volToM3N(u));
+var qtyMass2 = (v, u) => q(mul(scalarFromNumber(v), massToKg(u)), v * massToKgN(u));
+var qtyTemp = (v, u) => u === "C" ? q(add2(scalarFromNumber(v), rat(273n)), v + 273) : q(scalarFromNumber(v), v);
+var plain = (v) => q(scalarFromNumber(v), v);
+function buildEntities2(plan) {
+  const checks = [], violations = [], errors = [];
+  const states = /* @__PURE__ */ new Map(), bodies = /* @__PURE__ */ new Map();
+  const atm = plan.atmInPa;
+  const R = plan.R ? plain(plan.R.value) : q(rat(831n, 100n), 8.31);
+  let process;
+  const chkTempPos = (name, T) => {
+    if (!isPos(T)) violations.push({ id: "nhiet-do-tuyet-doi-am", message: `${name}: nhi\u1EC7t \u0111\u1ED9 tuy\u1EC7t \u0111\u1ED1i ${T.n} K \u2264 0 (phi v\u1EADt l\xED)` });
+  };
+  try {
+    for (const op of plan.ops) {
+      if (op.op === "process") {
+        process = op;
+        continue;
+      }
+      if (op.op === "state") {
+        const s = op;
+        const st = { name: s.name };
+        if (s.p) st.p = qtyPressure(s.p.value, s.p.unit, atm);
+        if (s.pFromDepth) {
+          const hd = s.pFromDepth;
+          const p0 = qtyPressure(hd.atmosphere.value, hd.atmosphere.unit, atm);
+          const depth = q(mul(scalarFromNumber(hd.depth.value), lenToM(hd.depth.unit)), hd.depth.value * lenToMN(hd.depth.unit));
+          const rho = plain(hd.density.value), g = plain(hd.g);
+          const pBottom = addQ(p0, mulQ(mulQ(rho, g), depth));
+          st.p = pBottom;
+          checks.push({ kind: "hydrostatic", detail: `${s.name}: p_\u0111\xE1y = p\u2080 + \u03C1gh = ${pBottom.n} Pa (engine t\xEDnh, LLM kh\xF4ng t\u1EF1 nh\xE2n)`, residual: pBottom.n, pass: isPos(pBottom) });
+        }
+        if (s.V) st.V = qtyVolume(s.V.value, s.V.unit);
+        if (s.T) {
+          st.T = qtyTemp(s.T.value, s.T.unit);
+          chkTempPos(`tr\u1EA1ng th\xE1i ${s.name}`, st.T);
+        }
+        if (s.n) st.n = plain(s.n.value);
+        if (s.mass) st.mass = qtyMass2(s.mass.value, s.mass.unit);
+        if (s.molarMass) st.molarMass = plain(s.molarMass.value);
+        states.set(s.name, st);
+      } else {
+        const b = op;
+        const bd = { name: b.name };
+        if (b.mass) bd.mass = qtyMass2(b.mass.value, b.mass.unit);
+        if (b.c) bd.c = plain(b.c.value);
+        if (b.T0) {
+          bd.T0 = qtyTemp(b.T0.value, b.T0.unit);
+          chkTempPos(`v\u1EADt ${b.name}`, bd.T0);
+        }
+        if (b.cSolid) bd.cSolid = plain(b.cSolid.value);
+        if (b.cLiquid) bd.cLiquid = plain(b.cLiquid.value);
+        if (b.cGas) bd.cGas = plain(b.cGas.value);
+        if (b.meltTemp) {
+          bd.meltTemp = qtyTemp(b.meltTemp.value, b.meltTemp.unit);
+          chkTempPos(`v\u1EADt ${b.name} (m\u1ED1c n\xF3ng ch\u1EA3y)`, bd.meltTemp);
+        }
+        if (b.boilTemp) {
+          bd.boilTemp = qtyTemp(b.boilTemp.value, b.boilTemp.unit);
+          chkTempPos(`v\u1EADt ${b.name} (m\u1ED1c s\xF4i)`, bd.boilTemp);
+        }
+        if (b.latentMelt) bd.latentMelt = plain(b.latentMelt.value);
+        if (b.latentVapor) bd.latentVapor = plain(b.latentVapor.value);
+        bodies.set(b.name, bd);
+      }
+    }
+  } catch (e) {
+    errors.push({ message: e.message });
+  }
+  return { states, bodies, process, R, atmInPa: atm, checks, violations, errors };
+}
+var CROSS = {
+  isothermal: { A: [{ q: "p", st: 0 }, { q: "V", st: 0 }], B: [{ q: "p", st: 1 }, { q: "V", st: 1 }], ign: "T" },
+  isochoric: { A: [{ q: "p", st: 0 }, { q: "T", st: 1 }], B: [{ q: "p", st: 1 }, { q: "T", st: 0 }], ign: "V" },
+  isobaric: { A: [{ q: "V", st: 0 }, { q: "T", st: 1 }], B: [{ q: "V", st: 1 }, { q: "T", st: 0 }], ign: "p" },
+  general: { A: [{ q: "p", st: 0 }, { q: "V", st: 0 }, { q: "T", st: 1 }], B: [{ q: "p", st: 1 }, { q: "V", st: 1 }, { q: "T", st: 0 }], ign: null }
+};
+function solveProcess(from, to, kind) {
+  const checks = [], violations = [];
+  const pick = (f) => (f.st === 0 ? from : to)[f.q];
+  const nameOf = (f) => f.st === 0 ? from.name : to.name;
+  const { A, B, ign } = CROSS[kind];
+  if (ign) {
+    const fromIgn = from[ign], toIgn = to[ign];
+    if (fromIgn && toIgn && cmpQ(fromIgn, toIgn) !== 0)
+      violations.push({ id: "dang-qua-trinh-mau-thuan", message: `qu\xE1 tr\xECnh ${kind} nh\u01B0ng ${ign} \u0111\u1ED5i (${fromIgn.n} \u2192 ${toIgn.n})` });
+  }
+  const all = [...A.map((f) => ({ f, side: "A" })), ...B.map((f) => ({ f, side: "B" }))];
+  const blanks = all.filter((x) => pick(x.f) === void 0);
+  if (blanks.length !== 1) throw new Error(`qu\xE1 tr\xECnh ${kind} c\u1EA7n \u0111\xFAng m\u1ED9t \u1EA9n, engine th\u1EA5y ${blanks.length}`);
+  const blank = blanks[0];
+  const prod = (facs, skip) => {
+    let acc = q(rat(1n), 1);
+    for (const f of facs) {
+      if (skip && f === skip) continue;
+      const v = pick(f);
+      if (v === void 0) throw new Error("thi\u1EBFu \u0111\u1EA1i l\u01B0\u1EE3ng khi nh\xE2n");
+      acc = mulQ(acc, v);
+    }
+    return acc;
+  };
+  const value = blank.side === "A" ? divQ(prod(B), prod(A, blank.f)) : divQ(prod(A), prod(B, blank.f));
+  if (blank.f.q === "T" && !isPos(value)) violations.push({ id: "nhiet-do-tuyet-doi-am", message: `${nameOf(blank.f)}.T = ${value.n} K \u2264 0 (phi v\u1EADt l\xED)` });
+  if ((blank.f.q === "p" || blank.f.q === "V") && !isPos(value)) violations.push({ id: "ap-suat-hoac-the-tich-am", message: `${nameOf(blank.f)}.${blank.f.q} = ${value.n} \u2264 0 (m\xF4 h\xECnh sai \u0111\u1EC1)` });
+  const filledFrom = { ...from }, filledTo = { ...to };
+  (blank.f.st === 0 ? filledFrom : filledTo)[blank.f.q] = value;
+  const pf = (f) => (f.st === 0 ? filledFrom : filledTo)[f.q];
+  const prodFilled = (facs) => facs.reduce((acc, f) => mulQ(acc, pf(f)), q(rat(1n), 1));
+  const resid = subQ(prodFilled(A), prodFilled(B));
+  checks.push(resCheck3("backsub-process", `thay-ng\u01B0\u1EE3c ${kind}: \u220FA \u2212 \u220FB`, resid));
+  return { quantity: blank.f.q, ofState: nameOf(blank.f), value, checks, violations };
+}
+function resCheck3(kind, detail, resid) {
+  const e = resid.s.exact;
+  const residual = e !== null ? exactToApprox(e) : resid.n;
+  const pass = e !== null ? e.num === 0n : Math.abs(resid.n) <= EPS_SELF8 * Math.max(1, Math.abs(resid.n));
+  return { kind, detail, residual, pass };
+}
+function solveClapeyron(st, solveFor, R) {
+  const checks = [], violations = [];
+  const nFromState = () => {
+    if (st.n) return st.n;
+    if (st.mass && st.molarMass) return q(mul(mul(st.mass.s, rat(1000n)), div(rat(1n), st.molarMass.s)), st.mass.n * 1e3 / st.molarMass.n);
+    throw new Error("Clapeyron: thi\u1EBFu n (ho\u1EB7c mass+molarMass)");
+  };
+  let value;
+  if (solveFor === "amount") {
+    value = divQ(mulQ(st.p, st.V), mulQ(R, st.T));
+  } else if (solveFor === "mass") {
+    const n = divQ(mulQ(st.p, st.V), mulQ(R, st.T));
+    value = mulQ(n, st.molarMass);
+  } else if (solveFor === "p") {
+    value = divQ(mulQ(nFromState(), mulQ(R, st.T)), st.V);
+  } else if (solveFor === "V") {
+    value = divQ(mulQ(nFromState(), mulQ(R, st.T)), st.p);
+  } else {
+    value = divQ(mulQ(st.p, st.V), mulQ(nFromState(), R));
+  }
+  if ((solveFor === "p" || solveFor === "V") && !isPos(value)) violations.push({ id: "ap-suat-hoac-the-tich-am", message: `Clapeyron: ${solveFor} = ${value.n} \u2264 0` });
+  if (solveFor === "T" && !isPos(value)) violations.push({ id: "nhiet-do-tuyet-doi-am", message: `Clapeyron: T = ${value.n} K \u2264 0` });
+  const nCheck = solveFor === "amount" ? value : solveFor === "mass" ? divQ(value, st.molarMass) : nFromState();
+  const pC = solveFor === "p" ? value : st.p, vC = solveFor === "V" ? value : st.V, tC = solveFor === "T" ? value : st.T;
+  const resid = subQ(mulQ(pC, vC), mulQ(nCheck, mulQ(R, tC)));
+  checks.push(resCheck3("backsub-clapeyron", "thay-ng\u01B0\u1EE3c pV \u2212 nRT", resid));
+  return { value, checks, violations };
+}
+function solveEquilibrium(bodies) {
+  const checks = [], violations = [];
+  let numer = q(rat(0n), 0), denom = q(rat(0n), 0);
+  for (const b of bodies) {
+    const mc = mulQ(b.mass, b.c);
+    numer = addQ(numer, mulQ(mc, b.T0));
+    denom = addQ(denom, mc);
+  }
+  const Tf = divQ(numer, denom);
+  const T0s = bodies.map((b) => b.T0);
+  const minT = T0s.reduce((a, b) => cmpQ(b, a) < 0 ? b : a);
+  const maxT = T0s.reduce((a, b) => cmpQ(b, a) > 0 ? b : a);
+  const degenerate = cmpQ(minT, maxT) === 0;
+  if (!degenerate && !(cmpQ(Tf, minT) > 0 && cmpQ(Tf, maxT) < 0))
+    violations.push({ id: "t-cb-ngoai-khoang", message: `t_cb = ${Tf.n} K ngo\xE0i (${minT.n}, ${maxT.n}) \u2014 hai v\u1EADt c\xF9ng ph\xEDa / \u0111\u1EC1 m\xE2u thu\u1EABn` });
+  checks.push(resCheck3("backsub-balance", "thay-ng\u01B0\u1EE3c \u03A3m\u1D62c\u1D62(Tf\u2212T0\u1D62)", backsubBalance(bodies, Tf)));
+  if (degenerate) checks.push({ kind: "degenerate-tcb", detail: "m\u1ECDi v\u1EADt c\xF9ng nhi\u1EC7t \u0111\u1ED9 \u0111\u1EA7u \u21D2 t_cb = nhi\u1EC7t \u0111\u1ED9 \u0111\xF3 (ch\u1EA5p nh\u1EADn c\xF3 ch\u1EE7 \u0111\xEDch, H6)", residual: 0, pass: true });
+  return { value: Tf, checks, violations };
+}
+var backsubBalance = (bodies, Tf) => bodies.reduce((acc, b) => addQ(acc, mulQ(mulQ(b.mass, b.c), subQ(Tf, b.T0))), q(rat(0n), 0));
+function solveMassFromHeat(bodies, ofName, property, Tf) {
+  const checks = [], violations = [];
+  const kBody = bodies.find((b) => b.name === ofName);
+  const others = bodies.filter((b) => b.name !== ofName);
+  const S = others.reduce((acc, b) => addQ(acc, mulQ(mulQ(b.mass, b.c), subQ(Tf, b.T0))), q(rat(0n), 0));
+  let value;
+  if (property === "T0") {
+    value = addQ(Tf, divQ(S, mulQ(kBody.mass, kBody.c)));
+  } else {
+    const dT = subQ(Tf, kBody.T0);
+    if (isZero(dT)) throw new Error("mass_from_heat: Tf tr\xF9ng T0 c\u1EE7a v\u1EADt \u1EA9n \u21D2 kh\xF4ng x\xE1c \u0111\u1ECBnh (chia 0)");
+    if (property === "mass") value = negQ(divQ(S, mulQ(kBody.c, dT)));
+    else value = negQ(divQ(S, mulQ(kBody.mass, dT)));
+  }
+  if (property === "mass" && !isPos(value)) violations.push({ id: "khoi-luong-am", message: `mass_from_heat: m = ${value.n} \u2264 0 (Tf m\xE2u thu\u1EABn d\u1EEF ki\u1EC7n)` });
+  if (property === "c" && !isPos(value)) violations.push({ id: "khoi-luong-am", message: `mass_from_heat: c = ${value.n} \u2264 0 (Tf m\xE2u thu\u1EABn d\u1EEF ki\u1EC7n)` });
+  const knownT0 = property === "T0" ? [...others.map((b) => b.T0), value] : bodies.map((b) => b.T0);
+  const minT = knownT0.reduce((a, b) => cmpQ(b, a) < 0 ? b : a);
+  const maxT = knownT0.reduce((a, b) => cmpQ(b, a) > 0 ? b : a);
+  if (!(cmpQ(Tf, minT) > 0 && cmpQ(Tf, maxT) < 0))
+    violations.push({ id: "t-cb-ngoai-khoang", message: `Tf = ${Tf.n} K ngo\xE0i kho\u1EA3ng (${minT.n}, ${maxT.n}) T0` });
+  const filled = bodies.map((b) => b.name === ofName ? withSolved(b, property, value) : b);
+  checks.push(resCheck3("backsub-massheat", "thay-ng\u01B0\u1EE3c \u03A3m\u1D62c\u1D62(Tf\u2212T0\u1D62)", backsubBalance(filled, Tf)));
+  return { value, checks, violations };
+}
+var withSolved = (b, property, v) => property === "mass" ? { ...b, mass: v } : property === "c" ? { ...b, c: v } : { ...b, T0: v };
+var RANK = { solid: 0, liquid: 1, gas: 2 };
+function solveHeat(b, from, to) {
+  const checks = [], violations = [];
+  const rf = RANK[from.phase], rt = RANK[to.phase];
+  const m = b.mass;
+  const forward = rt > rf || rt === rf && cmpQ(to.T, from.T) > 0;
+  if (!forward) {
+    violations.push({ id: "chieu-gia-nhiet-nghich", message: `heat: t\u1EEB (${from.phase},${from.T.n}K) \u0111\u1EBFn (${to.phase},${to.T.n}K) kh\xF4ng t\u0103ng enthalpy` });
+    return { value: q(rat(0n), 0), checks, violations };
+  }
+  const cap = (ph) => {
+    const cp = ph === "solid" ? b.cSolid : ph === "liquid" ? b.cLiquid : b.cGas;
+    const v = cp ?? b.c;
+    if (!v) throw new Error(`heat: thi\u1EBFu nhi\u1EC7t dung ri\xEAng pha ${ph} (khai c ho\u1EB7c c${ph[0].toUpperCase()}${ph.slice(1)})`);
+    return v;
+  };
+  const reqTm = () => {
+    if (!b.meltTemp) throw new Error("heat: thi\u1EBFu meltTemp (m\u1ED1c n\xF3ng ch\u1EA3y)");
+    return b.meltTemp;
+  };
+  const reqTs = () => {
+    if (!b.boilTemp) throw new Error("heat: thi\u1EBFu boilTemp (m\u1ED1c s\xF4i)");
+    return b.boilTemp;
+  };
+  const reqLm = () => {
+    if (!b.latentMelt) throw new Error("heat: thi\u1EBFu latentMelt (\u03BB)");
+    return b.latentMelt;
+  };
+  const reqLv = () => {
+    if (!b.latentVapor) throw new Error("heat: thi\u1EBFu latentVapor (L)");
+    return b.latentVapor;
+  };
+  let Q = q(rat(0n), 0);
+  let latentAdded = 0;
+  const segs = [];
+  const addSens = (name, cph, lo, hi) => {
+    if (cmpQ(hi, lo) > 0) {
+      const val = mulQ(mulQ(m, cap(cph)), subQ(hi, lo));
+      Q = addQ(Q, val);
+      segs.push({ name, val });
+    }
+  };
+  if (rf === 0) {
+    const upper = rt === 0 ? to.T : reqTm();
+    addSens("r\u1EAFn", "solid", from.T, upper);
+  }
+  if (rf === 0 && rt >= 1) {
+    reqTm();
+    const val = mulQ(m, reqLm());
+    Q = addQ(Q, val);
+    segs.push({ name: "n\xF3ng ch\u1EA3y", val });
+    latentAdded++;
+  }
+  if (rf <= 1 && rt >= 1) {
+    const lo = rf === 0 ? reqTm() : from.T;
+    const hi = rt >= 2 ? reqTs() : to.T;
+    addSens("l\u1ECFng", "liquid", lo, hi);
+  }
+  if (rf <= 1 && rt >= 2) {
+    reqTs();
+    const val = mulQ(m, reqLv());
+    Q = addQ(Q, val);
+    segs.push({ name: "ho\xE1 h\u01A1i", val });
+    latentAdded++;
+  }
+  if (rt === 2) {
+    const lo = rf === 2 ? from.T : reqTs();
+    addSens("h\u01A1i", "gas", lo, to.T);
+  }
+  const crossings = (rf < 1 && rt >= 1 ? 1 : 0) + (rf < 2 && rt >= 2 ? 1 : 0);
+  checks.push({ kind: "latent-count", detail: `m\u1ED1c chuy\u1EC3n th\u1EC3 c\u1ED9ng v\xE0o ${latentAdded} = s\u1ED1 m\u1ED1c b\u0103ng qua ${crossings}`, residual: latentAdded, pass: latentAdded === crossings });
+  const nonneg = segs.every((s) => !(s.val.s.exact ? s.val.s.exact.num < 0n : s.val.n < 0));
+  checks.push({ kind: "heat-forward", detail: `m\u1ED7i \u0111o\u1EA1n \u2265 0 (${segs.map((s) => `${s.name}=${s.val.n}`).join(", ") || "kh\xF4ng \u0111o\u1EA1n"})`, residual: segs.length, pass: nonneg });
+  return { value: Q, checks, violations };
+}
+
+// api/_lib/kernel/physics/gasHeatCompute.ts
+var PRES_FROM_PA = (u, atm) => u === "Pa" ? rat(1n) : u === "kPa" ? rat(1000n) : u === "bar" ? rat(100000n) : u === "atm" ? rat(BigInt(atm)) : rat(101325n, 760n);
+var PRES_FROM_PA_N = (u, atm) => u === "Pa" ? 1 : u === "kPa" ? 1e3 : u === "bar" ? 1e5 : u === "atm" ? atm : 101325 / 760;
+var VOL_FROM_M3 = (u) => u === "m3" ? rat(1n) : u === "L" ? rat(1n, 1000n) : rat(1n, 1000000n);
+var VOL_FROM_M3_N = (u) => u === "m3" ? 1 : u === "L" ? 1e-3 : 1e-6;
+var divBy = (si, factS, factN) => ({ s: div(si.s, factS), n: si.n / factN });
+var mulBy = (si, factS, factN) => ({ s: mul(si.s, factS), n: si.n * factN });
+var outTemp = (K2, u) => u === "C" ? { s: sub2(K2.s, rat(273n)), n: K2.n - 273 } : K2;
+var SUP2 = { "-": "\u207B", "0": "\u2070", "1": "\xB9", "2": "\xB2", "3": "\xB3", "4": "\u2074", "5": "\u2075", "6": "\u2076", "7": "\u2077", "8": "\u2078", "9": "\u2079" };
+var sup2 = (n) => String(n).split("").map((c) => SUP2[c]).join("");
+function sci2(numAbs) {
+  const digits = numAbs.toString();
+  const d = digits.length;
+  let mant = d === 1 ? digits : `${digits[0]}.${digits.slice(1)}`;
+  if (mant.includes(".")) mant = mant.replace(/0+$/, "").replace(/\.$/, "");
+  const exp = d - 1;
+  const mantVN = mant.replace(".", ",");
+  return mantVN === "1" ? `10${sup2(exp)}` : `${mantVN}\xB710${sup2(exp)}`;
+}
+function fmtNum12(x) {
+  if (!Number.isFinite(x)) return "(l\u1ED7i)";
+  if (x !== 0 && Math.abs(x) < 1e-3) return parseFloat(x.toPrecision(4)).toString();
+  const digits = Math.abs(x) >= 1e3 ? 2 : 4;
+  return parseFloat(x.toFixed(digits)).toString();
+}
+function displayGasHeat(s) {
+  const e = s.exact;
+  if (e === null) {
+    const n = recognizeConstant(s.approx);
+    return n ? n.text : fmtNum12(s.approx);
+  }
+  if (e.radicand !== 1) return displayExact(e);
+  if (e.den !== 1n) return displayExact(e);
+  const sign = e.num < 0n ? "-" : "";
+  const numAbs = e.num < 0n ? -e.num : e.num;
+  if (Math.abs(exactToApprox(e)) >= 1e4) return sign + sci2(numAbs);
+  return sign + numAbs.toString();
+}
+function mkGHAns(kind, s, floatRef, unit, label, note) {
+  const tol = 1e-6 * Math.max(1, Math.abs(floatRef));
+  if (s.exact !== null && Math.abs(exactToApprox(s.exact) - floatRef) <= tol)
+    return { label, kind, text: displayGasHeat(s), approx: exactToApprox(s.exact), unit, approximate: false, note };
+  const nice = Number.isFinite(floatRef) ? recognizeConstant(floatRef) : null;
+  return { label, kind, text: nice ? nice.text : fmtNum12(floatRef), approx: floatRef, unit, approximate: !nice, note };
+}
+var chkTempViol = (name, T, violations) => {
+  if (!(T.s.exact ? T.s.exact.num > 0n : T.n > 0)) violations.push({ id: "nhiet-do-tuyet-doi-am", message: `${name}: ${T.n} K \u2264 0 (phi v\u1EADt l\xED)` });
+};
+function computeGasHeatQuery(ent, query, qi) {
+  try {
+    const checks = [], violations = [];
+    switch (query.kind) {
+      case "state_value": {
+        const st = ent.states.get(query.of);
+        if (!st) return { ok: false, problem: `state_value: tr\u1EA1ng th\xE1i "${query.of}" kh\xF4ng t\u1ED3n t\u1EA1i` };
+        const val = st[query.quantity];
+        if (!val) return { ok: false, problem: `state_value: ch\u01B0a gi\u1EA3i \u0111\u01B0\u1EE3c ${query.of}.${query.quantity}` };
+        let out, unit;
+        if (query.quantity === "p") {
+          unit = query.unit ?? "Pa";
+          out = divBy(val, PRES_FROM_PA(unit, ent.atmInPa), PRES_FROM_PA_N(unit, ent.atmInPa));
+        } else if (query.quantity === "V") {
+          unit = query.unit ?? "m3";
+          out = divBy(val, VOL_FROM_M3(unit), VOL_FROM_M3_N(unit));
+        } else {
+          unit = query.unit ?? "K";
+          out = outTemp(val, unit);
+        }
+        return { ok: true, answer: { ...mkGHAns("state_value", out.s, out.n, unit, query.label), queryIndex: qi }, checks, violations };
+      }
+      case "clapeyron": {
+        const st = ent.states.get(query.of);
+        if (!st) return { ok: false, problem: `clapeyron: tr\u1EA1ng th\xE1i "${query.of}" kh\xF4ng t\u1ED3n t\u1EA1i` };
+        const r2 = solveClapeyron(st, query.solveFor, ent.R);
+        checks.push(...r2.checks);
+        violations.push(...r2.violations);
+        let out = r2.value, unit;
+        if (query.solveFor === "amount") unit = query.unit ?? "mol";
+        else if (query.solveFor === "mass") {
+          unit = query.unit ?? "g";
+          if (unit === "kg") out = mulBy(out, rat(1n, 1000n), 1e-3);
+        } else if (query.solveFor === "p") {
+          unit = query.unit ?? "Pa";
+          out = divBy(out, PRES_FROM_PA(unit, ent.atmInPa), PRES_FROM_PA_N(unit, ent.atmInPa));
+        } else if (query.solveFor === "V") {
+          unit = query.unit ?? "m3";
+          out = divBy(out, VOL_FROM_M3(unit), VOL_FROM_M3_N(unit));
+        } else {
+          unit = query.unit ?? "K";
+          out = outTemp(out, unit);
+        }
+        return { ok: true, answer: { ...mkGHAns("clapeyron", out.s, out.n, unit, query.label), queryIndex: qi }, checks, violations };
+      }
+      case "heat": {
+        const b = ent.bodies.get(query.of);
+        if (!b) return { ok: false, problem: `heat: v\u1EADt "${query.of}" kh\xF4ng t\u1ED3n t\u1EA1i` };
+        const fromK = qtyTemp(query.from.temp.value, query.from.temp.unit);
+        const toK = qtyTemp(query.to.temp.value, query.to.temp.unit);
+        chkTempViol(`heat ${query.of} (from)`, fromK, violations);
+        chkTempViol(`heat ${query.of} (to)`, toK, violations);
+        const r2 = solveHeat(b, { phase: query.from.phase, T: fromK }, { phase: query.to.phase, T: toK });
+        checks.push(...r2.checks);
+        violations.push(...r2.violations);
+        return { ok: true, answer: { ...mkGHAns("heat", r2.value.s, r2.value.n, "J", query.label), queryIndex: qi }, checks, violations };
+      }
+      case "equilibrium_temp": {
+        const bodies = [...ent.bodies.values()];
+        const r2 = solveEquilibrium(bodies);
+        checks.push(...r2.checks);
+        violations.push(...r2.violations);
+        const out = outTemp(r2.value, query.unit);
+        return { ok: true, answer: { ...mkGHAns("equilibrium_temp", out.s, out.n, query.unit, query.label), queryIndex: qi }, checks, violations };
+      }
+      case "mass_from_heat": {
+        const bodies = [...ent.bodies.values()];
+        if (!ent.bodies.get(query.of)) return { ok: false, problem: `mass_from_heat: v\u1EADt "${query.of}" kh\xF4ng t\u1ED3n t\u1EA1i` };
+        const Tf = qtyTemp(query.Tf.value, query.Tf.unit);
+        chkTempViol(`mass_from_heat Tf`, Tf, violations);
+        const r2 = solveMassFromHeat(bodies, query.of, query.property, Tf);
+        checks.push(...r2.checks);
+        violations.push(...r2.violations);
+        let out = r2.value, unit;
+        if (query.property === "mass") {
+          unit = query.unit ?? "kg";
+          if (unit === "g") out = mulBy(out, rat(1000n), 1e3);
+        } else if (query.property === "c") {
+          unit = "J/(kg\xB7K)";
+        } else {
+          unit = query.unit ?? "C";
+          out = outTemp(out, unit);
+        }
+        return { ok: true, answer: { ...mkGHAns("mass_from_heat", out.s, out.n, unit, query.label), queryIndex: qi }, checks, violations };
+      }
+      default: {
+        query;
+        return { ok: false, problem: `query kind kh\xF4ng h\u1ED7 tr\u1EE3: ${query.kind}` };
+      }
+    }
+  } catch (e) {
+    return { ok: false, problem: e.message };
+  }
+}
+
+// api/_lib/kernel/physics/runGasHeat.ts
+var TOL_ASSERT8 = 1e-3;
+var fail3 = (messages, atmInPa = 101325, tags = []) => ({
+  ok: false,
+  answers: [],
+  checks: [],
+  violations: [],
+  errors: messages.map((m) => ({ message: m })),
+  geometry: null,
+  meta: { atmInPa, unitsNote: "SI", knowledgeTags: tags }
+});
+function runGasHeat(raw) {
+  const parsed = GasHeatPlanSchema.safeParse(raw);
+  if (!parsed.success) {
+    const msgs = parsed.error.issues.map((iss) => `${iss.path.length ? `${iss.path.join(".")}: ` : ""}${iss.message}`);
+    return fail3(msgs.length ? msgs.map((m) => `K\u1EBF ho\u1EA1ch kh\xF4ng h\u1EE3p l\u1EC7: ${m}`) : ["K\u1EBF ho\u1EA1ch kh\xF4ng h\u1EE3p l\u1EC7"]);
+  }
+  const plan = parsed.data;
+  try {
+    const ent = buildEntities2(plan);
+    const errors = [...ent.errors];
+    const checks = [...ent.checks];
+    const violations = ent.violations.map((v) => ({ id: v.id, message: v.message }));
+    if (ent.process) {
+      const from = ent.states.get(ent.process.from);
+      const to = ent.states.get(ent.process.to);
+      if (!from || !to) errors.push({ message: `process tr\u1ECF tr\u1EA1ng th\xE1i kh\xF4ng t\u1ED3n t\u1EA1i (${ent.process.from} \u2192 ${ent.process.to})` });
+      else {
+        try {
+          const ps = solveProcess(from, to, ent.process.kind);
+          checks.push(...ps.checks);
+          for (const v of ps.violations) violations.push({ id: v.id, message: v.message });
+          const target = ent.states.get(ps.ofState);
+          if (target) target[ps.quantity] = ps.value;
+        } catch (e) {
+          errors.push({ message: `gi\u1EA3i qu\xE1 tr\xECnh ${ent.process.kind}: ${e.message}` });
+        }
+      }
+    }
+    const answers = [];
+    for (const [qi, query] of plan.queries.entries()) {
+      const r2 = computeGasHeatQuery(ent, query, qi);
+      if (r2.ok === false) {
+        errors.push({ message: `query ${query.kind}: ${r2.problem}` });
+        continue;
+      }
+      answers.push(r2.answer);
+      checks.push(...r2.checks);
+      for (const v of r2.violations) violations.push({ id: v.id, message: v.message });
+      for (const c of r2.checks) if (!c.pass) errors.push({ message: `t\u1EF1 ki\u1EC3m FAIL: ${c.detail} (residual ${c.residual})` });
+    }
+    for (const a of plan.asserts) {
+      const r2 = computeGasHeatQuery(ent, a.query, -1);
+      if (r2.ok === false) {
+        errors.push({ message: `assert ${a.query.kind}: ${r2.problem}` });
+        continue;
+      }
+      const tol = (a.tol ?? TOL_ASSERT8) * Math.max(1, Math.abs(a.equals));
+      const delta = Math.abs(r2.answer.approx - a.equals);
+      if (delta > tol) violations.push({ assert: a.query.kind, expected: a.equals, got: r2.answer.approx, delta, message: `assert ${a.query.kind}: k\u1EF3 v\u1ECDng ${a.equals}, engine t\xEDnh ${r2.answer.approx}` });
+    }
+    const hasPhysical = violations.some((v) => v.id !== void 0 && PHYSICAL_VIOLATIONS4.has(v.id));
+    const served = hasPhysical ? [] : answers;
+    const ok = violations.length === 0 && errors.length === 0 && served.length === plan.queries.length && served.every((a) => Number.isFinite(a.approx));
+    return { ok, answers: served, checks, violations, errors, geometry: null, meta: { atmInPa: plan.atmInPa, unitsNote: "SI", knowledgeTags: plan.knowledgeTags } };
+  } catch (e) {
+    return fail3([`L\u1ED7i engine b\u1EA5t ng\u1EDD: ${e.message}`], plan.atmInPa, plan.knowledgeTags);
+  }
 }
 
 // api/_lib/kernel/chem/index.ts
@@ -15513,8 +16253,8 @@ function serializeLedger(rows) {
 }
 function answerQueries(queries, ctx) {
   const answers = [];
-  for (const q of queries) {
-    const ans2 = answerOne(q, ctx);
+  for (const q2 of queries) {
+    const ans2 = answerOne(q2, ctx);
     if (ans2) {
       answers.push(ans2);
       if (ans2.exact && ans2.exact.replace("-", "").split("/").some((part) => part.length > 15)) {
@@ -15524,61 +16264,61 @@ function answerQueries(queries, ctx) {
   }
   return answers;
 }
-function answerOne(q, ctx) {
+function answerOne(q2, ctx) {
   const { rows, infos, record, noReason, vm, vmLabel, errors } = ctx;
   const err = (m) => {
     errors.push({ message: m });
     return null;
   };
-  if (q.kind === "phenomena") {
+  if (q2.kind === "phenomena") {
     if (record) {
-      return { query: q, exact: null, approx: null, unit: "", text: record.phenomena.join("; ") };
+      return { query: q2, exact: null, approx: null, unit: "", text: record.phenomena.join("; ") };
     }
     if (noReason) {
-      return { query: q, exact: null, approx: null, unit: "", text: `kh\xF4ng c\xF3 ph\u1EA3n \u1EE9ng x\u1EA3y ra: ${noReason}` };
+      return { query: q2, exact: null, approx: null, unit: "", text: `kh\xF4ng c\xF3 ph\u1EA3n \u1EE9ng x\u1EA3y ra: ${noReason}` };
     }
     return err("query phenomena c\u1EA7n op mix (v0 kh\xF4ng suy hi\u1EC7n t\u01B0\u1EE3ng khi ch\u01B0a tr\u1ED9n)");
   }
-  if (q.kind === "equation") {
+  if (q2.kind === "equation") {
     if (record) {
       const eq = `${record.reactants.map((x) => (x.coeff > 1 ? x.coeff : "") + x.formula).join(" + ")} \u2192 ${record.products.map((x) => {
         const mark = x.state === "gas" ? "\u2191" : x.state === "solid" && record.medium === "dd" ? "\u2193" : "";
         return (x.coeff > 1 ? x.coeff : "") + x.formula + mark;
       }).join(" + ")}`;
-      return { query: q, exact: null, approx: null, unit: "", text: eq };
+      return { query: q2, exact: null, approx: null, unit: "", text: eq };
     }
-    if (noReason) return { query: q, exact: null, approx: null, unit: "", text: `kh\xF4ng c\xF3 ph\u1EA3n \u1EE9ng (${noReason})` };
+    if (noReason) return { query: q2, exact: null, approx: null, unit: "", text: `kh\xF4ng c\xF3 ph\u1EA3n \u1EE9ng (${noReason})` };
     return err("query equation c\u1EA7n op mix c\xF3 ph\u1EA3n \u1EE9ng");
   }
   if (ctx.qualitativeMode) {
-    return err(`b\xE0i \u0111\u1ECBnh t\xEDnh (c\xF3 ch\u1EA5t kh\xF4ng khai l\u01B0\u1EE3ng) \u2014 kh\xF4ng tr\u1EA3 l\u1EDDi \u0111\u01B0\u1EE3c truy v\u1EA5n \u0111\u1ECBnh l\u01B0\u1EE3ng "${q.kind}"${"of" in q ? ` c\u1EE7a ${q.of}` : ""}`);
+    return err(`b\xE0i \u0111\u1ECBnh t\xEDnh (c\xF3 ch\u1EA5t kh\xF4ng khai l\u01B0\u1EE3ng) \u2014 kh\xF4ng tr\u1EA3 l\u1EDDi \u0111\u01B0\u1EE3c truy v\u1EA5n \u0111\u1ECBnh l\u01B0\u1EE3ng "${q2.kind}"${"of" in q2 ? ` c\u1EE7a ${q2.of}` : ""}`);
   }
-  const target = "of" in q ? q.of : "";
+  const target = "of" in q2 ? q2.of : "";
   const row = rows.find((rr) => rr.formula === target);
-  if (!row) return err(`"${target}" kh\xF4ng c\xF3 trong s\u1ED5 c\xE1i ph\u1EA3n \u1EE9ng \u2014 ki\u1EC3m tra l\u1EA1i tr\u01B0\u1EDDng 'of' c\u1EE7a query ${q.kind}`);
+  if (!row) return err(`"${target}" kh\xF4ng c\xF3 trong s\u1ED5 c\xE1i ph\u1EA3n \u1EE9ng \u2014 ki\u1EC3m tra l\u1EA1i tr\u01B0\u1EDDng 'of' c\u1EE7a query ${q2.kind}`);
   if (row.after === null) {
-    return err(`"${target}" \u0111\u01B0\u1EE3c khai d\u01B0 (excess) \u2014 l\u01B0\u1EE3ng c\xF2n l\u1EA1i v\xF4 h\u1EA1n, kh\xF4ng truy v\u1EA5n \u0111\u01B0\u1EE3c ${q.kind}`);
+    return err(`"${target}" \u0111\u01B0\u1EE3c khai d\u01B0 (excess) \u2014 l\u01B0\u1EE3ng c\xF2n l\u1EA1i v\xF4 h\u1EA1n, kh\xF4ng truy v\u1EA5n \u0111\u01B0\u1EE3c ${q2.kind}`);
   }
-  if (q.kind === "mol") {
+  if (q2.kind === "mol") {
     return {
-      query: q,
+      query: q2,
       exact: ratToString(row.after),
       approx: ratApprox(row.after),
       unit: "mol",
       text: `n(${target}) = ${fmtVN(ratApprox(row.after))} mol`
     };
   }
-  if (q.kind === "mass") {
+  if (q2.kind === "mass") {
     const m = mulR(row.after, molarMass(target));
     return {
-      query: q,
+      query: q2,
       exact: ratToString(m),
       approx: ratApprox(m),
       unit: "g",
       text: `m(${target}) = ${fmtVN(ratApprox(m))} g`
     };
   }
-  if (q.kind === "volume_gas") {
+  if (q2.kind === "volume_gas") {
     if (row.state !== "gas") {
       return err(`"${target}" kh\xF4ng ph\u1EA3i ch\u1EA5t kh\xED (tr\u1EA1ng th\xE1i ${row.state}) \u2014 kh\xF4ng c\xF3 th\u1EC3 t\xEDch kh\xED (F26)`);
     }
@@ -15587,27 +16327,27 @@ function answerOne(q, ctx) {
     }
     const v = mulR(row.after, vm);
     return {
-      query: q,
+      query: q2,
       exact: ratToString(v),
       approx: ratApprox(v),
       unit: "L",
       text: `V(${target}) = ${fmtVN(ratApprox(v))} l\xEDt (${vmLabel})`
     };
   }
-  if (q.kind === "remaining") {
+  if (q2.kind === "remaining") {
     if (isZeroR(row.after)) {
-      return { query: q, exact: "0", approx: 0, unit: "mol", text: `${target} \u0111\xE3 ph\u1EA3n \u1EE9ng h\u1EBFt (d\u01B0 0 mol)` };
+      return { query: q2, exact: "0", approx: 0, unit: "mol", text: `${target} \u0111\xE3 ph\u1EA3n \u1EE9ng h\u1EBFt (d\u01B0 0 mol)` };
     }
     const g = mulR(row.after, molarMass(target));
     return {
-      query: q,
+      query: q2,
       exact: ratToString(row.after),
       approx: ratApprox(row.after),
       unit: "mol",
       text: `${target} d\u01B0 ${fmtVN(ratApprox(row.after))} mol (\u2248 ${fmtVN(ratApprox(g))} g)`
     };
   }
-  if (q.as === "CM") {
+  if (q2.as === "CM") {
     if (row.state !== "solution") {
       return err(`CM ch\u1EC9 \xE1p d\u1EE5ng cho ch\u1EA5t tan trong dung d\u1ECBch \u2014 "${target}" \u0111ang l\xE0 ch\u1EA5t r\u1EAFn/kh\xED (tr\u1EA1ng th\xE1i ${row.state}) (F26)`);
     }
@@ -15627,7 +16367,7 @@ function answerOne(q, ctx) {
     }
     const cm = divR(row.after, vTotal);
     return {
-      query: q,
+      query: q2,
       exact: ratToString(cm),
       approx: ratApprox(cm),
       unit: "M",
@@ -15657,7 +16397,7 @@ function answerOne(q, ctx) {
   const mx = mulR(row.after, molarMass(target));
   const cpct = mulR(divR(mx, mdd), rat2(100n));
   return {
-    query: q,
+    query: q2,
     exact: ratToString(cpct),
     approx: ratApprox(cpct),
     unit: "%",
@@ -15764,6 +16504,7 @@ export {
   EFieldPlanSchema,
   EdgeOpSchema,
   FootOpSchema,
+  GasHeatPlanSchema,
   IntersectOpSchema,
   OscillationPlanSchema,
   PerpPointOpSchema,
@@ -15813,6 +16554,7 @@ export {
   runCircuit,
   runDynamics,
   runEfield,
+  runGasHeat,
   runOscillation,
   runPhysics,
   runPlan,
