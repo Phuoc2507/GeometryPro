@@ -300,6 +300,22 @@ export function solveHeat(
   const checks: Check[] = [], violations: Violation[] = [];
   const rf = RANK[from.phase], rt = RANK[to.phase];
   const m = b.mass!;
+  // VỪA-1 (phản biện code v2): KIỂM PHA↔NHIỆT ĐỘ tất định — KHÔNG tin nhãn pha của LLM, đối chiếu
+  // meltTemp/boilTemp (dữ kiện đã có). Nhãn lệch miền (vd khai "lỏng" ở −10°C dưới mốc đông, hay "rắn"
+  // ở 50°C trên mốc chảy) ⇒ violation, KHÔNG serve. Chống "abstain thủng": trước đây engine tin nhãn →
+  // bỏ đoạn đông đặc/nóng chảy → đáp SAI âm thầm nhưng TRÔNG exact. Chỉ kiểm khi mốc tương ứng được khai.
+  const phaseTempOk = (label: string, ph: PhaseName, T: QtySI): string | null => {
+    const Tm = b.meltTemp, Ts = b.boilTemp;
+    if (ph === 'solid' && Tm && cmpQ(T, Tm) > 0) return `${label} khai pha RẮN nhưng nhiệt độ ${T.n}K > mốc nóng chảy ${Tm.n}K`;
+    if (ph === 'liquid' && Tm && cmpQ(T, Tm) < 0) return `${label} khai pha LỎNG nhưng nhiệt độ ${T.n}K < mốc nóng chảy ${Tm.n}K`;
+    if (ph === 'liquid' && Ts && cmpQ(T, Ts) > 0) return `${label} khai pha LỎNG nhưng nhiệt độ ${T.n}K > mốc sôi ${Ts.n}K`;
+    if (ph === 'gas' && Ts && cmpQ(T, Ts) < 0) return `${label} khai pha HƠI nhưng nhiệt độ ${T.n}K < mốc sôi ${Ts.n}K`;
+    return null;
+  };
+  for (const msg of [phaseTempOk('điểm đầu', from.phase, from.T), phaseTempOk('điểm cuối', to.phase, to.T)]) {
+    if (msg) violations.push({ id: 'pha-lech-nhiet-do', message: `heat: ${msg}` });
+  }
+  if (violations.length) return { value: q(rat(0n), 0), checks, violations };
   // Chiều gia nhiệt: (rank,temp) TĂNG nghiêm ngặt; else violation (from-enthalpy ≥ to-enthalpy).
   const forward = rt > rf || (rt === rf && cmpQ(to.T, from.T) > 0);
   if (!forward) {
