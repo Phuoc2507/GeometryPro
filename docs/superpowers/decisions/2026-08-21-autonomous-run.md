@@ -251,6 +251,19 @@ Pipeline: spec (3 agent) → phản biện thiết kế (2 agent) → sửa spec
   đọc nhầm; H4 guard nO≥0; H5 liệt-kê đa nghiệm không bail). AC-CIRCUIT (0 CAO, đủ
   chín): 2 VỪA (is_resonance đòi cả L,C; chốt ký tự minus U+2212) áp trong lúc code.
 
+- **D35 · [TỰ QUYẾT] MỞ định tuyến 3 chương → HOÀN TẤT nối route (9f08336).** 3 bộ dịch
+  circuit/dynamics/oscillation về đủ (mỗi cái mọi ví dụ tự-kiểm ok:true qua engine, kiểm
+  ĐỘC LẬP cả 2 phía). Đã: nối prompt vào registry + thêm từ khóa PHYS_LEXICAL cho 3 chương
+  (không mơ hồ với hình/hóa) + test tích hợp 4 chương định tuyến đúng, Toán/Hóa/efield-hoãn
+  KHÔNG hồi quy (54 test xanh). GIỜ dán đề mạch điện/động lực/dao động → /simulate ra đáp đã
+  kiểm chứng. GIỮ stop-words điện trường/từ trường/hạt nhân/phóng xạ/điện phân (efield đang
+  code chưa nối). Kế: code xong waves/efield/ac thì mỗi chương cần thêm bộ dịch + mở routing.
+- **D36 · [CẦN NGƯỜI DÙNG QUYẾT] Mâu thuẫn phí AC-circuit: F1 (spec) vs D22 (bạn).** Spec
+  điện-xoay-chiều §5 ghi "route nối AC PHẢI có quota" (F1) — NHƯNG D22 (quyết định của BẠN)
+  là tính năng Lý/Hóa ẩn, KHÔNG trừ credit. Hai điều này NGƯỢC nhau. Tôi THEO D22 (không trừ,
+  đồng nhất mọi chương Lý/Hóa hiện có) khi nối AC — trừ khi sáng mai bạn muốn AC (đỉnh đề thi
+  ĐH) thành nội dung tính phí riêng. F1 có thể là ý của agent viết spec, chưa biết D22. Chờ bạn.
+
 ## Quyết định chờ ghi tiếp (sẽ bổ sung trong đêm)
 
 - Phân xử 5 điểm lệch giữa spec kiến trúc và spec Lý (theo khuyến nghị phản biện).
