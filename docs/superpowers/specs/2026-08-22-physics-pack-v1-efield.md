@@ -37,7 +37,8 @@ Giữ nguyên nguyên tắc geo3d/physics-v0 cho chương **Điện trường l�
 | Cường độ điện trường 1 điện tích `E=kQ/(ε·r²)` | 1× `point_charge` | `field_at` | C3 (9·10⁵ V/m), C4 (1,44·10⁵ V/m, r vô tỉ) |
 | Lực lên điện tích thử `F=qE` (trường điểm) | `point_charge` | `force_on_test` | (thành phần bài tổng hợp) |
 | Chồng chất **thẳng hàng** (2–3 điện tích + điểm cùng một đường) | ≥2 `point_charge` | `field_at` | C5 (1,8·10⁵ V/m) |
-| Chồng chất **đối xứng góc đẹp** (2 điện tích `\|q\|` bằng nhau, điểm trên trung trực; tam giác đều/vuông cân/3-4-5) | 2 `point_charge` | `field_at` | C6 (3·10⁵·√3 V/m) |
+| Chồng chất **đối xứng đẳng cự — TOẠ ĐỘ HỮU TỈ** (3-4-5, vuông cân chân-cao hữu tỉ) | 2 `point_charge` | `field_at` | (r² hữu tỉ, đường vector) |
+| Chồng chất **đối xứng qua GÓC** (tam giác đều & mọi đối xứng đỉnh vô tỉ) — khai `{\|q\| chung, r chung, angleBetweenDeg}` | 2 `point_charge` | `field_symmetric` | C6 (3·10⁵·√3 V/m — **trigOf-góc**, E1-A) |
 | Công lực điện đều `A=qEd` | `uniform_field` + `charged_body` | `work` | C7 (10⁻⁴ J) |
 | Hiệu điện thế `U=Ed`, thế năng `W=qU` | `uniform_field` + `charged_body` | `voltage`, `potential_energy` | C8 (80 V; 4·10⁻⁶ J) |
 | Điện tích trong điện trường đều — **cân bằng** `qE=mg` | `uniform_field` + `charged_body(mass)` | `equilibrium_field` | C9 (10⁵ V/m) |
@@ -108,12 +109,19 @@ const CHARGE_TO_SI: Record<string, Scalar> = {
 const FIELD_TO_SI:  Record<string, Scalar> = { 'V/m': rat(1n), 'N/C': rat(1n), 'V/cm': rat(100n) };
 const VOLT_TO_SI:   Record<string, Scalar> = { V: rat(1n), kV: rat(1000n) };
 const MASS_TO_SI:   Record<string, Scalar> = { kg: rat(1n), g: rat(1n,1000n) };
+// ĐỘ DÀI (toạ độ `at`, `Dist.d`, `r` của field_symmetric): efield TỰ định nghĩa bảng — kinematics
+// `LEN_TO_SI` (kinematics.ts:28) CHỈ có {m, km}, THIẾU cm/mm (finding E2). Thiếu → r² tính theo cm²
+// LỆCH 10⁴. qtyLength này LOCAL trong efield.ts (KHÔNG import qtyLength của kinematics, vốn throw với cm/mm).
+const LEN_TO_SI:    Record<string, Scalar> = { m: rat(1n), cm: rat(1n,100n), mm: rat(1n,1000n) };
+export const qtyLength = (v: number, u: string) => mul(scalarFromNumber(v), LEN_TO_SI[u]);      // 3 cm → 3/100 m EXACT
 export const qtyCharge = (v: number, u: string) => mul(scalarFromNumber(v), CHARGE_TO_SI[u]); // 5,4 nC → (27/5)·(1/10⁹) EXACT
 export const K = rat(9000000000n);                                    // hằng Coulomb, exact
 export const kEff = (epsilon: Scalar) => div(K, epsilon);             // môi trường ε: k/ε
 ```
 
 `value` LLM chép là mantissa "đẹp" (`2`, `4`, `5.4`, `9.1`) trong tầm exact của `scalarFromNumber` (`≤9` chữ lẻ, `≥~1e-9`); lũy thừa 10 nằm trong `unit`. ⇒ **không phần tử nhập nào phá exact**. Điện tích âm: `value` mang dấu (`q = {value:-6, unit:'nC'}`); độ lớn dùng `absExact` khi cần (Coulomb lấy `|q₁q₂|`, dấu quyết định hút/đẩy).
+
+**Toạ độ & khoảng cách (E2):** mỗi thành phần toạ độ `at:[x,y]` đổi về SI bằng `qtyLength(x, units.length)`/`qtyLength(y, units.length)`; `Dist.d`/`r` đổi bằng `qtyLength(d.value, d.unit)`. Vì `LEN_TO_SI` efield có cm/mm, `r² = Δx²+Δy²` giữ HỮU TỈ exact ở mọi `units.length` (đề cm: `3 cm → 3/100 m`, `r² = 9/10⁴` — KHÔNG lệch 10⁴ như khi mượn `LEN_TO_SI` thiếu-cm của kinematics).
 
 ## 6. Luật hiển thị đáp điện trường (`displayEField`) — điểm thiết kế MỞ (xem §14.1)
 
@@ -171,7 +179,11 @@ export const EFieldOpSchema = z.discriminatedUnion('op', [PointChargeOp, Uniform
 export const EFieldQuerySchema = z.discriminatedUnion('kind', [
   // Trường điểm:
   z.object({ kind: z.literal('coulomb_force'), a: Name, b: Name, label: z.string().optional() }),           // F=k|qa·qb|/(ε r²)
-  z.object({ kind: z.literal('field_at'),  at: Pt, by: z.array(Name).optional(), label: z.string().optional() }),   // ΣEᵢ tại at
+  z.object({ kind: z.literal('field_at'),  at: Pt, by: z.array(Name).optional(), label: z.string().optional() }),   // ΣEᵢ tại at (single/thẳng-hàng/đối-xứng TOẠ-ĐỘ-HỮU-TỈ)
+  // Chồng chất ĐỐI XỨNG qua GÓC (E1-A) — KHÔNG khai toạ độ điểm khảo sát (tránh đỉnh vô tỉ như 3√3/2 của tam giác đều):
+  // khai |q| chung QUA TÊN 2 nguồn (engine ĐỌC |q|, KHÔNG cho LLM tính), r chung (nguồn→điểm), góc ở đỉnh khảo sát.
+  z.object({ kind: z.literal('field_symmetric'), sources: z.array(Name).length(2), r: Dist,
+             angleBetweenDeg: Num, label: z.string().optional() }),   // E_res=√(2E²(1+cosθ)); θ=60→E√3 exact qua trigOf
   z.object({ kind: z.literal('force_on_test'), q: Charge, at: Pt, by: z.array(Name).optional(), label: z.string().optional() }), // F=q·E_at
   z.object({ kind: z.literal('potential_at'), at: Pt, by: z.array(Name).optional(), label: z.string().optional() }), // V=ΣkQ/(ε r) (optional §8.2)
   // Trường đều:
@@ -201,13 +213,14 @@ export type EFieldQuery = z.infer<typeof EFieldQuerySchema>;
 ### 7.3. superRefine — GATE tính tất định (chỗ ép "abstain" cho cấu hình không exact-được)
 
 1. **Tên duy nhất** trên toàn `ops`; mọi `a`/`b`/`body`/`field`/`by[]` trong queries/asserts **trỏ tên tồn tại** và **đúng loại** (`coulomb_force.a/b` là `point_charge`; `electric_force.field` là `uniform_field`; `…body` là `charged_body`; `by[]` toàn `point_charge`).
-2. `uniform_field`: đúng MỘT trong `{E, fromVoltage}` (không cả hai / không thiếu).
+2. `uniform_field`: đúng MỘT trong `{E, fromVoltage}` (không cả hai / không thiếu). **NỚI (E4):** một `uniform_field` được phép TRỐNG cả hai nếu KHÔNG query nào ĐỌC trường đó (`electric_force`/`work`/`voltage`/`acceleration`/`speed_after`) — tức nó chỉ là mốc cho bài `equilibrium_field` (query GIẢI E, không đọc E khai). Khi ấy E là ẩn số; hoặc bỏ hẳn `uniform_field` khỏi plan (bài chỉ cần `charged_body` + query `equilibrium_field`).
 3. Query cần khối lượng (`equilibrium_field`, `acceleration`, `speed_after`) ⇒ `charged_body.mass` phải có.
-4. **GATE CHỒNG CHẤT (cốt lõi):** với `field_at`/`force_on_test`/`potential_at` mà tập nguồn (`by` hoặc toàn bộ `point_charge`) có **≥ 2** điện tích, cấu hình PHẢI thuộc một trong hai lớp exact-được, nếu không ⇒ `addIssue` (từ chối plan ⇒ LLM buộc abstain):
-   - **(a) Thẳng hàng:** mọi điện tích nguồn + điểm khảo sát thẳng hàng. Kiểm: với mọi nguồn `Sᵢ`, tích có hướng `(P−S₀)×(Sᵢ−S₀) = 0`. (Kiểm trên số thô của plan với `tol` nhỏ — chỉ để GATE; tính đáp vẫn exact.)
-   - **(b) Cặp đối xứng đẳng cự (2 nguồn):** đúng 2 điện tích, `|q_A| = |q_B|`, và điểm `P` **cách đều** hai điện tích (`|P−A|² = |P−B|²`, so exact trên số thô). Bao trọn tam giác đều/cân/vuông-cân/3-4-5 với `P` ở đỉnh trên trung trực.
-   - Ngoài (a),(b) ⇒ thông điệp: *"cấu hình chồng chất không thuộc lớp exact-được (chỉ hỗ trợ thẳng hàng hoặc cặp đối xứng đẳng cự) — v1 abstain; xem §14.2"*.
-   - *(3 điện tích đối xứng — tam giác đều, điểm ở TÂM: hợp lực = 0 — nhận như case (a-mở-rộng) tuỳ chọn, ghi §14.2.)*
+4. **GATE CHỒNG CHẤT (cốt lõi):** với `field_at`/`force_on_test`/`potential_at` mà tập nguồn (`by` hoặc toàn bộ `point_charge`) có **≥ 2** điện tích, cấu hình PHẢI thuộc một trong các lớp exact-được **(a)/(b)** dưới đây (đối xứng đỉnh vô tỉ ⇒ chuyển query `field_symmetric`, lớp **(c)**); nếu không ⇒ `addIssue` (từ chối plan ⇒ LLM buộc abstain):
+   - **(a) Thẳng hàng:** mọi điện tích nguồn + điểm khảo sát thẳng hàng. Kiểm: với mọi nguồn `Sᵢ`, tích có hướng `(P−S₀)×(Sᵢ−S₀) = 0`. Kiểm trên số thô của plan với `tol` nhỏ chỉ để GATE; **tính đáp vẫn exact qua `kEff·|q_i|/r_i²`** (mỗi `r_i²` hữu tỉ vì toạ độ thẳng hàng hữu tỉ — finding E3, KHÔNG đi `r³`).
+   - **(b) Cặp đối xứng đẳng cự — TOẠ ĐỘ HỮU TỈ (2 nguồn):** đúng 2 điện tích, `|q_A| = |q_B|`, điểm `P` **cách đều** (`|P−A|² = |P−B|²`), **VÀ mọi toạ độ nguồn + `P` cho `scalarFromNumber` ra exact + mỗi `r_i²` HỮU TỈ (radicand 1)** — kiểm EXACT trên toạ độ hữu tỉ (KHÔNG nhận "gần đối xứng" từ float thô; finding E1 + phân xử §14.2c). Bao: **3-4-5, vuông cân chân-cao hữu tỉ** (P toạ độ hữu tỉ, r² hữu tỉ). **KHÔNG bao tam giác đều** — đỉnh `3√3/2` VÔ TỈ ⇒ toạ độ cắt cụt ⇒ `r²` không ra `9/10⁴` sạch ⇒ VỠ exact (đúng lỗ C6 dự thảo cũ).
+   - **(c) Đối xứng qua GÓC — `field_symmetric` (E1-A):** tam giác đều & MỌI đối xứng đẳng cự có đỉnh khảo sát VÔ TỈ đi đường này — khai `{sources:[A,B], r, angleBetweenDeg}`, **KHÔNG khai toạ độ điểm** ⇒ không có toạ độ vô tỉ để cắt cụt. Gate: `sources` đúng 2 `point_charge`, `|q_A|=|q_B|` (engine đọc), `r>0`. Engine tính `E_res=√(2E²(1+cosθ))` qua `trigOf(angleBetweenDeg)` (§8.1) — θ=60 ⇒ `E√3` exact.
+   - Ngoài (a),(b),(c) ⇒ thông điệp: *"cấu hình chồng chất không thuộc lớp exact-được (chỉ hỗ trợ thẳng hàng, cặp đối xứng đẳng cự toạ-độ-hữu-tỉ, hoặc field_symmetric góc đẹp) — v1 abstain; xem §14.2"*.
+   - *(3 điện tích đối xứng — tam giác đều, điểm ở TÂM: hợp lực = 0 — để v2, ghi §14.2.)*
 
 ## 8. Tầng compute — công thức đóng từng query (efieldCompute.ts)
 
@@ -232,7 +245,8 @@ function mkEAns(kind, s: Scalar, floatRef: number, unit: string, label?, directi
 | Query | Công thức đóng (Scalar) | Đơn vị | Phương/chiều |
 |---|---|---|---|
 | `coulomb_force(a,b)` | `F = kEff·|q_a|·|q_b| / r²`, `r² = (x_a−x_b)²+(y_a−y_b)²` (exact) | `N` | `q_a·q_b>0`→"đẩy nhau", `<0`→"hút nhau" |
-| `field_at(at, by)` | `E⃗ = Σ kEff·q_i·(P−S_i)/r_i³`; độ lớn `|E⃗| = √(Eₓ²+E_y²)` | `V/m` | thẳng hàng→dấu trục; đối xứng→dọc trục đối xứng |
+| `field_at(at, by)` | **single/thẳng-hàng (E3):** `\|E\| = Σ ± kEff·\|q_i\|/r_i²` — chỉ cần `r_i²` HỮU TỈ ⇒ exact dù `r_i` vô tỉ (C4), **KHÔNG đi `r³`** (r³ có căn ⇒ rơi float với toạ độ lẻ). Vector `E⃗=Σ kEff·q_i·(P−S_i)/r_i³` chỉ dựng để lấy **phương/chiều + chứng chỉ ⊥**, KHÔNG dùng cho độ lớn | `V/m` | thẳng hàng→dấu trục |
+| `field_symmetric(sources,r,∠)` | `E = kEff·\|q\|/r²` (`\|q\|=\|q_sources[0]\|=\|q_sources[1]\|`, engine đọc); `E_res=√(2E²(1+cosθ))`, `cosθ=trigOf(angleBetweenDeg).cos` (E1-A) | `V/m` | dọc trục đối xứng (trung trực nguồn–nguồn), ra xa nếu `q>0` |
 | `force_on_test(q,at,by)` | `F = |q|·|E_at|` | `N` | theo `E_at`, đảo nếu `q<0` |
 | `potential_at(at,by)` | `V = Σ kEff·q_i / r_i` (vô hướng, cộng đại số) | `V` | — |
 | `electric_force(body,field)` | `F = |q|·E` | `N` | dọc đường sức, đảo nếu `q<0` |
@@ -243,10 +257,11 @@ function mkEAns(kind, s: Scalar, floatRef: number, unit: string, label?, directi
 | `acceleration(body,field)` | `a = |q|·E/m` | `m/s²` | dọc đường sức |
 | `speed_after(body,field,d)` | `v = √(2|q|E·d/m)` (định lý động năng, thả nghỉ) | `m/s` | — |
 
-**Vector 2D exact (efield.ts).** `E⃗_i = kEff·q_i·(P−S_i)/r_i³`. `r_i² = Δx²+Δy²` là **hữu tỉ (radicand 1)**; `r_i = sqrt(r_i²)` là **một-căn** (`√(hữu tỉ)`); `r_i³ = r_i²·r_i`; chia `Δ (hữu tỉ)` cho `r_i³` → **một-căn** (`Scalar` tự hữu-tỉ-hoá mẫu). Cộng `E⃗_1+E⃗_2`:
-- **Thẳng hàng:** mọi `Δ` cùng một trục ⇒ thành phần vuông góc **đúng 0** (exact `num===0n`), thành phần dọc là tổng ĐẠI SỐ các một-căn **cùng radicand** (cùng `r²` hoặc chung hệ) ⇒ `addExact` đóng ⇒ exact (C5: hai `r²` bằng nhau → hữu tỉ thuần).
-- **Đối xứng đẳng cự:** hai nguồn cùng `r²` ⇒ hai `E⃗_i` cùng radicand; thành phần vuông góc **triệt tiêu exact**, dọc **cộng đôi** (C6: `E_res = √(3)·E`, `radicand 3`, `sqrtExact(3E²)` — đã chạy: `3E²=2,7·10¹¹ < 1e12` ⇒ exact `300000√3`).
-- Ngoài hai lớp trên: các `E⃗_i` khác radicand ⇒ `addExact→null` ⇒ float; NHƯNG superRefine §7.3 đã CHẶN từ trước ⇒ không tới được đây (nếu tới, `mkEAns` trả recognize/float trung thực, `approximate:true`).
+**Vector 2D & độ lớn (efield.ts).** Độ lớn `|E|` **KHÔNG đi qua `r³`** (r³=r²·r có căn ⇒ rơi float với toạ độ lẻ): dùng `|E| = Σ ± kEff·|q_i|/r_i²` (E3 — `r_i²=Δx²+Δy²` HỮU TỈ radicand 1 ⇒ exact). Vector `E⃗_i = kEff·q_i·(P−S_i)/r_i³` (một-căn) chỉ dựng để lấy PHƯƠNG/CHIỀU + chứng chỉ ⊥:
+- **Single (1 nguồn):** `|E| = kEff·|q|/r²` thẳng — exact DÙ `r=√5` (C4: `r²=5/10⁴` hữu tỉ). Phương dọc `(P−S)`.
+- **Thẳng hàng (≥2 nguồn):** `|E| = |Σ ± kEff·|q_i|/r_i²|`, dấu theo chiều mỗi `E_i` trên trục — tổng ĐẠI SỐ các hữu tỉ ⇒ exact (C5: `324000−144000=180000`). Thành phần ⊥ trục = 0 (chứng chỉ `isZeroS`, §9).
+- **Đối xứng qua GÓC (`field_symmetric`, E1-A):** KHÔNG cộng vector theo toạ độ (tránh đỉnh vô tỉ 3√3/2). `E=kEff·|q|/r²`; `E_res=√(2E²(1+cosθ))` với `cosθ=trigOf(angleBetweenDeg).cos`. C6: θ=60 ⇒ `1+cos=3/2` ⇒ `2E²·3/2 = 3E²` ⇒ `sqrtExact(3E²)`; `3E²=2,7·10¹¹ < 1e12` ⇒ exact **`300000√3`** — KHÔNG cần toạ độ đỉnh vô tỉ. Đối xứng khai tường minh ⇒ thành phần ⊥ triệt tiêu theo cấu trúc (khỏi chứng chỉ toạ độ).
+- Ngoài các lớp trên: superRefine §7.3 đã CHẶN từ trước ⇒ không tới được đây (nếu tới, `mkEAns` trả recognize/float trung thực, `approximate:true`).
 
 ### 8.2. `potential_at` (điện thế điểm) — OPTIONAL
 
@@ -261,7 +276,7 @@ function mkEAns(kind, s: Scalar, floatRef: number, unit: string, label?, directi
 | **Certify exact↔float** | mọi đáp: `|exactToApprox(exact) − floatRef| ≤ 1e-6·scale`; lệch ⇒ bỏ exact (đã trong `mkEAns`) |
 | **Thay-ngược cân bằng** | `equilibrium_field`: `\| \|q\|·E_tìm − m·g \| ≤ EPS_SELF·scale` (thay E vào `qE=mg`) |
 | **Thay-ngược động năng** | `speed_after`: `\| ½·m·v² − \|q\|·E·d \| ≤ EPS_SELF·scale` (bảo toàn năng lượng) |
-| **Chứng chỉ ĐỐI XỨNG → phương** | `field_at` cấu hình đối xứng/thẳng hàng: thành phần vuông góc trục hợp lực **PHẢI exact 0** (`perpComp.exact.num===0n`). Khác 0 ⇒ **violation** "mô hình/toạ độ sai đối xứng" (bắt lỗi dịch đề, KHÔNG serve) |
+| **Chứng chỉ ĐỐI XỨNG → phương** | `field_at` thẳng hàng: thành phần vuông góc trục hợp lực **PHẢI 0** — kiểm bằng **`isZeroS(perpComp)`** (answer.ts:133; exact khi có `.exact` → `num===0n`, TỰ fallback float `|approx|<EPS` khi vector rơi float — **KHÔNG crash/oan** vì truy `.exact.num` trên `null` như dự thảo cũ; finding E1). Khác 0 ⇒ **violation** "mô hình/toạ độ sai đối xứng" (bắt lỗi dịch đề, KHÔNG serve). `field_symmetric` (trigOf-góc) đối xứng khai tường minh ⇒ KHÔNG cần chứng chỉ này |
 | **Dấu lực Coulomb** | chiều "hút/đẩy" khớp dấu `sign(q_a·q_b)`; nếu đề khẳng định ngược (assert) ⇒ đối chiếu |
 | **Chiều trường điểm** | `Q>0` → `E⃗` hướng ra xa; `Q<0` → hướng về — kiểm bằng dấu chiếu lên `(P−S)` |
 | **Miền hợp lệ** | `r² > 0` (hai điện tích/điểm KHÔNG trùng vị trí → error "trùng vị trí, `r=0`"); `|q|>0` cho mẫu (cân bằng cần `q≠0`); `m>0` |
@@ -278,16 +293,16 @@ type EFieldResult = {
   checks: { kind: string; detail: string; residual: number; pass: boolean }[];
   violations: { assert: string; expected: number; got: number; delta: number }[];
   errors: { message: string }[];
-  geometry: GeometryData | null;       // §10.1 — TỐI THIỂU (điểm điện tích + điểm khảo sát); vector-arrow → v1.1
+  geometry: GeometryData | null;       // v1 = null (CẮT HẲN — phân xử §14.6); điểm-điện-tích/vector-arrow → v1.1
   meta: { epsilon: number; units: { length: string }; knowledgeTags: string[] };
 };
 ```
 
 Bridge P2 (ngoài spec): `scene = result.geometry`; `trace` tổng hợp từ `checks[].detail`+`errors`; `checks`/`meta` là **mở rộng hợp lệ** (F7). `answers[].unit`/`direction` do engine (C6).
 
-### 10.1. Geometry (tối thiểu, tuỳ chọn)
+### 10.1. Geometry — CẮT HẲN ở v1 (trả `null`) — phân xử §14.6
 
-v1 phát `points` cho mỗi `point_charge` (label = tên, màu theo dấu: đỏ `+` / xanh `−`) + điểm khảo sát `field_at.at`; map `(x_p, y_p)→(x,0,y_p)` (quy ước z-đứng như physics v0). **Mũi tên vector trường, đường sức** → v1.1 (cần type mới, tránh phình v1). Trường đều: 2 điểm mốc + nhãn chiều. Nếu phản biện muốn cắt hẳn geometry ở v1 (chỉ `answers[]`) — chấp nhận; ghi §14.6.
+v1 **KHÔNG phát geometry** (`geometry: null`), giảm bề mặt như dc-circuit (`circuitLayout` draft). Điểm-điện-tích (màu theo dấu), điểm khảo sát, **mũi tên vector trường & đường sức** → v1.1 (cần type mới). Mọi thông tin phục vụ ở `answers[]` (`text`/`approx`/`unit`/`direction`) + `checks`/`meta` — đủ cho bridge. (Dự thảo cũ phát `points` tối thiểu; phân xử §14.6 chốt **cắt hẳn** để không phình v1.)
 
 ## 11. Tags 4 tầng (`ly/11/dien-truong/<skill>`) — registry (bridge P0 merge)
 
@@ -361,16 +376,16 @@ Plan mang `knowledgeTags`; bridge lọc theo registry (isKnownTag) rồi merge `
 **Tính tay:** M cách mỗi điện tích 5 cm, `r²=1/400`. `E₁=9·10⁹·(9·10⁻⁸)/(1/400)=324000` (hướng A→B, +x); `E₂=9·10⁹·(4·10⁻⁸)/(1/400)=144000` (hướng B→A, −x). Cùng phương AB, ngược chiều: `E = 324000−144000 = 180000`. **E = 1,8·10⁵ V/m, chiều từ A đến B.** Thành phần ⊥ AB = **exact 0** (chứng chỉ đối xứng pass). exact `"180000"`→ `"1,8·10⁵"`, `direction:"từ A đến B"`.
 
 ---
-### C6 — Chồng chất TAM GIÁC ĐỀU (căn √3 exact qua `trigOf`)
+### C6 — Chồng chất TAM GIÁC ĐỀU (căn √3 exact qua **trigOf-góc**, E1-A)
 **Đề:** "`q₁=q₂=3·10⁻⁸ C` tại A, B — hai đỉnh tam giác đều cạnh 3 cm (chân không). Tính E tổng hợp tại đỉnh C."
 ```json
 { "problemName":"chong-chat-tam-giac-deu", "units":{"length":"cm"},
   "ops":[{"op":"point_charge","name":"A","q":{"value":30,"unit":"nC"},"at":[0,0]},
          {"op":"point_charge","name":"B","q":{"value":30,"unit":"nC"},"at":[3,0]}],
-  "queries":[{"kind":"field_at","at":[1.5,2.598076211]}] }
+  "queries":[{"kind":"field_symmetric","sources":["A","B"],"r":{"value":3,"unit":"cm"},"angleBetweenDeg":60}] }
 ```
-*(C = đỉnh trên trung trực AB, cao `3·√3/2 ≈ 2,598 cm`; engine kiểm đẳng cự `|CA|²=|CB|²` exact ⇒ gate (b) pass. Toạ độ y của C là float nhập nhưng r² vẫn ra `9/10⁴` sạch vì đối xứng.)*
-**Tính tay:** `|CA|=|CB|=3 cm`, `r²=9/10⁴`. `E_A=E_B=9·10⁹·(3·10⁻⁸)/(9/10⁴)=300000`. Góc giữa hai vector = góc ACB = 60° (`trigOf(60).cos=1/2`). `E_res² = E_A²+E_B²+2E_AE_B·cos60° = 3E²`; `E_res = E√3`. `sqrtExact(3·300000²)=sqrtExact(2,7·10¹¹)` — **`2,7·10¹¹ < 10¹²` (dưới trần radicand)** ⇒ exact `300000√3`. **E = 3·10⁵·√3 V/m ≈ 5,196·10⁵ V/m**, dọc trung trực, hướng ra xa AB. exact `"300000√3"` (`approximate:false`), `approx≈519615.24`, thành phần ⊥ trục = **exact 0**.
+*(E1-A: **KHÔNG khai toạ độ đỉnh C** — C cao `3√3/2 ≈ 2,598 cm` VÔ TỈ; khai float cắt cụt ⇒ `r²` không ra `9/10⁴` sạch ⇒ VỠ exact (đúng lỗ dự thảo cũ, C6 rơi `approximate:true`). Thay vào đó khai `r=3 cm` (nguồn→C = cạnh) + góc đỉnh `60°` trực tiếp; A,B toạ độ HỮU TỈ chỉ để engine ĐỌC `|q|` + đăng ký nguồn. LLM đọc "tam giác đều" ⇒ 60° là **chép cấu trúc hình**, KHÔNG tính vật lý — như `direction` sóng; engine vẫn tính toàn bộ E, E_res, √3.)*
+**Tính tay:** `r=3 cm`, `r²=9/10⁴`. `E = kEff·|q|/r² = 9·10⁹·(3·10⁻⁸)/(9/10⁴) = 300000`. Góc giữa hai vector `E_A`,`E_B` (= góc đỉnh `∠ACB`) = 60°, `trigOf(60).cos = 1/2` EXACT. `E_res = √(2E²(1+cos60°)) = √(2E²·3/2) = √(3E²) = E√3`. `sqrtExact(3·300000²) = sqrtExact(2,7·10¹¹)` — **`2,7·10¹¹ < 10¹²` (dưới trần radicand)** ⇒ exact `300000√3`. **E = 3·10⁵·√3 V/m ≈ 5,196·10⁵ V/m**, dọc trung trực AB, hướng ra xa AB. exact `"300000√3"` (`approximate:false`), `approx≈519615.24`. **KHÔNG cần toạ độ vô tỉ, KHÔNG cần chứng chỉ ⊥ toạ độ** (đối xứng khai tường minh).
 *(Ghi biên: nếu q ở thang μC → `3E²` vượt `10¹²` ⇒ `sqrtExact→null` ⇒ `recognizeConstant` dựng lại `"30000000√3"`, `approximate:false`. Đường cứu đã kiểm.)*
 
 ---
@@ -405,7 +420,7 @@ Plan mang `knowledgeTags`; bridge lọc theo registry (isKnownTag) rồi merge `
          {"op":"charged_body","name":"cau","q":{"value":10,"unit":"nC"},"mass":{"value":0.1,"unit":"g"}}],
   "queries":[{"kind":"equilibrium_field","body":"cau","g":10}] }
 ```
-*(E khai giá trị placeholder — `equilibrium_field` GIẢI E cần, không đọc E khai; hoặc cho `uniform_field` optional khi chỉ hỏi equilibrium. superRefine nới: equilibrium_field không đòi field.E — ghi chú thi công.)*
+*(E khai giá trị placeholder — `equilibrium_field` GIẢI E cần, KHÔNG đọc E khai. **superRefine đã NỚI (E4, §7.3.2):** `uniform_field` không bị query nào đọc ⇒ `{E, fromVoltage}` được để trống; C9 giữ placeholder `E:{1}` vẫn hợp lệ, hoặc bỏ hẳn op này. Đáp `E=10⁵ V/m` KHÔNG đổi.)*
 **Tính tay:** `m=0,1 g=10⁻⁴ kg`; `mg=10⁻³ N`. Cân bằng `qE=mg` ⇒ `E=mg/q=(10⁻³)/(10⁻⁸)=10⁵`. **E = 10⁵ V/m = 100000 V/m.** `q>0`, lực điện phải hướng LÊN (cân trọng lực xuống) ⇒ **E⃗ hướng thẳng đứng lên.** Thay-ngược: `qE=10⁻⁸·10⁵=10⁻³=mg` ✓. exact `"100000"`→ `"10⁵"`, `direction:"thẳng đứng, hướng lên"`.
 
 ---
@@ -431,7 +446,7 @@ Plan mang `knowledgeTags`; bridge lọc theo registry (isKnownTag) rồi merge `
 | C3 | E một điện tích | `900000` | `9·10⁵ V/m` | false |
 | C4 | E, r vô tỉ / r² hữu tỉ | `144000` | `1,44·10⁵ V/m` | false |
 | C5 | Chồng chất thẳng hàng | `180000` | `1,8·10⁵ V/m` (từ A→B) | false |
-| C6 | Chồng chất tam giác đều | `300000√3` | `300000√3 V/m` ≈5,196·10⁵ | false |
+| C6 | Chồng chất tam giác đều (**field_symmetric**, trigOf-góc) | `300000√3` | `300000√3 V/m` ≈5,196·10⁵ | false |
 | C7 | Công `A=qEd` | `1/10000` | `10⁻⁴ J` | false |
 | C8 | `U=Ed`; `W=qU` | `80`; `1/250000` | `80 V`; `4·10⁻⁶ J` | false |
 | C9 | Cân bằng `qE=mg` | `100000` | `10⁵ V/m` (đứng, lên) | false |
@@ -442,13 +457,25 @@ Plan mang `knowledgeTags`; bridge lọc theo registry (isKnownTag) rồi merge `
 ## 13. Rủi ro & giảm thiểu
 
 - **R1 — LLM tự tính hộ engine** (tự nhân `k·q`, tự chia `3,6`, tự lấy `cos60`): schema chỉ nhận `{value,unit}` + toạ độ; KHÔNG có field nộp `F`/`E`/thành-phần đã tính; góc/hình do toạ độ, engine tự `trigOf`. Few-shot cấm (P2).
-- **R2 — Cấu hình vector không exact-được lọt lưới:** superRefine §7.3 GATE thẳng-hàng/đối-xứng trước khi tính; chứng chỉ đối xứng (thành phần ⊥ = exact 0) bắt lỗi toạ độ. Ngoài lớp ⇒ reject plan (abstain), KHÔNG serve float giả exact.
+- **R2 — Cấu hình vector không exact-được lọt lưới:** superRefine §7.3 GATE (a) thẳng-hàng + (b) đối-xứng đẳng-cự TOẠ-ĐỘ-HỮU-TỈ + (c) `field_symmetric` góc-đẹp trước khi tính; chứng chỉ đối xứng `isZeroS(perpComp)` bắt lỗi toạ độ thẳng-hàng. Tam giác đều & đỉnh vô tỉ đi (c) trigOf-góc (KHÔNG toạ độ). Ngoài lớp ⇒ reject plan (abstain), KHÔNG serve float giả exact.
 - **R3 — exact giả** (số học exact ra dạng đẹp SAI): mọi đáp qua `certifyScalar` đối chiếu float ĐỘC LẬP (`…N`) + thay-ngược `EPS_SELF`.
 - **R4 — Mất exact do nhập số nhỏ thô:** ép mantissa+unit (§5.3); test có case `0,5 nC` khai `{0.5,'nC'}` (giữ exact) đối chứng case `5e-10` thô (rơi float — chứng minh vì sao cấm).
-- **R5 — Vượt trần radicand thang μC (C6 biến thể):** `sqrtExact→null` ⇒ `recognizeConstant` cứu về `a√b` `approximate:false`; test khoá cả hai nhánh.
+- **R5 — Vượt trần radicand thang μC (C6/`field_symmetric` biến thể):** `3E²` vượt `10¹²` ⇒ `sqrtExact→null` ⇒ `recognizeConstant` cứu về `a√b` `approximate:false`; test khoá cả hai nhánh.
 - **R6 — Hiển thị lũy thừa 10:** luật §6; nếu phản biện bác ⇒ fallback `displayScalar` trần + `approx` (bridge lo). Không ảnh hưởng ĐÚNG/SAI.
 
 ## 14. Điểm phân vân cho phản biện (trước khi code)
+
+> **✅ ĐÃ PHÂN XỬ (22/08)** — điều phối duyệt (`../reviews/2026-08-22-waves-efield-review.md`). 8 chốt:
+> 1. **Hiển thị 10ⁿ:** CHỌN **(A)** — engine áp `displayEField` khoa-học-hoá `text` (`"5,4·10⁻⁴"`, `"9·10⁵"`; giữ phân số khi mẫu có ước ≠2,5). `exact`+`approx` VẪN lưu ⇒ KHÔNG mất giá trị, không phá phán quyết wave2(b) về giá trị (chỉ chọn CHUỖI thân thiện Lý).
+> 2. **Ranh giới vector:** SIẾT theo **E1-A** — (a) thẳng-hàng, (b) đối-xứng đẳng-cự **TOẠ-ĐỘ-HỮU-TỈ** (3-4-5/vuông-cân, kiểm EXACT không nhận "gần đối xứng" float), (c) tam-giác-đều & đỉnh-vô-tỉ → **`field_symmetric` trigOf-góc**; 3-điện-tích-tâm (hợp lực=0) → v2.
+> 3. **electron/proton:** NGOÀI v1 — trần `pC`, KHÔNG mở `e`/`mₑ` ("thà ít mà đúng").
+> 4. **Abstain vs float:** GIỮ **abstain cứng** cho cấu hình ngoài lớp exact (điện trường KHÔNG serve float giả-exact; khác tiền lệ căn-lồng động học vì bản chất "không đóng exact-được").
+> 5. **Môi trường ε:** `plan.epsilon` SỐ trực tiếp ĐỦ (đề VN cho ε số); KHÔNG cần bảng `epsilonOf`.
+> 6. **Geometry:** CẮT HẲN ở v1 (`geometry:null`, §10.1); điểm/mũi-tên → v1.1.
+> 7. **`voltage`/`potential_energy` nối câu:** GIỮ khai `U` trực tiếp (mỗi query độc lập, dễ assert); KHÔNG thêm `fromField` ở v1 (bridge nối câu là P2).
+> 8. **`equilibrium_field` không cần `uniform_field.E`:** NỚI superRefine = finding **E4** (§7.3.2 — E optional khi trường không bị query nào đọc).
+>
+> Chi tiết finding CAO/VỪA/THẤP (E1–E4) + phương án A cho tam giác đều: xem **Changelog phản biện (22/08)** cuối file. Các mục 1–8 dưới đây GIỮ NGUYÊN làm dấu vết câu hỏi gốc.
 
 1. **[TRỌNG — biểu diễn 10ⁿ khi hiển thị]** §6 đề xuất `displayEField` cho `text` dạng khoa học/thập phân (`"5,4·10⁻⁴"`, `"9·10⁵"`, giữ phân số khi mẫu có ước ≠ 2,5). Điều này **lệch phán quyết wave2 (b)** ("thập phân là việc bridge, engine exact-first"). Lập luận lệch: với Lý, phân số trần `27/50000 N`, `1/250000 J` **không đọc được**; `approx` vẫn kèm nên KHÔNG mất giá trị. **Chọn:** (A) engine áp §6 (khuyến nghị) hay (B) giữ `displayScalar` trần, đẩy khoa-học-hoá sang bridge? *(Về REPRESENTATION không có phân vân: BigInt kham `9·10⁹`, đã chứng minh §5 — chỉ HIỂN THỊ mở.)*
 2. **[TRỌNG — ranh giới cấu hình vector exact-được]** §7.3 chốt đúng 2 lớp: **thẳng hàng** (cross=0) + **cặp đối xứng đẳng cự** (`|q|` bằng, điểm cách đều). Câu hỏi: (a) predicate này ĐỦ chưa (bỏ sót dạng SGK nào? vd điện tích thử trên đường trung trực đoạn nối 2 điện tích TRÁI dấu — hợp lực dọc AB, vẫn đối xứng đẳng cự ⇒ nằm trong (b) ✓); (b) có nhận **3 điện tích tam giác đều, điểm ở TÂM** (hợp lực=0) không, hay để v2; (c) gate kiểm trên **số thô float** (tol nhỏ) — có nên kiểm exact trên toạ độ hữu tỉ để tránh nhận nhầm cấu hình "gần đối xứng"?
@@ -461,8 +488,35 @@ Plan mang `knowledgeTags`; bridge lọc theo registry (isKnownTag) rồi merge `
 
 ## 15. Tiêu chí thành công
 
-1. 10 bài §12 chạy qua `runEfield` ra ĐÚNG đáp tính tay (`text` sau luật §6 + `approx`), 10/10 `approximate:false`, căn/chỉ-số-10 đúng chỗ (C6 `√3`, C10 `2√5/5`, C2/C7/C8b khoa học).
+1. 10 bài §12 chạy qua `runEfield` ra ĐÚNG đáp tính tay (`text` sau luật §6 + `approx`), 10/10 `approximate:false`, căn/chỉ-số-10 đúng chỗ (C6 `300000√3` qua `field_symmetric`/**trigOf-góc** — KHÔNG còn `approximate:true`, C10 `2√5/5`, C2/C7/C8b khoa học).
 2. Mọi đáp có `checks[]` certify + (nơi có) thay-ngược pass; chứng chỉ đối xứng cho C5/C6 (thành phần ⊥ exact 0); assert dữ-kiện-dư sai ⇒ `violations` + `ok:false`.
-3. superRefine từ chối cấu hình chồng chất ngoài lớp exact (test 1 ca tam giác lệch → issue "abstain").
+3. superRefine: CHẤP NHẬN (a) thẳng-hàng, (b) đối-xứng toạ-độ-hữu-tỉ (3-4-5), (c) `field_symmetric` góc-đẹp; TỪ CHỐI cấu hình ngoài lớp (test 1 ca tam giác LỆCH bất đối xứng → issue "abstain"); test 1 ca `field_at` tam giác ĐỀU khai toạ-độ-vô-tỉ → gate (b) reject (buộc chuyển `field_symmetric`).
 4. `K=rat(9000000000n)` exact; test khẳng định `exactToApprox(K)===9e9` và C1–C10 không đáp nào chạm trần radicand ở thang khai.
 5. KHÔNG file có sẵn nào đổi (git status chỉ thấy `physics/efield*.ts` + test + spec này); test cũ XANH nguyên, chỉ CỘNG test mới.
+
+---
+
+## 16. Changelog phản biện (22/08)
+
+> Áp toàn bộ finding + phân xử ĐÃ DUYỆT của `../reviews/2026-08-22-waves-efield-review.md`. Máy chấm **điện trường 9/10** (C6 tam giác đều VỠ `approximate:true`); sau sửa E1-A → **C6 exact `300000√3` qua trigOf-góc**, đủ 10/10. Con số/bài mẫu KHÔNG đổi giá trị. E1 CHỐT **PHƯƠNG ÁN A** (điều phối quyết).
+
+### Bảng finding → vị trí sửa
+
+| Finding | Mức | Sửa gì | Vị trí trong spec |
+|---|---|---|---|
+| **E1** | CAO | **PHƯƠNG ÁN A** — chồng chất đối xứng đổi sang **trigOf-góc**: thêm query `field_symmetric{sources:[A,B], r, angleBetweenDeg}`; engine `E_res=√(2E²(1+cosθ))` qua `trigOf(θ)` (θ=60→cos=1/2→`E√3` exact, KHÔNG cần toạ độ đỉnh vô tỉ). Siết gate (b) chỉ nhận **toạ-độ-HỮU-TỈ** (thẳng-hàng/vuông-cân/3-4-5); tam giác đều đi (c) trigOf. Chứng chỉ đối xứng `perpComp.exact.num===0n` → **`isZeroS(perpComp)`** (tự fallback float, không crash/oan). | §3.1 (bảng dạng bài); §7 schema (query `field_symmetric`); §7.3 gate (a)/(b)/(c); §8.1 (row `field_at` E3 + row `field_symmetric`); §8.1 bullets "Vector 2D & độ lớn"; §9 (chứng chỉ `isZeroS`); §12 **C6** (JSON+tính tay); §12 bảng; §15.1/§15.3 |
+| **E2** | VỪA | Thêm `qtyLength` + bảng `LEN_TO_SI = {m:1, cm:1/100, mm:1/1000}` cho efield (kinematics `LEN_TO_SI` chỉ có m/km ⇒ thiếu → r² lệch 10⁴). Áp cho toạ độ `at`, `Dist.d`, `r` của `field_symmetric`. | §5.3 (bảng factor + `qtyLength`); §5.3 ghi chú "Toạ độ & khoảng cách" |
+| **E3** | VỪA | `field_at` `\|E\|`: **single/thẳng-hàng tính thẳng `kEff·\|q\|/r²`** (chỉ cần r² hữu tỉ, exact dù r vô tỉ — C4), KHÔNG đi `r³` (có căn, rơi float với toạ độ lẻ); đường vector chỉ giữ cho phương/chiều + chứng chỉ ⊥, và tổng đối xứng đã chuyển sang `field_symmetric`. | §8.1 (row `field_at`); §8.1 bullets; §7.3 (a) |
+| **E4** | THẤP | `equilibrium_field`: NỚI superRefine — `uniform_field` được để trống `{E,fromVoltage}` khi KHÔNG query nào đọc trường đó (E là ẩn số của cân bằng). | §7.3.2; ghi chú C9 |
+
+### Phân xử §14 (8 điểm) — CHỐT
+
+Xem banner đầu §14. Tóm: (1) **displayEField khoa-học-hoá text**, exact+approx vẫn lưu; (2) ranh giới vector siết theo E1-A; (3) **electron ngoài v1** (trần pC); (4) **abstain cứng** ngoài lớp exact; (5) ε số đủ (không bảng vật liệu); (6) **geometry cắt hẳn v1** (`geometry:null`); (7) giữ khai `U` trực tiếp cho `potential_energy`; (8) nới superRefine `equilibrium_field` (= E4).
+
+### Xác nhận C6 (điểm son sau sửa)
+
+`field_symmetric{sources:["A","B"], r:{value:3,unit:"cm"}, angleBetweenDeg:60}` ⇒ `E = kEff·|q|/r² = 9·10⁹·(3·10⁻⁸)/(9/10⁴) = 300000`; `trigOf(60).cos = 1/2` (kinematics.ts:63, EXACT); `E_res = √(2·300000²·(1+1/2)) = √(3·300000²) = √(2,7·10¹¹) = 300000√3` (`2,7·10¹¹ < 10¹²` trần radicand). **`text:"300000√3"`, `approximate:false`, `approx≈519615.24`** — KHÔNG còn toạ độ đỉnh `3√3/2` vô tỉ, KHÔNG cắt cụt, KHÔNG recognize trượt. Bài √3 kinh điển được giữ.
+
+### Ranh giới KHÔNG đụng
+
+CHỈ sửa spec này. KHÔNG đụng `2026-08-22-physics-pack-v1-ac-circuit.md` (agent khác) hay bất kỳ file code nào — pack efield vẫn hoàn toàn additive (`efield*.ts` + test), git status chỉ thấy 2 spec M (waves + efield).

@@ -2,7 +2,7 @@
 
 **Ngày:** 2026-08-22
 **Trạng thái:** DỰ THẢO — CHỜ PHẢN BIỆN (sẽ bị phản biện trước khi code, như dao động/động lực học/dc-circuit). Điểm phân vân tập trung ở §16.
-**Phạm vi:** Mở rộng engine Vật lý (nền v0 động học — `2026-08-21-physics-pack-design.md`; tái dùng tầng π của `2026-08-21-physics-pack-v1-oscillation.md`) cho chương **Sóng cơ và sóng âm** Vật lí 11. Chỉ THÊM file vào `api/_lib/kernel/physics/**` + test; điểm chạm với v0 gói trong 2 FILE (`planSchema.ts`, `runPhysics.ts`) — kê DIFF trung thực từng dòng ở §13. KHÔNG sửa core kernel, KHÔNG sửa `src/**`, KHÔNG đụng file v0 (kinematics/compute/scene).
+**Phạm vi:** Mở rộng engine Vật lý (nền v0 động học — `2026-08-21-physics-pack-design.md`; tái dùng tầng π của `2026-08-21-physics-pack-v1-oscillation.md`) cho chương **Sóng cơ và sóng âm** Vật lí 11. **PACK RIÊNG HOÀN TOÀN ADDITIVE** (soi gương oscillation/dc-circuit/dynamics — mỗi pack có `*Schema.ts` + `run*.ts` RIÊNG): CHỈ THÊM `waveSchema.ts` (định nghĩa `WavePlanSchema` riêng) + `runWaves.ts` (entry riêng) + `waves.ts` + `waveCompute.ts` + `waveScene.ts` + test vào `api/_lib/kernel/physics/**`. **KHÔNG đụng `planSchema.ts`/`runPhysics.ts`/`kinematics.ts` v0, KHÔNG có DIFF nào vào file v0** (đổi so dự thảo cũ vốn nhét op vào 2 file v0 — xem **Changelog phản biện (22/08)** cuối file, finding **W1**). KHÔNG sửa core kernel, KHÔNG sửa `src/**`. Sau tách → **zero-breaking** (1072 test v0 XANH nguyên, chỉ CỘNG test mới).
 **Ràng buộc kế thừa (ĐÃ DUYỆT — không mở lại):**
 - Unit per-quantity, engine đổi exact bằng hữu tỉ (F2/D1 — `../reviews/2026-08-21-arch-physics-review-phien1.md`).
 - `answers[].unit` do engine ghi (C6); tol hai tầng `EPS_SELF=1e-6` / `TOL_ASSERT=1e-3` (C10/F6); KHÔNG đặt hằng mới.
@@ -30,7 +30,7 @@ Bài sóng cơ/sóng âm: **LLM chỉ DỊCH đề → khai dữ kiện vào Wav
 | Nhận dạng căn/π đẹp từ float | `analysis/recognize.ts` | Lưới an toàn tầng 2 khi exact chết (đáp li độ off-grid) |
 | Số → Scalar | `kinematics.ts` `scalarFromNumber` (v0; dc-circuit review chốt import từ đây) | A, λ, v, d… thập phân hữu hạn ≤9 lẻ → hữu tỉ exact |
 | Quy ước scene/timeline/playback | v0 §8 + oscillation §9 (map (x,0,y), `landing_point` bắt buộc, `t*t` KHÔNG `t^2`, `Math.cos` chạy qua `new Function`, quy tắc k 3–15 s, bảng màu, radius) | §11 kế thừa nguyên, phần tử sóng dao động ngang = SHM có lệch pha |
-| Khung PhysicsPlan | v0 §5 (`units`, `asserts`, `charts`, `scene`) | Sóng chỉ THÊM 2 op + query vào 2 union |
+| Khung plan (`units`/`asserts`/`charts`/`scene`) | v0 §5 (mẫu) + oscillation/circuit (pack riêng) | **`WavePlanSchema` RIÊNG** trong `waveSchema.ts` — soi khung v0 nhưng KHÔNG merge vào `PhysicsPlanSchema` v0 (như `OscillationPlanSchema`); entry `runWaves` parse riêng |
 
 **Hai xác minh code MÀ oscillation ĐÃ chạy thật (kế thừa, không lặp lại):** (a) `recognize.ts` KHÔNG nhận π²/√b·π/k/π ⇒ PiScalar là bắt buộc cho pha/cường-độ-điểm; (b) `AnimatedAgent` eval được `Math.cos(...)` qua `new Function` ⇒ phần tử sóng animate được. Bốn ràng buộc cú pháp biểu thức timeline (KHÔNG `^`, KHÔNG dấu phẩy trong biểu thức, KHÔNG chuỗi con `x_start/…/vz`, KHÔNG `=`) giữ nguyên oscillation §2.2.
 
@@ -53,21 +53,22 @@ Toàn bộ đại lượng sóng cơ bản **v = λf = λ/T** và **T = 1/f** l�
 
 **NGOÀI phạm vi v1 (ghi rõ, có chủ đích — §15):** giao thoa nhiều hơn 2 nguồn; sóng điện từ; hiệu ứng Doppler; hiện tượng phách (giao thoa theo thời gian). Cùng: đếm cực đại/tiểu trên đoạn MN BẤT KỲ (không phải đoạn nối nguồn); quãng đường/số lần trong Δt; cộng mức cường độ nhiều nguồn khi n không phải lũy thừa 10 đẹp (số, để v-next); sóng dừng có đầu tự do phối hợp phức tạp / ống sáo cột khí (mô hình cùng công thức nhưng khai riêng — chỉ hỗ trợ dây một-đầu-tự-do).
 
-## 5. Schema (zod) — `waveSchema.ts`, nối vào PhysicsPlanSchema v0
+## 5. Schema (zod) — `waveSchema.ts` định nghĩa `WavePlanSchema` RIÊNG (pack độc lập)
 
-Sóng THÊM 2 op (`wave`, `sound_source`) và các query vào 2 `discriminatedUnion` của v0. Khung plan (`units`/`asserts`/`charts`/`scene`) giữ nguyên. Ba ràng buộc CẤP PLAN (sống trong `planSchema.ts` v0 — DIFF 1 §13):
+Wave pack có **`WavePlanSchema` RIÊNG** (soi `OscillationPlanSchema`) — 2 op (`wave`, `sound_source`) + `WaveQuerySchema` (discriminatedUnion) + `units`/`asserts`/`knowledgeTags`/`charts`/`scene`, **KHÔNG nối vào `PhysicsPlanSchema` v0**. Entry `runWaves(raw)` (§13) tự `WavePlanSchema.safeParse(raw)` — như `runOscillation`/`runDynamics`/`runCircuit`. Ba ràng buộc CẤP PLAN sống TRONG superRefine của `WavePlanSchema` (KHÔNG đụng `planSchema.ts` v0 — finding **W1**):
 
-1. `units.time` = `'s'` khi plan có op sóng (đề phổ thông không dùng phút/giờ cho sóng).
+1. `units.time` = `'s'` (đề phổ thông không dùng phút/giờ cho sóng).
 2. `units.length` ∈ {`'m'`,`'cm'`} (đề VN trộn cm cho sóng cơ, m cho sóng âm — translator khai theo đề).
-3. **superRefine CẤM TRỘN op sóng (`wave`/`sound_source`) với op CHƯƠNG KHÁC (`mover1d`/`free_fall`/`projectile`/`oscillator`)** trong cùng plan — như OS-4: plan trộn + `units.length='cm'` làm `qty*` của kinematics THROW; đề hỗn hợp (hiếm) ⇒ bridge tách plan. **`wave` + `sound_source` ĐƯỢC trộn** (cùng chương — bài "âm f, v: bước sóng? mức cường độ?" là một sóng âm duy nhất).
+3. Op union của `WavePlanSchema` **chỉ gồm `wave` + `sound_source`** ⇒ **KHÔNG cần superRefine "cấm trộn op chương khác": ràng buộc đó TỰ TAN vì plan riêng.** Không có `mover1d`/`free_fall`/`projectile`/`oscillator` trong union này — không thể trộn nên không phải chặn (thay cho hàng rào OS-4 mong manh của dự thảo cũ, vốn còn rủi ro `runPhysics:42` gọi `motionOf` vô điều kiện làm op lạ rơi nhánh projectile → NaN). **`wave` + `sound_source` ĐƯỢC trộn** (cùng chương — bài "âm f, v: bước sóng? mức cường độ?" là một sóng âm duy nhất).
 
 ```ts
 // api/_lib/kernel/physics/waveSchema.ts
 import { z } from 'zod';
 const Num = z.number().finite();
 const Obj = z.string().min(1);
-// PiRat tái dùng NGUYÊN từ oscSchema (oscillation §3.1): 5 | {n,d?,pi?} — (n/d)·π^(pi?1:0)
-import { PiRat } from './oscSchema';
+// PiRat + toPiScalar tái dùng NGUYÊN từ piScalar.ts (oscillation §3.1; XUẤT tại piScalar.ts:180/186 — KHÔNG
+// phải './oscSchema' vốn KHÔNG tồn tại, chỉ có 'oscillationSchema.ts'; finding W2): 5 | {n,d?,pi?} — (n/d)·π^(pi?1:0)
+import { PiRat, toPiScalar } from './piScalar';
 
 const LenUnit  = z.enum(['m', 'cm']);
 const SpeedUnit = z.enum(['m/s', 'cm/s']);
@@ -146,6 +147,23 @@ export const WaveQuerySchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('sound_level_difference'), of: Obj, fromDistance: Num.positive(), toDistance: Num.positive(), rUnit: LenUnit.optional(), label: z.string().optional() }),
   z.object({ kind: z.literal('distance_for_level'), of: Obj, level: Num, rUnit: LenUnit.optional(), label: z.string().optional() }),
 ]);
+
+// ── OP UNION + PLAN RIÊNG (soi OscillationPlanSchema — KHÔNG nối vào PhysicsPlanSchema v0; finding W1) ──
+export const WaveOpSchema = z.discriminatedUnion('op', [WaveOp, SoundSourceOp]);   // CHỈ 2 op ⇒ "cấm trộn" tự tan
+
+export const WavePlanSchema = z.object({
+  problemName: z.string().min(1),
+  units: z.object({ length: LenUnit.default('m'), time: z.literal('s').default('s') }).default({}),  // §5.1: cm/m; time='s'
+  ops: z.array(WaveOpSchema).min(1),
+  queries: z.array(WaveQuerySchema).min(1),
+  asserts: z.array(z.object({ query: WaveQuerySchema, equals: Num, tol: Num.positive().optional() })).default([]),
+  knowledgeTags: z.array(z.string()).default([]),                 // 4 tầng ly/11/song-*/<skill> (§14)
+}).superRefine((plan, ctx) => {
+  // Ràng buộc CẤP PLAN §5: units.time='s' (literal) + units.length ∈ {m,cm} (LenUnit) đã ép ở type;
+  // "cấm trộn op chương khác" TỰ TAN vì WaveOpSchema chỉ có wave+sound_source (W1); ref query→op tồn tại (§6.2 OS-6).
+});
+export type WavePlan = z.infer<typeof WavePlanSchema>;
+export type WaveQuery = z.infer<typeof WaveQuerySchema>;
 ```
 
 **Refine của op (chặn suy biến từ zod — OS-2 kỷ luật không-throw):**
@@ -194,7 +212,7 @@ Trong một op sóng cơ, λ/A/x/d/separation/length CÙNG `units.length` (đề
 ### 6.2. Resolution WaveModel — ưu tiên + auto-assert (dữ kiện dư thành tự kiểm)
 
 - **Tần số:** ưu tiên `f > T(→1/T) > omega(→omega/2π)`. Nếu chỉ có `lambda`+`speed` ⇒ f = v/λ.
-- **Bước sóng/tốc độ:** `lambda` trực tiếp; `spaceCoeff` ⇒ λ = divP(2π, spaceCoeff) (bậc 1−1=0 ⇒ Scalar, π triệt tiêu); `speed` trực tiếp. Có f + một trong {λ, v} ⇒ suy nốt cái còn lại bằng v = λf.
+- **Bước sóng/tốc độ:** `lambda` trực tiếp; `spaceCoeff` ⇒ λ = divP(2π, spaceCoeff) — kết quả là **PiScalar bậc 0** (1−1=0, π triệt tiêu), CHƯA phải `Scalar` thuần. Rút `Scalar` ra bằng helper cục bộ **`piToScalar(p) = p.k===0 ? p.s : null`** (PiScalar là `{s:Scalar, k:number}` — khi k=0 giá trị đúng là `p.s`; **1 dòng trong `waves.ts`, KHÔNG cần sửa `piScalar.ts`** — finding **W3**) TRƯỚC khi dùng cho `v = λf` (v là `Scalar`). `speed` trực tiếp. Có f + một trong {λ, v} ⇒ suy nốt cái còn lại bằng v = λf.
 - **omega/spaceK dựng khi cần pha:** ω = mulP(2π, f) (bậc 1); spaceK = divP(2π, lambda) (bậc 1). Nếu op khai omega/spaceCoeff trực tiếp → dùng nguyên (khỏi dựng lại), và f/λ suy ngược để phủ query đại lượng.
 - **Nguồn DƯ ⇒ auto-assert:** khai cả (f, λ, v) mà v ≠ λf ⇒ check "nguồn dư khớp" lệch ⇒ `violations` (dịch sai đề), ok:false. Exact khi cùng trường, ngược lại |Δ| ≤ EPS_SELF·scale.
 - **Thiếu nguồn ⇒ null;** query đụng tới ⇒ `errors: "cần <đại lượng> — đề thiếu dữ kiện hoặc dịch thiếu"`, KHÔNG bịa.
@@ -325,7 +343,7 @@ Như v0 §7.2: `assert.query` chạy như query thường, \|got − equals\| �
 
 ### 11.3. Kỷ luật lỗi (OS-2)
 
-Pipeline sóng KHÔNG throw: refine zod chặn ω/T=0; guard chặn A=null/λ=null/chia-0 trước phép chia; `runPhysics` bọc try/catch quanh nhánh sóng (DIFF 2 §13) đổi Error còn lọt → `errors[]` + ok:false, message tiếng Việt. Không Error nào tới route/bridge.
+Pipeline sóng KHÔNG throw: refine zod chặn ω/T=0; guard chặn A=null/λ=null/chia-0 trước phép chia; **`runWaves`** (entry riêng, §13) bọc try/catch lưới cuối quanh TOÀN pipeline sóng đổi Error còn lọt → `errors[]` + ok:false, message tiếng Việt (soi `runOscillation`). Không Error nào tới route/bridge. **`runPhysics`/`run()` v0 KHÔNG đụng tới** (đổi so dự thảo cũ — finding W1).
 
 ### 11.4. Scene — phần tử dao động ngang (tái dùng animation dao động)
 
@@ -531,35 +549,32 @@ Số đã kiểm bằng số học tay + đối chiếu float. Plan theo schema 
 
 **Phủ query:** speed(W1,W7,W10 nội), wavelength(W2,W7,W10), frequency(W2), period(W1), displacement_at(W7), phase_difference(W5), interference_count max(W3)+min(W4), standing_antinodes(W6), standing_nodes(W6,W9), standing_wavelength(W9), standing_frequency(W9), sound_intensity(W10a), sound_level(W8a/b,W10b). Phủ nhánh exact {hữu tỉ, PiScalar π, cos lưới, lũy thừa 10, lũy thừa √10} + nhánh SỐ trung thực (W8b). Phủ đếm-hai-cách (W3,W4). `interference_point`, `standing_min_frequency`, `sound_level_difference`, `distance_for_level`, `power` (I=P/4πr² PiScalar k=−1), displacement off-grid, phân loại pha, một-đầu-tự-do: phủ ở UNIT TEST (cùng đường normalize/compute), không tốn bài contract.
 
-## 13. Cấu trúc file & ranh giới
+## 13. Cấu trúc file & ranh giới — PACK RIÊNG ADDITIVE (finding W1)
+
+**Đổi kiến trúc so dự thảo cũ:** dự thảo nhét op sóng vào `planSchema.ts` + `runPhysics.ts` v0 (DIFF 1/DIFF 2) — rủi ro breaking (v0 `runPhysics:42` gọi `motionOf` vô điều kiện ⇒ op lạ rơi nhánh projectile → NaN; đụng bề mặt 1072 test). Nay **TÁCH pack riêng**, soi gương oscillation/dc-circuit/dynamics (mỗi pack `*Schema.ts` + `run*.ts` riêng, KHÔNG merge vào `planSchema`/`runPhysics` v0). Logic số học (§6–§11 — đã đúng 100% theo máy chấm 10/10) DI DỜI NGUYÊN. **KHÔNG đụng file v0.**
 
 ```
 api/_lib/kernel/physics/
-  planSchema.ts   (v0) ← DIFF 1 — kê TRUNG THỰC (bài học OS-4, KHÔNG viết "2 dòng"):
-                    (a) import WaveOp, SoundSourceOp, WaveQuerySchema từ './waveSchema';
-                    (b) thêm WaveOp, SoundSourceOp vào union op + các query sóng vào union query;
-                    (c) refine CẤP PLAN: có op sóng ⇒ units.time = 's';
-                    (d) refine CẤP PLAN: có op sóng ⇒ units.length ∈ {'m','cm'};
-                    (e) superRefine CẤM TRỘN op sóng với op chương khác (mover1d/free_fall/projectile/oscillator);
-                        CHO PHÉP wave + sound_source;
-                    ⇒ (c)–(e) là LOGIC MỚI (~15–20 dòng) + test planSchema v0 chạy kèm.
-  runPhysics.ts   (v0) ← DIFF 2: dispatch op 'wave'/'sound_source' → wave pipeline; T_phys góp "2T" khi có wave animate;
-                    try/catch quanh nhánh sóng đổi Error → errors[] (§11.3); query sóng trỏ op sai loại ⇒ error rõ (§6.2).
-  kinematics.ts  compute.ts  scene.ts   (v0 — KHÔNG đụng)
-  waveSchema.ts   MỚI — §5
-  waves.ts        MỚI — §6,§8,§9,§10 THUẦN: normalize op→WaveModel/SoundModel; evalU(x,t); phaseOf; countIntOpen
-                    + đếm giao thoa/sóng dừng (bigint floordiv/ceildiv); log10Exact; intensity/level (đảo & nghịch-đảo-bình-phương)
+  planSchema.ts  runPhysics.ts  kinematics.ts  compute.ts  scene.ts   (v0 — KHÔNG ĐỤNG, KHÔNG DIFF)
+  piScalar.ts     NỀN DÙNG CHUNG (đã ship+commit cùng oscillation, ngang scalar.ts) — waves chỉ IMPORT, KHÔNG tạo lại
+  waveSchema.ts   MỚI — §5: WavePlanSchema RIÊNG (units/asserts/knowledgeTags/ops/queries + superRefine cấp plan);
+                    import { PiRat, toPiScalar } from './piScalar'   (KHÔNG './oscSchema' — W2)
+  runWaves.ts     MỚI — entry runWaves(raw): WavePlanSchema.safeParse → build model → queries → asserts → self-check →
+                    WaveResult {ok, answers, checks, violations, errors, geometry, charts, meta}; try/catch lưới cuối (§11.3);
+                    query trỏ op sai loại ⇒ error rõ (§6.2). Soi runOscillation. KHÔNG chạm run()/planSchema/runPhysics.
+  waves.ts        MỚI — §6,§8,§9,§10 THUẦN: normalize op→WaveModel/SoundModel; piToScalar (§6.2, W3); evalU(x,t); phaseOf;
+                    countIntOpen + đếm giao thoa/sóng dừng (bigint floordiv/ceildiv); log10Exact; intensity/level (đảo & NĐBP)
   waveCompute.ts  MỚI — §7,§10,§11.1: query → công thức đóng + certify + tự kiểm
   waveScene.ts    MỚI — §11.4–§11.6
   __tests__/waves.test.ts  waveCompute.test.ts  waveScene.test.ts  wave-contract.test.ts
 ```
 
-- **PHỤ THUỘC `piScalar.ts` (của oscillation v1):** waves import `PiScalar/mulP/divP/addP/subP/sqrtP/cosP/sinP`, `EXACT_COS`, `displayPiScalar`, `certifyPiScalar`, `PiRat`, `toPiScalar` từ `./piScalar` + `./oscSchema`. ⇒ **ràng buộc thứ tự: waves thi công/merge SAU oscillation** (hoặc piScalar.ts được đưa thành FILE NỀN dùng chung, tạo độc lập). Đây là điểm phân vân §16.1 — KHÔNG tự tạo lại piScalar.ts (vi phạm "chỉ thêm file" nếu hai pack cùng tạo).
-- **Import được phép:** `../scalar`, `./piScalar`, `./oscSchema`, `./kinematics` (scalarFromNumber), `../analysis/recognize`, `../compute/answer` (certifyScalar/cmpScalar), `zod`, `import type` geometry — trong danh mục C2.
-- Ràng buộc cứng kế thừa v0 §4: KHÔNG sửa `run.ts`/`index.ts` gốc/`src/**`; chưa nối kernel-dist (wiring P2); baseline test chỉ CỘNG (~55–65 test mới ước: waves ≈20, waveCompute ≈15, scene ≈5, contract 10 bài ≈ 25 assert).
-- Gate F9: chạy typecheck qua `tsconfig.kernel.json` (scene phát `params:{}` đầy đủ cho Curve3D).
-- **Chép nhắc F1 (mirror oscillation §11):** wiring P2 ngoài phạm vi, nhưng route nối sóng PHẢI có quota — ghi tại đây để không rơi mất.
-- **Đồng bộ đa-pack:** planSchema.ts/runPhysics.ts cũng bị dynamics/dc-circuit/oscillation DIFF — các DIFF đều THUẦN CỘNG (thêm thành viên union + nhánh dispatch + refine); merge tuần tự, mỗi pack chạy test v0 xanh nguyên. Ai chạm cuối rebase phần union. (Điểm phối hợp — không thuộc nội dung engine.)
+- **`piScalar.ts` là FILE NỀN DÙNG CHUNG (phân xử §16.1):** đã tạo & commit cùng oscillation v1 (ngang `scalar.ts`) ⇒ waves chỉ IMPORT `PiScalar/mulP/divP/addP/subP/sqrtP/cosP/sinP`, `EXACT_COS`, `displayPiScalar`, `certifyPiScalar`, `PiRat`, `toPiScalar` từ `./piScalar`. **KHÔNG tạo lại, KHÔNG ràng buộc thứ tự merge** (§16.1 chốt: piScalar là nền chung, bỏ ràng buộc "waves sau oscillation"). Review xác nhận `piScalar` export ĐỦ — **KHÔNG cần sửa `piScalar.ts`**.
+- **Import được phép:** `../scalar`, `./piScalar`, `./kinematics` (CHỈ `scalarFromNumber`), `../analysis/recognize`, `../compute/answer` (certifyScalar/cmpScalar/isZeroS), `zod`, `import type` geometry — trong danh mục C2. **KHÔNG import `./oscSchema`** (không tồn tại — W2), `./planSchema`, `./runPhysics`.
+- Ràng buộc cứng: KHÔNG sửa `run.ts`/`index.ts`/`planSchema.ts`/`runPhysics.ts`/`kinematics.ts`/`src/**`; chưa nối kernel-dist (wiring P2); baseline test chỉ CỘNG (~55–65 test mới ước: waves ≈20, waveCompute ≈15, scene ≈5, contract 10 bài ≈ 25 assert). **1072 test v0 XANH nguyên (zero-breaking).**
+- Gate F9: thêm `wave*.ts`/`runWaves.ts` vào phạm vi `tsconfig.kernel.json` khi thi công (scene phát `params:{}` đầy đủ cho Curve3D).
+- **Chép nhắc F1 (mirror oscillation §11):** wiring P2 ngoài phạm vi (bridge nối `runWaves` vào route đa môn + few-shot translator), nhưng route nối sóng PHẢI có quota — ghi tại đây để không rơi mất.
+- **Đồng bộ đa-pack:** vì mỗi pack (dynamics/dc-circuit/oscillation/waves) có `run*.ts` RIÊNG, **KHÔNG còn điểm chạm chung `planSchema.ts`/`runPhysics.ts`** → merge tuần tự KHÔNG xung đột union, mỗi pack chạy test v0 xanh nguyên. Nối vào bridge đa môn là P2 (ngoài spec).
 
 ## 14. Taxonomy tags đề xuất (registry P0, bridge P2 gắn — v0 §14.5)
 
@@ -577,6 +592,20 @@ Khớp regex `^[a-z0-9-]+(\/[a-z0-9-]+){3}$`, grade 11 GDPT 2018 (C4). Hai tần
 - Chart UI frontend, wiring route/bridge/prompt (P2).
 
 ## 16. Điểm phân vân cho phản biện (trước khi code)
+
+> **✅ ĐÃ PHÂN XỬ (22/08)** — điều phối duyệt (`../reviews/2026-08-22-waves-efield-review.md`). Máy chấm **sóng cơ 10/10** (kể cả pha 5π/3→u=2 exact, log10 √10→13/2, đếm giao thoa bigint hai-cách). 10 chốt:
+> 1. **piScalar chéo pack:** CHỐT **piScalar.ts = FILE NỀN DÙNG CHUNG** (đã ship+commit cùng oscillation, ngang `scalar.ts`) ⇒ waves chỉ IMPORT, **bỏ ràng buộc thứ tự merge** (§13).
+> 2. **Hai op vs ba op:** GIỮ giao thoa/sóng dừng là **QUERY mang `separation`/`length` trên `wave`** (KHÔNG tách op `interference` riêng) — gọn, tái dùng resolution λ/v; few-shot cảnh báo "separation ≠ λ".
+> 3. **λ vô tỉ trong đếm:** GIỮ giả định **λ HỮU TỈ** (đề SGK luôn cho) cho `countIntOpen`; λ mang căn (hiếm) ⇒ so-float có kiểm EPS + **`violation`/cờ rõ ràng**, KHÔNG im lặng (§8 cuối).
+> 4. **`spaceCoeff`/`direction` chống-R1:** CHỐT LLM chép `omega:{20,pi}`, `spaceCoeff:{1,12,pi}`, `direction` từ dấu số hạng x là **CHÉP CẤU TRÚC pt**, KHÔNG tính hộ ⇒ đúng tinh thần chống-R1 (engine suy λ,v,f). Giữ.
+> 5. **Giữ `power`:** GIỮ nguồn điểm `I=P/4πr²` (PiScalar k=−1) — bài "công suất P" phổ biến VN; phần lớn ra SỐ minh bạch, chênh-mức/tỉ-số hai khoảng cách EXACT (π ước sạch, §10.3).
+> 6. **`log10Exact` trần bán-nguyên:** CHỐT **trần bán-nguyên** (mũ nguyên + ½ của 10; KHÔNG mở mũ phần tư — YAGNI). Nhánh số trả `"73.0103"` + `checks[]` "70+10log2"; **KHÔNG thêm field `symbolic`** (checks[] đủ).
+> 7. **`kind2` max/min:** CHẤP NHẬN `kind2` (vì `kind` là discriminant zod) — KHÔNG tách `interference_count_max/min` (union dài hơn không lợi).
+> 8. **Sóng dừng `one-free`:** GIỮ **cả hai boundary** (`two-fixed` + `one-free`) — cùng cỗ máy, one-free (~10 dòng) phủ dây/lò xo một-đầu-tự-do & cột khí.
+> 9. **Scene 9 phần tử:** GIỮ **9 Agent** animate (để "thấy sóng"); ngưỡng render nặng/nhẹ CHỜ thử canvas thật (như D2 playback) — KHÔNG chốt cứng số phần tử ở spec.
+> 10. **`phase_difference` giá trị đầy đủ:** GIỮ trả **2πd/λ nguyên giá trị** (đúng nghĩa đen); phân loại cùng/ngược/vuông pha là việc lời giải — KHÔNG thêm query `phase_relation` ở v1.
+>
+> Finding kiến trúc W1/W2/W3: xem **Changelog phản biện (22/08)** cuối file. Các mục 1–10 dưới đây GIỮ NGUYÊN làm dấu vết câu hỏi gốc.
 
 1. **Phụ thuộc `piScalar.ts` chéo pack:** waves import piScalar.ts do oscillation v1 tạo ⇒ ràng buộc thứ tự merge. **Đề nghị:** đưa `piScalar.ts` thành FILE NỀN dùng chung (ngang `scalar.ts`), tạo trong bước nền — pack nào merge trước cũng không tạo lại. Có nên tách piScalar khỏi "sở hữu" của oscillation ngay từ phản biện này? (Nếu không, waves BẮT BUỘC sau oscillation.)
 
@@ -601,3 +630,29 @@ Khớp regex `^[a-z0-9-]+(\/[a-z0-9-]+){3}$`, grade 11 GDPT 2018 (C4). Hai tần
 ---
 
 *Spec DỰ THẢO — chờ phản biện. Mọi khẳng định về code có sẵn (scalar/certify/recognize/AnimatedAgent, PiScalar/EXACT_COS của oscillation) dựa trên ĐỌC code thật + kế thừa xác minh đã chạy của phản biện đợt 2 (`../reviews/2026-08-21-wave2-specs-review.md`); mọi số trong 10 bài contract W1–W10 đã kiểm tay + đối chiếu float, đếm-hai-cách cho giao thoa. Log/dB là điểm mới duy nhất ngoài trường của oscillation — thiết kế §10 tách nhánh exact (lũy thừa √10) / số (cờ approximate) và tái dùng certifyScalar làm thẩm định, không thêm machinery vô tỉ.*
+
+---
+
+## 17. Changelog phản biện (22/08)
+
+> Áp toàn bộ finding + phân xử ĐÃ DUYỆT của `../reviews/2026-08-22-waves-efield-review.md`. Máy chấm **sóng cơ 10/10 khớp** (logic số học ĐÚNG 100% — di dời nguyên, KHÔNG đổi). Chỉ sửa **KIẾN TRÚC** (tách pack) + import + 1 ghi chú helper. Con số/bài mẫu W1–W10 **KHÔNG đổi giá trị**.
+
+### Bảng finding → vị trí sửa
+
+| Finding | Mức | Sửa gì | Vị trí trong spec |
+|---|---|---|---|
+| **W1** | CAO (kiến trúc) | **TÁCH pack RIÊNG** `waveSchema.ts` (định nghĩa `WavePlanSchema` riêng) + `runWaves.ts` (entry riêng) — soi oscillation/dc-circuit/dynamics. **KHÔNG merge op vào `planSchema.ts`/`runPhysics.ts` v0, KHÔNG đụng `kinematics.ts`.** Bỏ mọi DIFF vào planSchema/runPhysics v0 → "pack riêng additive". Logic số học di dời NGUYÊN. superRefine "cấm trộn op sóng với op chương khác" **TỰ TAN** (plan riêng — union chỉ có `wave`+`sound_source`, không có op chương khác để trộn). Sau tách → zero-breaking (1072 test v0 xanh). | §Phạm vi (header); §2 (bảng "Khung plan"); §5 (header + intro + ràng buộc plan); §11.3 (`runWaves` try/catch); **§13** (viết lại toàn bộ Cấu trúc file & ranh giới) |
+| **W2** | VỪA | Import sai: `PiRat`/`toPiScalar` ở **`piScalar.ts:180/186`**, KHÔNG phải `./oscSchema` (file này KHÔNG tồn tại — chỉ có `oscillationSchema.ts`). Sửa `import { PiRat, toPiScalar } from './piScalar'`. | §5 (dòng import); §13 (danh mục import được phép) |
+| **W3** | THẤP | λ = `divP(2π, spaceCoeff)` ra **PiScalar bậc 0** (π triệt tiêu), chưa phải `Scalar`. Thêm helper cục bộ **`piToScalar(p)=p.k===0?p.s:null`** (1 dòng trong `waves.ts`, KHÔNG sửa `piScalar.ts`) để rút `Scalar` trước khi tính `v=λf`. | §6.2 (mục Bước sóng/tốc độ) |
+
+### Phân xử §16 (10 điểm) — CHỐT
+
+Xem banner đầu §16. Tóm: (1) **piScalar file nền chung** — bỏ ràng buộc thứ tự merge; (2) **giữ query** `separation`/`length` trên `wave` (không tách op interference); (3) **λ hữu tỉ + violation** khi vô tỉ; (4) `spaceCoeff`/`direction` = chép cấu trúc (không tính hộ); (5) **giữ `power`**; (6) log10Exact **trần bán-nguyên**, checks[] đủ (không field symbolic); (7) giữ `kind2`; (8) **one-free giữ cả hai boundary**; (9) scene giữ 9 phần tử (chờ thử canvas); (10) `phase_difference` **giá trị đầy đủ** (không thêm `phase_relation`).
+
+### Điểm son (review xác nhận, KHÔNG sửa)
+
+`log10Exact` "chỉ exact khi tỉ số lũy thừa √10" ĐÚNG + certify được; đếm giao thoa tất định (bigint hai-cách W3=9, W4=10); pha 5π/3→cos lưới→u=2 exact; `piScalar` export ĐỦ (KHÔNG cần sửa `piScalar.ts`). Sóng cơ chín hơn điện trường — ưu tiên code TRƯỚC.
+
+### Ranh giới KHÔNG đụng
+
+CHỈ sửa spec này. KHÔNG đụng `2026-08-22-physics-pack-v1-ac-circuit.md` (agent khác) hay bất kỳ file code nào — pack sóng vẫn hoàn toàn additive (`waveSchema.ts`/`runWaves.ts`/`waves.ts`/`waveCompute.ts`/`waveScene.ts` + test), git status chỉ thấy 2 spec M (waves + efield).
