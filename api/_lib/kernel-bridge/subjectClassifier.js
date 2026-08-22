@@ -54,6 +54,11 @@ const CHEM_LEXICAL = [
   [/phần trăm/, WEAK],
   [/khối lượng/, WEAK],
   [/h[óo]a học/, WEAK],
+  // HÓA HỮU CƠ (D38) — đốt cháy tìm CTPT + este; dấu hiệu hữu cơ đặc trưng (không mơ hồ với Lý/hình)
+  [/đốt cháy/, STRONG], [/hiđrocacbon|hidrocacbon/, STRONG], [/công thức phân tử/, STRONG],
+  [/\bctpt\b/, STRONG], [/\beste\b|\bete\b/, STRONG], [/\bancol\b/, STRONG], [/đồng đẳng/, STRONG],
+  [/anken|ankan|ankin|ankađien/, STRONG], [/\baxit\s+(?:hữu cơ|cacboxylic)/, STRONG],
+  [/tỉ khối/, MED], [/thủy phân|thuỷ phân/, MED],
 ];
 
 // ── VẬT LÝ — từ khóa tiếng Việt ────────────────────────────────────────────────
