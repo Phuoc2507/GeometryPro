@@ -272,22 +272,34 @@ Pipeline: spec (3 agent) → phản biện thiết kế (2 agent) → sửa spec
   từ trường/cảm ứng từ/hạt nhân/phóng xạ/điện phân (chưa có engine). Nguyên tắc: mở dần từng chương
   KHI bộ dịch chương đó tự-kiểm xong — không mở non.
 
+- **D38 · [TỰ QUYẾT] Nối AC + khí-nhiệt + Hóa hữu cơ → 8 chương Lý + 2 mảng Hóa; sửa finding phản biện code.**
+  Bộ dịch ac/gas-heat/hữu-cơ tự-kiểm xong → nối registry + classifier. AC vs DC phân biệt bằng AC_LEXICAL
+  (cảm/dung kháng, tổng trở, tụ/cuộn) cộng dồn điểm circuit để CHẮC thắng. gas-heat keyword đủ mạnh để đề
+  "1 mol khí lý tưởng" thắng tín hiệu "mol" của Hóa (không rơi chem). Hữu cơ nối qua nhánh chem (mở rộng
+  CHEM_TRANSLATOR_PROMPT + dispatch op hữu cơ trong runChem). Phản biện code vòng 2 bắt + đã xử:
+  (1) gas-heat VỪA-1 — heat tin nhãn pha → thêm kiểm pha↔nhiệt độ tất định (mislabel → violation);
+  (2) hữu cơ CAO — guard este thủng khi acid vắng → làm acid BẮT BUỘC (guard độc lập luôn chạy). Nguyên tắc
+  giữ vững: engine TỪ CHỐI khi không chắc, KHÔNG serve số sai âm thầm — đúng giá trị cốt lõi dự án.
+
 ## ═══ TRẠNG THÁI SÁNG 22/08 (đọc trước) ═══
 
 **Đã làm xong đêm nay (đã commit + push nhánh `claude/edu-tech-ecosystem-if51pn`):**
-- **Nối route đa chương Lý (trả nợ D32):** dispatch đề Lý theo CHƯƠNG (classifier tất định + auto-nhận
-  từ plan). **6 chương Lý DÙNG ĐƯỢC end-to-end:** động học, mạch điện, động lực học, dao động, **sóng cơ**,
-  **điện trường**. Dán đề vào ô Toán → nhận diện → /simulate → đáp đã kiểm chứng (ngoài phạm vi thì abstain).
-- **Code + phản biện 5 chương mới:** sóng cơ (35 test), điện trường (50, C6=300000√3 exact), điện xoay
-  chiều RLC (60, π-triệt-tiêu exact), khí+nhiệt (32, self-check chống cộng-thừa latent), + đang code Hóa hữu cơ.
-  Mỗi chương: spec → phản biện "tin số" → code TDD → (đang) phản biện code vòng 2.
-- **Mỗi bộ dịch mọi ví dụ TỰ KIỂM qua engine thật** (ok:true) trước khi nhận.
-- Toàn suite Lý 534 test xanh; bridge/route/classifier xanh; 0 hồi quy Toán/Hóa.
+- **Trả xong nợ D32 — dispatch đề Lý theo CHƯƠNG.** Classifier tất định 2 cấp (môn → chương) + auto-nhận
+  từ plan. **8 CHƯƠNG LÝ dùng được end-to-end:** động học · mạch điện · động lực học · dao động · **sóng cơ**
+  · **điện trường** · **điện xoay chiều RLC** · **khí + nhiệt**. Dán đề vào ô Toán → nhận diện → /simulate →
+  đáp đã kiểm chứng (ngoài phạm vi thì engine TỰ ABSTAIN, không bịa).
+- **HÓA: 2 mảng** — vô cơ (58 phản ứng, có sẵn) + **hữu cơ tầng 1** (đốt cháy→CTPT + este thủy phân) nối route.
+- **Code + phản biện 5 chương/mảng mới:** sóng cơ (35 test) · điện trường (50, C6=300000√3 exact) · điện
+  xoay chiều RLC (60, π-triệt-tiêu exact) · khí+nhiệt (32, self-check chống cộng-thừa latent) · Hóa hữu cơ (37).
+  Mỗi cái: spec → phản biện "tin số" → code TDD → bộ dịch (ví dụ tự-kiểm qua engine) → phản biện code vòng 2.
+- **Phản biện code vòng 2:** Lý 4 chương ~130 phép tính lại độc lập → 0 CAO (sửa 1 VỪA gas-heat: guard
+  pha↔nhiệt độ). Hóa hữu cơ: lõi đốt cháy 10/10 sạch; **1 CAO nhánh este (guard thủng khi acid vắng) ĐANG SỬA**.
+- **TOÀN SUITE 1954 test XANH (226 file); `npm run build` production SẠCH.** 0 hồi quy Toán/Hóa.
 
-**Còn dở (đang chạy agent / kế tiếp):**
-- Nối route điện-xoay-chiều + khí-nhiệt (bộ dịch đang viết) → thêm 2 chương → 8 chương Lý.
-- Hóa hữu cơ: đang code (áp finding phản biện atom-map + guard độc lập), rồi nối route (chương Hóa thứ 2).
-- Phản biện code vòng 2 các chương mới + full suite + build production.
+**Còn lại (nhỏ):**
+- Sửa 1 CAO + 1 VỪA nhánh este Hóa hữu cơ (làm acid bắt buộc → guard độc lập luôn chạy; fix `finish`) — agent đang chạy.
+- **Smoke test LIVE cần VILAO_API_KEY** (môi trường này KHÔNG có key): mọi tầng TẤT ĐỊNH đã test xanh, nhưng
+  bước LLM dịch đề→plan chỉ mới kiểm bằng cách chạy lại ví dụ prompt qua engine — bạn nên thử tay 1 đề mỗi chương.
 
 **CẦN BẠN QUYẾT (D36):** spec điện-xoay-chiều nói route phải TÍNH PHÍ (quota), ngược D22 (Lý/Hóa ẩn,
 không trừ credit). Tôi tạm theo D22. Nếu muốn AC (đỉnh đề thi ĐH) thành nội dung tính phí → báo.
