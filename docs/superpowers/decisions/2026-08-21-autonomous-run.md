@@ -171,6 +171,19 @@ Pipeline: spec (3 agent) → phản biện thiết kế (2 agent) → sửa spec
   đồng scene (contents không cập nhật sản phẩm; color_change chỉ nhạt dần không
   đổi sang màu sản phẩm) — việc nâng engine scene sau, không chặn demo.
 
+- **D28 · Phản biện cầu LLM: PHẢI vá hậu-kiểm trước khi nối frontend.** Báo cáo
+  `reviews/2026-08-22-bridge-review.md`. Xác nhận 6 điểm D25 + 5 mới, tái hiện
+  thật. Giao agent vá: (1) module hậu-kiểm tất định trong solveSubject — B1 đktc/
+  đkc + B2 axis:y reject cứng, B3/B4/B5 warn; (2) sửa câu chữ 2 prompt (phản-ví-
+  dụ cho A1/A2/A3/A5/A6, luật dấu a, hệ đơn vị); (3) classifier STOP-words ion/
+  điện-trường/hạt-nhân → không nhận nhầm sang physics; (4) auth: thêm chặn
+  `blocked`/hết hạn (KHÔNG trừ credit, giữ D22) + rate-limit thô chống đốt tiền
+  + map error.message cuối route. KHÔNG thêm từ khóa mạch điện vào classifier
+  (route chưa có nhánh circuit — thứ tự: mở nhánh circuit trước).
+- **D29 · [CHỜ NGƯỜI DÙNG] rate-limit:** tôi cho agent thêm trần thô ~20-30 req/
+  phút/user để chống đốt tiền LLM (token rò rỉ). KHÔNG phải quota tính tiền —
+  vẫn đúng "không trừ credit". Nếu bạn thấy thừa (tính năng đã ẩn) thì bỏ được.
+
 ## Quyết định chờ ghi tiếp (sẽ bổ sung trong đêm)
 
 - Phân xử 5 điểm lệch giữa spec kiến trúc và spec Lý (theo khuyến nghị phản biện).
