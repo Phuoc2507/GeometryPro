@@ -14379,8 +14379,8 @@ var EsterHydrolysisOp = external_exports.object({
   // 'CH3COOC2H5' — công thức cô đặc (đọc, KHÔNG tính)
   alcohol: external_exports.string().min(1),
   // 'C2H5OH' — nửa ancol tách ra R′OH
-  acid: external_exports.string().min(1).optional(),
-  // H2: nửa axit RCOOH — bật GUARD ĐỘC LẬP este hóa (§15.7b)
+  acid: external_exports.string().min(1),
+  // H2/CAO-1: nửa axit RCOOH — BẮT BUỘC để GUARD ĐỘC LẬP este hóa (ester=acid+alcohol−H2O) LUÔN chạy, chặn đọc mù nửa ancol (§15.7b)
   base: external_exports.literal("NaOH").default("NaOH"),
   // v1 chỉ NaOH
   esterAmount: AmountSchema.optional(),
@@ -16351,7 +16351,7 @@ function runCombustion(unknown, plan, emptyScene, trace, errors, violations, vm,
   const built = buildModel(unknown, plan, vm, trace);
   if (!built.ok) {
     errors.push({ message: built.error });
-    return finish(false);
+    return { ok: false, reactions: [], ledger: [], answers: [], scene: emptyScene, violations, errors, trace };
   }
   const model = built.model;
   const sol = solveFormula(model, trace);
@@ -16428,22 +16428,18 @@ function runEster(op, plan, emptyScene, trace, errors, violations, vm, vmLabel) 
   }
   const naohAtoms = atomMap("NaOH");
   const h2oAtoms = atomMap("H2O");
-  if (op.acid) {
-    let acidAtoms;
-    try {
-      acidAtoms = atomMap(op.acid);
-    } catch (e) {
-      return fail4(e instanceof Error ? e.message : String(e));
-    }
-    const expected = subMaps(addMaps(acidAtoms, alcoholAtoms), h2oAtoms);
-    if (!sameAtomMap(expected, esterAtoms)) {
-      violations.push({ law: "gh\xE9p este (este h\xF3a ng\u01B0\u1EE3c)", detail: `axit "${op.acid}" + ancol "${op.alcohol}" \u2212 H2O = ${mapToFormula(expected)} \u2260 este "${op.ester}" (${mapToFormula(esterAtoms)}) \u2014 khai SAI n\u1EEDa axit/ancol, KH\xD4NG tr\u1EA3 \u0111\xE1p s\u1ED1` });
-      return done(false, [], [], []);
-    }
-    trace.push("guard este h\xF3a kh\u1EDBp: axit + ancol \u2212 H2O = ester");
-  } else {
-    trace.push('C\u1EA2NH B\xC1O (review H2): kh\xF4ng khai "acid" \u21D2 KH\xD4NG c\xF3 guard \u0111\u1ED9c l\u1EADp cho n\u1EEDa ancol; \u0111\u1ECDc nh\u1EA7m ancol \u21D2 kh\u1ED1i l\u01B0\u1EE3ng mu\u1ED1i c\xF3 th\u1EC3 sai \xE2m th\u1EA7m. Khuy\u1EBFn ngh\u1ECB khai acid.');
+  let acidAtoms;
+  try {
+    acidAtoms = atomMap(op.acid);
+  } catch (e) {
+    return fail4(e instanceof Error ? e.message : String(e));
   }
+  const expected = subMaps(addMaps(acidAtoms, alcoholAtoms), h2oAtoms);
+  if (!sameAtomMap(expected, esterAtoms)) {
+    violations.push({ law: "gh\xE9p este (este h\xF3a ng\u01B0\u1EE3c)", detail: `axit "${op.acid}" + ancol "${op.alcohol}" \u2212 H2O = ${mapToFormula(expected)} \u2260 este "${op.ester}" (${mapToFormula(esterAtoms)}) \u2014 khai SAI n\u1EEDa axit/ancol, KH\xD4NG tr\u1EA3 \u0111\xE1p s\u1ED1` });
+    return done(false, [], [], []);
+  }
+  trace.push("guard este h\xF3a kh\u1EDBp: axit + ancol \u2212 H2O = ester");
   const saltAtoms = subMaps(addMaps(esterAtoms, naohAtoms), alcoholAtoms);
   for (const [el, c] of saltAtoms) {
     if (c < 0) {

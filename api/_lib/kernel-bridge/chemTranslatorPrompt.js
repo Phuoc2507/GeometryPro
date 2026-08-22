@@ -181,7 +181,7 @@ ABSTAIN mọi thứ khác (xem danh sách ở mục "KHI NÀO TỪ CHỐI" đầ
   · "tol" — khai khi số tỉ khối/M ĐÃ LÀM TRÒN (vd d/kk = 2,07 ⇒ "tol":"0,01"); số CHÍNH XÁC/ĐẸP (d/H2 = 15; M = 88) ⇒ BỎ "tol" (engine so khớp exact).
 - { "op": "ester_hydrolysis", "ester": "CH3COOC2H5", "acid": "CH3COOH", "alcohol": "C2H5OH", "base": "NaOH", "esterAmount": {...}, "baseAmount": {...} }
   · "ester" — công thức cô đặc đọc từ đề (etyl axetat ⇒ "CH3COOC2H5"). "alcohol" — nửa ancol R′OH tách ra ("C2H5OH"). "acid" — nửa axit RCOOH ("CH3COOH"). BẠN chỉ ĐỌC cấu trúc, KHÔNG tính muối — engine ráp muối bằng bảo toàn nguyên tử.
-  · KHUYẾN NGHỊ MẠNH khai CẢ "acid" lẫn "alcohol": engine bật GUARD độc lập (kiểm ester = acid + alcohol − H2O), bắt được lỗi đọc nhầm nửa ancol/axit. Chỉ khai "alcohol" vẫn chạy nhưng MẤT lớp chặn đó.
+  · BẮT BUỘC khai CẢ "acid" lẫn "alcohol": engine bật GUARD độc lập LUÔN chạy (kiểm ester = acid + alcohol − H2O), bắt lỗi đọc nhầm nửa ancol/axit. THIẾU "acid" ⇒ plan KHÔNG hợp lệ, engine TỪ CHỐI (không serve khối lượng muối/ancol sai âm thầm).
   · "base" luôn "NaOH" (v1). "esterAmount"/"baseAmount" dùng CÙNG dạng amount như vô cơ ({ "grams" } | { "mol" } | { "solution" } | { "excess": true }). "NaOH vừa đủ"/"dư" ⇒ baseAmount { "excess": true }.
 
 ### QUERIES HỮU CƠ (đúng cái đề hỏi)

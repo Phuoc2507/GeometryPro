@@ -6,7 +6,7 @@
 //
 // Đã áp toàn bộ PHẢN BIỆN (docs/.../2026-08-22-organic-review.md):
 //   H1 (CAO)  — match query→muối/sản phẩm bằng ATOM-MAP (parseFormula 2 vế), KHÔNG so chuỗi.
-//   H2 (VỪA)  — GUARD ĐỘC LẬP este: khai `acid` ⇒ kiểm `ester == acid + alcohol − H2O`.
+//   H2/CAO-1  — GUARD ĐỘC LẬP este: `acid` BẮT BUỘC ⇒ LUÔN kiểm `ester == acid + alcohol − H2O`.
 //   H3 (VỪA)  — dựng "ledger hư cấu" sản phẩm đốt (CO2/H2O/N2/A) rồi trả mass/mol/V qua atom-map.
 //   H4 (VỪA)  — guard nO ≥ 0 (và nC,nH > 0) khi suy O từ khối lượng ⇒ âm ⇒ "dữ kiện mâu thuẫn".
 //   H5 (VỪA)  — class k=1 thiếu neo ⇒ LIỆT KÊ candidates (không bail cụt).
@@ -418,7 +418,10 @@ function runCombustion(
   trace: string[], errors: { message: string }[], violations: Violation[], vm: Rat, vmLabel: string
 ): ChemResult {
   const built = buildModel(unknown, plan, vm, trace);
-  if (!built.ok) { errors.push({ message: built.error }); return finish(false); }
+  if (!built.ok) {
+    errors.push({ message: built.error });
+    return { ok: false, reactions: [], ledger: [], answers: [], scene: emptyScene, violations, errors, trace };
+  }
   const model = built.model;
   const sol = solveFormula(model, trace);
   if (sol.kind === 'unique') trace.push(`CTPT ${model.name} = ${sol.formula} (CTĐGN ${sol.empirical}, k=${sol.k}, M=${ratToString(sol.M)})`);
@@ -486,19 +489,17 @@ function runEster(
   const naohAtoms = atomMap('NaOH');
   const h2oAtoms = atomMap('H2O');
 
-  // H2 — GUARD ĐỘC LẬP: khai acid ⇒ kiểm este hóa ngược (ester == acid + alcohol − H2O).
-  if (op.acid) {
-    let acidAtoms: AMap;
-    try { acidAtoms = atomMap(op.acid); } catch (e) { return fail(e instanceof Error ? e.message : String(e)); }
-    const expected = subMaps(addMaps(acidAtoms, alcoholAtoms), h2oAtoms);
-    if (!sameAtomMap(expected, esterAtoms)) {
-      violations.push({ law: 'ghép este (este hóa ngược)', detail: `axit "${op.acid}" + ancol "${op.alcohol}" − H2O = ${mapToFormula(expected)} ≠ este "${op.ester}" (${mapToFormula(esterAtoms)}) — khai SAI nửa axit/ancol, KHÔNG trả đáp số` });
-      return done(false, [], [], []);
-    }
-    trace.push('guard este hóa khớp: axit + ancol − H2O = ester');
-  } else {
-    trace.push('CẢNH BÁO (review H2): không khai "acid" ⇒ KHÔNG có guard độc lập cho nửa ancol; đọc nhầm ancol ⇒ khối lượng muối có thể sai âm thầm. Khuyến nghị khai acid.');
+  // H2/CAO-1 — GUARD ĐỘC LẬP (acid BẮT BUỘC ở schema) ⇒ LUÔN kiểm este hóa ngược
+  // (ester == acid + alcohol − H2O). Nhờ đó muối = ester + NaOH − alcohol được NEO vào
+  // axit độc lập (khi guard PASS ⇒ ester − alcohol = acid − H2O), không đọc mù nửa ancol.
+  let acidAtoms: AMap;
+  try { acidAtoms = atomMap(op.acid); } catch (e) { return fail(e instanceof Error ? e.message : String(e)); }
+  const expected = subMaps(addMaps(acidAtoms, alcoholAtoms), h2oAtoms);
+  if (!sameAtomMap(expected, esterAtoms)) {
+    violations.push({ law: 'ghép este (este hóa ngược)', detail: `axit "${op.acid}" + ancol "${op.alcohol}" − H2O = ${mapToFormula(expected)} ≠ este "${op.ester}" (${mapToFormula(esterAtoms)}) — khai SAI nửa axit/ancol, KHÔNG trả đáp số` });
+    return done(false, [], [], []);
   }
+  trace.push('guard este hóa khớp: axit + ancol − H2O = ester');
 
   // Muối = ester + NaOH − alcohol (cộng/trừ atom-map). Guard số nguyên tử âm.
   const saltAtoms = subMaps(addMaps(esterAtoms, naohAtoms), alcoholAtoms);

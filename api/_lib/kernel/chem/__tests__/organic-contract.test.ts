@@ -111,7 +111,7 @@ describe('Hữu cơ — 10 bài contract (spec §11)', () => {
     const r = runChem({
       ops: [
         {
-          op: 'ester_hydrolysis', ester: 'CH3COOC2H5', alcohol: 'C2H5OH',
+          op: 'ester_hydrolysis', ester: 'CH3COOC2H5', acid: 'CH3COOH', alcohol: 'C2H5OH',
           esterAmount: { grams: '8,8' }, baseAmount: { excess: true },
         },
       ],
@@ -219,6 +219,26 @@ describe('Hữu cơ — H2 (guard độc lập ester): đọc nhầm nửa ancol
     });
     expect(r.ok).toBe(true);
     expect(ans(r).exact).toBe('41/5');
+  });
+
+  // CAO-1 (review 2026-08-22): trước fix, acid OPTIONAL ⇒ đường mặc định (KHÔNG khai acid) TẮT
+  // guard ⇒ đọc nhầm ancol CH3OH trả 48/5 (9,6g) mù với ok:true. Nay acid BẮT BUỘC ⇒ schema
+  // TỪ CHỐI ngay khi thiếu acid: guard không còn thủng theo mặc định, KHÔNG serve số sai âm thầm.
+  it('CAO-1: THIẾU acid (đúng ca review, ancol đọc nhầm CH3OH) ⇒ schema từ chối ok:false, KHÔNG trả 9,6g (48/5)', () => {
+    const r = runChem({
+      ops: [
+        {
+          op: 'ester_hydrolysis', ester: 'CH3COOC2H5', alcohol: 'CH3OH',
+          esterAmount: { grams: '8,8' }, baseAmount: { excess: true },
+        },
+      ],
+      queries: [{ kind: 'mass', of: 'C3H5O2Na' }],
+    });
+    expect(r.ok).toBe(false);
+    expect(r.errors.length).toBeGreaterThan(0);
+    expect(r.errors.some((e) => /không hợp lệ|acid/i.test(e.message))).toBe(true);
+    // TUYỆT ĐỐI không lọt 48/5 (9,6g) — con số sai âm thầm mà review cảnh báo.
+    expect(r.answers.every((a) => a.exact !== '48/5')).toBe(true);
   });
 });
 

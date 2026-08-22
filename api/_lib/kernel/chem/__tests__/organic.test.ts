@@ -144,6 +144,40 @@ describe('suy biến / lỗi — thà từ chối còn hơn bịa', () => {
   });
 });
 
+describe('VỪA-1 (review 2026-08-22): nhánh buildModel-fail trả ĐÚNG KHUÔN, KHÔNG leak "finish is not defined"', () => {
+  // Trước fix: organic.ts:421 gọi `finish(false)` (hàm không tồn tại) ⇒ ReferenceError,
+  // bị outer-catch của runOrganic nuốt thành error "lỗi engine hữu cơ: finish is not defined".
+  // Nay trả thẳng { ok:false, ... } đúng shape ⇒ chỉ còn lý do hóa học SẠCH, không leak.
+  it('measure vapor_density ref LẠ (khí ngoài bảng SGK: "Xe") ⇒ ok:false với lý do sạch, KHÔNG "finish is not defined"', () => {
+    const r = runChem({
+      ops: [
+        { op: 'organic_unknown', name: 'A', class: 'ankan' },
+        { op: 'combustion', of: 'A', co2: { mol: '0,3' }, h2o: { mol: '0,4' } },
+        { op: 'measure', of: 'A', kind: 'vapor_density', ref: 'Xe', value: '2' },
+      ],
+      queries: [{ kind: 'molecular_formula', of: 'A' }],
+    });
+    expect(r.ok).toBe(false);
+    expect(r.errors.length).toBeGreaterThan(0);
+    expect(r.errors.some((e) => /nguyên tố lạ|không hợp lệ/i.test(e.message))).toBe(true);
+    expect(r.errors.every((e) => !/finish is not defined/i.test(e.message))).toBe(true);
+  });
+
+  it('measure vapor_density THIẾU ref ⇒ ok:false báo "thiếu ref", KHÔNG "finish is not defined"', () => {
+    const r = runChem({
+      ops: [
+        { op: 'organic_unknown', name: 'A', class: 'ankan' },
+        { op: 'combustion', of: 'A', co2: { mol: '0,3' }, h2o: { mol: '0,4' } },
+        { op: 'measure', of: 'A', kind: 'vapor_density', value: '2' },
+      ],
+      queries: [{ kind: 'molecular_formula', of: 'A' }],
+    });
+    expect(r.ok).toBe(false);
+    expect(r.errors.some((e) => /thiếu.*ref|ref/i.test(e.message))).toBe(true);
+    expect(r.errors.every((e) => !/finish is not defined/i.test(e.message))).toBe(true);
+  });
+});
+
 describe('chống ảo giác — given_mass sản phẩm đốt', () => {
   it('O1 + đề BỊA given_mass(CO2)=10 (thật 8,8) → ok:false + violation', () => {
     const r = runChem({
@@ -211,7 +245,7 @@ describe('H1 — atom-map match bền với biến thể chuỗi công thức', 
   it('O7 nhưng query muối viết "C2H3O2Na" (chuỗi engine ráp) → vẫn 41/5', () => {
     const r = runChem({
       ops: [
-        { op: 'ester_hydrolysis', ester: 'CH3COOC2H5', alcohol: 'C2H5OH', esterAmount: { grams: '8,8' }, baseAmount: { excess: true } },
+        { op: 'ester_hydrolysis', ester: 'CH3COOC2H5', acid: 'CH3COOH', alcohol: 'C2H5OH', esterAmount: { grams: '8,8' }, baseAmount: { excess: true } },
       ],
       queries: [{ kind: 'mass', of: 'C2H3O2Na' }],
     });
@@ -222,7 +256,7 @@ describe('H1 — atom-map match bền với biến thể chuỗi công thức', 
   it('O7 query khối lượng ancol C2H5OH → 4,6g (23/5)', () => {
     const r = runChem({
       ops: [
-        { op: 'ester_hydrolysis', ester: 'CH3COOC2H5', alcohol: 'C2H5OH', esterAmount: { grams: '8,8' }, baseAmount: { excess: true } },
+        { op: 'ester_hydrolysis', ester: 'CH3COOC2H5', acid: 'CH3COOH', alcohol: 'C2H5OH', esterAmount: { grams: '8,8' }, baseAmount: { excess: true } },
       ],
       queries: [{ kind: 'mass', of: 'C2H5OH' }],
     });

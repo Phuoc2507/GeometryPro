@@ -77,7 +77,7 @@ export const EsterHydrolysisOp = z.object({
   op: z.literal('ester_hydrolysis'),
   ester: z.string().min(1),                // 'CH3COOC2H5' — công thức cô đặc (đọc, KHÔNG tính)
   alcohol: z.string().min(1),              // 'C2H5OH' — nửa ancol tách ra R′OH
-  acid: z.string().min(1).optional(),      // H2: nửa axit RCOOH — bật GUARD ĐỘC LẬP este hóa (§15.7b)
+  acid: z.string().min(1),                 // H2/CAO-1: nửa axit RCOOH — BẮT BUỘC để GUARD ĐỘC LẬP este hóa (ester=acid+alcohol−H2O) LUÔN chạy, chặn đọc mù nửa ancol (§15.7b)
   base: z.literal('NaOH').default('NaOH'), // v1 chỉ NaOH
   esterAmount: AmountSchema.optional(),
   baseAmount: AmountSchema.optional(),
