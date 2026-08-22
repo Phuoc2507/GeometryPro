@@ -1,9 +1,21 @@
 // api/_lib/kernel-bridge/solveSubject.js
-// Đường ống "engine mode" cho LÝ & HÓA: đề → (LLM Translator) → Plan JSON → runPhysics/runChem → đáp.
+// Đường ống "engine mode" cho LÝ & HÓA: đề → (LLM Translator) → Plan JSON → run{Chương}/runChem → đáp.
 // Bắt chước solveWithKernel.js (bản hình học): import engine từ bundle đã build (kernel-dist) để chạy
 // trong route .js thuần; LLM CHỈ dịch, engine tính đóng + tự kiểm + tự abstain (không bịa).
-import { runPhysics, PhysicsPlanSchema, chem } from '../kernel-dist/index.mjs';
+//
+// ĐA CHƯƠNG LÝ (P — nối engine đã build vào route): Vật lý có NHIỀU chương, mỗi chương một pack RIÊNG
+// (schema + run): kinematics (động học), dynamics (động lực học), circuit (mạch điện), oscillation
+// (dao động). physicsChapterClassifier (tất định, không LLM) chọn CHƯƠNG → dispatch tới đúng
+// {prompt dịch, schema, engine}. Chương CHƯA có bộ dịch (prompt=null) ⇒ abstain rõ ràng, KHÔNG bịa.
+import {
+  runPhysics, PhysicsPlanSchema,
+  runCircuit, CircuitPlanSchema,
+  runDynamics, DynamicsPlanSchema,
+  runOscillation, OscillationPlanSchema,
+  chem,
+} from '../kernel-dist/index.mjs';
 import { callVilao } from '../vilao.js';
+import { classifyPhysicsChapter } from './physicsChapterClassifier.js';
 import { PHYSICS_TRANSLATOR_PROMPT } from './physicsTranslatorPrompt.js';
 import { CHEM_TRANSLATOR_PROMPT } from './chemTranslatorPrompt.js';
 import { postcheckPhysics, postcheckChem } from './planPostcheck.js';
@@ -62,32 +74,88 @@ async function translate(prompt, schema, problem, options = {}) {
   return parsed.data;
 }
 
+// ── SÂN KHẤU (scene) chuẩn hoá theo chương — frontend đọc scene.geometry (+ playback/units) ─────
+// Mọi chương phát `geometry` (GeometryData) để PhysicsSceneView vẽ; circuit kèm bảng R/U/I/P + layout.
+function sceneMotion(r) {
+  // kinematics / dynamics / oscillation: cảnh chuyển động + timeline + charts.
+  const m = r.meta || {};
+  const units = m.units // kinematics: {length,time}
+    || { length: m.length /* oscillation base len */ || 'm', time: 's' };
+  return {
+    geometry: r.geometry,
+    charts: r.charts || [],
+    playback: m.playback ?? null,
+    units,
+    tPhys: m.tPhys ?? null,
+  };
+}
+function sceneCircuit(r) {
+  // circuit: sơ đồ TĨNH (không playback) + bảng đáp R/U/I/P + layout lưới.
+  return {
+    geometry: r.geometry,
+    charts: [],
+    table: r.table || [],
+    circuitLayout: r.circuitLayout ?? null,
+    playback: null,
+    units: { length: '', time: '' },
+    meta: r.meta ?? null,
+  };
+}
+
+// ── ĐĂNG KÝ CHƯƠNG LÝ: chương → {schema, run, prompt, scene, postcheck} ─────────────
+// prompt=null: engine đã có nhưng CHƯA mở bộ dịch tự nhiên (đề dạng đó tạm abstain, KHÔNG bịa).
+// postcheck: chỉ kinematics/dynamics chia sẻ ngữ nghĩa ops/km-h của postcheckPhysics; circuit/oscillation
+// dựa hoàn toàn vào superRefine của schema (postcheckPhysics inert với chúng — bỏ cho sạch).
+const NO_POSTCHECK = () => ({ ok: true, warnings: [] });
+const PHYSICS_CHAPTERS = {
+  kinematics: { label: 'động học', schema: PhysicsPlanSchema, run: runPhysics, prompt: PHYSICS_TRANSLATOR_PROMPT, scene: sceneMotion, postcheck: postcheckPhysics },
+  dynamics: { label: 'động lực học', schema: DynamicsPlanSchema, run: runDynamics, prompt: null, scene: sceneMotion, postcheck: postcheckPhysics },
+  circuit: { label: 'mạch điện', schema: CircuitPlanSchema, run: runCircuit, prompt: null, scene: sceneCircuit, postcheck: NO_POSTCHECK },
+  oscillation: { label: 'dao động', schema: OscillationPlanSchema, run: runOscillation, prompt: null, scene: sceneMotion, postcheck: NO_POSTCHECK },
+};
+
+// Auto-nhận chương TỪ PLAN (dry-run/test cấp plan trần): schema các chương RỜI NHAU (kinematics op
+// mover1d/free_fall/projectile; dynamics body/force/string; oscillation oscillator; circuit có source+circuit,
+// KHÔNG ops) ⇒ safeParse đúng một chương. Thứ tự thử: circuit → oscillation → dynamics → kinematics.
+function detectChapterFromPlan(plan) {
+  for (const ch of ['circuit', 'oscillation', 'dynamics', 'kinematics']) {
+    if (PHYSICS_CHAPTERS[ch].schema.safeParse(plan).success) return ch;
+  }
+  return 'kinematics'; // không khớp cái nào ⇒ để kinematics ném lỗi schema rõ ràng
+}
+
 export async function physicsPlanFromProblem(problem, options = {}) {
-  return translate(PHYSICS_TRANSLATOR_PROMPT, PhysicsPlanSchema, problem, options);
+  // Giữ tương thích: mặc định dịch KINEMATICS (nhánh cũ). options.chapter để dispatch chương khác.
+  const chapter = options.chapter && PHYSICS_CHAPTERS[options.chapter] ? options.chapter : 'kinematics';
+  const entry = PHYSICS_CHAPTERS[chapter];
+  if (!entry.prompt) {
+    const e = new Error(`Chương "${entry.label}" đã có engine nhưng chưa mở bộ dịch tự nhiên`);
+    e.abstained = true;
+    throw e;
+  }
+  return translate(entry.prompt, entry.schema, problem, options);
 }
 export async function chemPlanFromProblem(problem, options = {}) {
   return translate(CHEM_TRANSLATOR_PROMPT, ChemPlanSchema, problem, options);
 }
 
 // ── Chạy engine trên một PLAN (KHÔNG qua LLM) — điểm vào tất định cho dry-run/test ──
-// Chuẩn hoá về khuôn chung { subject, ok, answers, violations, errors, trace, scene } + phần riêng môn.
-export function solvePhysicsPlan(plan) {
-  const r = runPhysics(plan);
+// chapter tùy chọn; bỏ trống ⇒ auto-nhận từ hình dạng plan. Chuẩn hoá về khuôn chung
+// { subject, chapter, ok, answers, violations, errors, trace, scene } + phần riêng chương.
+export function solvePhysicsPlan(plan, chapter) {
+  const ch = chapter && PHYSICS_CHAPTERS[chapter] ? chapter : detectChapterFromPlan(plan);
+  const entry = PHYSICS_CHAPTERS[ch];
+  const r = entry.run(plan);
   return jsonSafe({
     subject: 'physics',
+    chapter: ch,
     ok: r.ok,
     answers: r.answers,
     violations: r.violations,
     errors: r.errors,
     trace: r.checks,                     // "trace" chung = nhật ký tự kiểm của Lý
-    scene: {                              // gói phần TRÌNH BÀY của Lý (canvas + timeline + charts)
-      geometry: r.geometry,
-      charts: r.charts,
-      playback: r.meta?.playback ?? null,
-      units: r.meta?.units ?? null,
-      tPhys: r.meta?.tPhys ?? null,
-    },
-    checks: r.checks,                     // phần riêng Lý (tường minh)
+    scene: entry.scene(r),               // gói phần TRÌNH BÀY riêng chương (canvas + timeline/bảng)
+    checks: r.checks,                    // phần riêng Lý (tường minh)
     meta: r.meta,
   });
 }
@@ -110,22 +178,24 @@ export function solveChemPlan(plan) {
 
 // ── Pipeline đầy đủ (đề → dịch → engine). Dịch hỏng ⇒ trả object ok:false (KHÔNG ném) ────
 // để route quyết định (báo "ngoài phạm vi" / rơi về), giống solveWithKernel.solveProblem.
-function translateFailure(subject, e) {
+function translateFailure(subject, e, extra = {}) {
   return {
     subject, plan: null, ok: false, answers: [], violations: [],
     errors: [{ message: e && e.message ? e.message : 'lỗi dịch' }],
     trace: [], scene: null,
     abstained: !!(e && e.abstained),
+    ...extra,
   };
 }
 
 // Hậu-kiểm REJECT ⇒ object ok:false GIỮ plan (để route log lại) — engine KHÔNG được chạy.
-function postcheckFailure(subject, plan, reason) {
+function postcheckFailure(subject, plan, reason, extra = {}) {
   return {
     subject, plan, ok: false, answers: [], violations: [],
     errors: [{ message: reason, stage: 'postcheck' }],
     trace: [], scene: null,
     postcheck: { ok: false, reason },
+    ...extra,
   };
 }
 
@@ -144,17 +214,23 @@ function attachWarnings(solved, warnings) {
 }
 
 export async function solvePhysicsProblem(problem, options = {}) {
+  // Chương do prefilter tất định chọn (không LLM); options.chapter cưỡng chế cho test.
+  const chapter = options.chapter && PHYSICS_CHAPTERS[options.chapter]
+    ? options.chapter
+    : classifyPhysicsChapter(problem);
+  const entry = PHYSICS_CHAPTERS[chapter];
+
   let plan;
   try {
-    plan = await physicsPlanFromProblem(problem, options);
+    plan = await physicsPlanFromProblem(problem, { ...options, chapter });
   } catch (e) {
-    return translateFailure('physics', e);
+    return translateFailure('physics', e, { chapter });
   }
   // HẬU-KIỂM tất định: chạy NGAY SAU safeParse (trong translate), TRƯỚC engine.
   // Reject cứng ⇒ trả ok:false, KHÔNG chạy engine (chống "đáp sai âm thầm").
-  const pc = postcheckPhysics(problem, plan);
-  if (!pc.ok) return postcheckFailure('physics', plan, pc.reason);
-  return attachWarnings({ plan, ...solvePhysicsPlan(plan) }, pc.warnings);
+  const pc = entry.postcheck(problem, plan);
+  if (!pc.ok) return postcheckFailure('physics', plan, pc.reason, { chapter });
+  return attachWarnings({ plan, ...solvePhysicsPlan(plan, chapter) }, pc.warnings);
 }
 
 export async function solveChemProblem(problem, options = {}) {

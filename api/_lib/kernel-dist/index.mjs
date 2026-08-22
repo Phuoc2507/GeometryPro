@@ -280,8 +280,8 @@ var ZodError = class _ZodError extends Error {
   constructor(issues) {
     super();
     this.issues = [];
-    this.addIssue = (sub4) => {
-      this.issues = [...this.issues, sub4];
+    this.addIssue = (sub5) => {
+      this.issues = [...this.issues, sub5];
     };
     this.addIssues = (subs = []) => {
       this.issues = [...this.issues, ...subs];
@@ -348,13 +348,13 @@ var ZodError = class _ZodError extends Error {
   flatten(mapper = (issue) => issue.message) {
     const fieldErrors = {};
     const formErrors = [];
-    for (const sub4 of this.issues) {
-      if (sub4.path.length > 0) {
-        const firstEl = sub4.path[0];
+    for (const sub5 of this.issues) {
+      if (sub5.path.length > 0) {
+        const firstEl = sub5.path[0];
         fieldErrors[firstEl] = fieldErrors[firstEl] || [];
-        fieldErrors[firstEl].push(mapper(sub4));
+        fieldErrors[firstEl].push(mapper(sub5));
       } else {
-        formErrors.push(mapper(sub4));
+        formErrors.push(mapper(sub5));
       }
     }
     return { formErrors, fieldErrors };
@@ -551,9 +551,9 @@ var ParseStatus = class _ParseStatus {
   }
   static async mergeObjectAsync(status, pairs) {
     const syncPairs = [];
-    for (const pair of pairs) {
-      const key = await pair.key;
-      const value = await pair.value;
+    for (const pair2 of pairs) {
+      const key = await pair2.key;
+      const value = await pair2.value;
       syncPairs.push({
         key,
         value
@@ -563,8 +563,8 @@ var ParseStatus = class _ParseStatus {
   }
   static mergeObjectSync(status, pairs) {
     const finalObject = {};
-    for (const pair of pairs) {
-      const { key, value } = pair;
+    for (const pair2 of pairs) {
+      const { key, value } = pair2;
       if (key.status === "aborted")
         return INVALID;
       if (value.status === "aborted")
@@ -573,7 +573,7 @@ var ParseStatus = class _ParseStatus {
         status.dirty();
       if (value.status === "dirty")
         status.dirty();
-      if (key.value !== "__proto__" && (typeof value.value !== "undefined" || pair.alwaysSet)) {
+      if (key.value !== "__proto__" && (typeof value.value !== "undefined" || pair2.alwaysSet)) {
         finalObject[key.value] = value.value;
       }
     }
@@ -2456,13 +2456,13 @@ var ZodObject = class _ZodObject extends ZodType {
     if (ctx.common.async) {
       return Promise.resolve().then(async () => {
         const syncPairs = [];
-        for (const pair of pairs) {
-          const key = await pair.key;
-          const value = await pair.value;
+        for (const pair2 of pairs) {
+          const key = await pair2.key;
+          const value = await pair2.value;
           syncPairs.push({
             key,
             value,
-            alwaysSet: pair.alwaysSet
+            alwaysSet: pair2.alwaysSet
           });
         }
         return syncPairs;
@@ -3147,9 +3147,9 @@ var ZodMap = class extends ZodType {
     if (ctx.common.async) {
       const finalMap = /* @__PURE__ */ new Map();
       return Promise.resolve().then(async () => {
-        for (const pair of pairs) {
-          const key = await pair.key;
-          const value = await pair.value;
+        for (const pair2 of pairs) {
+          const key = await pair2.key;
+          const value = await pair2.value;
           if (key.status === "aborted" || value.status === "aborted") {
             return INVALID;
           }
@@ -3162,9 +3162,9 @@ var ZodMap = class extends ZodType {
       });
     } else {
       const finalMap = /* @__PURE__ */ new Map();
-      for (const pair of pairs) {
-        const key = pair.key;
-        const value = pair.value;
+      for (const pair2 of pairs) {
+        const key = pair2.key;
+        const value = pair2.value;
         if (key.status === "aborted" || value.status === "aborted") {
           return INVALID;
         }
@@ -3254,8 +3254,8 @@ var ZodSet = class _ZodSet extends ZodType {
       maxSize: { value: maxSize, message: errorUtil.toString(message) }
     });
   }
-  size(size, message) {
-    return this.min(size, message).max(size, message);
+  size(size2, message) {
+    return this.min(size2, message).max(size2, message);
   }
   nonempty(message) {
     return this.min(1, message);
@@ -5385,8 +5385,8 @@ function isZeroS(s) {
 function cmpScalar(a, b) {
   if (a.exact !== null && b.exact !== null && a.exact.radicand === b.exact.radicand) {
     const lhs = a.exact.num * b.exact.den;
-    const rhs = b.exact.num * a.exact.den;
-    return lhs < rhs ? -1 : lhs > rhs ? 1 : 0;
+    const rhs2 = b.exact.num * a.exact.den;
+    return lhs < rhs2 ? -1 : lhs > rhs2 ? 1 : 0;
   }
   const d = a.approx - b.approx;
   return Math.abs(d) < EPS3 ? 0 : d < 0 ? -1 : 1;
@@ -7407,9 +7407,9 @@ function runAnalysis(raw) {
     if (!geo || !from || !to) return geo;
     const dur = mv.durationSec ?? 10;
     const id = mv.agentId ?? mv.point;
-    const fmt2 = (n) => parseFloat(n.toFixed(6)).toString();
+    const fmt3 = (n) => parseFloat(n.toFixed(6)).toString();
     const v = [(to[0] - from[0]) / dur, (to[1] - from[1]) / dur, (to[2] - from[2]) / dur];
-    const axis = (i, name) => `${name}(t) = ${fmt2(from[i])} + ${fmt2(v[i])}*t`;
+    const axis = (i, name) => `${name}(t) = ${fmt3(from[i])} + ${fmt3(v[i])}*t`;
     const path = `${axis(0, "x")}, ${axis(1, "y")}, ${axis(2, "z")}`;
     return {
       ...geo,
@@ -8929,7 +8929,7 @@ function buildScene(plan, motions, tPhys) {
       curves.push({ id: `traj_${m.name}`, type: "expr", plane: "xz", style: "dashed", color, params: {}, samples });
     }
     agents.push({ id: m.name, label, initialPosition: [it.x0, 0, it.y0], color, radius });
-    const rhs = (q) => {
+    const rhs2 = (q) => {
       const c0 = q.k0.approx, c1 = q.k1.approx * k, c2 = q.k2.approx * k * k;
       let s = fmt(c0);
       if (c1 !== 0) s += ` + ${fmt(c1)}*t`;
@@ -8945,8 +8945,8 @@ function buildScene(plan, motions, tPhys) {
       params: {
         // AnimatedAgent ưu tiên equations (không qua bước split dấu phẩy); path giữ làm dự phòng + debug
         // (format module kinematic đã chứng minh render). equations chỉ chứa VẾ PHẢI.
-        equations: { x: rhs(m.x), y: "0", z: rhs(m.y) },
-        path: `x(t) = ${rhs(m.x)}, y(t) = 0, z(t) = ${rhs(m.y)}`,
+        equations: { x: rhs2(m.x), y: "0", z: rhs2(m.y) },
+        path: `x(t) = ${rhs2(m.x)}, y(t) = 0, z(t) = ${rhs2(m.y)}`,
         landing_point: [it.xEnd, 0, it.yEnd],
         // BẮT BUỘC: thiếu là agent nhảy về vị trí đầu sau track.end
         timeScale: k
@@ -9086,12 +9086,2417 @@ function runPhysics(raw) {
   return { ok, answers, checks, violations, errors, geometry, charts, meta: { tPhys, playback, units } };
 }
 
+// api/_lib/kernel/physics/circuitSchema.ts
+var Num2 = external_exports.number().finite();
+var Name2 = external_exports.string().min(1).regex(/^[A-Za-z0-9_]+$/);
+var ResistorLeaf = external_exports.object({
+  kind: external_exports.literal("resistor"),
+  name: Name2,
+  ohms: Num2.positive(),
+  unit: external_exports.enum(["ohm", "kohm"]).default("ohm")
+  // per-quantity (F2): kohm → engine ×1000 exact
+});
+var LampLeaf = external_exports.object({
+  kind: external_exports.literal("lamp"),
+  name: Name2,
+  ratedVolts: Num2.positive(),
+  // U_đm (V)
+  ratedWatts: Num2.positive()
+  // P_đm (W) — engine tự suy R = U_đm²/P_đm (coi hằng, ghi assumption)
+});
+var UnknownLeaf = external_exports.object({
+  kind: external_exports.literal("unknown_resistor"),
+  name: Name2
+  // biến trở CẦN TÌM (bài nghịch) — KHÔNG có ohms
+});
+var CircuitNodeSchema = external_exports.lazy(
+  () => external_exports.discriminatedUnion("kind", [
+    ResistorLeaf,
+    LampLeaf,
+    UnknownLeaf,
+    external_exports.object({ kind: external_exports.literal("series"), name: Name2.optional(), items: external_exports.array(CircuitNodeSchema).min(2) }),
+    external_exports.object({ kind: external_exports.literal("parallel"), name: Name2.optional(), items: external_exports.array(CircuitNodeSchema).min(2) })
+  ])
+  // Cast: z.lazy + discriminatedUnion dưới strictNullChecks:false suy ra kiểu output "lỏng" (mọi field
+  // optional) không khớp CircuitNode tự khai (kind bắt buộc ở nhóm). z.infer vẫn = CircuitNode nhờ annotation.
+);
+var CircuitQuerySchema = external_exports.discriminatedUnion("kind", [
+  // resistance (ĐỔI TÊN từ total_resistance — phán quyết §15.2): bỏ of = R_tđ mạch ngoài;
+  // of = tên lá/khối = R (tương đương) của phần tử đó (vd R đèn suy từ định mức).
+  external_exports.object({ kind: external_exports.literal("resistance"), of: Name2.optional(), label: external_exports.string().optional() }),
+  // current: bỏ of = I mạch chính (qua nguồn); of = I qua lá/khối.
+  external_exports.object({ kind: external_exports.literal("current"), of: Name2.optional(), label: external_exports.string().optional() }),
+  // voltage: bỏ of = U mạch ngoài = U hai cực nguồn; of = U hai đầu lá/khối.
+  external_exports.object({ kind: external_exports.literal("voltage"), of: Name2.optional(), label: external_exports.string().optional() }),
+  // power: P tiêu thụ của lá/khối = U·I.
+  external_exports.object({ kind: external_exports.literal("power"), of: Name2, label: external_exports.string().optional() }),
+  // power_source: total = E·I | internal = I²r | external = U_N·I.
+  external_exports.object({
+    kind: external_exports.literal("power_source"),
+    part: external_exports.enum(["total", "internal", "external"]).default("total"),
+    label: external_exports.string().optional()
+  }),
+  // energy A = P·t của lá/khối (bỏ of = mạch ngoài); tUnit/unit engine đổi exact (§6.4).
+  external_exports.object({
+    kind: external_exports.literal("energy"),
+    of: Name2.optional(),
+    t: Num2.positive(),
+    tUnit: external_exports.enum(["s", "min", "h"]).default("s"),
+    unit: external_exports.enum(["J", "kJ", "Wh", "kWh"]).default("J"),
+    label: external_exports.string().optional()
+  }),
+  // energy_source: công của nguồn A_ng = E·I·t.
+  external_exports.object({
+    kind: external_exports.literal("energy_source"),
+    t: Num2.positive(),
+    tUnit: external_exports.enum(["s", "min", "h"]).default("s"),
+    unit: external_exports.enum(["J", "kJ", "Wh", "kWh"]).default("J"),
+    label: external_exports.string().optional()
+  }),
+  // efficiency H = U_N/E, trả PHẦN TRĂM (unit '%').
+  external_exports.object({ kind: external_exports.literal("efficiency"), label: external_exports.string().optional() }),
+  // lamp_check: of PHẢI là lamp; ratio = I_thực/I_đm + verdict cấu trúc (§8.1).
+  external_exports.object({ kind: external_exports.literal("lamp_check"), of: Name2, label: external_exports.string().optional() }),
+  // solve_resistance: of PHẢI là unknown_resistor; tìm R để I MẠCH CHÍNH = targetCurrent (§7.5).
+  external_exports.object({
+    kind: external_exports.literal("solve_resistance"),
+    of: Name2,
+    targetCurrent: Num2.positive(),
+    targetCurrentUnit: external_exports.enum(["A", "mA"]).default("A"),
+    label: external_exports.string().optional()
+  })
+]);
+var CircuitPlanSchema = external_exports.object({
+  problemName: external_exports.string().min(1),
+  source: external_exports.object({
+    emf: Num2.positive(),
+    // E (V) — "mắc vào U không đổi" ⇒ emf = U, r = 0
+    r: Num2.min(0).default(0)
+    // điện trở trong (Ω)
+  }),
+  circuit: CircuitNodeSchema,
+  // mạch ngoài; MỘT lá đơn cũng hợp lệ (bếp điện, một đèn)
+  queries: external_exports.array(CircuitQuerySchema).min(1),
+  asserts: external_exports.array(external_exports.object({ query: CircuitQuerySchema, equals: Num2, tol: Num2.positive().optional() })).default([])
+}).superRefine((plan, ctx) => {
+  const names = [];
+  const leafKinds = /* @__PURE__ */ new Map();
+  let leafCount = 0;
+  let maxDepth = 0;
+  const RESERVED = /* @__PURE__ */ new Set(["_ngoai", "_nguon"]);
+  const walk = (node, depth) => {
+    if (node.kind === "series" || node.kind === "parallel") {
+      maxDepth = Math.max(maxDepth, depth);
+      if (node.name) names.push(node.name);
+      for (const it of node.items) walk(it, depth + 1);
+      return;
+    }
+    leafCount++;
+    names.push(node.name);
+    leafKinds.set(node.name, node.kind);
+  };
+  walk(plan.circuit, 1);
+  const seen = /* @__PURE__ */ new Set();
+  for (const nm of names) {
+    if (seen.has(nm)) ctx.addIssue({ code: external_exports.ZodIssueCode.custom, message: `t\xEAn "${nm}" tr\xF9ng \u2014 m\u1ECDi t\xEAn (l\xE1 + nh\xF3m) ph\u1EA3i duy nh\u1EA5t` });
+    seen.add(nm);
+    if (RESERVED.has(nm)) ctx.addIssue({ code: external_exports.ZodIssueCode.custom, message: `t\xEAn "${nm}" l\xE0 t\u1EEB kh\xF3a hi\u1EC3n th\u1ECB n\u1ED9i b\u1ED9, kh\xF4ng \u0111\u01B0\u1EE3c d\xF9ng` });
+  }
+  const nameSet = seen;
+  if (leafCount > 8) ctx.addIssue({ code: external_exports.ZodIssueCode.custom, message: `m\u1EA1ch c\xF3 ${leafCount} l\xE1, v\u01B0\u1EE3t tr\u1EA7n 8 (v1)` });
+  if (maxDepth > 4) ctx.addIssue({ code: external_exports.ZodIssueCode.custom, message: `nh\xF3m s\xE2u ${maxDepth} t\u1EA7ng, v\u01B0\u1EE3t tr\u1EA7n 4 (v1)` });
+  const unknowns = [...leafKinds.entries()].filter(([, k]) => k === "unknown_resistor").map(([n]) => n);
+  if (unknowns.length > 1) ctx.addIssue({ code: external_exports.ZodIssueCode.custom, message: `c\xF3 ${unknowns.length} unknown_resistor, t\u1ED1i \u0111a 1 (v1)` });
+  const solveQs = plan.queries.filter((q) => q.kind === "solve_resistance");
+  if (unknowns.length === 1 && solveQs.length !== 1)
+    ctx.addIssue({ code: external_exports.ZodIssueCode.custom, message: `c\xF3 \u1EA9n "${unknowns[0]}" nh\u01B0ng ${solveQs.length} query solve_resistance (c\u1EA7n \u0111\xFAng 1)` });
+  if (unknowns.length === 0 && solveQs.length > 0)
+    ctx.addIssue({ code: external_exports.ZodIssueCode.custom, message: `c\xF3 solve_resistance nh\u01B0ng kh\xF4ng c\xF3 unknown_resistor n\xE0o` });
+  for (const sq of solveQs) {
+    if (sq.of && leafKinds.get(sq.of) !== "unknown_resistor")
+      ctx.addIssue({ code: external_exports.ZodIssueCode.custom, message: `solve_resistance.of "${sq.of}" kh\xF4ng tr\u1ECF t\u1EDBi unknown_resistor` });
+  }
+  for (const q of plan.queries) {
+    if (q.kind === "lamp_check" && leafKinds.get(q.of) !== "lamp")
+      ctx.addIssue({ code: external_exports.ZodIssueCode.custom, message: `lamp_check.of "${q.of}" kh\xF4ng tr\u1ECF t\u1EDBi l\xE1 lamp` });
+  }
+  const checkRef = (of, where) => {
+    if (of !== void 0 && !nameSet.has(of))
+      ctx.addIssue({ code: external_exports.ZodIssueCode.custom, message: `${where} tr\u1ECF t\u1EDBi t\xEAn "${of}" kh\xF4ng t\u1ED3n t\u1EA1i trong c\xE2y` });
+  };
+  for (const q of plan.queries) if ("of" in q) checkRef(q.of, `query ${q.kind}`);
+  for (const a of plan.asserts) if ("of" in a.query) checkRef(a.query.of, `assert ${a.query.kind}`);
+});
+
+// api/_lib/kernel/physics/circuit.ts
+var EPS_SELF2 = 1e-6;
+var ONE = rat(1n);
+var ZERO2 = rat(0n);
+function leafR(node, sub5) {
+  if (node.kind === "resistor") {
+    const base = scalarFromNumber(node.ohms);
+    return node.unit === "kohm" ? mul(base, rat(1000n)) : base;
+  }
+  if (node.kind === "lamp") {
+    const U = scalarFromNumber(node.ratedVolts);
+    return div(mul(U, U), scalarFromNumber(node.ratedWatts));
+  }
+  if (sub5 && sub5.name === node.name) return sub5.R;
+  throw new Error(`unknown_resistor "${node.name}" ch\u01B0a c\xF3 gi\xE1 tr\u1ECB \u2014 ch\u1EC9 h\u1EE3p l\u1EC7 tr\xEAn \u0111\u01B0\u1EDDng M\xF6bius (\xA77.5)`);
+}
+function leafRN(node, sub5) {
+  if (node.kind === "resistor") return node.ohms * (node.unit === "kohm" ? 1e3 : 1);
+  if (node.kind === "lamp") return node.ratedVolts * node.ratedVolts / node.ratedWatts;
+  if (sub5 && sub5.name === node.name) return sub5.Rn;
+  throw new Error(`unknown_resistor "${node.name}" ch\u01B0a c\xF3 gi\xE1 tr\u1ECB`);
+}
+function reduceR(node, sub5) {
+  if (node.kind === "series") return node.items.map((i) => reduceR(i, sub5)).reduce((a, b) => add2(a, b), ZERO2);
+  if (node.kind === "parallel") {
+    const invSum = node.items.map((i) => div(ONE, reduceR(i, sub5))).reduce((a, b) => add2(a, b), ZERO2);
+    return div(ONE, invSum);
+  }
+  return leafR(node, sub5);
+}
+function reduceRN(node, sub5) {
+  if (node.kind === "series") return node.items.reduce((s, i) => s + reduceRN(i, sub5), 0);
+  if (node.kind === "parallel") return 1 / node.items.reduce((s, i) => s + 1 / reduceRN(i, sub5), 0);
+  return leafRN(node, sub5);
+}
+function distribute(node, drive, sub5, vals, byName, lampInfo) {
+  const R = reduceR(node, sub5), Rn = reduceRN(node, sub5);
+  let I, U, In, Un;
+  if (drive.mode === "I") {
+    I = drive.valS;
+    In = drive.valN;
+    U = mul(I, R);
+    Un = In * Rn;
+  } else {
+    U = drive.valS;
+    Un = drive.valN;
+    I = div(U, R);
+    In = Un / Rn;
+  }
+  const kind = node.kind === "series" ? "group_series" : node.kind === "parallel" ? "group_parallel" : node.kind;
+  vals.set(node, { kind, R, I, U, P: mul(U, I), Rn, In, Un, Pn: Un * In });
+  if (node.kind === "series") {
+    if (node.name) byName.set(node.name, node);
+    for (const it of node.items) distribute(it, { mode: "I", valS: I, valN: In }, sub5, vals, byName, lampInfo);
+  } else if (node.kind === "parallel") {
+    if (node.name) byName.set(node.name, node);
+    for (const it of node.items) distribute(it, { mode: "U", valS: U, valN: Un }, sub5, vals, byName, lampInfo);
+  } else {
+    byName.set(node.name, node);
+    if (node.kind === "lamp") {
+      const iRated = div(scalarFromNumber(node.ratedWatts), scalarFromNumber(node.ratedVolts));
+      lampInfo.set(node.name, { iRated, iRatedN: node.ratedWatts / node.ratedVolts });
+    }
+  }
+}
+function solveCircuit(source, root, sub5) {
+  const emfN = source.emf, rN = source.r ?? 0;
+  const emf = scalarFromNumber(emfN), r2 = scalarFromNumber(rN);
+  const rTotal = reduceR(root, sub5), rTotalN = reduceRN(root, sub5);
+  const iMain = div(emf, add2(rTotal, r2)), iMainN = emfN / (rTotalN + rN);
+  const uExternal = mul(iMain, rTotal), uExternalN = iMainN * rTotalN;
+  const vals = /* @__PURE__ */ new Map();
+  const byName = /* @__PURE__ */ new Map();
+  const lampInfo = /* @__PURE__ */ new Map();
+  distribute(root, { mode: "I", valS: iMain, valN: iMainN }, sub5, vals, byName, lampInfo);
+  return { emf, r: r2, emfN, rN, rTotal, rTotalN, iMain, iMainN, uExternal, uExternalN, root, vals, byName, lampInfo };
+}
+function rowOf(solved, of) {
+  if (of === void 0) return solved.vals.get(solved.root);
+  const node = solved.byName.get(of);
+  if (!node) throw new Error(`kh\xF4ng c\xF3 ph\u1EA7n t\u1EED t\xEAn "${of}" trong b\u1EA3ng`);
+  return solved.vals.get(node);
+}
+function containsUnknown(node) {
+  if (node.kind === "unknown_resistor") return true;
+  if (node.kind === "series" || node.kind === "parallel") return node.items.some(containsUnknown);
+  return false;
+}
+function mobius(node) {
+  if (node.kind === "unknown_resistor") return { a: ONE, b: ZERO2, c: ZERO2, d: ONE };
+  if (node.kind === "resistor" || node.kind === "lamp") return { a: ZERO2, b: leafR(node), c: ZERO2, d: ONE };
+  const withX = node.items.filter(containsUnknown);
+  const without = node.items.filter((i) => !containsUnknown(i));
+  if (withX.length === 0) return { a: ZERO2, b: reduceR(node), c: ZERO2, d: ONE };
+  const M = mobius(withX[0]);
+  if (without.length === 0) return M;
+  if (node.kind === "series") {
+    const C2 = without.map((i) => reduceR(i)).reduce((a, b) => add2(a, b), ZERO2);
+    return { a: add2(M.a, mul(M.c, C2)), b: add2(M.b, mul(M.d, C2)), c: M.c, d: M.d };
+  }
+  const invSum = without.map((i) => div(ONE, reduceR(i))).reduce((a, b) => add2(a, b), ZERO2);
+  const C = div(ONE, invSum);
+  return { a: mul(C, M.a), b: mul(C, M.b), c: add2(M.a, mul(C, M.c)), d: add2(M.b, mul(C, M.d)) };
+}
+function solveUnknown(source, root, _unknownName, targetCurrent) {
+  const emfN = source.emf, rN = source.r ?? 0;
+  const emf = scalarFromNumber(emfN), r2 = scalarFromNumber(rN);
+  const targetS = scalarFromNumber(targetCurrent);
+  const Rneed = sub2(div(emf, targetS), r2);
+  const RneedN = emfN / targetCurrent - rN;
+  if (RneedN <= EPS_SELF2) {
+    return { ok: false, message: `d\xF2ng y\xEAu c\u1EA7u I = ${targetCurrent} A l\u1EDBn h\u01A1n m\u1EE9c ngu\u1ED3n c\u1EA5p n\u1ED5i (R c\u1EA7n = ${RneedN.toFixed(4)} \u2264 0)` };
+  }
+  const { a, b, c, d } = mobius(root);
+  const denom = sub2(a, mul(c, Rneed));
+  const denomN = a.approx - c.approx * RneedN;
+  if (Math.abs(denomN) < EPS_SELF2) {
+    return { ok: false, message: `R_t\u0111 kh\xF4ng \u0111\u1EA1t \u0111\u01B0\u1EE3c gi\xE1 tr\u1ECB ${RneedN.toFixed(4)} \u03A9 (m\u1EABu M\xF6bius suy bi\u1EBFn)` };
+  }
+  const x = div(sub2(mul(d, Rneed), b), denom);
+  const xN = (d.approx * RneedN - b.approx) / denomN;
+  if (xN <= EPS_SELF2) {
+    return { ok: false, message: `gi\xE1 tr\u1ECB \u0111i\u1EC7n tr\u1EDF kh\xF4ng d\u01B0\u01A1ng (Rx = ${xN.toFixed(4)} \u03A9) \u2014 m\xF4 h\xECnh kh\xF4ng kh\u1EDBp \u0111\u1EC1` };
+  }
+  return { ok: true, x, xN, Rneed, RneedN };
+}
+
+// api/_lib/kernel/physics/circuitCompute.ts
+var TIME_TO_S = { s: rat(1n), min: rat(60n), h: rat(3600n) };
+var TIME_TO_S_N = { s: 1, min: 60, h: 3600 };
+var OUT_DIV = { J: rat(1n), kJ: rat(1000n), Wh: rat(3600n), kWh: rat(3600000n) };
+var OUT_DIV_N = { J: 1, kJ: 1e3, Wh: 3600, kWh: 36e5 };
+function fmtNum5(x) {
+  if (!Number.isFinite(x)) return "(l\u1ED7i)";
+  if (x !== 0 && Math.abs(x) < 1e-3) return parseFloat(x.toPrecision(4)).toString();
+  const digits = Math.abs(x) >= 1e3 ? 2 : 4;
+  return parseFloat(x.toFixed(digits)).toString();
+}
+function mkAns(kind, s, floatRef, unit, label, verdict) {
+  const tol = 1e-6 * Math.max(1, Math.abs(floatRef));
+  if (s.exact !== null && Math.abs(exactToApprox(s.exact) - floatRef) <= tol) {
+    return { label, kind, text: displayScalar(s), approx: exactToApprox(s.exact), unit, approximate: false, verdict };
+  }
+  const nice = Number.isFinite(floatRef) ? recognizeConstant(floatRef) : null;
+  return { label, kind, text: nice ? nice.text : fmtNum5(floatRef), approx: floatRef, unit, approximate: !nice, verdict };
+}
+function computeCircuitQuery(solved, query) {
+  try {
+    switch (query.kind) {
+      case "resistance": {
+        const row = rowOf(solved, query.of);
+        return { ok: true, answer: mkAns("resistance", row.R, row.Rn, "\u03A9", query.label) };
+      }
+      case "current": {
+        const row = rowOf(solved, query.of);
+        return { ok: true, answer: mkAns("current", row.I, row.In, "A", query.label) };
+      }
+      case "voltage": {
+        const row = rowOf(solved, query.of);
+        return { ok: true, answer: mkAns("voltage", row.U, row.Un, "V", query.label) };
+      }
+      case "power": {
+        const row = rowOf(solved, query.of);
+        return { ok: true, answer: mkAns("power", row.P, row.Pn, "W", query.label) };
+      }
+      case "power_source": {
+        let s, n;
+        if (query.part === "internal") {
+          s = mul(mul(solved.iMain, solved.iMain), solved.r);
+          n = solved.iMainN * solved.iMainN * solved.rN;
+        } else if (query.part === "external") {
+          s = mul(solved.uExternal, solved.iMain);
+          n = solved.uExternalN * solved.iMainN;
+        } else {
+          s = mul(solved.emf, solved.iMain);
+          n = solved.emfN * solved.iMainN;
+        }
+        return { ok: true, answer: mkAns("power_source", s, n, "W", query.label) };
+      }
+      case "energy":
+      case "energy_source": {
+        const tSec = mul(scalarFromNumber(query.t), TIME_TO_S[query.tUnit ?? "s"]);
+        const tSecN = query.t * TIME_TO_S_N[query.tUnit ?? "s"];
+        let joule, jouleN;
+        if (query.kind === "energy") {
+          const row = rowOf(solved, query.of);
+          joule = mul(row.P, tSec);
+          jouleN = row.Pn * tSecN;
+        } else {
+          joule = mul(mul(solved.emf, solved.iMain), tSec);
+          jouleN = solved.emfN * solved.iMainN * tSecN;
+        }
+        const out = div(joule, OUT_DIV[query.unit ?? "J"]);
+        const outN = jouleN / OUT_DIV_N[query.unit ?? "J"];
+        return { ok: true, answer: mkAns(query.kind, out, outN, query.unit ?? "J", query.label) };
+      }
+      case "efficiency": {
+        const s = mul(div(solved.uExternal, solved.emf), rat(100n));
+        const n = solved.uExternalN / solved.emfN * 100;
+        return { ok: true, answer: mkAns("efficiency", s, n, "%", query.label) };
+      }
+      case "lamp_check": {
+        const row = rowOf(solved, query.of);
+        const li = solved.lampInfo.get(query.of);
+        if (!li) return { ok: false, problem: `lamp_check: "${query.of}" kh\xF4ng ph\u1EA3i \u0111\xE8n` };
+        const ratio = div(row.I, li.iRated), ratioN = row.In / li.iRatedN;
+        const cmp = cmpScalar(ratio, rat(1n));
+        const verdict = cmp === 0 ? "sang_binh_thuong" : cmp < 0 ? "sang_yeu" : "sang_manh";
+        return { ok: true, answer: mkAns("lamp_check", ratio, ratioN, "", query.label, verdict) };
+      }
+      case "solve_resistance": {
+        const row = rowOf(solved, query.of);
+        return { ok: true, answer: mkAns("solve_resistance", row.R, row.Rn, "\u03A9", query.label) };
+      }
+      default: {
+        query;
+        return { ok: false, problem: `query kind kh\xF4ng h\u1ED7 tr\u1EE3: ${query.kind}` };
+      }
+    }
+  } catch (e) {
+    return { ok: false, problem: e.message };
+  }
+}
+
+// api/_lib/kernel/physics/circuitKirchhoff.ts
+var ZERO3 = rat(0n);
+function resCheck(kind, detail, resid, scaleN) {
+  const e = resid.exact;
+  const residual = e !== null ? exactToApprox(e) : resid.approx;
+  const pass = e !== null ? e.num === 0n : Math.abs(resid.approx) <= EPS_SELF2 * Math.max(1, scaleN);
+  return { kind, detail, residual, pass };
+}
+function selfChecks(solved, opts) {
+  const { vals, root, emf, r: r2, iMain, uExternal, rTotal } = solved;
+  const scaleN = Math.max(1, Math.abs(solved.emfN), Math.abs(solved.uExternalN), Math.abs(solved.iMainN));
+  const checks = [];
+  const V = (n) => vals.get(n);
+  checks.push(resCheck("K1", "U_N = E \u2212 I\xB7r", sub2(uExternal, sub2(emf, mul(iMain, r2))), scaleN));
+  const visit = (node) => {
+    if (node.kind === "series") {
+      const sumU = node.items.reduce((s, it) => add2(s, V(it).U), ZERO3);
+      checks.push(resCheck("K1", `\u03A3 U(item) = U(${node.name ?? "series"})`, sub2(sumU, V(node).U), scaleN));
+      node.items.forEach(visit);
+    } else if (node.kind === "parallel") {
+      const sumI = node.items.reduce((s, it) => add2(s, V(it).I), ZERO3);
+      checks.push(resCheck("K2", `\u03A3 I(item) = I(${node.name ?? "parallel"})`, sub2(sumI, V(node).I), scaleN));
+      for (const it of node.items) {
+        checks.push(resCheck("K2", `U nh\xE1nh = U(${node.name ?? "parallel"})`, sub2(V(it).U, V(node).U), scaleN));
+        visit(it);
+      }
+    }
+  };
+  visit(root);
+  const leafP = (node) => node.kind === "series" || node.kind === "parallel" ? node.items.reduce((s, it) => add2(s, leafP(it)), ZERO3) : V(node).P;
+  const k3 = sub2(add2(leafP(root), mul(mul(iMain, iMain), r2)), mul(emf, iMain));
+  checks.push(resCheck("K3", "\u03A3 P_l\xE1 + I\xB2\xB7r = E\xB7I", k3, scaleN));
+  if (opts.efficiency) {
+    checks.push(resCheck("K4", "U_N/E = R_t\u0111/(R_t\u0111 + r)", sub2(div(uExternal, emf), div(rTotal, add2(rTotal, r2))), scaleN));
+  }
+  if (opts.backsub) {
+    checks.push(resCheck("solve_backsub", "I_ch\xEDnh(m\u1EA1ch \u0111\xE3 th\u1EBF) = I_target", sub2(iMain, opts.backsub.targetI), scaleN));
+  }
+  return checks;
+}
+
+// api/_lib/kernel/physics/circuitLayout.ts
+function size(node) {
+  if (node.kind === "series") {
+    return node.items.reduce((b, it) => {
+      const s = size(it);
+      return { w: b.w + s.w, h: Math.max(b.h, s.h) };
+    }, { w: 0, h: 0 });
+  }
+  if (node.kind === "parallel") {
+    return node.items.reduce((b, it) => {
+      const s = size(it);
+      return { w: Math.max(b.w, s.w), h: b.h + s.h };
+    }, { w: 0, h: 0 });
+  }
+  return { w: 1, h: 1 };
+}
+function valueTextOf(node) {
+  if (node.kind === "resistor") return `${node.ohms} ${node.unit === "kohm" ? "k\u03A9" : "\u03A9"}`;
+  if (node.kind === "lamp") return `${node.ratedVolts} V \u2013 ${node.ratedWatts} W`;
+  return `${node.name} = ?`;
+}
+function buildLayout(plan) {
+  const elements = [];
+  const junctions = [];
+  const wires = [];
+  let jid = 0;
+  const place = (node, x, y) => {
+    if (node.kind === "series") {
+      let cx = x;
+      let prevRight = null;
+      for (const it of node.items) {
+        const s = size(it);
+        place(it, cx, y);
+        const left = [cx, y];
+        if (prevRight) wires.push({ from: prevRight, to: left });
+        prevRight = [cx + s.w, y];
+        cx += s.w;
+      }
+      return;
+    }
+    if (node.kind === "parallel") {
+      const box = size(node);
+      const jLeft = { id: `j${jid++}`, at: [x, y] };
+      const jRight = { id: `j${jid++}`, at: [x + box.w, y] };
+      junctions.push(jLeft, jRight);
+      let cy = y;
+      for (const it of node.items) {
+        const s = size(it);
+        place(it, x, cy);
+        wires.push({ from: jLeft.at, to: [x, cy] });
+        wires.push({ from: [x + box.w, cy], to: jRight.at });
+        cy += s.h;
+      }
+      return;
+    }
+    elements.push({ id: node.name, type: node.kind, name: node.name, valueText: valueTextOf(node), cell: { x, y, w: 1, h: 1 } });
+  };
+  const rootBox = size(plan.circuit);
+  place(plan.circuit, 0, 0);
+  const srcY = rootBox.h;
+  const rParts = plan.source.r !== void 0 ? `; r = ${plan.source.r} \u03A9` : "";
+  elements.push({
+    id: "src",
+    type: "source",
+    name: "nguon",
+    valueText: `E = ${plan.source.emf} V${rParts}`,
+    cell: { x: 0, y: srcY, w: 1, h: 1 }
+  });
+  wires.push({ from: [0, 0], to: [0, srcY] });
+  wires.push({ from: [rootBox.w, 0], to: [rootBox.w, srcY] });
+  wires.push({ from: [0, srcY], to: [rootBox.w, srcY] });
+  return {
+    grid: { cols: Math.max(1, rootBox.w) + 1, rows: srcY + 1 },
+    elements,
+    junctions,
+    wires
+  };
+}
+
+// api/_lib/kernel/physics/runCircuit.ts
+var TOL_ASSERT2 = 1e-3;
+var pair = (s) => ({ text: displayScalar(s), approx: s.approx });
+var EMPTY_LAYOUT = { grid: { cols: 1, rows: 1 }, elements: [], junctions: [], wires: [] };
+var ZERO_META = { iMain: { text: "0", approx: 0 }, uExternal: { text: "0", approx: 0 }, rTotal: { text: "0", approx: 0 }, unitsNote: "SI" };
+function findUnknown(node) {
+  if (node.kind === "unknown_resistor") return node.name;
+  if (node.kind === "series" || node.kind === "parallel") {
+    for (const it of node.items) {
+      const f = findUnknown(it);
+      if (f) return f;
+    }
+  }
+  return null;
+}
+function buildTable(solved) {
+  const rows = [];
+  const rowFrom = (name, v, kind) => ({
+    name,
+    kind,
+    R: mkAns("resistance", v.R, v.Rn, "\u03A9"),
+    U: mkAns("voltage", v.U, v.Un, "V"),
+    I: mkAns("current", v.I, v.In, "A"),
+    P: mkAns("power", v.P, v.Pn, "W")
+  });
+  for (const [name, node] of solved.byName) rows.push(rowFrom(name, solved.vals.get(node), solved.vals.get(node).kind));
+  rows.push(rowFrom("_ngoai", solved.vals.get(solved.root), "external"));
+  return rows;
+}
+function runCircuit(raw) {
+  const parsed = CircuitPlanSchema.safeParse(raw);
+  if (!parsed.success) {
+    const iss = parsed.error.issues[0];
+    const detail = iss ? `${iss.path.length ? `${iss.path.join(".")}: ` : ""}${iss.message}` : "schema";
+    return {
+      ok: false,
+      answers: [],
+      checks: [],
+      violations: [],
+      errors: [{ message: `Invalid circuit plan: ${detail}` }],
+      geometry: null,
+      table: [],
+      circuitLayout: EMPTY_LAYOUT,
+      meta: ZERO_META
+    };
+  }
+  const plan = parsed.data;
+  const errors = [];
+  const layout = buildLayout(plan);
+  const geometry = { name: plan.problemName, points: [], lines: [], tags: ["physics", "circuit"] };
+  const unknownName = findUnknown(plan.circuit);
+  let solved;
+  let backsub2;
+  try {
+    if (unknownName) {
+      const sq = plan.queries.find((q) => q.kind === "solve_resistance");
+      if (!sq || sq.kind !== "solve_resistance") throw new Error("thi\u1EBFu query solve_resistance cho \u1EA9n");
+      const targetN = sq.targetCurrent * (sq.targetCurrentUnit === "mA" ? 1e-3 : 1);
+      const res = solveUnknown(plan.source, plan.circuit, unknownName, targetN);
+      if (res.ok === false) {
+        return { ok: false, answers: [], checks: [], violations: [], errors: [{ message: res.message }], geometry, table: [], circuitLayout: layout, meta: ZERO_META };
+      }
+      solved = solveCircuit(plan.source, plan.circuit, { name: unknownName, R: res.x, Rn: res.xN });
+      backsub2 = { targetI: scalarFromNumber(targetN), targetIN: targetN };
+    } else {
+      solved = solveCircuit(plan.source, plan.circuit);
+    }
+  } catch (e) {
+    return { ok: false, answers: [], checks: [], violations: [], errors: [{ message: e.message }], geometry, table: [], circuitLayout: layout, meta: ZERO_META };
+  }
+  const answers = [];
+  for (const [qi, q] of plan.queries.entries()) {
+    const r2 = computeCircuitQuery(solved, q);
+    if (r2.ok === false) {
+      errors.push({ message: `query ${q.kind}: ${r2.problem}` });
+      continue;
+    }
+    answers.push({ ...r2.answer, queryIndex: qi });
+  }
+  const hasEfficiency = plan.queries.some((q) => q.kind === "efficiency") || plan.asserts.some((a) => a.query.kind === "efficiency");
+  const checks = selfChecks(solved, { efficiency: hasEfficiency, backsub: backsub2 });
+  if (solved.lampInfo.size > 0) checks.push({ kind: "assumption", detail: "R \u0111\xE8n coi nh\u01B0 kh\xF4ng \u0111\u1ED5i (R = U_\u0111m\xB2/P_\u0111m)", residual: 0, pass: true });
+  for (const c of checks) if (!c.pass) errors.push({ message: `t\u1EF1 ki\u1EC3m FAIL: ${c.detail} (residual ${c.residual.toExponential(2)})` });
+  const violations = [];
+  for (const a of plan.asserts) {
+    const r2 = computeCircuitQuery(solved, a.query);
+    if (r2.ok === false) {
+      errors.push({ message: `assert ${a.query.kind}: ${r2.problem}` });
+      continue;
+    }
+    const tol = (a.tol ?? TOL_ASSERT2) * Math.max(1, Math.abs(a.equals));
+    const delta = Math.abs(r2.answer.approx - a.equals);
+    if (delta > tol) violations.push({ assert: a.query.kind, expected: a.equals, got: r2.answer.approx, delta });
+  }
+  const table = buildTable(solved);
+  const meta = { iMain: pair(solved.iMain), uExternal: pair(solved.uExternal), rTotal: pair(solved.rTotal), unitsNote: "SI" };
+  const ok = violations.length === 0 && errors.length === 0 && answers.length === plan.queries.length && answers.every((a) => Number.isFinite(a.approx));
+  return { ok, answers, checks, violations, errors, geometry, table, circuitLayout: layout, meta };
+}
+
+// api/_lib/kernel/physics/dynamicsSchema.ts
+var Num3 = external_exports.number().finite();
+var Obj2 = external_exports.string().min(1);
+var BodyOp = external_exports.object({
+  op: external_exports.literal("body"),
+  name: Obj2,
+  // OPTIONAL: bài nghiêng thuần-gia-tốc đề KHÔNG cho m (a = g(sinθ − μcosθ) không cần m) — cấm LLM bịa.
+  // Query/cấu hình cần m mà thiếu ⇒ error rõ "cần khối lượng của <name>" (tầng giải).
+  mass: Num3.positive().optional(),
+  massUnit: external_exports.enum(["kg", "g", "tan"]).default("kg"),
+  on: external_exports.enum(["horizontal", "incline", "hanging"]).default("horizontal"),
+  inclineDeg: Num3.optional(),
+  // BẮT BUỘC khi on='incline' (superRefine), 0 < θ < 90
+  mu: Num3.min(0).optional(),
+  // hệ số ma sát trượt; bỏ trống = nhẵn. Lớp 10: cũng là ma sát nghỉ cực đại.
+  motion: external_exports.enum(["down", "up"]).optional(),
+  // CHỈ incline: chiều chuyển động THEO ĐỀ; mặc định 'down'
+  v0: Num3.min(0).default(0),
+  // TỐC ĐỘ đầu dọc chiều chuyển động (≥ 0; chiều nằm ở motion/lực kéo)
+  v0Unit: external_exports.enum(["m/s", "km/h"]).default("m/s")
+});
+var ForceOp = external_exports.object({
+  op: external_exports.literal("force"),
+  on: Obj2,
+  // CHỈ lực NGOÀI đề cho. Trọng lực/phản lực/ma sát/căng: engine tự sinh.
+  value: Num3.positive(),
+  unit: external_exports.enum(["N", "kN"]).default("N"),
+  // so với PHƯƠNG MẶT TỰA (phương chuyển động); dương = chếch lên, âm = chếch xuống; |α| < 90.
+  // V1: chỉ ≠ 0 khi mặt ngang (superRefine).
+  angleDeg: Num3.default(0),
+  direction: external_exports.enum(["forward", "backward"]).default("forward")
+  // "lực kéo"/"lực cản" — chép lời đề
+});
+var StringOp = external_exports.object({ op: external_exports.literal("string"), between: external_exports.tuple([Obj2, Obj2]) });
+var DynamicsOpSchema = external_exports.discriminatedUnion("op", [BodyOp, ForceOp, StringOp]);
+var VUnit = external_exports.enum(["m/s", "km/h"]).default("m/s");
+var DynamicsQuerySchema = external_exports.discriminatedUnion("kind", [
+  // — Động lực học —
+  // ĐẠI SỐ theo chiều dương (= chiều chuyển động): hệ ròng rọc luôn ra dương; vật hãm ra ÂM (B04).
+  // 'of' bỏ trống = gia tốc hệ (2 vật chung |a|); có 'of' phải là body tồn tại.
+  external_exports.object({ kind: external_exports.literal("acceleration"), of: Obj2.optional(), label: external_exports.string().optional() }),
+  // Trả ĐỘ LỚN (≥0): tension = lực căng dây; friction = μN; weight = mg; net = m·|a| (hợp lực).
+  external_exports.object({
+    kind: external_exports.literal("force_value"),
+    force: external_exports.enum(["tension", "friction", "weight", "net"]),
+    on: Obj2,
+    label: external_exports.string().optional()
+  }),
+  external_exports.object({ kind: external_exports.literal("normal_force"), on: Obj2, label: external_exports.string().optional() }),
+  // N (độ lớn)
+  // F_min để vật BẮT ĐẦU trượt trên mặt ngang (μ nghỉ = mu). KHÔNG khai op force (giá trị là ẩn số).
+  // DY-1 (§17.3): v1 CHỈ nhận α = 0 — SCHEMA CHẶN bằng z.literal(0); α ≠ 0 fail parse với lỗi tiếng Việt.
+  external_exports.object({
+    kind: external_exports.literal("min_force_to_move"),
+    on: Obj2,
+    angleDeg: external_exports.literal(0, { errorMap: () => ({ message: "min_force_to_move v1 ch\u1EC9 nh\u1EADn angleDeg = 0 (\u03B1 \u2260 0 \u0111\u1EC3 v2)" }) }).default(0),
+    label: external_exports.string().optional()
+  }),
+  // — Kế thừa động học v0 (chạy trên gia tốc engine vừa tính; §8) —
+  external_exports.object({ kind: external_exports.literal("velocity_at"), of: Obj2, t: Num3.positive(), label: external_exports.string().optional() }),
+  // x0 = 0 và chuyển động không đổi chiều trong miền hợp lệ ⇒ position = QUÃNG ĐƯỜNG.
+  external_exports.object({ kind: external_exports.literal("position_at"), of: Obj2, t: Num3.positive(), label: external_exports.string().optional() }),
+  external_exports.object({ kind: external_exports.literal("time_when"), of: Obj2, position: Num3.positive(), label: external_exports.string().optional() }),
+  // F3: đạt tốc độ cho trước; value: 0 = lúc dừng. DY-3 — chính tả field THEO V0 (`value`/`vUnit`).
+  external_exports.object({
+    kind: external_exports.literal("time_when_velocity"),
+    of: Obj2,
+    value: Num3.min(0),
+    vUnit: VUnit,
+    label: external_exports.string().optional()
+  }),
+  // v = √(v0² + 2as) — "vận tốc ở chân dốc" (LLM không chain được).
+  external_exports.object({ kind: external_exports.literal("velocity_after_distance"), of: Obj2, distance: Num3.positive(), label: external_exports.string().optional() }),
+  // s = v0²/(2|a|)
+  external_exports.object({ kind: external_exports.literal("distance_to_stop"), of: Obj2, label: external_exports.string().optional() })
+]);
+var DynamicsPlanSchema = external_exports.object({
+  problemName: external_exports.string().min(1),
+  // KHÔNG default (chống hard-code, như v0). Optional vì bài "ngang nhẵn thuần lực" (B01, B10) không cần g.
+  // Mô hình cần trọng lực (mu / incline / hanging / query N, weight, min_force) mà thiếu g ⇒ error rõ.
+  g: Num3.positive().optional(),
+  ops: external_exports.array(DynamicsOpSchema).min(1),
+  queries: external_exports.array(DynamicsQuerySchema).min(1),
+  asserts: external_exports.array(external_exports.object({ query: DynamicsQuerySchema, equals: Num3, tol: Num3.positive().optional() })).default([]),
+  // dữ kiện DƯ của đề, như v0 §7.2
+  charts: external_exports.array(external_exports.object({ kind: external_exports.enum(["x_t", "v_t"]), of: external_exports.array(Obj2).min(1) })).default([]),
+  scene: external_exports.object({ durationSec: Num3.positive().optional(), labels: external_exports.record(external_exports.string(), external_exports.string()).optional() }).default({})
+}).superRefine((plan, ctx) => {
+  const bodies = plan.ops.filter((o) => o.op === "body");
+  const forces = plan.ops.filter((o) => o.op === "force");
+  const strings = plan.ops.filter((o) => o.op === "string");
+  const byName = new Map(bodies.map((b) => [b.name, b]));
+  const issue = (message) => ctx.addIssue({ code: external_exports.ZodIssueCode.custom, message });
+  const seen = /* @__PURE__ */ new Set();
+  for (const b of bodies) {
+    if (seen.has(b.name)) issue(`v\u1EADt "${b.name}" khai b\xE1o 2 l\u1EA7n`);
+    seen.add(b.name);
+  }
+  for (const b of bodies) {
+    if (b.on === "incline") {
+      if (b.inclineDeg === void 0) issue(`v\u1EADt "${b.name}" tr\xEAn m\u1EB7t nghi\xEAng thi\u1EBFu inclineDeg`);
+      else if (!(b.inclineDeg > 0 && b.inclineDeg < 90)) issue(`inclineDeg c\u1EE7a "${b.name}" ph\u1EA3i trong kho\u1EA3ng (0, 90), nh\u1EADn ${b.inclineDeg}`);
+    } else if (b.inclineDeg !== void 0) {
+      issue(`inclineDeg ch\u1EC9 h\u1EE3p l\u1EC7 v\u1EDBi on='incline' (v\u1EADt "${b.name}")`);
+    }
+    if (b.motion !== void 0 && b.on !== "incline") issue(`motion ch\u1EC9 h\u1EE3p l\u1EC7 v\u1EDBi on='incline' (v\u1EADt "${b.name}")`);
+    if (b.mu !== void 0 && b.on === "hanging") issue(`v\u1EADt treo "${b.name}" kh\xF4ng \u0111\u01B0\u1EE3c khai mu (kh\xF4ng c\xF3 m\u1EB7t t\u1EF1a)`);
+  }
+  if (bodies.length < 1) issue("c\u1EA7n \xEDt nh\u1EA5t 1 v\u1EADt (op body)");
+  if (bodies.length > 2) issue(`v1 ch\u1EC9 h\u1ED7 tr\u1EE3 t\u1ED1i \u0111a 2 v\u1EADt, nh\u1EADn ${bodies.length}`);
+  if (bodies.length === 2 && strings.length !== 1) issue(`h\u1EC7 2 v\u1EADt c\u1EA7n \u0111\xFAng 1 d\xE2y (string), nh\u1EADn ${strings.length}`);
+  if (bodies.length === 1 && strings.length > 0) issue("h\u1EC7 1 v\u1EADt kh\xF4ng \u0111\u01B0\u1EE3c khai string");
+  for (const s of strings) {
+    const [a, b] = s.between;
+    if (a === b) issue(`d\xE2y n\u1ED1i hai \u0111\u1EA7u tr\xF9ng "${a}"`);
+    if (!byName.has(a)) issue(`d\xE2y tr\u1ECF t\u1EDBi v\u1EADt "${a}" kh\xF4ng t\u1ED3n t\u1EA1i`);
+    if (!byName.has(b)) issue(`d\xE2y tr\u1ECF t\u1EDBi v\u1EADt "${b}" kh\xF4ng t\u1ED3n t\u1EA1i`);
+  }
+  if (bodies.length === 2 && strings.length === 1) {
+    const ons = bodies.map((b) => b.on).sort().join("+");
+    if (ons !== "hanging+hanging" && ons !== "hanging+horizontal") {
+      issue(`c\u1EA5u h\xECnh h\u1EC7 2 v\u1EADt "${bodies.map((b) => b.on).join(" + ")}" ch\u01B0a h\u1ED7 tr\u1EE3 v1 (ch\u1EC9 Atwood treo+treo ho\u1EB7c b\xE0n ngang+treo)`);
+    }
+    for (const b of bodies) if (b.v0 !== 0) issue(`h\u1EC7 2 v\u1EADt v1 ph\u1EA3i xu\u1EA5t ph\xE1t t\u1EEB ngh\u1EC9 (v\u1EADt "${b.name}" khai v0 = ${b.v0})`);
+  }
+  const inString = /* @__PURE__ */ new Set();
+  for (const s of strings) inString.add(s.between[0]), inString.add(s.between[1]);
+  for (const b of bodies) {
+    if (b.on === "hanging" && !inString.has(b.name)) issue(`v\u1EADt treo "${b.name}" ph\u1EA3i n\u1EB1m trong m\u1ED9t d\xE2y (v1 kh\xF4ng c\xF3 h\u1EC7 treo \u0111\u01A1n / thang m\xE1y)`);
+  }
+  for (const f of forces) {
+    const b = byName.get(f.on);
+    if (!b) {
+      issue(`l\u1EF1c t\xE1c d\u1EE5ng l\xEAn v\u1EADt "${f.on}" kh\xF4ng t\u1ED3n t\u1EA1i`);
+      continue;
+    }
+    if (Math.abs(f.angleDeg) >= 90) issue(`g\xF3c l\u1EF1c |\u03B1| ph\u1EA3i < 90 (v\u1EADt "${f.on}", nh\u1EADn ${f.angleDeg})`);
+    if (b.on === "incline" && f.angleDeg !== 0) issue(`l\u1EF1c tr\xEAn m\u1EB7t nghi\xEAng ch\u1EC9 \u0111\u01B0\u1EE3c d\u1ECDc m\u1EB7t d\u1ED1c (angleDeg = 0), v\u1EADt "${f.on}"`);
+    if (b.on === "hanging") issue(`v1 kh\xF4ng nh\u1EADn l\u1EF1c ngo\xE0i tr\xEAn v\u1EADt treo "${f.on}"`);
+  }
+  const refBody = (name, where) => {
+    if (name !== void 0 && !byName.has(name)) issue(`${where} tr\u1ECF t\u1EDBi v\u1EADt "${name}" kh\xF4ng t\u1ED3n t\u1EA1i`);
+  };
+  for (const q of plan.queries) {
+    if (q.kind === "acceleration") refBody(q.of, `query ${q.kind}`);
+    else if ("on" in q) refBody(q.on, `query ${q.kind}`);
+    else if ("of" in q) refBody(q.of, `query ${q.kind}`);
+  }
+});
+
+// api/_lib/kernel/physics/dynamics.ts
+var EPS_SELF3 = 1e-6;
+var SI2 = { length: "m", time: "s" };
+var ZERO4 = rat(0n);
+var HALF2 = rat(1n, 2n);
+var PHYSICAL_VIOLATIONS = /* @__PURE__ */ new Set(["vat-khong-truot", "he-khong-chuyen-dong", "phan-luc-am", "day-chung"]);
+function convMass(b) {
+  const mv = b.mass;
+  if (b.massUnit === "g") return { s: mul(scalarFromNumber(mv), rat(1n, 1000n)), n: mv / 1e3 };
+  if (b.massUnit === "tan") return { s: mul(scalarFromNumber(mv), rat(1000n)), n: mv * 1e3 };
+  return { s: scalarFromNumber(mv), n: mv };
+}
+function convForce(f) {
+  return f.unit === "kN" ? { s: mul(scalarFromNumber(f.value), rat(1000n)), n: f.value * 1e3 } : { s: scalarFromNumber(f.value), n: f.value };
+}
+function fmtNum6(x) {
+  if (!Number.isFinite(x)) return "(l\u1ED7i)";
+  if (x !== 0 && Math.abs(x) < 1e-3) return parseFloat(x.toPrecision(4)).toString();
+  const digits = Math.abs(x) >= 1e3 ? 2 : 4;
+  return parseFloat(x.toFixed(digits)).toString();
+}
+function mkAns2(kind, s, floatRef, unit, label) {
+  const tol = 1e-6 * Math.max(1, Math.abs(floatRef));
+  if (s.exact !== null && Math.abs(exactToApprox(s.exact) - floatRef) <= tol) {
+    return { label, kind, text: displayScalar(s), approx: exactToApprox(s.exact), unit, approximate: false };
+  }
+  const nice = Number.isFinite(floatRef) ? recognizeConstant(floatRef) : null;
+  return { label, kind, text: nice ? nice.text : fmtNum6(floatRef), approx: floatRef, unit, approximate: !nice };
+}
+function resCheck2(kind, detail, resid, scaleN) {
+  const e = resid.exact;
+  const residual = e !== null ? exactToApprox(e) : resid.approx;
+  const pass = e !== null ? e.num === 0n : Math.abs(resid.approx) <= EPS_SELF3 * Math.max(1, scaleN);
+  return { kind, detail, residual, pass };
+}
+function solveSingle(body, forcesOn, gS, gN, needsMotion, checks, violations) {
+  const reqG = () => {
+    if (gS === void 0 || gN === void 0) throw new Error('c\u1EA7n g (gia t\u1ED1c tr\u1ECDng tr\u01B0\u1EDDng) cho m\xF4 h\xECnh n\xE0y \u2014 b\u1ED5 sung "g" v\xE0o plan');
+    return { s: gS, n: gN };
+  };
+  const mass = body.mass !== void 0 ? convMass(body) : void 0;
+  const reqMass = () => {
+    if (!mass) throw new Error(`c\u1EA7n kh\u1ED1i l\u01B0\u1EE3ng c\u1EE7a "${body.name}" cho \u0111\u1EA1i l\u01B0\u1EE3ng n\xE0y`);
+    return mass;
+  };
+  const hasMu = body.mu !== void 0 && body.mu > 0;
+  const mu = scalarFromNumber(body.mu ?? 0);
+  const muN = body.mu ?? 0;
+  const v0 = qtyVelocity(body.v0, body.v0Unit, SI2);
+  const v0N = body.v0 * (body.v0Unit === "km/h" ? 5 / 18 : 1);
+  const st = {
+    name: body.name,
+    op: body,
+    config: body.on === "incline" ? "nghieng" : body.on === "hanging" ? "hanging" : "ngang",
+    hasMass: !!mass,
+    m: mass?.s,
+    mN: mass?.n,
+    hasMu,
+    mu,
+    muN,
+    v0,
+    v0N,
+    moves: false,
+    tStop: null,
+    motionDesc: ""
+  };
+  let appAxial = ZERO4, appAxialN = 0, vertUp = ZERO4, vertUpN = 0;
+  for (const f of forcesOn) {
+    const F = convForce(f);
+    const { cos, sin } = trigOf(f.angleDeg);
+    const cosN = Math.cos(f.angleDeg * Math.PI / 180), sinN = Math.sin(f.angleDeg * Math.PI / 180);
+    const sgn = f.direction === "backward" ? -1 : 1;
+    appAxial = add2(appAxial, mul(F.s, f.direction === "backward" ? neg(cos) : cos));
+    appAxialN += sgn * F.n * cosN;
+    vertUp = add2(vertUp, mul(F.s, sin));
+    vertUpN += F.n * sinN;
+  }
+  const hasApplied = forcesOn.length > 0;
+  if (st.config === "ngang") {
+    if (mass && gS !== void 0 && gN !== void 0) {
+      st.N = sub2(mul(mass.s, gS), vertUp);
+      st.NN = mass.n * gN - vertUpN;
+      st.weight = mul(mass.s, gS);
+      st.weightN = mass.n * gN;
+      st.friction = mul(mu, st.N);
+      st.frictionN = muN * st.NN;
+      if (cmpScalar(st.N, ZERO4) < 0) violations.push({ id: "phan-luc-am", message: `ph\u1EA3n l\u1EF1c \xE2m (N = ${st.NN.toFixed(2)} N < 0): l\u1EF1c nh\u1EA5c v\u1EADt kh\u1ECFi m\u1EB7t t\u1EF1a, m\xF4 h\xECnh v1 kh\xF4ng ph\u1EE7` });
+      checks.push(resCheck2("newton_axis", `tr\u1EE5c ph\xE1p "${body.name}": N + F\xB7sin\u03B1 \u2212 mg`, sub2(add2(st.N, vertUp), mul(mass.s, gS)), Math.max(1, st.NN)));
+    }
+    if (needsMotion) try {
+      const m = reqMass();
+      let fric = ZERO4, fricN = 0;
+      if (hasMu) {
+        reqG();
+        fric = st.friction;
+        fricN = st.frictionN;
+      }
+      if (body.v0 === 0 && hasMu) {
+        if (cmpScalar(appAxial, fric) <= 0) {
+          violations.push({ id: "vat-khong-truot", message: `l\u1EF1c ch\u01B0a th\u1EAFng ma s\xE1t ngh\u1EC9 (driving ${appAxialN.toFixed(2)} \u2264 \u03BCN ${fricN.toFixed(2)}), v\u1EADt kh\xF4ng tr\u01B0\u1EE3t. \u0110\u1EE9ng y\xEAn l\xE0 K\u1EBET QU\u1EA2 V\u1EACT L\xDD H\u1EE2P L\u1EC6 c\u1EE7a \u0111\u1EC1 \u2014 nh\u01B0ng v1 kh\xF4ng c\xF3 nh\xE1nh t\u0129nh (\xA73.2), kh\xF4ng serve \u0111\xE1p` });
+        } else {
+          checks.push({ kind: "static_threshold", detail: `driving ${appAxialN.toFixed(2)} > \u03BCN ${fricN.toFixed(2)} \u2014 v\u1EADt b\u1EAFt \u0111\u1EA7u tr\u01B0\u1EE3t`, residual: 0, pass: true });
+        }
+      }
+      st.a = div(sub2(appAxial, fric), m.s);
+      st.aN = (appAxialN - fricN) / m.n;
+      st.moves = true;
+      st.motionDesc = body.v0 > 0 ? "theo-v0" : "theo-luc-keo";
+      checks.push(resCheck2("newton_axis", `tr\u1EE5c chuy\u1EC3n \u0111\u1ED9ng "${body.name}": \u03A3F \u2212 m\xB7a`, sub2(sub2(appAxial, fric), mul(m.s, st.a)), Math.max(1, Math.abs(appAxialN))));
+    } catch (e) {
+      st.blockReason = e.message;
+    }
+  } else if (st.config === "nghieng") {
+    const theta = body.inclineDeg;
+    const { cos, sin } = trigOf(theta);
+    st.theta = theta;
+    st.sinT = sin;
+    st.cosT = cos;
+    st.sinTN = Math.sin(theta * Math.PI / 180);
+    st.cosTN = Math.cos(theta * Math.PI / 180);
+    const down = (body.motion ?? "down") === "down";
+    if (mass && gS !== void 0 && gN !== void 0) {
+      st.N = mul(mul(mass.s, gS), cos);
+      st.NN = mass.n * gN * st.cosTN;
+      st.weight = mul(mass.s, gS);
+      st.weightN = mass.n * gN;
+      st.friction = mul(mu, st.N);
+      st.frictionN = muN * st.NN;
+      checks.push(resCheck2("newton_axis", `tr\u1EE5c ph\xE1p "${body.name}": N \u2212 mg\xB7cos\u03B8`, sub2(st.N, mul(mul(mass.s, gS), cos)), Math.max(1, st.NN)));
+    }
+    if (needsMotion) try {
+      const g = reqG();
+      const gSin = mul(g.s, sin), gSinN = g.n * st.sinTN;
+      const gCosMu = mul(mu, mul(g.s, cos)), gCosMuN = muN * g.n * st.cosTN;
+      if (body.v0 === 0 && hasMu && down) {
+        if (cmpScalar(gSin, gCosMu) <= 0) {
+          violations.push({ id: "vat-khong-truot", message: `chi\u1EC1u chuy\u1EC3n \u0111\u1ED9ng khai trong plan kh\xF4ng kh\u1EDBp m\xF4 h\xECnh: \u0111\u1EC1 khai v\u1EADt tr\u01B0\u1EE3t xu\u1ED1ng nh\u01B0ng tan\u03B8 = ${(st.sinTN / st.cosTN).toFixed(3)} \u2264 \u03BC = ${muN} \u2014 v\u1EADt kh\xF4ng tr\u01B0\u1EE3t theo chi\u1EC1u \u0111\xF3` });
+        } else {
+          checks.push({ kind: "static_threshold", detail: `g\xB7sin\u03B8 ${gSinN.toFixed(3)} > \u03BC\xB7g\xB7cos\u03B8 ${gCosMuN.toFixed(3)} \u2014 v\u1EADt tr\u01B0\u1EE3t xu\u1ED1ng`, residual: 0, pass: true });
+        }
+      }
+      if (body.v0 === 0 && !down && !hasApplied) {
+        violations.push({ id: "vat-khong-truot", message: `chi\u1EC1u chuy\u1EC3n \u0111\u1ED9ng khai trong plan kh\xF4ng kh\u1EDBp m\xF4 h\xECnh: khai motion:'up' v\u1EDBi v0 = 0 v\xE0 kh\xF4ng c\xF3 l\u1EF1c k\xE9o d\u1ECDc d\u1ED1c \u2014 v\u1EADt kh\xF4ng th\u1EC3 t\u1EF1 \u0111i l\xEAn` });
+      }
+      let appPerMass = ZERO4, appPerMassN = 0;
+      if (hasApplied) {
+        const m = reqMass();
+        appPerMass = div(appAxial, m.s);
+        appPerMassN = appAxialN / m.n;
+      }
+      const gAlong = down ? gSin : neg(gSin), gAlongN = down ? gSinN : -gSinN;
+      st.a = sub2(add2(gAlong, appPerMass), gCosMu);
+      st.aN = gAlongN + appPerMassN - gCosMuN;
+      st.moves = true;
+      st.motionDesc = down ? "xuong-doc" : "len-doc";
+      if (mass) {
+        const mgSin = down ? mul(mass.s, gSin) : neg(mul(mass.s, gSin));
+        checks.push(resCheck2("newton_axis", `tr\u1EE5c d\u1ED1c "${body.name}": \u03A3F \u2212 m\xB7a`, sub2(sub2(add2(mgSin, appAxial), st.friction), mul(mass.s, st.a)), Math.max(1, Math.abs(mass.n * g.n * st.sinTN))));
+      } else {
+        checks.push(resCheck2("newton_axis", `tr\u1EE5c d\u1ED1c "${body.name}" (per-mass): (g\xB7sin\u03B8 \u2212 \u03BC\xB7g\xB7cos\u03B8) \u2212 a`, sub2(sub2(gAlong, gCosMu), st.a), Math.max(1, Math.abs(gAlongN))));
+      }
+    } catch (e) {
+      st.blockReason = e.message;
+    }
+  }
+  if (st.a !== void 0) {
+    st.quad = { k0: ZERO4, k1: st.v0, k2: mul(HALF2, st.a) };
+    st.tStop = st.aN < 0 && st.v0N > 1e-12 ? -st.v0N / st.aN : null;
+  }
+  return st;
+}
+function solveTwoBody(bodies, gS, gN, checks, violations, meta) {
+  const out = /* @__PURE__ */ new Map();
+  if (gS === void 0 || gN === void 0) throw new Error('c\u1EA7n g cho h\u1EC7 2 v\u1EADt (c\xF3 v\u1EADt treo) \u2014 b\u1ED5 sung "g" v\xE0o plan');
+  for (const b of bodies) if (b.mass === void 0) throw new Error(`c\u1EA7n kh\u1ED1i l\u01B0\u1EE3ng c\u1EE7a "${b.name}" (h\u1EC7 2 v\u1EADt c\u1EA7n c\u1EA3 hai kh\u1ED1i l\u01B0\u1EE3ng)`);
+  const atwood = bodies.every((b) => b.on === "hanging");
+  let hangB, horizB, downB, upB;
+  const m = (b) => convMass(b);
+  const M = add2(m(bodies[0]).s, m(bodies[1]).s), MN = m(bodies[0]).n + m(bodies[1]).n;
+  let D, DN, Fmax, FmaxN, a, aN, T, TN, Tverify, TverifyN;
+  if (atwood) {
+    const c = cmpScalar(m(bodies[0]).s, m(bodies[1]).s);
+    if (c === 0) {
+      violations.push({ id: "he-khong-chuyen-dong", message: `h\u1EC7 c\xE2n b\u1EB1ng (m\u2081 = m\u2082): a = 0, T = mg \u2014 tr\u1EA1ng th\xE1i h\u1EE3p l\u1EC7 nh\u01B0ng v1 kh\xF4ng serve \u0111\xE1p t\u0129nh` });
+    }
+    downB = c >= 0 ? bodies[0] : bodies[1];
+    upB = c >= 0 ? bodies[1] : bodies[0];
+    hangB = downB;
+    D = mul(sub2(m(downB).s, m(upB).s), gS);
+    DN = (m(downB).n - m(upB).n) * gN;
+    Fmax = ZERO4;
+    FmaxN = 0;
+    a = div(D, M);
+    aN = DN / MN;
+    T = mul(m(upB).s, add2(gS, a));
+    TN = m(upB).n * (gN + aN);
+    Tverify = mul(m(downB).s, sub2(gS, a));
+    TverifyN = m(downB).n * (gN - aN);
+    meta.config = "atwood";
+    meta.direction = `${downB.name}-di-xuong`;
+  } else {
+    hangB = bodies.find((b) => b.on === "hanging");
+    horizB = bodies.find((b) => b.on !== "hanging");
+    const muH = horizB.mu ?? 0;
+    const N1 = mul(m(horizB).s, gS), N1N = m(horizB).n * gN;
+    Fmax = mul(scalarFromNumber(muH), N1);
+    FmaxN = muH * N1N;
+    D = mul(m(hangB).s, gS);
+    DN = m(hangB).n * gN;
+    downB = hangB;
+    upB = horizB;
+    if (cmpScalar(D, Fmax) <= 0) {
+      violations.push({ id: "he-khong-chuyen-dong", message: `l\u1EF1c ph\xE1t \u0111\u1ED9ng ${DN.toFixed(2)} N \u2264 ng\u01B0\u1EE1ng ma s\xE1t ${FmaxN.toFixed(2)} N \u2014 h\u1EC7 kh\xF4ng chuy\u1EC3n \u0111\u1ED9ng (\u0111\u1EE9ng y\xEAn l\xE0 k\u1EBFt qu\u1EA3 h\u1EE3p l\u1EC7, v1 kh\xF4ng serve nh\xE1nh t\u0129nh)` });
+    }
+    a = div(sub2(D, Fmax), M);
+    aN = (DN - FmaxN) / MN;
+    T = mul(m(hangB).s, sub2(gS, a));
+    TN = m(hangB).n * (gN - aN);
+    Tverify = add2(mul(m(horizB).s, a), Fmax);
+    TverifyN = m(horizB).n * aN + FmaxN;
+    meta.config = "ban-treo";
+    meta.direction = `${hangB.name}-di-xuong`;
+  }
+  checks.push(resCheck2("tension_match", "l\u1EF1c c\u0103ng hai \u0111\u1EA7u d\xE2y kh\u1EDBp nhau", sub2(T, Tverify), Math.max(1, Math.abs(TN))));
+  if (cmpScalar(T, ZERO4) < 0) violations.push({ id: "day-chung", message: `l\u1EF1c c\u0103ng \xE2m (T = ${TN.toFixed(2)} N < 0): d\xE2y ch\xF9ng, m\xF4 h\xECnh kh\xF4ng kh\u1EDBp` });
+  for (const b of bodies) {
+    const mb = m(b);
+    const st = {
+      name: b.name,
+      op: b,
+      config: b.on === "incline" ? "nghieng" : b.on === "hanging" ? "hanging" : "ngang",
+      hasMass: true,
+      m: mb.s,
+      mN: mb.n,
+      hasMu: (b.mu ?? 0) > 0,
+      mu: scalarFromNumber(b.mu ?? 0),
+      muN: b.mu ?? 0,
+      v0: ZERO4,
+      v0N: 0,
+      moves: true,
+      a,
+      aN,
+      tension: T,
+      tensionN: TN,
+      tStop: null,
+      motionDesc: b === downB ? "di-xuong" : b === upB ? atwood ? "di-len" : "bi-keo" : "",
+      quad: { k0: ZERO4, k1: ZERO4, k2: mul(HALF2, a) }
+    };
+    if (b.on === "horizontal") {
+      st.N = mul(mb.s, gS);
+      st.NN = mb.n * gN;
+      st.friction = mul(st.mu, st.N);
+      st.frictionN = st.muN * st.NN;
+    }
+    if (b.on !== "hanging") {
+      st.weight = mul(mb.s, gS);
+      st.weightN = mb.n * gN;
+    } else {
+      st.weight = mul(mb.s, gS);
+      st.weightN = mb.n * gN;
+    }
+    let resid, scale3;
+    if (b.on === "hanging") {
+      if (b === downB) {
+        resid = sub2(sub2(mul(mb.s, gS), T), mul(mb.s, a));
+      } else {
+        resid = sub2(sub2(T, mul(mb.s, gS)), mul(mb.s, a));
+      }
+      scale3 = mb.n * gN;
+    } else {
+      const fr = st.friction ?? ZERO4;
+      resid = sub2(sub2(T, fr), mul(mb.s, a));
+      scale3 = Math.max(1, TN);
+    }
+    checks.push(resCheck2("newton_axis", `thay-a-ng\u01B0\u1EE3c "${b.name}": \u03A3F \u2212 m\xB7a`, resid, Math.max(1, Math.abs(scale3))));
+    out.set(b.name, st);
+  }
+  meta.horizonNote = "m\xF4 h\xECnh b\u1ECF qua gi\u1EDBi h\u1EA1n h\xE0nh tr\xECnh d\xE2y/\u0111\u1ED9 cao \u2014 \u0111\xE1p h\u1EE3p l\u1EC7 trong ph\u1EA1m vi l\xFD t\u01B0\u1EDFng h\xF3a c\u1EE7a \u0111\u1EC1";
+  return out;
+}
+function bodyNeedsMotion(name, isSingle, plan) {
+  return plan.queries.some((q) => {
+    if (q.kind === "acceleration") return q.of === name || q.of === void 0 && isSingle;
+    if (q.kind === "force_value" && q.force === "net") return q.on === name;
+    if (q.kind === "velocity_at" || q.kind === "position_at" || q.kind === "time_when" || q.kind === "time_when_velocity" || q.kind === "velocity_after_distance" || q.kind === "distance_to_stop") return q.of === name;
+    return false;
+  });
+}
+function solveDynamics(plan) {
+  const checks = [];
+  const violations = [];
+  const errors = [];
+  const meta = { config: "ngang", direction: "" };
+  const gS = plan.g !== void 0 ? scalarFromNumber(plan.g) : void 0;
+  const gN = plan.g;
+  const bodies = plan.ops.filter((o) => o.op === "body");
+  const forces = plan.ops.filter((o) => o.op === "force");
+  const bodyMap = /* @__PURE__ */ new Map();
+  try {
+    if (bodies.length === 2) {
+      const solved = solveTwoBody(bodies, gS, gN, checks, violations, meta);
+      solved.forEach((v, k) => bodyMap.set(k, v));
+    } else {
+      const b = bodies[0];
+      const isSingle = true;
+      const needsMotion = b.on === "incline" || b.v0 > 0 || forces.some((f) => f.on === b.name) || bodyNeedsMotion(b.name, isSingle, plan);
+      const st = solveSingle(b, forces.filter((f) => f.on === b.name), gS, gN, needsMotion, checks, violations);
+      bodyMap.set(b.name, st);
+      meta.config = st.config === "nghieng" ? "nghieng" : "ngang";
+      meta.direction = st.motionDesc || (st.config === "nghieng" ? "xuong-doc" : "tinh");
+    }
+  } catch (e) {
+    errors.push({ message: e.message });
+  }
+  return { bodies: bodyMap, g: gS, gN, checks, violations, errors, meta };
+}
+var posRootsPositive = (roots) => {
+  for (const r2 of roots) if (r2.approx > 1e-9) return r2;
+  return null;
+};
+function computeDynQuery(solved, query, isSingle) {
+  const bodyByName = (name) => {
+    if (name === void 0) {
+      if (solved.bodies.size === 1) return [...solved.bodies.values()][0];
+      return [...solved.bodies.values()][0];
+    }
+    const b = solved.bodies.get(name);
+    if (!b) throw new Error(`kh\xF4ng c\xF3 v\u1EADt t\xEAn "${name}"`);
+    return b;
+  };
+  const reqG = () => {
+    if (solved.g === void 0 || solved.gN === void 0) throw new Error('c\u1EA7n g cho \u0111\u1EA1i l\u01B0\u1EE3ng n\xE0y \u2014 b\u1ED5 sung "g" v\xE0o plan');
+    return { s: solved.g, n: solved.gN };
+  };
+  const reqMass = (b) => {
+    if (!b.hasMass || b.m === void 0 || b.mN === void 0) throw new Error(`c\u1EA7n kh\u1ED1i l\u01B0\u1EE3ng c\u1EE7a "${b.name}" cho \u0111\u1EA1i l\u01B0\u1EE3ng n\xE0y`);
+    return { s: b.m, n: b.mN };
+  };
+  const reqA = (b) => {
+    if (b.blockReason) throw new Error(b.blockReason);
+    if (b.a === void 0 || b.aN === void 0) throw new Error(`ch\u01B0a gi\u1EA3i \u0111\u01B0\u1EE3c gia t\u1ED1c c\u1EE7a "${b.name}"`);
+    return { s: b.a, n: b.aN };
+  };
+  try {
+    switch (query.kind) {
+      case "acceleration": {
+        const b = bodyByName(query.of);
+        const a = reqA(b);
+        return { ok: true, answer: mkAns2("acceleration", a.s, a.n, "m/s\xB2", query.label), checks: [] };
+      }
+      case "force_value": {
+        const b = bodyByName(query.on);
+        if (query.force === "weight") {
+          reqG();
+          const m = reqMass(b);
+          const w = b.weight ?? mul(m.s, solved.g);
+          const wN = b.weightN ?? m.n * solved.gN;
+          return { ok: true, answer: mkAns2("force_value", w, wN, "N", query.label), checks: [] };
+        }
+        if (query.force === "friction") {
+          if (b.config === "hanging") return { ok: false, problem: `v\u1EADt treo "${b.name}" kh\xF4ng c\xF3 ma s\xE1t` };
+          reqG();
+          reqMass(b);
+          const f = b.friction ?? ZERO4;
+          const fN = b.frictionN ?? 0;
+          return { ok: true, answer: mkAns2("force_value", f, fN, "N", query.label), checks: [] };
+        }
+        if (query.force === "net") {
+          const m = reqMass(b);
+          const a = reqA(b);
+          const net = mul(m.s, a.s);
+          const netN = m.n * a.n;
+          const netMag = netN < 0 ? neg(net) : net;
+          const netMagN = Math.abs(netN);
+          return { ok: true, answer: mkAns2("force_value", netMag, netMagN, "N", query.label), checks: [] };
+        }
+        if (b.tension === void 0 || b.tensionN === void 0) return { ok: false, problem: `v\u1EADt "${b.name}" kh\xF4ng n\u1EB1m trong d\xE2y \u2014 kh\xF4ng c\xF3 l\u1EF1c c\u0103ng` };
+        return { ok: true, answer: mkAns2("force_value", b.tension, b.tensionN, "N", query.label), checks: [] };
+      }
+      case "normal_force": {
+        const b = bodyByName(query.on);
+        if (b.config === "hanging") return { ok: false, problem: `v\u1EADt treo "${b.name}" kh\xF4ng c\xF3 ph\u1EA3n l\u1EF1c ph\xE1p tuy\u1EBFn` };
+        reqG();
+        reqMass(b);
+        if (b.N === void 0 || b.NN === void 0) return { ok: false, problem: `ch\u01B0a l\u1EADp \u0111\u01B0\u1EE3c ph\u1EA3n l\u1EF1c c\u1EE7a "${b.name}"` };
+        return { ok: true, answer: mkAns2("normal_force", b.N, b.NN, "N", query.label), checks: [] };
+      }
+      case "min_force_to_move": {
+        const b = bodyByName(query.on);
+        if (b.config !== "ngang") return { ok: false, problem: `min_force_to_move v1 ch\u1EC9 cho m\u1EB7t ngang (v\u1EADt "${b.name}")` };
+        if (!b.hasMu) return { ok: false, problem: `v\u1EADt "${b.name}" nh\u1EB5n (kh\xF4ng mu) \u2014 kh\xF4ng c\xF3 ng\u01B0\u1EE1ng tr\u01B0\u1EE3t` };
+        reqG();
+        const m = reqMass(b);
+        const fmin = mul(b.mu, mul(m.s, solved.g));
+        const fminN = b.muN * m.n * solved.gN;
+        const chk = [{ kind: "static_threshold", detail: `F_min = \u03BCmg = ${fminN.toFixed(2)} N (ng\u01B0\u1EE1ng b\u1EAFt \u0111\u1EA7u tr\u01B0\u1EE3t, \u03B1 = 0)`, residual: 0, pass: true }];
+        return { ok: true, answer: mkAns2("min_force_to_move", fmin, fminN, "N", query.label), checks: chk };
+      }
+      case "velocity_at": {
+        const b = bodyByName(query.of);
+        const a = reqA(b);
+        const t = query.t;
+        const chk = [];
+        let vS, vN;
+        if (b.tStop !== null && t > b.tStop + 1e-9) {
+          vS = ZERO4;
+          vN = 0;
+          chk.push({ kind: "stop_domain", detail: `v\u1EADt \u0111\xE3 d\u1EEBng t\u1EA1i t = ${b.tStop.toFixed(4)} s, gi\u1EEF nguy\xEAn (v = 0)`, residual: 0, pass: true });
+        } else {
+          vS = add2(b.v0, mul(a.s, scalarFromNumber(t)));
+          vN = b.v0N + a.n * t;
+          chk.push(resCheck2("kinematic_back", `v(${t}) = v0 + a\xB7t`, sub2(vS, add2(b.v0, mul(a.s, scalarFromNumber(t)))), Math.max(1, Math.abs(vN))));
+        }
+        return { ok: true, answer: mkAns2("velocity_at", vS, vN, "m/s", query.label), checks: chk, tSolved: t };
+      }
+      case "position_at": {
+        const b = bodyByName(query.of);
+        const a = reqA(b);
+        const q = b.quad;
+        const t = query.t;
+        const chk = [];
+        let xS, xN, tEff = t;
+        if (b.tStop !== null && t > b.tStop + 1e-9) {
+          tEff = b.tStop;
+          xS = evalQuadS(q, scalarFromNumber(b.tStop));
+          xN = b.v0N * b.tStop + 0.5 * a.n * b.tStop * b.tStop;
+          chk.push({ kind: "stop_domain", detail: `v\u1EADt \u0111\xE3 d\u1EEBng t\u1EA1i t = ${b.tStop.toFixed(4)} s, gi\u1EEF nguy\xEAn v\u1ECB tr\xED s_d\u1EEBng`, residual: 0, pass: true });
+        } else {
+          xS = evalQuadS(q, scalarFromNumber(t));
+          xN = b.v0N * t + 0.5 * a.n * t * t;
+        }
+        return { ok: true, answer: mkAns2("position_at", xS, xN, "m", query.label), checks: chk, tSolved: tEff };
+      }
+      case "time_when": {
+        const b = bodyByName(query.of);
+        const a = reqA(b);
+        const q = b.quad;
+        if (b.tStop !== null) {
+          const sStopN = b.v0N * b.tStop + 0.5 * a.n * b.tStop * b.tStop;
+          if (query.position > sStopN + 1e-9) return { ok: false, problem: `v\u1EADt d\u1EEBng t\u1EA1i s_d\u1EEBng = ${sStopN.toFixed(4)} m, kh\xF4ng bao gi\u1EDD \u0111\u1EA1t v\u1ECB tr\xED ${query.position} m \u2014 ki\u1EC3m tra l\u1EA1i \u0111\u1EC1/plan` };
+        }
+        const roots = rootsFor(q, scalarFromNumber(query.position));
+        const t = posRootsPositive(roots);
+        if (t === null) return { ok: false, problem: `kh\xF4ng c\xF3 th\u1EDDi \u0111i\u1EC3m d\u01B0\u01A1ng \u0111\u1EC3 v\u1EADt \u1EDF v\u1ECB tr\xED ${query.position} m` };
+        const chk = [resCheck2("kinematic_back", `x(t) = ${query.position}`, sub2(evalQuadS(q, t), scalarFromNumber(query.position)), Math.max(1, query.position))];
+        return { ok: true, answer: mkAns2("time_when", t, t.approx, "s", query.label), checks: chk, tSolved: t.approx };
+      }
+      case "time_when_velocity": {
+        const b = bodyByName(query.of);
+        const a = reqA(b);
+        if (Math.abs(a.n) < 1e-12) return { ok: false, problem: `gia t\u1ED1c b\u1EB1ng 0 \u2014 kh\xF4ng x\xE1c \u0111\u1ECBnh th\u1EDDi \u0111i\u1EC3m \u0111\u1EA1t t\u1ED1c \u0111\u1ED9` };
+        const vStar = qtyVelocity(query.value, query.vUnit, SI2);
+        const vStarN = query.value * (query.vUnit === "km/h" ? 5 / 18 : 1);
+        const t = div(sub2(vStar, b.v0), a.s);
+        const tN = (vStarN - b.v0N) / a.n;
+        if (tN < -1e-9) return { ok: false, problem: `t\u1ED1c \u0111\u1ED9 ${query.value} ${query.vUnit} \u0111\u1EA1t \u1EDF th\u1EDDi \u0111i\u1EC3m \xE2m \u2014 ngo\xE0i mi\u1EC1n` };
+        const chk = [resCheck2("kinematic_back", `v(t) = ${query.value} ${query.vUnit}`, sub2(add2(b.v0, mul(a.s, t)), vStar), Math.max(1, Math.abs(vStarN)))];
+        return { ok: true, answer: mkAns2("time_when_velocity", t, tN, "s", query.label), checks: chk, tSolved: Math.max(0, tN) };
+      }
+      case "velocity_after_distance": {
+        const b = bodyByName(query.of);
+        const a = reqA(b);
+        const inner = add2(mul(b.v0, b.v0), mul(mul(rat(2n), a.s), scalarFromNumber(query.distance)));
+        const innerN = b.v0N * b.v0N + 2 * a.n * query.distance;
+        if (innerN < -1e-9) return { ok: false, problem: `v0\xB2 + 2as = ${innerN.toFixed(4)} < 0 \u2014 v\u1EADt kh\xF4ng \u0111\u1EA1t t\u1EDBi qu\xE3ng \u0111\u01B0\u1EDDng ${query.distance} m` };
+        const vS = sqrt(inner);
+        const vN = Math.sqrt(Math.max(0, innerN));
+        const chk = [resCheck2("kinematic_back", `v\xB2 = v0\xB2 + 2as`, sub2(mul(vS, vS), inner), Math.max(1, Math.abs(innerN)))];
+        return { ok: true, answer: mkAns2("velocity_after_distance", vS, vN, "m/s", query.label), checks: chk };
+      }
+      case "distance_to_stop": {
+        const b = bodyByName(query.of);
+        const a = reqA(b);
+        if (!(a.n < 0 && b.v0N > 0)) return { ok: false, problem: `v\u1EADt kh\xF4ng d\u1EEBng (a = ${a.n.toFixed(4)} m/s\xB2 kh\xF4ng h\xE3m chuy\u1EC3n \u0111\u1ED9ng) \u2014 kh\xF4ng c\xF3 qu\xE3ng \u0111\u01B0\u1EDDng d\u1EEBng` };
+        const absA = neg(a.s);
+        const absAN = -a.n;
+        const s = div(mul(b.v0, b.v0), mul(rat(2n), absA));
+        const sN = b.v0N * b.v0N / (2 * absAN);
+        const chk = [resCheck2("kinematic_back", `s\xB72|a| = v0\xB2`, sub2(mul(s, mul(rat(2n), absA)), mul(b.v0, b.v0)), Math.max(1, b.v0N * b.v0N))];
+        return { ok: true, answer: mkAns2("distance_to_stop", s, sN, "m", query.label), checks: chk, tSolved: -b.v0N / a.n };
+      }
+      default: {
+        query;
+        return { ok: false, problem: `query kind kh\xF4ng h\u1ED7 tr\u1EE3: ${query.kind}` };
+      }
+    }
+  } catch (e) {
+    return { ok: false, problem: e.message };
+  }
+}
+
+// api/_lib/kernel/physics/dynamicsScene.ts
+var COLORS2 = ["#FFA500", "#38BDF8", "#F472B6", "#4ADE80"];
+var fmt2 = (n) => parseFloat(n.toFixed(6)).toString();
+var rnd = (n) => parseFloat(n.toFixed(6));
+function playbackOf2(plan, tPhys) {
+  if (plan.scene.durationSec) return { durationSec: plan.scene.durationSec, timeScale: tPhys / plan.scene.durationSec };
+  if (tPhys >= 3 && tPhys <= 15) return { durationSec: tPhys, timeScale: 1 };
+  return { durationSec: 10, timeScale: tPhys / 10 };
+}
+function rhs(c0, c1, c2, k) {
+  let s = fmt2(c0);
+  if (c1 * k !== 0) s += ` + ${fmt2(c1 * k)}*t`;
+  if (c2 * k * k !== 0) s += ` + ${fmt2(c2 * k * k)}*t*t`;
+  return s;
+}
+function buildDynamicsScene(plan, solved, tPhys) {
+  const playback = playbackOf2(plan, tPhys);
+  const k = playback.timeScale;
+  const bodies = [...solved.bodies.values()];
+  if (bodies.length === 0) return { geometry: null, playback };
+  const points = [];
+  const lines = [];
+  const agents = [];
+  const tracks = [];
+  const labelOf = (b) => plan.scene.labels?.[b.name] ?? b.name;
+  const twoBody = bodies.length === 2;
+  let xMin = 0, xMax = 1, zTop = 1;
+  if (!twoBody) {
+    const b = bodies[0];
+    const tEnd = b.tStop !== null ? Math.min(tPhys, b.tStop) : tPhys;
+    const aN = b.aN ?? 0, v0N = b.v0N;
+    const sOf = (t) => v0N * t + 0.5 * aN * t * t;
+    if (b.config === "nghieng") {
+      const sinT = b.sinTN ?? Math.sin((b.theta ?? 30) * Math.PI / 180);
+      const cosT = b.cosTN ?? Math.cos((b.theta ?? 30) * Math.PI / 180);
+      const down = (b.op.motion ?? "down") === "down";
+      const sTotal = Math.max(1e-3, sOf(tEnd));
+      const H = rnd(sTotal * sinT), xEnd = rnd(sTotal * cosT);
+      const top = down ? [0, 0, H] : [xEnd, 0, H];
+      const bot = down ? [xEnd, 0, 0] : [0, 0, 0];
+      const start = down ? top : bot, land = down ? bot : top;
+      points.push({ id: "dinh", label: "", x: down ? 0 : xEnd, y: 0, z: H });
+      points.push({ id: "chan", label: "", x: down ? xEnd : 0, y: 0, z: 0 });
+      lines.push({ id: "doc", from: "dinh", to: "chan", style: "solid", color: "#8B8B8B" });
+      xMin = 0;
+      xMax = xEnd;
+      zTop = H;
+      const color = COLORS2[0];
+      agents.push({ id: b.name, label: labelOf(b), initialPosition: start, color, radius: 0.14 });
+      const sgnX = down ? 1 : -1, sgnZ = down ? -1 : 1;
+      const x0 = start[0], z0 = start[2];
+      tracks.push({
+        id: `mv_${b.name}`,
+        start: 0,
+        end: tEnd / k,
+        type: "parametric_path",
+        targetId: b.name,
+        params: {
+          equations: {
+            x: rhs(x0, sgnX * v0N * cosT, sgnX * 0.5 * aN * cosT, k),
+            y: "0",
+            z: rhs(z0, sgnZ * v0N * sinT, sgnZ * 0.5 * aN * sinT, k)
+          },
+          path: `m\u1EB7t nghi\xEAng ${b.theta}\xB0`,
+          landing_point: land,
+          timeScale: k
+        }
+      });
+    } else {
+      const xEnd = rnd(sOf(tEnd));
+      xMin = Math.min(0, xEnd);
+      xMax = Math.max(1, xEnd);
+      zTop = 1;
+      const color = COLORS2[0];
+      agents.push({ id: b.name, label: labelOf(b), initialPosition: [0, 0, 0], color, radius: 0.14 });
+      if (b.a !== void 0) {
+        tracks.push({
+          id: `mv_${b.name}`,
+          start: 0,
+          end: tEnd / k,
+          type: "parametric_path",
+          targetId: b.name,
+          params: {
+            equations: { x: rhs(0, v0N, 0.5 * aN, k), y: "0", z: "0" },
+            path: "m\u1EB7t ngang",
+            landing_point: [xEnd, 0, 0],
+            timeScale: k
+          }
+        });
+      }
+    }
+  } else {
+    const atwood = solved.meta.config === "atwood";
+    const tEnd = tPhys;
+    const H0 = 4;
+    points.push({ id: "rr", label: "", x: 0, y: 0, z: H0 });
+    xMin = -2;
+    xMax = 2;
+    zTop = H0;
+    let ci = 0;
+    for (const b of bodies) {
+      const color = COLORS2[ci % COLORS2.length];
+      const aN = b.aN ?? 0;
+      const down = b.motionDesc === "di-xuong";
+      if (atwood) {
+        const x = ci === 0 ? -1.5 : 1.5;
+        const start = [x, 0, H0 - 1];
+        agents.push({ id: b.name, label: labelOf(b), initialPosition: start, color, radius: 0.14 });
+        const sgnZ = down ? -1 : 1;
+        const land = [x, 0, H0 - 1 + sgnZ * 0.5 * aN * tEnd * tEnd];
+        tracks.push({ id: `mv_${b.name}`, start: 0, end: tEnd / k, type: "parametric_path", targetId: b.name, params: { equations: { x: fmt2(x), y: "0", z: rhs(H0 - 1, 0, sgnZ * 0.5 * aN, k) }, path: "Atwood", landing_point: land, timeScale: k } });
+      } else {
+        if (b.config === "ngang") {
+          const start = [-1.5, 0, H0];
+          points.push({ id: "ban0", label: "", x: -2, y: 0, z: H0 });
+          points.push({ id: "ban1", label: "", x: 0, y: 0, z: H0 });
+          lines.push({ id: "ban", from: "ban0", to: "ban1", style: "solid", color: "#8B8B8B" });
+          agents.push({ id: b.name, label: labelOf(b), initialPosition: start, color, radius: 0.14 });
+          const land = [-1.5 + 0.5 * aN * tEnd * tEnd, 0, H0];
+          tracks.push({ id: `mv_${b.name}`, start: 0, end: tEnd / k, type: "parametric_path", targetId: b.name, params: { equations: { x: rhs(-1.5, 0, 0.5 * aN, k), y: "0", z: fmt2(H0) }, path: "m\u1EB7t b\xE0n", landing_point: land, timeScale: k } });
+        } else {
+          const start = [0, 0, H0 - 1];
+          agents.push({ id: b.name, label: labelOf(b), initialPosition: start, color, radius: 0.14 });
+          const land = [0, 0, H0 - 1 - 0.5 * aN * tEnd * tEnd];
+          tracks.push({ id: `mv_${b.name}`, start: 0, end: tEnd / k, type: "parametric_path", targetId: b.name, params: { equations: { x: "0", y: "0", z: rhs(H0 - 1, 0, -0.5 * aN, k) }, path: "v\u1EADt treo", landing_point: land, timeScale: k } });
+        }
+      }
+      ci++;
+    }
+  }
+  const margin = Math.max(0.5, 0.05 * Math.max(1, xMax - xMin, zTop));
+  points.push({ id: "G0", label: "", x: xMin - margin, y: 0, z: 0 });
+  points.push({ id: "G1", label: "", x: xMax + margin, y: 0, z: 0 });
+  lines.push({ id: "ground", from: "G0", to: "G1", style: "solid", color: "#8B8B8B" });
+  const geometry = {
+    name: plan.problemName,
+    axisUnit: "m",
+    tags: ["physics", `timeScale:${fmt2(k)}`],
+    points,
+    lines,
+    curves: [],
+    agents,
+    timeline: { duration: playback.durationSec, tracks }
+  };
+  return { geometry, playback };
+}
+function buildDynamicsCharts(plan, solved, tPhys) {
+  const out = [];
+  for (const ch of plan.charts) {
+    const series = [];
+    for (const name of ch.of) {
+      const b = solved.bodies.get(name);
+      if (!b || b.a === void 0) continue;
+      const aN = b.aN ?? 0, v0N = b.v0N;
+      const tEnd = b.tStop !== null ? Math.min(tPhys, b.tStop) : tPhys;
+      const N = ch.kind === "v_t" ? 1 : 64;
+      const samples = [];
+      for (let i = 0; i <= N; i++) {
+        const t = tEnd * i / N;
+        samples.push([t, ch.kind === "x_t" ? v0N * t + 0.5 * aN * t * t : v0N + aN * t]);
+      }
+      series.push({ name, samples });
+    }
+    out.push({ kind: ch.kind, tUnit: "s", vUnit: ch.kind === "x_t" ? "m" : "m/s", series });
+  }
+  return out;
+}
+
+// api/_lib/kernel/physics/runDynamics.ts
+var TOL_ASSERT3 = 1e-3;
+var ZERO_META2 = { model: { config: "ngang", direction: "" }, tPhys: 0, playback: { durationSec: 0, timeScale: 1 }, unitsNote: "SI" };
+function runDynamics(raw) {
+  const parsed = DynamicsPlanSchema.safeParse(raw);
+  if (!parsed.success) {
+    const iss = parsed.error.issues[0];
+    const detail = iss ? `${iss.path.length ? `${iss.path.join(".")}: ` : ""}${iss.message}` : "schema";
+    return { ok: false, answers: [], checks: [], violations: [], errors: [{ message: `Invalid dynamics plan: ${detail}` }], geometry: null, charts: [], meta: ZERO_META2 };
+  }
+  const plan = parsed.data;
+  const isSingle = plan.ops.filter((o) => o.op === "body").length === 1;
+  const solved = solveDynamics(plan);
+  const errors = [...solved.errors];
+  const checks = [...solved.checks];
+  const violations = solved.violations.map((v) => ({ id: v.id, message: v.message }));
+  const answers = [];
+  let tMax = 0;
+  for (const [qi, q] of plan.queries.entries()) {
+    const r2 = computeDynQuery(solved, q, isSingle);
+    if (r2.ok === false) {
+      errors.push({ message: `query ${q.kind}: ${r2.problem}` });
+      continue;
+    }
+    answers.push({ ...r2.answer, queryIndex: qi });
+    checks.push(...r2.checks);
+    for (const c of r2.checks) if (!c.pass) errors.push({ message: `t\u1EF1 ki\u1EC3m FAIL: ${c.detail} (residual ${c.residual.toExponential(2)})` });
+    if (r2.tSolved !== void 0 && Number.isFinite(r2.tSolved)) tMax = Math.max(tMax, r2.tSolved);
+  }
+  for (const q of plan.queries) if ("t" in q && typeof q.t === "number") tMax = Math.max(tMax, q.t);
+  solved.bodies.forEach((b) => {
+    if (b.tStop !== null) tMax = Math.max(tMax, b.tStop);
+  });
+  const tPhys = tMax > 1e-9 ? tMax : 2;
+  for (const c of solved.checks) if (!c.pass) errors.push({ message: `t\u1EF1 ki\u1EC3m FAIL: ${c.detail} (residual ${c.residual.toExponential(2)})` });
+  for (const a of plan.asserts) {
+    const r2 = computeDynQuery(solved, a.query, isSingle);
+    if (r2.ok === false) {
+      errors.push({ message: `assert ${a.query.kind}: ${r2.problem}` });
+      continue;
+    }
+    const tol = (a.tol ?? TOL_ASSERT3) * Math.max(1, Math.abs(a.equals));
+    const delta = Math.abs(r2.answer.approx - a.equals);
+    if (delta > tol) violations.push({ assert: a.query.kind, expected: a.equals, got: r2.answer.approx, delta, message: `assert ${a.query.kind}: k\u1EF3 v\u1ECDng ${a.equals}, engine t\xEDnh ${r2.answer.approx}` });
+  }
+  const hasPhysicalViolation = solved.violations.some((v) => PHYSICAL_VIOLATIONS.has(v.id));
+  const servedAnswers = hasPhysicalViolation ? [] : answers;
+  const okState = violations.length === 0 && errors.length === 0;
+  const scene = okState ? buildDynamicsScene(plan, solved, tPhys) : { geometry: null, playback: { durationSec: 0, timeScale: 1 } };
+  const charts = okState ? buildDynamicsCharts(plan, solved, tPhys) : [];
+  const ok = violations.length === 0 && errors.length === 0 && servedAnswers.length === plan.queries.length && servedAnswers.every((a) => Number.isFinite(a.approx));
+  return {
+    ok,
+    answers: servedAnswers,
+    checks,
+    violations,
+    errors,
+    geometry: scene.geometry,
+    charts,
+    meta: { model: { config: solved.meta.config, direction: solved.meta.direction }, tPhys, playback: scene.playback, unitsNote: "SI", horizonNote: solved.meta.horizonNote }
+  };
+}
+
+// api/_lib/kernel/physics/piScalar.ts
+var K_MAX = 2;
+function approxP(p2) {
+  return p2.s.approx * Math.PI ** p2.k;
+}
+function isZeroPi(p2) {
+  return p2.s.exact !== null ? p2.s.exact.num === 0n : Math.abs(p2.s.approx) < 1e-12;
+}
+function collapseP(p2) {
+  return { s: num(approxP(p2)), k: 0 };
+}
+function bandP(p2) {
+  return p2.k > K_MAX || p2.k < -K_MAX ? collapseP(p2) : p2;
+}
+var scalarToPi = (s) => ({ s, k: 0 });
+var PI = { s: rat(1n), k: 1 };
+var TWO_PI = { s: rat(2n), k: 1 };
+var negP = (p2) => ({ s: neg(p2.s), k: p2.k });
+function mulP(a, b) {
+  return bandP({ s: mul(a.s, b.s), k: a.k + b.k });
+}
+function divP(a, b) {
+  return bandP({ s: div(a.s, b.s), k: a.k - b.k });
+}
+function addP(a, b) {
+  if (isZeroPi(a)) return b;
+  if (isZeroPi(b)) return a;
+  if (a.k === b.k) return { s: add2(a.s, b.s), k: a.k };
+  return { s: num(approxP(a) + approxP(b)), k: 0 };
+}
+function subP(a, b) {
+  return addP(a, negP(b));
+}
+function sqrtP(a) {
+  if (a.k % 2 === 0) return bandP({ s: sqrt(a.s), k: a.k / 2 });
+  return { s: num(Math.sqrt(approxP(a))), k: 0 };
+}
+var E = (n, d, rad = 1) => makeExact(BigInt(n), BigInt(d), rad);
+var SIXTH = [
+  { cos: E(1, 1), sin: E(0, 1) },
+  // 0
+  { cos: E(1, 2, 3), sin: E(1, 2) },
+  // π/6
+  { cos: E(1, 2), sin: E(1, 2, 3) },
+  // π/3
+  { cos: E(0, 1), sin: E(1, 1) },
+  // π/2
+  { cos: E(-1, 2), sin: E(1, 2, 3) },
+  // 2π/3
+  { cos: E(-1, 2, 3), sin: E(1, 2) },
+  // 5π/6
+  { cos: E(-1, 1), sin: E(0, 1) },
+  // π
+  { cos: E(-1, 2, 3), sin: E(-1, 2) },
+  // 7π/6
+  { cos: E(-1, 2), sin: E(-1, 2, 3) },
+  // 4π/3
+  { cos: E(0, 1), sin: E(-1, 1) },
+  // 3π/2
+  { cos: E(1, 2), sin: E(-1, 2, 3) },
+  // 5π/3
+  { cos: E(1, 2, 3), sin: E(-1, 2) }
+  // 11π/6
+];
+var FOURTH = [
+  { cos: E(1, 1), sin: E(0, 1) },
+  // 0
+  { cos: E(1, 2, 2), sin: E(1, 2, 2) },
+  // π/4
+  { cos: E(0, 1), sin: E(1, 1) },
+  // π/2
+  { cos: E(-1, 2, 2), sin: E(1, 2, 2) },
+  // 3π/4
+  { cos: E(-1, 1), sin: E(0, 1) },
+  // π
+  { cos: E(-1, 2, 2), sin: E(-1, 2, 2) },
+  // 5π/4
+  { cos: E(0, 1), sin: E(-1, 1) },
+  // 3π/2
+  { cos: E(1, 2, 2), sin: E(-1, 2, 2) }
+  // 7π/4
+];
+var bmod = (a, m) => (a % m + m) % m;
+function EXACT_COS(pha) {
+  if (pha.k !== 1) return null;
+  const e = pha.s.exact;
+  if (e === null || e.radicand !== 1) return null;
+  const p2 = e.num, q = e.den;
+  if (6n % q === 0n) {
+    const g = SIXTH[Number(bmod(p2 * (6n / q), 12n))];
+    return { cos: fromExact(g.cos), sin: fromExact(g.sin) };
+  }
+  if (4n % q === 0n) {
+    const g = FOURTH[Number(bmod(p2 * (4n / q), 8n))];
+    return { cos: fromExact(g.cos), sin: fromExact(g.sin) };
+  }
+  return null;
+}
+function cosP(pha) {
+  if (isZeroPi(pha)) return rat(1n);
+  const g = EXACT_COS(pha);
+  return g ? g.cos : num(Math.cos(approxP(pha)));
+}
+function sinP(pha) {
+  if (isZeroPi(pha)) return rat(0n);
+  const g = EXACT_COS(pha);
+  return g ? g.sin : num(Math.sin(approxP(pha)));
+}
+function piPow(ak) {
+  return ak === 1 ? "\u03C0" : ak === 2 ? "\u03C0\xB2" : `\u03C0^${ak}`;
+}
+function displayPiScalar(p2) {
+  if (p2.k === 0) return displayScalar(p2.s);
+  if (p2.s.exact === null) return approxP(p2).toFixed(4);
+  if (isZeroPi(p2)) return "0";
+  const e = p2.s.exact;
+  const neg2 = e.num < 0n;
+  const n = neg2 ? -e.num : e.num;
+  const d = e.den;
+  const rad = e.radicand;
+  const sign = neg2 ? "-" : "";
+  const surd = rad > 1 ? `\u221A${rad}` : "";
+  const piStr = piPow(Math.abs(p2.k));
+  if (p2.k > 0) {
+    const numer2 = (n !== 1n ? `${n}` : "") + piStr + surd;
+    return sign + numer2 + (d > 1n ? `/${d}` : "");
+  }
+  const numer = n !== 1n ? `${n}${surd}` : rad > 1 ? surd : "1";
+  const denParts = (d > 1n ? `${d}` : "") + piStr;
+  const denom = d > 1n ? `(${denParts})` : denParts;
+  return sign + numer + "/" + denom;
+}
+function fmtNum7(x) {
+  if (!Number.isFinite(x)) return "(l\u1ED7i)";
+  if (x !== 0 && Math.abs(x) < 1e-3) return parseFloat(x.toPrecision(4)).toString();
+  const digits = Math.abs(x) >= 1e3 ? 2 : 4;
+  return parseFloat(x.toFixed(digits)).toString();
+}
+function certifyPiScalar(p2, floatRef) {
+  const tol = 1e-6 * Math.max(1, Math.abs(floatRef));
+  if (p2.s.exact !== null && Math.abs(approxP(p2) - floatRef) <= tol) {
+    return { exact: p2.s.exact, approx: approxP(p2), text: displayPiScalar(p2), approximate: false };
+  }
+  const nice = Number.isFinite(floatRef) ? recognizeConstant(floatRef) : null;
+  return { exact: null, approx: floatRef, text: nice ? nice.text : fmtNum7(floatRef), approximate: !nice };
+}
+var Num4 = external_exports.number().finite();
+var PiRat = external_exports.union([
+  Num4,
+  // 5 ≡ số trần (bậc 0)
+  external_exports.object({ n: Num4, d: external_exports.number().int().positive().default(1), pi: external_exports.boolean().default(false) })
+]);
+function toPiScalar(pr) {
+  if (typeof pr === "number") return { s: scalarFromNumber(pr), k: 0 };
+  const d = pr.d ?? 1;
+  const s = div(scalarFromNumber(pr.n), rat(BigInt(d)));
+  return { s, k: pr.pi ? 1 : 0 };
+}
+
+// api/_lib/kernel/physics/oscillationSchema.ts
+var Num5 = external_exports.number().finite();
+var Obj3 = external_exports.string().min(1);
+var VUnit2 = external_exports.enum(["cm/s", "m/s"]);
+var AUnit = external_exports.enum(["cm/s2", "m/s2"]);
+function piRatPositive(pr) {
+  return typeof pr === "number" ? pr > 0 : pr.n > 0;
+}
+var OscillatorOp = external_exports.object({
+  op: external_exports.literal("oscillator"),
+  name: Obj3,
+  // NGUỒN TỐC ĐỘ GÓC (0..n; ≥2 ⇒ nguồn ưu tiên tính, còn lại thành auto-assert §5.2)
+  omega: PiRat.optional(),
+  // rad/s
+  T: PiRat.optional(),
+  // s
+  f: PiRat.optional(),
+  // Hz
+  count: external_exports.object({ n: external_exports.number().int().positive(), dt: PiRat }).optional(),
+  // "n dao động trong dt giây"
+  spring: external_exports.object({ k: Num5.positive() }).optional(),
+  // N/m — rate khi có mass; energy khi chỉ có k
+  pendulum: external_exports.object({
+    l: Num5.positive(),
+    lUnit: external_exports.enum(["m", "cm"]).default("m"),
+    g: Num5.positive().optional(),
+    // 9.8 / 10 THEO ĐỀ
+    gAsPiSquared: external_exports.boolean().default(false)
+    // "g = π²" hoặc "g = 10, lấy π² = 10" ⇒ true (§5.4)
+  }).optional(),
+  mass: Num5.positive().optional(),
+  // cho ω=√(k/m) và W=½mω²A²
+  massUnit: external_exports.enum(["kg", "g"]).default("kg"),
+  // NGUỒN BIÊN ĐỘ (0..n; ưu tiên + auto-assert; đơn vị units.length)
+  A: Num5.positive().optional(),
+  L: Num5.positive().optional(),
+  // chiều dài quỹ đạo = 2A
+  pathPerPeriod: Num5.positive().optional(),
+  // quãng đường 1 chu kỳ = 4A
+  vmaxGiven: external_exports.object({ v: Num5.positive(), unit: VUnit2.optional() }).optional(),
+  // A = vmax/ω
+  fromState: external_exports.object({ x: Num5, v: Num5, unit: VUnit2.optional() }).optional(),
+  // A²=x²+v²/ω²
+  initial: external_exports.object({ x0: Num5, v0: Num5.default(0), unit: VUnit2.optional() }).optional(),
+  // t=0 → A VÀ φ (§5.3)
+  // PHA
+  phi: PiRat.optional(),
+  // rad
+  form: external_exports.enum(["cos", "sin"]).default("cos")
+  // "x=A·sin(ωt+φₛ)" ⇒ form:'sin'; ENGINE đổi φ:=φₛ−π/2
+}).superRefine((op, ctx) => {
+  const issue = (message) => ctx.addIssue({ code: external_exports.ZodIssueCode.custom, message });
+  if (op.omega !== void 0 && !piRatPositive(op.omega)) issue(`t\u1EA7n s\u1ED1 g\xF3c \u03C9 c\u1EE7a "${op.name}" ph\u1EA3i d\u01B0\u01A1ng`);
+  if (op.T !== void 0 && !piRatPositive(op.T)) issue(`chu k\u1EF3 T c\u1EE7a "${op.name}" ph\u1EA3i d\u01B0\u01A1ng`);
+  if (op.f !== void 0 && !piRatPositive(op.f)) issue(`t\u1EA7n s\u1ED1 f c\u1EE7a "${op.name}" ph\u1EA3i d\u01B0\u01A1ng`);
+  if (op.count !== void 0 && !piRatPositive(op.count.dt)) issue(`kho\u1EA3ng th\u1EDDi gian \u0111\u1EBFm dao \u0111\u1ED9ng c\u1EE7a "${op.name}" ph\u1EA3i d\u01B0\u01A1ng`);
+  if (op.pendulum) {
+    const hasG = op.pendulum.g !== void 0;
+    if (hasG && op.pendulum.gAsPiSquared) issue(`con l\u1EAFc "${op.name}": khai g HO\u1EB6C gAsPiSquared, kh\xF4ng c\u1EA3 hai`);
+    if (!hasG && !op.pendulum.gAsPiSquared) issue(`con l\u1EAFc "${op.name}": thi\u1EBFu g (s\u1ED1) ho\u1EB7c gAsPiSquared:true`);
+  }
+  if (op.initial && op.initial.x0 === 0 && (op.initial.v0 ?? 0) === 0) {
+    issue(`v\u1EADt "${op.name}" kh\xF4ng dao \u0111\u1ED9ng (initial x\u2080 = v\u2080 = 0 \u21D2 A = 0)`);
+  }
+});
+var OscQuerySchema = external_exports.discriminatedUnion("kind", [
+  external_exports.object({ kind: external_exports.literal("x_at"), of: Obj3, t: PiRat, label: external_exports.string().optional() }),
+  external_exports.object({ kind: external_exports.literal("v_at"), of: Obj3, t: PiRat, unit: VUnit2.optional(), label: external_exports.string().optional() }),
+  // ĐẠI SỐ, có dấu
+  external_exports.object({ kind: external_exports.literal("a_at"), of: Obj3, t: PiRat, unit: AUnit.optional(), label: external_exports.string().optional() }),
+  // ĐẠI SỐ
+  external_exports.object({ kind: external_exports.literal("amplitude"), of: Obj3, label: external_exports.string().optional() }),
+  external_exports.object({ kind: external_exports.literal("omega"), of: Obj3, label: external_exports.string().optional() }),
+  external_exports.object({ kind: external_exports.literal("period"), of: Obj3, label: external_exports.string().optional() }),
+  external_exports.object({ kind: external_exports.literal("frequency"), of: Obj3, label: external_exports.string().optional() }),
+  external_exports.object({ kind: external_exports.literal("initial_phase"), of: Obj3, label: external_exports.string().optional() }),
+  // chuẩn hóa (−π, π]
+  external_exports.object({ kind: external_exports.literal("vmax"), of: Obj3, unit: VUnit2.optional(), label: external_exports.string().optional() }),
+  external_exports.object({ kind: external_exports.literal("amax"), of: Obj3, unit: AUnit.optional(), label: external_exports.string().optional() }),
+  external_exports.object({ kind: external_exports.literal("speed_at_x"), of: Obj3, x: Num5, unit: VUnit2.optional(), label: external_exports.string().optional() }),
+  // |v|
+  external_exports.object({ kind: external_exports.literal("x_at_speed"), of: Obj3, v: Num5.min(0), vUnit: VUnit2.optional(), label: external_exports.string().optional() }),
+  // |x|; v ≥ 0 (OS-6: v=0 hợp lệ ⇒ |x|=A)
+  external_exports.object({ kind: external_exports.literal("energy_total"), of: Obj3, label: external_exports.string().optional() }),
+  // J
+  external_exports.object({ kind: external_exports.literal("energy_kinetic_at"), of: Obj3, at: external_exports.union([external_exports.object({ x: Num5 }), external_exports.object({ t: PiRat })]), label: external_exports.string().optional() }),
+  external_exports.object({ kind: external_exports.literal("energy_potential_at"), of: Obj3, at: external_exports.union([external_exports.object({ x: Num5 }), external_exports.object({ t: PiRat })]), label: external_exports.string().optional() }),
+  external_exports.object({ kind: external_exports.literal("x_where_energy_ratio"), of: Obj3, ratio: Num5.positive(), label: external_exports.string().optional() }),
+  // Wđ = ratio·Wt → |x|
+  external_exports.object({
+    kind: external_exports.literal("first_time_at_x"),
+    of: Obj3,
+    x: Num5,
+    direction: external_exports.enum(["positive", "negative", "any"]).default("any"),
+    label: external_exports.string().optional()
+  })
+]);
+var OscillationPlanSchema = external_exports.object({
+  problemName: external_exports.string().min(1).default("dao-dong"),
+  // units.time = 's' (OS: chu kỳ tính giờ ngoài đề phổ thông); units.length ∈ {'m','cm'} (đề VN hầu hết cm).
+  units: external_exports.object({ length: external_exports.enum(["cm", "m"]).default("cm"), time: external_exports.literal("s").default("s") }).default({}),
+  ops: external_exports.array(OscillatorOp).min(1),
+  queries: external_exports.array(OscQuerySchema).min(1),
+  asserts: external_exports.array(external_exports.object({ query: OscQuerySchema, equals: Num5, tol: Num5.positive().optional() })).default([]),
+  charts: external_exports.array(external_exports.object({ kind: external_exports.enum(["x_t", "v_t"]), of: external_exports.array(Obj3).min(1) })).default([]),
+  scene: external_exports.object({ durationSec: Num5.positive().optional(), labels: external_exports.record(external_exports.string(), external_exports.string()).optional() }).default({})
+}).superRefine((plan, ctx) => {
+  const issue = (message) => ctx.addIssue({ code: external_exports.ZodIssueCode.custom, message });
+  const names = /* @__PURE__ */ new Set();
+  for (const op of plan.ops) {
+    if (names.has(op.name)) issue(`v\u1EADt "${op.name}" khai b\xE1o 2 l\u1EA7n`);
+    names.add(op.name);
+  }
+  for (const q of plan.queries) {
+    if ("of" in q && q.of !== void 0 && !names.has(q.of)) issue(`query ${q.kind} tr\u1ECF v\u1EADt "${q.of}" kh\xF4ng t\u1ED3n t\u1EA1i`);
+  }
+});
+
+// api/_lib/kernel/physics/oscillation.ts
+var EPS_SELF4 = 1e-6;
+var EPS_T2 = 1e-9;
+var PHYSICAL_VIOLATIONS2 = /* @__PURE__ */ new Set(["bien-do-khong-duong", "nguon-du-lech", "li-do-ngoai-bien"]);
+var piToScalar = (p2) => p2.k === 0 ? p2.s : num(approxP(p2));
+var sqPi = (p2) => mulP(p2, p2);
+var exactEq2 = (a, b) => a.num === b.num && a.den === b.den && a.radicand === b.radicand;
+function fmtNum8(x) {
+  if (!Number.isFinite(x)) return "(l\u1ED7i)";
+  if (x !== 0 && Math.abs(x) < 1e-3) return parseFloat(x.toPrecision(4)).toString();
+  const digits = Math.abs(x) >= 1e3 ? 2 : 4;
+  return parseFloat(x.toFixed(digits)).toString();
+}
+function mkAnsS(kind, s, floatRef, unit, label) {
+  const tol = 1e-6 * Math.max(1, Math.abs(floatRef));
+  if (s.exact !== null && Math.abs(exactToApprox(s.exact) - floatRef) <= tol) {
+    return { label, kind, text: displayScalar(s), approx: exactToApprox(s.exact), unit, approximate: false };
+  }
+  const nice = Number.isFinite(floatRef) ? recognizeConstant(floatRef) : null;
+  return { label, kind, text: nice ? nice.text : fmtNum8(floatRef), approx: floatRef, unit, approximate: !nice };
+}
+function mkAnsP(kind, p2, floatRef, unit, label) {
+  const c = certifyPiScalar(p2, floatRef);
+  return { label, kind, text: c.text, approx: c.approx, unit, approximate: c.approximate };
+}
+function lenFactor(from, to) {
+  if (from === to) return rat(1n);
+  return from === "cm" && to === "m" ? rat(1n, 100n) : rat(100n);
+}
+var cmToM = (from) => lenFactor(from, "m");
+function velToBase(v, unit, base) {
+  const from = unit === "m/s" ? "m" : unit === "cm/s" ? "cm" : base;
+  return mul(scalarFromNumber(v), lenFactor(from, base));
+}
+function outVel(base, unit) {
+  const nat = `${base}/s`;
+  if (!unit || unit === nat) return { factor: rat(1n), unit: nat };
+  const to = unit === "m/s" ? "m" : "cm";
+  return { factor: lenFactor(base, to), unit };
+}
+function outAcc(base, unit) {
+  const nat = `${base}/s2`;
+  if (!unit || unit === nat) return { factor: rat(1n), unit: nat };
+  const to = unit === "m/s2" ? "m" : "cm";
+  return { factor: lenFactor(base, to), unit };
+}
+function pendulumOmega(pend) {
+  const lM = pend.lUnit === "cm" ? mul(scalarFromNumber(pend.l), rat(1n, 100n)) : scalarFromNumber(pend.l);
+  const gP = pend.gAsPiSquared ? { s: rat(1n), k: 2 } : scalarToPi(scalarFromNumber(pend.g));
+  return sqrtP(divP(gP, scalarToPi(lM)));
+}
+function rateSources(op) {
+  const out = [];
+  if (op.omega !== void 0) out.push({ name: "omega", w: toPiScalar(op.omega) });
+  if (op.T !== void 0) out.push({ name: "T", w: divP(TWO_PI, toPiScalar(op.T)) });
+  if (op.f !== void 0) out.push({ name: "f", w: mulP(TWO_PI, toPiScalar(op.f)) });
+  if (op.count !== void 0) out.push({ name: "count", w: mulP(TWO_PI, divP(scalarToPi(scalarFromNumber(op.count.n)), toPiScalar(op.count.dt))) });
+  if (op.spring && op.mass !== void 0) {
+    const kS = scalarFromNumber(op.spring.k);
+    const mS = op.massUnit === "g" ? mul(scalarFromNumber(op.mass), rat(1n, 1000n)) : scalarFromNumber(op.mass);
+    out.push({ name: "spring", w: sqrtP(scalarToPi(div(kS, mS))) });
+  }
+  if (op.pendulum) out.push({ name: "pendulum", w: pendulumOmega(op.pendulum) });
+  return out;
+}
+function amplFromStateP(x, v, omega) {
+  const vOverW = divP(scalarToPi(v), omega);
+  return sqrtP(addP(scalarToPi(mul(x, x)), sqPi(vOverW)));
+}
+function amplSources(op, omega, base) {
+  const out = [];
+  if (op.A !== void 0) out.push({ name: "A", A: scalarFromNumber(op.A) });
+  if (op.L !== void 0) out.push({ name: "L", A: mul(scalarFromNumber(op.L), rat(1n, 2n)) });
+  if (op.pathPerPeriod !== void 0) out.push({ name: "path", A: mul(scalarFromNumber(op.pathPerPeriod), rat(1n, 4n)) });
+  if (op.fromState && omega) {
+    const A = piToScalar(amplFromStateP(scalarFromNumber(op.fromState.x), velToBase(op.fromState.v, op.fromState.unit, base), omega));
+    out.push({ name: "fromState", A });
+  }
+  if (op.vmaxGiven && omega) {
+    const A = piToScalar(divP(scalarToPi(velToBase(op.vmaxGiven.v, op.vmaxGiven.unit, base)), omega));
+    out.push({ name: "vmax", A });
+  }
+  if (op.initial && omega) {
+    const A = piToScalar(amplFromStateP(scalarFromNumber(op.initial.x0), velToBase(op.initial.v0 ?? 0, op.initial.unit, base), omega));
+    out.push({ name: "initial", A });
+  }
+  return out;
+}
+var GEXACT = (n, d, rad = 1) => makeExact(BigInt(n), BigInt(d), rad);
+var FULL_GRID = [
+  { n: 0, d: 1, cos: GEXACT(1, 1), sin: GEXACT(0, 1) },
+  { n: 1, d: 6, cos: GEXACT(1, 2, 3), sin: GEXACT(1, 2) },
+  { n: 1, d: 4, cos: GEXACT(1, 2, 2), sin: GEXACT(1, 2, 2) },
+  { n: 1, d: 3, cos: GEXACT(1, 2), sin: GEXACT(1, 2, 3) },
+  { n: 1, d: 2, cos: GEXACT(0, 1), sin: GEXACT(1, 1) },
+  { n: 2, d: 3, cos: GEXACT(-1, 2), sin: GEXACT(1, 2, 3) },
+  { n: 3, d: 4, cos: GEXACT(-1, 2, 2), sin: GEXACT(1, 2, 2) },
+  { n: 5, d: 6, cos: GEXACT(-1, 2, 3), sin: GEXACT(1, 2) },
+  { n: 1, d: 1, cos: GEXACT(-1, 1), sin: GEXACT(0, 1) },
+  { n: -1, d: 6, cos: GEXACT(1, 2, 3), sin: GEXACT(-1, 2) },
+  { n: -1, d: 4, cos: GEXACT(1, 2, 2), sin: GEXACT(-1, 2, 2) },
+  { n: -1, d: 3, cos: GEXACT(1, 2), sin: GEXACT(-1, 2, 3) },
+  { n: -1, d: 2, cos: GEXACT(0, 1), sin: GEXACT(-1, 1) },
+  { n: -2, d: 3, cos: GEXACT(-1, 2), sin: GEXACT(-1, 2, 3) },
+  { n: -3, d: 4, cos: GEXACT(-1, 2, 2), sin: GEXACT(-1, 2, 2) },
+  { n: -5, d: 6, cos: GEXACT(-1, 2, 3), sin: GEXACT(-1, 2) }
+];
+var ARCCOS_GRID = FULL_GRID.filter((g) => g.n >= 0 && g.n <= g.d);
+function gridPhaseFrom(cosV, sinV) {
+  if (cosV.exact === null || sinV.exact === null) return null;
+  for (const g of FULL_GRID) if (exactEq2(cosV.exact, g.cos) && exactEq2(sinV.exact, g.sin)) {
+    return g.n === 0 ? { s: rat(0n), k: 0 } : { s: rat(BigInt(g.n), BigInt(g.d)), k: 1 };
+  }
+  return null;
+}
+function gridArccos(c) {
+  if (c.exact === null) return null;
+  for (const g of ARCCOS_GRID) if (exactEq2(c.exact, g.cos)) {
+    return g.n === 0 ? { s: rat(0n), k: 0 } : { s: rat(BigInt(g.n), BigInt(g.d)), k: 1 };
+  }
+  return null;
+}
+function normalizePhase(phi) {
+  if (isZeroPi(phi)) return { s: rat(0n), k: 0 };
+  if (phi.k !== 1 || phi.s.exact === null || phi.s.exact.radicand !== 1) return phi;
+  let p2 = phi.s.exact.num;
+  const q = phi.s.exact.den;
+  const two = 2n * q;
+  p2 = (p2 % two + two) % two;
+  if (p2 > q) p2 -= two;
+  return p2 === 0n ? { s: rat(0n), k: 0 } : { s: rat(p2, q), k: 1 };
+}
+function resolveModel(op, base) {
+  const checks = [];
+  const violations = [];
+  const errors = [];
+  const rates = rateSources(op);
+  const omega = rates.length ? rates[0].w : null;
+  for (let i = 1; i < rates.length; i++) {
+    const d = Math.abs(approxP(rates[i].w) - approxP(omega));
+    const pass = d <= EPS_SELF4 * Math.max(1, Math.abs(approxP(omega)));
+    checks.push({ kind: "rate_redundant", detail: `ngu\u1ED3n \u03C9 d\u01B0 "${rates[i].name}" kh\u1EDBp "${rates[0].name}"`, residual: d, pass });
+    if (!pass) violations.push({ id: "nguon-du-lech", message: `ngu\u1ED3n \u03C9 "${rates[i].name}" (${approxP(rates[i].w).toFixed(4)}) l\u1EC7ch "${rates[0].name}" (${approxP(omega).toFixed(4)}) \u2014 d\u1ECBch sai \u0111\u1EC1` });
+  }
+  const ampls = amplSources(op, omega, base);
+  let A = ampls.length ? ampls[0].A : null;
+  for (let i = 1; i < ampls.length; i++) {
+    const d = Math.abs(ampls[i].A.approx - A.approx);
+    const pass = d <= EPS_SELF4 * Math.max(1, Math.abs(A.approx));
+    checks.push({ kind: "ampl_redundant", detail: `ngu\u1ED3n A d\u01B0 "${ampls[i].name}" kh\u1EDBp "${ampls[0].name}"`, residual: d, pass });
+    if (!pass) violations.push({ id: "nguon-du-lech", message: `ngu\u1ED3n A "${ampls[i].name}" (${ampls[i].A.approx.toFixed(4)}) l\u1EC7ch "${ampls[0].name}" (${A.approx.toFixed(4)}) \u2014 d\u1ECBch sai \u0111\u1EC1` });
+  }
+  if (A !== null && A.approx <= EPS_T2) {
+    violations.push({ id: "bien-do-khong-duong", message: `v\u1EADt "${op.name}" kh\xF4ng dao \u0111\u1ED9ng (A = ${A.approx} \u2264 0)` });
+    A = null;
+  }
+  let phi = null;
+  if (op.phi !== void 0) {
+    let p2 = toPiScalar(op.phi);
+    if (op.form === "sin") p2 = subP(p2, { s: rat(1n, 2n), k: 1 });
+    phi = normalizePhase(p2);
+  } else if (op.initial && omega && A) {
+    const cosV = div(scalarFromNumber(op.initial.x0), A);
+    const v0 = velToBase(op.initial.v0 ?? 0, op.initial.unit, base);
+    const wA = mulP(omega, scalarToPi(A));
+    const sinP0 = piToScalar(divP(scalarToPi(neg(v0)), wA));
+    const g = gridPhaseFrom(cosV, sinP0);
+    phi = g ? normalizePhase(g) : { s: num(Math.atan2(-v0.approx / approxP(omega), op.initial.x0 / A.approx)), k: 0 };
+  }
+  const kSpring = op.spring ? scalarFromNumber(op.spring.k) : null;
+  const massKg = op.mass !== void 0 ? op.massUnit === "g" ? mul(scalarFromNumber(op.mass), rat(1n, 1000n)) : scalarFromNumber(op.mass) : null;
+  return { model: { name: op.name, A, omega, phi, massKg, kSpring, op }, checks, violations, errors };
+}
+function phaseAt(model, t) {
+  return addP(mulP(model.omega, t), model.phi);
+}
+var evalXn = (An, wn, phin, tn) => An * Math.cos(wn * tn + phin);
+var evalVn = (An, wn, phin, tn) => -An * wn * Math.sin(wn * tn + phin);
+function energyAt(model, xMeters, base) {
+  const half = rat(1n, 2n);
+  if (model.kSpring) {
+    const E2 = scalarToPi(mul(half, mul(model.kSpring, mul(xMeters, xMeters))));
+    return { E: E2, En: approxP(E2) };
+  }
+  if (model.massKg && model.omega) {
+    const E2 = mulP(mulP(scalarToPi(mul(half, model.massKg)), sqPi(model.omega)), scalarToPi(mul(xMeters, xMeters)));
+    return { E: E2, En: approxP(E2) };
+  }
+  return null;
+}
+function firstTimeAtX(model, xTarget, direction, label) {
+  const A = model.A, omega = model.omega, phi = model.phi;
+  const An = A.approx, wn = approxP(omega), phin = approxP(phi);
+  const cN = xTarget / An;
+  if (Math.abs(cN) > 1 + 1e-9) return { ok: false, problem: `x\u2080 = ${xTarget} ngo\xE0i \u0111o\u1EA1n [\u2212A, A] (A = ${fmtNum8(An)})` };
+  const T = divP(TWO_PI, omega);
+  const TN = approxP(T);
+  const boundary = Math.abs(cN) >= 1 - 1e-9;
+  if (boundary && direction !== "any") return { ok: false, problem: `x = ${xTarget} l\xE0 bi\xEAn (v = 0) \u2014 kh\xF4ng c\xF3 chi\u1EC1u qua, d\xF9ng direction:'any'` };
+  const c = div(scalarFromNumber(xTarget), A);
+  const theta0 = gridArccos(c);
+  const grid = theta0 !== null;
+  const solveBranch = (thetaSigned, thetaSignedN) => {
+    const base = divP(subP(thetaSigned, phi), omega);
+    const baseN = approxP(base);
+    let m = Math.round((EPS_T2 - baseN) / TN);
+    while (baseN + m * TN <= EPS_T2) m++;
+    while (baseN + (m - 1) * TN > EPS_T2) m--;
+    return addP(base, mulP(scalarToPi(scalarFromNumber(m)), T));
+  };
+  const solveBranchN = (thetaSignedN) => {
+    const baseN = (thetaSignedN - phin) / wn;
+    let m = Math.round((EPS_T2 - baseN) / TN);
+    while (baseN + m * TN <= EPS_T2) m++;
+    while (baseN + (m - 1) * TN > EPS_T2) m--;
+    return baseN + m * TN;
+  };
+  const theta0N = Math.acos(Math.max(-1, Math.min(1, cN)));
+  const wantBranches = [];
+  if (grid) {
+    const negTheta = theta0;
+    const posThetaN = -theta0N, negThetaN = theta0N;
+    if (direction === "negative" || direction === "any") wantBranches.push({ theta: negTheta, thetaN: negThetaN });
+    if (direction === "positive" || direction === "any") wantBranches.push({ theta: negP(negTheta), thetaN: posThetaN });
+  }
+  let tPi;
+  if (grid && wantBranches.length) {
+    const cand = wantBranches.map((b) => solveBranch(b.theta, b.thetaN));
+    tPi = cand.reduce((best, cur) => approxP(cur) < approxP(best) ? cur : best);
+  } else {
+    const cands = [];
+    if (direction === "negative" || direction === "any") cands.push(solveBranchN(theta0N));
+    if (direction === "positive" || direction === "any") cands.push(solveBranchN(-theta0N));
+    tPi = { s: num(Math.min(...cands)), k: 0 };
+  }
+  const tN = approxP(tPi);
+  const answer = mkAnsP("first_time_at_x", tPi, tN, "s", label);
+  const checks = [];
+  checks.push({ kind: "first_time_mode", detail: grid ? "first_time: \u0111\u01B0\u1EDDng l\u01B0\u1EDBi (exact)" : "first_time: off-grid, \u0111\u01B0\u1EDDng s\u1ED1", residual: 0, pass: true });
+  const xBack = evalXn(An, wn, phin, tN);
+  checks.push({ kind: "first_time_x", detail: `x(t*) = x\u2080 = ${xTarget}`, residual: Math.abs(xBack - xTarget), pass: Math.abs(xBack - xTarget) <= EPS_SELF4 * Math.max(1, An) });
+  if (!boundary && direction !== "any") {
+    const vBack = evalVn(An, wn, phin, tN);
+    const ok = direction === "positive" ? vBack > 0 : vBack < 0;
+    checks.push({ kind: "first_time_dir", detail: `chi\u1EC1u ${direction} t\u1EA1i t*`, residual: ok ? 0 : Math.abs(vBack), pass: ok });
+  }
+  if (!boundary) {
+    const N = 2048;
+    let earliest = Infinity;
+    let prev = evalXn(An, wn, phin, EPS_T2) - xTarget;
+    for (let i = 1; i <= N; i++) {
+      const tau = EPS_T2 + (tN - EPS_T2) * i / N;
+      const cur = evalXn(An, wn, phin, tau) - xTarget;
+      if (prev === 0 || prev < 0 !== cur < 0) {
+        const vmid = evalVn(An, wn, phin, tau - (tN - EPS_T2) / (2 * N));
+        const dirOk = direction === "any" || (direction === "positive" ? vmid > 0 : vmid < 0);
+        if (dirOk && tau < tN - 1e-7) {
+          earliest = Math.min(earliest, tau);
+          break;
+        }
+      }
+      prev = cur;
+    }
+    checks.push({ kind: "first_time_minimal", detail: "kh\xF4ng nghi\u1EC7m h\u1EE3p l\u1EC7 s\u1EDBm h\u01A1n t*", residual: Number.isFinite(earliest) ? earliest : 0, pass: !Number.isFinite(earliest) });
+  }
+  return { ok: true, answer, checks, tSolved: tN };
+}
+function computeOscQuery(solved, q, base) {
+  const m = solved.model;
+  const reqA = () => m.A;
+  const reqW = () => m.omega;
+  const needAW = () => m.A === null ? `c\u1EA7n bi\xEAn \u0111\u1ED9 A c\u1EE7a "${m.name}" \u2014 \u0111\u1EC1 kh\xF4ng \u0111\u1EE7 d\u1EEF ki\u1EC7n ho\u1EB7c d\u1ECBch thi\u1EBFu` : m.omega === null ? `c\u1EA7n t\u1EA7n s\u1ED1 g\xF3c \u03C9 c\u1EE7a "${m.name}" \u2014 \u0111\u1EC1 kh\xF4ng \u0111\u1EE7 d\u1EEF ki\u1EC7n ho\u1EB7c d\u1ECBch thi\u1EBFu` : null;
+  const needPhase = () => m.phi === null ? `c\u1EA7n pha ban \u0111\u1EA7u c\u1EE7a "${m.name}" \u2014 \u0111\u1EC1 thi\u1EBFu \u03C6 v\xE0 \u0111i\u1EC1u ki\u1EC7n \u0111\u1EA7u` : null;
+  switch (q.kind) {
+    case "omega": {
+      if (m.omega === null) return { ok: false, problem: `c\u1EA7n \u03C9 c\u1EE7a "${m.name}"` };
+      return { ok: true, answer: mkAnsP("omega", m.omega, approxP(m.omega), "rad/s", q.label), checks: [] };
+    }
+    case "period": {
+      if (m.omega === null) return { ok: false, problem: `c\u1EA7n \u03C9 \u0111\u1EC3 t\xEDnh chu k\u1EF3 c\u1EE7a "${m.name}"` };
+      const T = divP(TWO_PI, m.omega);
+      const checks = [];
+      const f = divP(m.omega, TWO_PI);
+      const prod = mulP(T, f);
+      checks.push({ kind: "period_freq", detail: "T\xB7f = 1", residual: Math.abs(approxP(prod) - 1), pass: Math.abs(approxP(prod) - 1) <= EPS_SELF4 });
+      return { ok: true, answer: mkAnsP("period", T, approxP(T), "s", q.label), checks, tSolved: approxP(T) };
+    }
+    case "frequency": {
+      if (m.omega === null) return { ok: false, problem: `c\u1EA7n \u03C9 \u0111\u1EC3 t\xEDnh t\u1EA7n s\u1ED1 c\u1EE7a "${m.name}"` };
+      const f = divP(m.omega, TWO_PI);
+      return { ok: true, answer: mkAnsP("frequency", f, approxP(f), "Hz", q.label), checks: [] };
+    }
+    case "amplitude": {
+      if (m.A === null) return { ok: false, problem: `c\u1EA7n bi\xEAn \u0111\u1ED9 A c\u1EE7a "${m.name}"` };
+      return { ok: true, answer: mkAnsS("amplitude", m.A, m.A.approx, base, q.label), checks: [] };
+    }
+    case "initial_phase": {
+      const e = needPhase();
+      if (e) return { ok: false, problem: e };
+      return { ok: true, answer: mkAnsP("initial_phase", m.phi, approxP(m.phi), "rad", q.label), checks: [] };
+    }
+    case "vmax": {
+      const e = needAW();
+      if (e) return { ok: false, problem: e };
+      const v = mulP(scalarToPi(m.A), m.omega);
+      const o = outVel(base, q.unit);
+      const vc = mulP(v, scalarToPi(o.factor));
+      return { ok: true, answer: mkAnsP("vmax", vc, approxP(vc), o.unit, q.label), checks: [] };
+    }
+    case "amax": {
+      const e = needAW();
+      if (e) return { ok: false, problem: e };
+      const a = mulP(scalarToPi(m.A), sqPi(m.omega));
+      const o = outAcc(base, q.unit);
+      const ac = mulP(a, scalarToPi(o.factor));
+      return { ok: true, answer: mkAnsP("amax", ac, approxP(ac), o.unit, q.label), checks: [] };
+    }
+    case "x_at": {
+      const e = needAW() || needPhase();
+      if (e) return { ok: false, problem: e };
+      const A = m.A, omega = m.omega, phi = m.phi;
+      const pha = phaseAt(m, toPiScalar(q.t));
+      const x = mul(A, cosP(pha));
+      const An = A.approx, wn = approxP(omega), phin = approxP(phi), tn = approxP(toPiScalar(q.t));
+      const xn = evalXn(An, wn, phin, tn);
+      const checks = [];
+      checks.push({ kind: "x_bound", detail: "|x| \u2264 A", residual: Math.max(0, Math.abs(xn) - An), pass: Math.abs(xn) <= An * (1 + 1e-9) });
+      const vn = evalVn(An, wn, phin, tn);
+      const rel2 = vn * vn + wn * wn * xn * xn - wn * wn * An * An;
+      checks.push({ kind: "indep_relation", detail: "v\xB2 + \u03C9\xB2x\xB2 = \u03C9\xB2A\xB2", residual: Math.abs(rel2), pass: Math.abs(rel2) <= EPS_SELF4 * Math.max(1, (wn * An) ** 2) });
+      return { ok: true, answer: mkAnsS("x_at", x, xn, base, q.label), checks, tSolved: tn };
+    }
+    case "v_at": {
+      const e = needAW() || needPhase();
+      if (e) return { ok: false, problem: e };
+      const A = m.A, omega = m.omega, phi = m.phi;
+      const pha = phaseAt(m, toPiScalar(q.t));
+      const v = negP(mulP(mulP(scalarToPi(A), omega), scalarToPi(sinP(pha))));
+      const o = outVel(base, q.unit);
+      const vc = mulP(v, scalarToPi(o.factor));
+      const An = A.approx, wn = approxP(omega), phin = approxP(phi), tn = approxP(toPiScalar(q.t));
+      const vn = evalVn(An, wn, phin, tn) * o.factor.approx;
+      const vmaxN = An * wn * o.factor.approx;
+      const checks = [{ kind: "v_bound", detail: "|v| \u2264 vmax", residual: Math.max(0, Math.abs(vn) - Math.abs(vmaxN)), pass: Math.abs(vn) <= Math.abs(vmaxN) * (1 + 1e-9) }];
+      return { ok: true, answer: mkAnsP("v_at", vc, vn, o.unit, q.label), checks, tSolved: tn };
+    }
+    case "a_at": {
+      const e = needAW() || needPhase();
+      if (e) return { ok: false, problem: e };
+      const A = m.A, omega = m.omega, phi = m.phi;
+      const pha = phaseAt(m, toPiScalar(q.t));
+      const x = mul(A, cosP(pha));
+      const a = negP(mulP(sqPi(omega), scalarToPi(x)));
+      const o = outAcc(base, q.unit);
+      const ac = mulP(a, scalarToPi(o.factor));
+      const An = A.approx, wn = approxP(omega), phin = approxP(phi), tn = approxP(toPiScalar(q.t));
+      const xn = evalXn(An, wn, phin, tn);
+      const an = -wn * wn * xn * o.factor.approx;
+      const amaxN = An * wn * wn * o.factor.approx;
+      const checks = [{ kind: "a_bound", detail: "|a| \u2264 amax; a = \u2212\u03C9\xB2x", residual: Math.max(0, Math.abs(an) - Math.abs(amaxN)), pass: Math.abs(an) <= Math.abs(amaxN) * (1 + 1e-9) }];
+      return { ok: true, answer: mkAnsP("a_at", ac, an, o.unit, q.label), checks, tSolved: tn };
+    }
+    case "speed_at_x": {
+      const e = needAW();
+      if (e) return { ok: false, problem: e };
+      const A = m.A, omega = m.omega;
+      if (Math.abs(q.x) > A.approx * (1 + 1e-9)) return { ok: false, problem: `|x| = ${Math.abs(q.x)} > A = ${fmtNum8(A.approx)} \u2014 li \u0111\u1ED9 ngo\xE0i bi\xEAn` };
+      const root = sqrt(sub2(mul(A, A), mul(scalarFromNumber(q.x), scalarFromNumber(q.x))));
+      const v = mulP(omega, scalarToPi(root));
+      const o = outVel(base, q.unit);
+      const vc = mulP(v, scalarToPi(o.factor));
+      return { ok: true, answer: mkAnsP("speed_at_x", vc, approxP(vc), o.unit, q.label), checks: [] };
+    }
+    case "x_at_speed": {
+      const e = needAW();
+      if (e) return { ok: false, problem: e };
+      const A = m.A, omega = m.omega;
+      const vBase = velToBase(q.v, q.vUnit, base);
+      const vmaxN = A.approx * approxP(omega);
+      if (vBase.approx > vmaxN * (1 + 1e-9)) return { ok: false, problem: `v = ${vBase.approx} > vmax = ${fmtNum8(vmaxN)} \u2014 v\u01B0\u1EE3t t\u1ED1c \u0111\u1ED9 c\u1EF1c \u0111\u1EA1i` };
+      const vOverW = divP(scalarToPi(vBase), omega);
+      const x = piToScalar(sqrtP(subP(scalarToPi(mul(A, A)), sqPi(vOverW))));
+      return { ok: true, answer: mkAnsS("x_at_speed", x, x.approx, base, q.label), checks: [] };
+    }
+    case "x_where_energy_ratio": {
+      if (m.A === null) return { ok: false, problem: `c\u1EA7n bi\xEAn \u0111\u1ED9 A c\u1EE7a "${m.name}"` };
+      const denom = sqrt(add2(rat(1n), scalarFromNumber(q.ratio)));
+      const x = div(m.A, denom);
+      return { ok: true, answer: mkAnsS("x_where_energy_ratio", x, x.approx, base, q.label), checks: [] };
+    }
+    case "energy_total": {
+      const A = reqA();
+      if (A === null) return { ok: false, problem: `c\u1EA7n bi\xEAn \u0111\u1ED9 A c\u1EE7a "${m.name}"` };
+      const Am = mul(A, cmToM(base));
+      const E2 = energyAt(m, Am, base);
+      if (!E2) return { ok: false, problem: `c\u1EA7n \u0111\u1ED9 c\u1EE9ng k HO\u1EB6C (kh\u1ED1i l\u01B0\u1EE3ng m v\xE0 \u03C9) \u0111\u1EC3 t\xEDnh n\u0103ng l\u01B0\u1EE3ng c\u1EE7a "${m.name}"` };
+      return { ok: true, answer: mkAnsP("energy_total", E2.E, E2.En, "J", q.label), checks: [] };
+    }
+    case "energy_potential_at":
+    case "energy_kinetic_at": {
+      const A = reqA();
+      if (A === null) return { ok: false, problem: `c\u1EA7n bi\xEAn \u0111\u1ED9 A c\u1EE7a "${m.name}"` };
+      const at = q.at;
+      let xLen;
+      let xn;
+      if (at.x !== void 0) {
+        xLen = scalarFromNumber(at.x);
+        xn = at.x;
+      } else {
+        const e = needAW() || needPhase();
+        if (e) return { ok: false, problem: e };
+        const tPi = toPiScalar(at.t);
+        const pha = phaseAt(m, tPi);
+        xLen = mul(A, cosP(pha));
+        xn = evalXn(A.approx, approxP(m.omega), approxP(m.phi), approxP(tPi));
+      }
+      if (Math.abs(xn) > A.approx * (1 + 1e-9)) return { ok: false, problem: `|x| = ${Math.abs(xn)} > A = ${fmtNum8(A.approx)}` };
+      const Am = mul(A, cmToM(base));
+      const xm = mul(xLen, cmToM(base));
+      const W = energyAt(m, Am, base);
+      const Wt = energyAt(m, xm, base);
+      if (!W || !Wt) return { ok: false, problem: `c\u1EA7n k HO\u1EB6C (m v\xE0 \u03C9) \u0111\u1EC3 t\xEDnh n\u0103ng l\u01B0\u1EE3ng c\u1EE7a "${m.name}"` };
+      const checks = [];
+      if (q.kind === "energy_potential_at") {
+        return { ok: true, answer: mkAnsP("energy_potential_at", Wt.E, Wt.En, "J", q.label), checks };
+      }
+      const Wd = subP(W.E, Wt.E);
+      const recon = addP(Wd, Wt.E);
+      checks.push({ kind: "energy_conserve", detail: "W\u0111 + Wt = W", residual: Math.abs(approxP(recon) - W.En), pass: Math.abs(approxP(recon) - W.En) <= EPS_SELF4 * Math.max(1, W.En) });
+      return { ok: true, answer: mkAnsP("energy_kinetic_at", Wd, approxP(Wd), "J", q.label), checks };
+    }
+    case "first_time_at_x": {
+      const e = needAW() || needPhase();
+      if (e) return { ok: false, problem: e };
+      return firstTimeAtX(m, q.x, q.direction ?? "any", q.label);
+    }
+  }
+  return { ok: false, problem: `query ${q.kind} ch\u01B0a h\u1ED7 tr\u1EE3` };
+}
+
+// api/_lib/kernel/physics/oscillationScene.ts
+var COLORS3 = ["#FFA500", "#38BDF8", "#F472B6", "#4ADE80"];
+var rnd2 = (n) => parseFloat(n.toFixed(6));
+var num9 = (x) => {
+  const s = parseFloat(x.toPrecision(12)).toString();
+  return s.includes("e") || s.includes("E") ? x.toFixed(9) : s;
+};
+function playbackOf3(plan, tPhys) {
+  if (plan.scene.durationSec) return { durationSec: plan.scene.durationSec, timeScale: tPhys / plan.scene.durationSec };
+  if (tPhys >= 3 && tPhys <= 15) return { durationSec: tPhys, timeScale: 1 };
+  return { durationSec: 10, timeScale: tPhys / 10 };
+}
+function cosExpr(A, wk, phi) {
+  const p2 = num9(Math.abs(phi));
+  const sign = phi < 0 ? "-" : "+";
+  return `${num9(A)}*Math.cos(${num9(wk)}*t ${sign} ${p2})`;
+}
+function buildOscillationScene(plan, models, tPhys) {
+  const playback = playbackOf3(plan, tPhys);
+  const k = playback.timeScale;
+  if (models.length === 0) return { geometry: null, playback };
+  const points = [];
+  const lines = [];
+  const agents = [];
+  const tracks = [];
+  const labelOf = (name) => plan.scene.labels?.[name] ?? name;
+  let span = 1;
+  let ci = 0;
+  for (const m of models) {
+    const color = COLORS3[ci % COLORS3.length];
+    const pend = m.op.pendulum;
+    if (pend) {
+      const lM = pend.lUnit === "cm" ? pend.l / 100 : pend.l;
+      const off = ci * 1.2;
+      points.push({ id: `P_${m.name}`, label: "", x: off, y: 0, z: lM });
+      points.push({ id: `M_${m.name}`, label: labelOf(m.name), x: off, y: 0, z: 0 });
+      lines.push({ id: `day_${m.name}`, from: `P_${m.name}`, to: `M_${m.name}`, style: "solid", color: "#8B8B8B" });
+      span = Math.max(span, lM);
+    } else if (m.A !== null) {
+      const A = m.A.approx;
+      span = Math.max(span, 2 * A);
+      points.push({ id: `O_${m.name}`, label: "VTCB", x: 0, y: 0, z: 0 });
+      points.push({ id: `Bp_${m.name}`, label: "Bi\xEAn +A", x: rnd2(A), y: 0, z: 0 });
+      points.push({ id: `Bm_${m.name}`, label: "Bi\xEAn \u2212A", x: rnd2(-A), y: 0, z: 0 });
+      lines.push({ id: `quydao_${m.name}`, from: `Bm_${m.name}`, to: `Bp_${m.name}`, style: "solid", color: "#8B8B8B" });
+      const radius = Math.max(0.12, 0.02 * span);
+      const canAnimate = m.omega !== null && m.phi !== null;
+      if (canAnimate) {
+        const wn = approxP(m.omega);
+        const phin = approxP(m.phi);
+        const x0 = rnd2(A * Math.cos(phin));
+        agents.push({ id: m.name, label: labelOf(m.name), initialPosition: [x0, 0, 0], color, radius });
+        const landX = rnd2(A * Math.cos(wn * tPhys + phin));
+        tracks.push({
+          id: `mv_${m.name}`,
+          start: 0,
+          end: playback.durationSec,
+          type: "parametric_path",
+          targetId: m.name,
+          params: {
+            equations: { x: cosExpr(A, wn * k, phin), y: "0", z: "0" },
+            path: `x(t) = A\xB7cos(\u03C9t + \u03C6) \u2014 ${m.name}`,
+            landing_point: [landX, 0, 0],
+            // = vị trí tại T_phys (BẮT BUỘC v0 R2)
+            timeScale: k
+          }
+        });
+      } else {
+        agents.push({ id: m.name, label: labelOf(m.name), initialPosition: [0, 0, 0], color, radius });
+      }
+    }
+    ci++;
+  }
+  const geometry = {
+    name: plan.problemName,
+    axisUnit: plan.units.length,
+    tags: ["physics", "oscillation", `timeScale:${num9(k)}`],
+    points,
+    lines,
+    curves: [],
+    agents,
+    timeline: { duration: playback.durationSec, tracks }
+  };
+  return { geometry, playback };
+}
+function buildOscillationCharts(plan, models, tPhys) {
+  const byName = new Map(models.map((m) => [m.name, m]));
+  const out = [];
+  for (const ch of plan.charts) {
+    const series = [];
+    for (const name of ch.of) {
+      const m = byName.get(name);
+      if (!m || m.A === null || m.omega === null || m.phi === null) continue;
+      const A = m.A.approx, wn = approxP(m.omega), phin = approxP(m.phi);
+      const N = 128;
+      const samples = [];
+      for (let i = 0; i <= N; i++) {
+        const t = tPhys * i / N;
+        samples.push([t, ch.kind === "x_t" ? A * Math.cos(wn * t + phin) : -A * wn * Math.sin(wn * t + phin)]);
+      }
+      series.push({ name, samples });
+    }
+    out.push({ kind: ch.kind, tUnit: "s", vUnit: ch.kind === "x_t" ? plan.units.length : `${plan.units.length}/s`, series });
+  }
+  return out;
+}
+
+// api/_lib/kernel/physics/runOscillation.ts
+var TOL_ASSERT4 = 1e-3;
+var ZERO_PLAYBACK = { durationSec: 0, timeScale: 1 };
+function timeOfQuery(q) {
+  const anyq = q;
+  if (anyq.t !== void 0) return approxP(toPiScalar(anyq.t));
+  if (anyq.at && anyq.at.t !== void 0) return approxP(toPiScalar(anyq.at.t));
+  return null;
+}
+function runOscillation(raw) {
+  const parsed = OscillationPlanSchema.safeParse(raw);
+  if (!parsed.success) {
+    const iss = parsed.error.issues[0];
+    const detail = iss ? `${iss.path.length ? `${iss.path.join(".")}: ` : ""}${iss.message}` : "schema";
+    return {
+      ok: false,
+      answers: [],
+      checks: [],
+      violations: [],
+      errors: [{ message: `Invalid oscillation plan: ${detail}` }],
+      geometry: null,
+      charts: [],
+      meta: { tPhys: 0, playback: ZERO_PLAYBACK, unitsNote: "per-quantity", length: "cm", models: [] }
+    };
+  }
+  const plan = parsed.data;
+  const base = plan.units.length;
+  const errors = [];
+  const checks = [];
+  const violations = [];
+  const answers = [];
+  let geometry = null;
+  let charts = [];
+  let playback = { ...ZERO_PLAYBACK };
+  let tPhys = 0;
+  let models = [];
+  try {
+    const solvedByName = /* @__PURE__ */ new Map();
+    for (const op of plan.ops) {
+      const solved = resolveModel(op, base);
+      solvedByName.set(op.name, solved);
+      checks.push(...solved.checks);
+      for (const v of solved.violations) violations.push({ id: v.id, message: v.message });
+      for (const e of solved.errors) errors.push({ message: e.message });
+    }
+    models = plan.ops.map((op) => solvedByName.get(op.name).model);
+    for (const [qi, q] of plan.queries.entries()) {
+      const solved = solvedByName.get(q.of);
+      if (!solved) {
+        errors.push({ message: `query ${q.kind}: v\u1EADt "${q.of}" kh\xF4ng t\u1ED3n t\u1EA1i` });
+        continue;
+      }
+      const r2 = computeOscQuery(solved, q, base);
+      if (r2.ok === false) {
+        errors.push({ message: `query ${q.kind}: ${r2.problem}` });
+        continue;
+      }
+      answers.push({ ...r2.answer, queryIndex: qi });
+      checks.push(...r2.checks);
+      for (const c of r2.checks) if (!c.pass) errors.push({ message: `t\u1EF1 ki\u1EC3m FAIL: ${c.detail} (residual ${c.residual.toExponential(2)})` });
+      if (r2.tSolved !== void 0 && Number.isFinite(r2.tSolved)) tPhys = Math.max(tPhys, r2.tSolved);
+    }
+    for (const m of models) if (m.omega !== null) {
+      const T = approxP(divP(TWO_PI, m.omega));
+      if (Number.isFinite(T)) tPhys = Math.max(tPhys, 2 * T);
+    }
+    for (const q of plan.queries) {
+      const t = timeOfQuery(q);
+      if (t !== null && Number.isFinite(t)) tPhys = Math.max(tPhys, t);
+    }
+    tPhys = tPhys > 1e-9 ? tPhys : 1;
+    for (const a of plan.asserts) {
+      const solved = solvedByName.get(a.query.of);
+      if (!solved) {
+        errors.push({ message: `assert ${a.query.kind}: v\u1EADt "${a.query.of}" kh\xF4ng t\u1ED3n t\u1EA1i` });
+        continue;
+      }
+      const r2 = computeOscQuery(solved, a.query, base);
+      if (r2.ok === false) {
+        errors.push({ message: `assert ${a.query.kind}: ${r2.problem}` });
+        continue;
+      }
+      const tol = (a.tol ?? TOL_ASSERT4) * Math.max(1, Math.abs(a.equals));
+      const delta = Math.abs(r2.answer.approx - a.equals);
+      if (delta > tol) violations.push({ assert: a.query.kind, expected: a.equals, got: r2.answer.approx, delta, message: `assert ${a.query.kind}: k\u1EF3 v\u1ECDng ${a.equals}, engine t\xEDnh ${r2.answer.approx}` });
+    }
+  } catch (err) {
+    errors.push({ message: `l\u1ED7i engine dao \u0111\u1ED9ng: ${err instanceof Error ? err.message : String(err)}` });
+  }
+  const hasPhysicalViolation = violations.some((v) => v.id !== void 0 && PHYSICAL_VIOLATIONS2.has(v.id));
+  const servedAnswers = hasPhysicalViolation ? [] : answers;
+  const okState = violations.length === 0 && errors.length === 0;
+  if (okState) {
+    const built = buildOscillationScene(plan, models, tPhys);
+    geometry = built.geometry;
+    playback = built.playback;
+    charts = buildOscillationCharts(plan, models, tPhys);
+  }
+  const ok = violations.length === 0 && errors.length === 0 && servedAnswers.length === plan.queries.length && servedAnswers.every((a) => Number.isFinite(a.approx));
+  return {
+    ok,
+    answers: servedAnswers,
+    checks,
+    violations,
+    errors,
+    geometry,
+    charts,
+    meta: {
+      tPhys,
+      playback,
+      unitsNote: "per-quantity",
+      length: base,
+      models: models.map((m) => ({
+        name: m.name,
+        hasA: m.A !== null,
+        hasOmega: m.omega !== null,
+        hasPhase: m.phi !== null,
+        animated: m.A !== null && m.omega !== null && m.phi !== null && !m.op.pendulum
+      }))
+    }
+  };
+}
+
 // api/_lib/kernel/chem/index.ts
 var chem_exports = {};
 __export(chem_exports, {
   ACTIVITY_SERIES: () => ACTIVITY_SERIES,
   ATOMIC_MASS: () => ATOMIC_MASS,
-  COLORS: () => COLORS2,
+  COLORS: () => COLORS4,
   ChemPlanSchema: () => ChemPlanSchema,
   IONS: () => IONS,
   MOLAR_VOLUMES: () => MOLAR_VOLUMES,
@@ -9142,8 +11547,8 @@ function divR(a, b) {
 }
 function cmpR(a, b) {
   const lhs = a.num * b.den;
-  const rhs = b.num * a.den;
-  return lhs < rhs ? -1 : lhs > rhs ? 1 : 0;
+  const rhs2 = b.num * a.den;
+  return lhs < rhs2 ? -1 : lhs > rhs2 ? 1 : 0;
 }
 function isZeroR(a) {
   return a.num === 0n;
@@ -10512,7 +12917,7 @@ function react(record, mols, excessSet) {
 }
 
 // api/_lib/kernel/chem/scene.ts
-var COLORS2 = {
+var COLORS4 = {
   // Dung dịch (không có trong bảng ⇒ "không màu")
   solution: {
     // ion Cu²⁺ — xanh lam (dd CuCl2 đặc thực tế ngả xanh lục do phức cloro, đề thi VN ghi "xanh")
@@ -10600,10 +13005,10 @@ var COLORS2 = {
   }
 };
 function colorOf(formula, state) {
-  if (state === "solution") return COLORS2.solution[formula] ?? COLORS2.defaults.solution;
-  if (state === "solid") return COLORS2.solid[formula] ?? COLORS2.defaults.solid;
-  if (state === "gas") return COLORS2.gas[formula] ?? COLORS2.defaults.gas;
-  return COLORS2.defaults.liquid;
+  if (state === "solution") return COLORS4.solution[formula] ?? COLORS4.defaults.solution;
+  if (state === "solid") return COLORS4.solid[formula] ?? COLORS4.defaults.solid;
+  if (state === "gas") return COLORS4.gas[formula] ?? COLORS4.defaults.gas;
+  return COLORS4.defaults.liquid;
 }
 var EMPTY_SCENE = { vessels: [], events: [], captions: [] };
 function buildScene2(input) {
@@ -10663,7 +13068,7 @@ function buildScene2(input) {
   for (const row of ledger) {
     if (row.role !== "reactant" || isZeroR(row.consumed)) continue;
     if (stateOfSpecies.get(row.formula) !== "solution") continue;
-    const c = COLORS2.solution[row.formula];
+    const c = COLORS4.solution[row.formula];
     if (!c) continue;
     const emptied = row.after !== null && cmpR(row.after, R0) === 0;
     events.push({
@@ -10671,7 +13076,7 @@ function buildScene2(input) {
       kind: "color_change",
       vessel: mixId,
       fromColor: c.hex,
-      toColor: COLORS2.defaults.solution.hex,
+      toColor: COLORS4.defaults.solution.hex,
       text: emptied ? `m\xE0u ${c.colorName} c\u1EE7a dung d\u1ECBch ${row.formula} nh\u1EA1t d\u1EA7n r\u1ED3i m\u1EA5t m\xE0u ho\xE0n to\xE0n (${row.formula} h\u1EBFt)` : `m\xE0u ${c.colorName} c\u1EE7a dung d\u1ECBch ${row.formula} nh\u1EA1t d\u1EA7n`
     });
   }
@@ -10736,11 +13141,11 @@ function fmtVN(x, maxDp = 4) {
 function equationOf(record) {
   const c = (n) => n > 1 ? String(n) : "";
   const lhs = record.reactants.map((x) => `${c(x.coeff)}${x.formula}`).join(" + ");
-  const rhs = record.products.map((x) => {
+  const rhs2 = record.products.map((x) => {
     const mark = x.state === "gas" ? "\u2191" : x.state === "solid" && record.medium === "dd" ? "\u2193" : "";
     return `${c(x.coeff)}${x.formula}${mark}`;
   }).join(" + ");
-  return `${lhs} \u2192 ${rhs}`;
+  return `${lhs} \u2192 ${rhs2}`;
 }
 function zodMessages(err) {
   const out = [];
@@ -11099,12 +13504,12 @@ function checkSpectatorsInert(record, species, heated) {
     for (const other of species) {
       if (other.formula === sp.formula) continue;
       if (METALS.has(sp.formula) && METALS.has(other.formula)) continue;
-      const pair = [sp, other];
-      const { matches } = findMatches(pair, { heated });
+      const pair2 = [sp, other];
+      const { matches } = findMatches(pair2, { heated });
       if (matches.length > 0) {
         return `\u0111a ph\u1EA3n \u1EE9ng: ngo\xE0i ph\u1EA3n \u1EE9ng ch\xEDnh (${record.id}), "${sp.formula}" c\xF2n ph\u1EA3n \u1EE9ng v\u1EDBi "${other.formula}" (${matches.map((m) => m.id).join(", ")}) \u2014 ngo\xE0i ph\u1EA1m vi v0, engine kh\xF4ng t\u1EF1 ch\u1ECDn ph\u1EA3n \u1EE9ng`;
       }
-      const verdict = classifyNoMatch(pair, { heated });
+      const verdict = classifyNoMatch(pair2, { heated });
       if (verdict?.verdict === "no_reaction") continue;
       return `ngo\xE0i ph\u1EA1m vi v0: "${sp.formula}" c\xF3 th\u1EC3 ph\u1EA3n \u1EE9ng v\u1EDBi "${other.formula}" (ch\u01B0a m\xF4 h\xECnh h\xF3a trong DB v0) \u2014 kh\xF4ng th\u1EC3 coi "${sp.formula}" l\xE0 ch\u1EA5t tr\u01A1 \u0111\u1EC3 b\u1ECF qua`;
     }
@@ -11394,10 +13799,13 @@ export {
   AnalysisPlanSchema,
   AssertOpSchema,
   BaseOpSchema,
+  CircuitPlanSchema,
   ConstructionOpSchema,
+  DynamicsPlanSchema,
   EdgeOpSchema,
   FootOpSchema,
   IntersectOpSchema,
+  OscillationPlanSchema,
   PerpPointOpSchema,
   PhysicsPlanSchema,
   PlanSchema,
@@ -11440,6 +13848,9 @@ export {
   run,
   runAnalysis,
   runAny,
+  runCircuit,
+  runDynamics,
+  runOscillation,
   runPhysics,
   runPlan,
   sampleProfile,

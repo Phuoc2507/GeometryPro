@@ -51,5 +51,13 @@ export { parseExpr, evalExpr } from './analysis/expr';
 // Vật lý động học lớp 10: dán đề Lý → vật chuyển động + đáp số tất định.
 export { runPhysics, type PhysicsResult } from './physics/runPhysics';
 export { PhysicsPlanSchema, type PhysicsPlan } from './physics/planSchema';
+// Các chương Lý khác — MỖI chương một pack RIÊNG (schema + run), soi gương runPhysics; KHÔNG merge
+// vào planSchema kinematics. Route đa môn dispatch theo "chương" (physicsChapterClassifier) tới đúng run.
+export { runCircuit, type CircuitResult } from './physics/runCircuit';         // dòng điện không đổi (dc-circuit) lớp 11
+export { CircuitPlanSchema, type CircuitPlan } from './physics/circuitSchema';
+export { runDynamics, type DynamicsResult } from './physics/runDynamics';      // động lực học lớp 10
+export { DynamicsPlanSchema, type DynamicsPlan } from './physics/dynamicsSchema';
+export { runOscillation, type OscillationResult } from './physics/runOscillation'; // dao động điều hòa lớp 11
+export { OscillationPlanSchema, type OscillationPlan } from './physics/oscillationSchema';
 // Hóa vô cơ THPT: dán đề Hóa → phản ứng + hiện tượng + đáp số (namespace tránh trùng tên).
 export * as chem from './chem/index';
