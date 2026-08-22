@@ -63,5 +63,7 @@ export { runWaves, type WaveResult } from './physics/runWaves';                 
 export { WavePlanSchema, type WavePlan } from './physics/waveSchema';
 export { runEfield, type EFieldResult } from './physics/runEfield';              // điện trường lớp 11
 export { EFieldPlanSchema, type EFieldPlan } from './physics/efieldSchema';
+export { runAcCircuit, type AcResult } from './physics/runAcCircuit';            // điện xoay chiều RLC lớp 12
+export { AcPlanSchema, type AcPlan } from './physics/acSchema';
 // Hóa vô cơ THPT: dán đề Hóa → phản ứng + hiện tượng + đáp số (namespace tránh trùng tên).
 export * as chem from './chem/index';

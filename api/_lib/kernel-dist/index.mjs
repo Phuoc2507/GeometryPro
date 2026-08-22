@@ -6406,33 +6406,33 @@ function verifyAssertE(assert, et) {
       const a = resolveEntityE(args[0], et);
       const b = resolveEntityE(args[1], et);
       if (a.kind === "point") {
-        const ans = mustOk(computeDistance(a, b));
+        const ans2 = mustOk(computeDistance(a, b));
         const tol = assert.tolerance ?? DIST_TOL;
-        return ans.approx < tol ? null : fail("on", args, `${args[0]} not on ${args[1]} (distance ${ans.approx.toFixed(6)})`);
+        return ans2.approx < tol ? null : fail("on", args, `${args[0]} not on ${args[1]} (distance ${ans2.approx.toFixed(6)})`);
       }
       const rel2 = mustOk(computeRelativePosition(a, b)).relation;
       const contained = rel2 === "\u0111\u01B0\u1EDDng n\u1EB1m tr\xEAn m\u1EB7t" || rel2 === "tr\xF9ng nhau";
       return contained ? null : fail("on", args, `${args[0]} not contained in ${args[1]} (${rel2})`);
     }
     case "dist": {
-      const ans = mustOk(computeDistance(resolveEntityE(args[0], et), resolveEntityE(args[1], et)));
+      const ans2 = mustOk(computeDistance(resolveEntityE(args[0], et), resolveEntityE(args[1], et)));
       const tol = assert.tolerance ?? DIST_TOL;
-      return Math.abs(ans.approx - assertValueNum(assert.value)) < tol ? null : fail("dist", args, `dist(${args[0]},${args[1]})=${ans.approx.toFixed(6)}, expected ${assert.value}`);
+      return Math.abs(ans2.approx - assertValueNum(assert.value)) < tol ? null : fail("dist", args, `dist(${args[0]},${args[1]})=${ans2.approx.toFixed(6)}, expected ${assert.value}`);
     }
     case "perp": {
-      const ans = mustOk(computeAngle(resolveEntityE(args[0], et), resolveEntityE(args[1], et)));
+      const ans2 = mustOk(computeAngle(resolveEntityE(args[0], et), resolveEntityE(args[1], et)));
       const tol = assert.tolerance ?? ANGLE_TOL;
-      return Math.abs(ans.degrees - 90) < tol ? null : fail("perp", args, `${args[0]} not perpendicular to ${args[1]} (angle ${ans.degrees.toFixed(4)}\xB0)`);
+      return Math.abs(ans2.degrees - 90) < tol ? null : fail("perp", args, `${args[0]} not perpendicular to ${args[1]} (angle ${ans2.degrees.toFixed(4)}\xB0)`);
     }
     case "parallel": {
-      const ans = mustOk(computeAngle(resolveEntityE(args[0], et), resolveEntityE(args[1], et)));
+      const ans2 = mustOk(computeAngle(resolveEntityE(args[0], et), resolveEntityE(args[1], et)));
       const tol = assert.tolerance ?? ANGLE_TOL;
-      return Math.abs(ans.degrees) < tol ? null : fail("parallel", args, `${args[0]} not parallel to ${args[1]} (angle ${ans.degrees.toFixed(4)}\xB0)`);
+      return Math.abs(ans2.degrees) < tol ? null : fail("parallel", args, `${args[0]} not parallel to ${args[1]} (angle ${ans2.degrees.toFixed(4)}\xB0)`);
     }
     case "angle": {
-      const ans = mustOk(computeAngle(resolveEntityE(args[0], et), resolveEntityE(args[1], et)));
+      const ans2 = mustOk(computeAngle(resolveEntityE(args[0], et), resolveEntityE(args[1], et)));
       const tol = assert.tolerance ?? ANGLE_TOL;
-      return Math.abs(ans.degrees - assertValueNum(assert.value)) < tol ? null : fail("angle", args, `angle(${args[0]},${args[1]})=${ans.degrees.toFixed(4)}\xB0, expected ${assert.value}\xB0`);
+      return Math.abs(ans2.degrees - assertValueNum(assert.value)) < tol ? null : fail("angle", args, `angle(${args[0]},${args[1]})=${ans2.degrees.toFixed(4)}\xB0, expected ${assert.value}\xB0`);
     }
     case "coplanar": {
       const pts = args.map((t) => resolveEntityE(t, et));
@@ -10559,6 +10559,7 @@ function bandP(p2) {
   return p2.k > K_MAX || p2.k < -K_MAX ? collapseP(p2) : p2;
 }
 var scalarToPi = (s) => ({ s, k: 0 });
+var piOf = (n, d = 1n, k = 1) => ({ s: rat(n, d), k });
 var PI = { s: rat(1n), k: 1 };
 var TWO_PI = { s: rat(2n), k: 1 };
 var negP = (p2) => ({ s: neg(p2.s), k: p2.k });
@@ -12860,6 +12861,594 @@ function runEfield(raw) {
   return { ok, answers, checks, violations, errors, geometry: null, meta };
 }
 
+// api/_lib/kernel/physics/acSchema.ts
+var Num8 = external_exports.number().finite();
+var SurdRat = external_exports.union([
+  Num8,
+  external_exports.object({ n: Num8, d: external_exports.number().int().positive().default(1), rad: external_exports.number().int().positive().default(1) })
+]);
+var LCValue = external_exports.union([
+  Num8,
+  external_exports.object({
+    n: Num8,
+    d: external_exports.number().int().positive().default(1),
+    exp: external_exports.number().int().default(0),
+    overPi: external_exports.boolean().default(false)
+  })
+]);
+var AcSourceSchema = external_exports.object({
+  f: Num8.positive().optional(),
+  // Hz — đúng MỘT trong {f, omega}
+  omega: PiRat.optional(),
+  // rad/s — từ pt "cos(100πt)" → {n:100,pi:true}
+  U: SurdRat.optional(),
+  // hiệu dụng (V) — đúng MỘT trong {U, U0}
+  U0: SurdRat.optional(),
+  // cực đại (V) — "u = 200√2 cos…" → {n:200, rad:2}
+  phiU: PiRat.optional()
+  // pha ban đầu φ_u của u (rad), default 0
+});
+var AcQuerySchema = external_exports.discriminatedUnion("kind", [
+  external_exports.object({ kind: external_exports.literal("omega"), label: external_exports.string().optional() }),
+  // impedance: bỏ of = Z tổng; of='L' = Z_L; of='C' = Z_C
+  external_exports.object({ kind: external_exports.literal("impedance"), of: external_exports.enum(["L", "C"]).optional(), label: external_exports.string().optional() }),
+  // current: peak=false ⇒ I hiệu dụng; peak=true ⇒ I₀ = I√2
+  external_exports.object({ kind: external_exports.literal("current"), peak: external_exports.boolean().default(false), label: external_exports.string().optional() }),
+  // voltage: U_R/U_L/U_C hiệu dụng (peak ⇒ ×√2); of='source' = U (hoặc U₀) hai cực nguồn
+  external_exports.object({
+    kind: external_exports.literal("voltage"),
+    of: external_exports.enum(["R", "L", "C", "source"]),
+    peak: external_exports.boolean().default(false),
+    label: external_exports.string().optional()
+  }),
+  external_exports.object({ kind: external_exports.literal("power"), label: external_exports.string().optional() }),
+  // P = I²R
+  external_exports.object({ kind: external_exports.literal("power_factor"), label: external_exports.string().optional() }),
+  // cosφ = R/Z
+  external_exports.object({ kind: external_exports.literal("phase_diff"), label: external_exports.string().optional() }),
+  // φ = φ_u − φ_i
+  external_exports.object({ kind: external_exports.literal("resonance_frequency"), label: external_exports.string().optional() }),
+  // f₀ = 1/(2π√LC)
+  external_exports.object({ kind: external_exports.literal("is_resonance"), label: external_exports.string().optional() }),
+  // ratio Z_L/Z_C + verdict
+  external_exports.object({ kind: external_exports.literal("solve_resonance"), target: external_exports.enum(["C", "L", "f"]), label: external_exports.string().optional() }),
+  external_exports.object({ kind: external_exports.literal("write_current"), label: external_exports.string().optional() }),
+  // i = I₀cos(ωt+φ_i)
+  external_exports.object({ kind: external_exports.literal("write_voltage"), of: external_exports.enum(["R", "L", "C", "source"]), label: external_exports.string().optional() })
+]);
+var AcPlanSchema = external_exports.object({
+  problemName: external_exports.string().min(1),
+  source: AcSourceSchema,
+  R: SurdRat.optional(),
+  // Ω (khuyết ⇒ 0 — nhưng ≥1 phần tử)
+  L: LCValue.optional(),
+  // H
+  C: LCValue.optional(),
+  // F
+  queries: external_exports.array(AcQuerySchema).min(1),
+  asserts: external_exports.array(external_exports.object({ query: AcQuerySchema, equals: Num8, tol: Num8.positive().optional() })).default([])
+}).superRefine((plan, ctx) => {
+  const add5 = (message) => ctx.addIssue({ code: external_exports.ZodIssueCode.custom, message });
+  const hasF = plan.source.f !== void 0;
+  const hasOmega = plan.source.omega !== void 0;
+  if (hasF === hasOmega) add5("ngu\u1ED3n ph\u1EA3i khai \u0111\xFAng M\u1ED8T trong {f, omega} (t\u1EA7n s\u1ED1)");
+  const hasU = plan.source.U !== void 0;
+  const hasU0 = plan.source.U0 !== void 0;
+  if (hasU === hasU0) add5("ngu\u1ED3n ph\u1EA3i khai \u0111\xFAng M\u1ED8T trong {U, U0} (\u0111i\u1EC7n \xE1p)");
+  const posSurd = (v, name) => {
+    if (v === void 0) return;
+    const val = typeof v === "number" ? v : v.n / (v.d ?? 1) * Math.sqrt(v.rad ?? 1);
+    if (!(val > 0)) add5(`${name} ph\u1EA3i > 0`);
+  };
+  posSurd(plan.source.U, "U");
+  posSurd(plan.source.U0, "U0");
+  const hasR = plan.R !== void 0;
+  const hasL = plan.L !== void 0;
+  const hasC = plan.C !== void 0;
+  if (!hasR && !hasL && !hasC) add5("m\u1EA1ch ph\u1EA3i c\xF3 \xEDt nh\u1EA5t m\u1ED9t ph\u1EA7n t\u1EED trong {R, L, C}");
+  const needsLC = plan.queries.some(
+    (q) => q.kind === "resonance_frequency" || q.kind === "is_resonance" || q.kind === "solve_resonance" && q.target === "f"
+  );
+  if (needsLC && !(hasL && hasC)) add5("c\u1EA7n c\u1EA3 L v\xE0 C \u0111\u1EC3 x\xE9t/t\xEDnh c\u1ED9ng h\u01B0\u1EDFng (is_resonance/resonance_frequency/solve f)");
+  for (const q of plan.queries) {
+    if (q.kind !== "solve_resonance") continue;
+    if (q.target === "C" && !hasL) add5("solve_resonance{target:C} c\u1EA7n bi\u1EBFt L (v\xE0 t\u1EA7n s\u1ED1) \u0111\u1EC3 t\xECm C c\u1ED9ng h\u01B0\u1EDFng");
+    if (q.target === "L" && !hasC) add5("solve_resonance{target:L} c\u1EA7n bi\u1EBFt C (v\xE0 t\u1EA7n s\u1ED1) \u0111\u1EC3 t\xECm L c\u1ED9ng h\u01B0\u1EDFng");
+  }
+  const needElem = (of, kind) => {
+    if (of === "L" && !hasL) add5(`${kind}{of:L} nh\u01B0ng m\u1EA1ch kh\xF4ng c\xF3 ph\u1EA7n t\u1EED L`);
+    if (of === "C" && !hasC) add5(`${kind}{of:C} nh\u01B0ng m\u1EA1ch kh\xF4ng c\xF3 ph\u1EA7n t\u1EED C`);
+  };
+  for (const q of plan.queries) {
+    if (q.kind === "voltage" || q.kind === "write_voltage") needElem(q.of, q.kind);
+    if (q.kind === "impedance" && q.of) needElem(q.of, q.kind);
+  }
+  for (const a of plan.asserts) {
+    const q = a.query;
+    if (q.kind === "voltage" || q.kind === "write_voltage") needElem(q.of, q.kind);
+    if (q.kind === "impedance" && q.of) needElem(q.of, q.kind);
+  }
+});
+
+// api/_lib/kernel/physics/acCircuit.ts
+var SQRT2 = fromExact(makeExact(1n, 1n, 2));
+function toSurd(v) {
+  if (typeof v === "number") return scalarFromNumber(v);
+  const d = v.d ?? 1;
+  const rad = v.rad ?? 1;
+  const base = div(scalarFromNumber(v.n), rat(BigInt(d)));
+  return rad > 1 ? mul(base, sqrt(rat(BigInt(rad)))) : base;
+}
+function pow10(e) {
+  if (e >= 0) return rat(10n ** BigInt(e));
+  return rat(1n, 10n ** BigInt(-e));
+}
+function toLC(v) {
+  if (typeof v === "number") return { s: scalarFromNumber(v), k: 0 };
+  const d = v.d ?? 1;
+  const s = mul(div(scalarFromNumber(v.n), rat(BigInt(d))), pow10(v.exp ?? 0));
+  return { s, k: v.overPi ? -1 : 0 };
+}
+var nSurd = (v) => typeof v === "number" ? v : v.n / (v.d ?? 1) * Math.sqrt(v.rad ?? 1);
+var nLC = (v) => typeof v === "number" ? v : v.n / (v.d ?? 1) * 10 ** (v.exp ?? 0) * (v.overPi ? 1 / Math.PI : 1);
+var nPiRat = (pr) => typeof pr === "number" ? pr : pr.n / (pr.d ?? 1) * (pr.pi ? Math.PI : 1);
+var ZERO_PI = { s: rat(0n), k: 0 };
+function resolveSource(src) {
+  let omega;
+  let omegaN;
+  if (src.f !== void 0) {
+    omega = mulP(TWO_PI, scalarToPi(scalarFromNumber(src.f)));
+    omegaN = 2 * Math.PI * src.f;
+  } else {
+    omega = toPiScalar(src.omega);
+    omegaN = nPiRat(src.omega);
+  }
+  let U;
+  let U0;
+  let UN;
+  let U0N;
+  if (src.U !== void 0) {
+    U = toSurd(src.U);
+    U0 = mul(U, SQRT2);
+    UN = nSurd(src.U);
+    U0N = UN * Math.SQRT2;
+  } else {
+    U0 = toSurd(src.U0);
+    U = div(U0, SQRT2);
+    U0N = nSurd(src.U0);
+    UN = U0N / Math.SQRT2;
+  }
+  const phiU = src.phiU !== void 0 ? toPiScalar(src.phiU) : ZERO_PI;
+  const phiUN = src.phiU !== void 0 ? nPiRat(src.phiU) : 0;
+  return { omega, omegaN, U, U0, UN, U0N, phiU, phiUN };
+}
+function resolveModel2(plan) {
+  const { omega, omegaN, U, U0, UN, U0N, phiU, phiUN } = resolveSource(plan.source);
+  const hasL = plan.L !== void 0;
+  const hasC = plan.C !== void 0;
+  const R = plan.R !== void 0 ? toSurd(plan.R) : rat(0n);
+  const RN = plan.R !== void 0 ? nSurd(plan.R) : 0;
+  const ZL = hasL ? mulP(omega, toLC(plan.L)) : ZERO_PI;
+  const ZC = hasC ? divP(scalarToPi(rat(1n)), mulP(omega, toLC(plan.C))) : ZERO_PI;
+  const ZLN = hasL ? omegaN * nLC(plan.L) : 0;
+  const ZCN = hasC ? 1 / (omegaN * nLC(plan.C)) : 0;
+  return {
+    omega,
+    U,
+    U0,
+    phiU,
+    R,
+    ZL,
+    ZC,
+    hasL,
+    hasC,
+    L: hasL ? plan.L : null,
+    C: hasC ? plan.C : null,
+    n: { omega: omegaN, R: RN, ZL: ZLN, ZC: ZCN, U: UN, U0: U0N, phiU: phiUN }
+  };
+}
+function signOfPi(p2) {
+  if (p2.s.exact !== null) return p2.s.exact.num < 0n ? -1 : p2.s.exact.num > 0n ? 1 : 0;
+  const a = p2.s.approx;
+  return a < 0 ? -1 : a > 0 ? 1 : 0;
+}
+var COS_MARKS = [
+  { num: 1n, den: 1n, radicand: 1, theta: () => ZERO_PI },
+  // cos0 = 1        → 0
+  { num: 1n, den: 2n, radicand: 3, theta: () => piOf(1n, 6n) },
+  // cos π/6 = √3/2 → π/6
+  { num: 1n, den: 2n, radicand: 2, theta: () => piOf(1n, 4n) },
+  // cos π/4 = √2/2 → π/4
+  { num: 1n, den: 2n, radicand: 1, theta: () => piOf(1n, 3n) },
+  // cos π/3 = 1/2  → π/3
+  { num: 0n, den: 1n, radicand: 1, theta: () => piOf(1n, 2n) }
+  // cos π/2 = 0    → π/2
+];
+function phaseFromCos(cosphi, signDZ) {
+  const e = cosphi.exact;
+  if (e === null) return null;
+  const mark = COS_MARKS.find((m) => m.num === e.num && m.den === e.den && m.radicand === e.radicand);
+  if (!mark) return null;
+  const theta = mark.theta();
+  if (signDZ === 0 || isZeroPi(theta)) return ZERO_PI;
+  return signDZ > 0 ? theta : { s: { approx: -theta.s.approx, exact: theta.s.exact ? { num: -theta.s.exact.num, den: theta.s.exact.den, radicand: theta.s.exact.radicand } : null }, k: theta.k };
+}
+function deriveAc(m) {
+  const Rp = scalarToPi(m.R);
+  const dZ = subP(m.ZL, m.ZC);
+  const Zsq = addP(mulP(Rp, Rp), mulP(dZ, dZ));
+  const Z = sqrtP(Zsq);
+  const I = divP(scalarToPi(m.U), Z);
+  const I0 = mulP(I, scalarToPi(SQRT2));
+  const cosphi = divP(Rp, Z);
+  const sinphi = divP(dZ, Z);
+  const P = mulP(mulP(I, I), Rp);
+  const signDZ = signOfPi(dZ);
+  const dZN = m.n.ZL - m.n.ZC;
+  const ZN = Math.sqrt(m.n.R * m.n.R + dZN * dZN);
+  const IN = m.n.U / ZN;
+  const nD = {
+    dZ: dZN,
+    Z: ZN,
+    I: IN,
+    I0: IN * Math.SQRT2,
+    cosphi: m.n.R / ZN,
+    sinphi: dZN / ZN,
+    P: IN * IN * m.n.R
+  };
+  const phiPi = phaseFromCos(cosphi.s, signDZ);
+  const phiNice = phiPi !== null;
+  const phi = phiPi ?? { s: { approx: Math.atan2(dZN, m.n.R), exact: null }, k: 0 };
+  const phiN = phiNice ? approxP(phi) : Math.atan2(dZN, m.n.R);
+  const phiI = subP(m.phiU, phi);
+  return { dZ, Z, I, I0, cosphi, sinphi, P, signDZ, phi, phiNice, phiN, phiI, n: nD };
+}
+var isResonant = (d) => isZeroPi(d.dZ);
+function resonanceFreq(m) {
+  const LC = mulP(toLC(m.L), toLC(m.C));
+  const denom = mulP(TWO_PI, sqrtP(LC));
+  return divP(scalarToPi(rat(1n)), denom);
+}
+function resonanceFreqN(m) {
+  return 1 / (2 * Math.PI * Math.sqrt(nLC(m.L) * nLC(m.C)));
+}
+function solveResonance(m, target) {
+  if (target === "f") return { pi: resonanceFreq(m), n: resonanceFreqN(m) };
+  const w2 = mulP(m.omega, m.omega);
+  if (target === "C") {
+    const pi2 = divP(scalarToPi(rat(1n)), mulP(w2, toLC(m.L)));
+    return { pi: pi2, n: 1 / (m.n.omega * m.n.omega * nLC(m.L)) };
+  }
+  const pi = divP(scalarToPi(rat(1n)), mulP(w2, toLC(m.C)));
+  return { pi, n: 1 / (m.n.omega * m.n.omega * nLC(m.C)) };
+}
+
+// api/_lib/kernel/physics/acCompute.ts
+var MINUS = "\u2212";
+var normalizeMinus = (s) => s.replace(/-/g, MINUS);
+function fmtNum11(x) {
+  if (!Number.isFinite(x)) return "(l\u1ED7i)";
+  if (x !== 0 && Math.abs(x) < 1e-3) return parseFloat(x.toPrecision(4)).toString();
+  const digits = Math.abs(x) >= 1e3 ? 2 : 4;
+  return parseFloat(x.toFixed(digits)).toString();
+}
+function mkAns3(kind, p2, floatRef, unit, label, verdict) {
+  const cert = certifyPiScalar(p2, floatRef);
+  return { label, kind, text: normalizeMinus(cert.text), approx: cert.approx, unit, approximate: cert.approximate, verdict };
+}
+function writeExpr(symbol, unit, amp, ampN, omega, phase) {
+  const ampTxt = normalizeMinus(displayPiScalar(amp));
+  const omegaTxt = normalizeMinus(displayPiScalar(omega));
+  const phaseTxt = normalizeMinus(displayPiScalar(phase));
+  let body = `${ampTxt}cos(${omegaTxt}t`;
+  if (!isZeroPi(phase)) {
+    const sign = signOfPi(phase) < 0 ? MINUS : "+";
+    const mag = normalizeMinus(displayPiScalar(signOfPi(phase) < 0 ? negP(phase) : phase));
+    body += ` ${sign} ${mag}`;
+  }
+  body += ")";
+  const text = `${symbol} = ${body} (${unit})`;
+  return {
+    kind: symbol === "i" ? "write_current" : "write_voltage",
+    text,
+    approx: ampN,
+    unit,
+    approximate: amp.s.exact === null,
+    expr: { amp: ampTxt, omega: omegaTxt, phase: phaseTxt }
+  };
+}
+function computeAcQuery(m, d, query) {
+  try {
+    const Rp = scalarToPi(m.R);
+    switch (query.kind) {
+      case "omega":
+        return { ok: true, answer: mkAns3("omega", m.omega, m.n.omega, "rad/s", query.label) };
+      case "impedance": {
+        if (query.of === "L") return { ok: true, answer: mkAns3("impedance", m.ZL, m.n.ZL, "\u03A9", query.label) };
+        if (query.of === "C") return { ok: true, answer: mkAns3("impedance", m.ZC, m.n.ZC, "\u03A9", query.label) };
+        return { ok: true, answer: mkAns3("impedance", d.Z, d.n.Z, "\u03A9", query.label) };
+      }
+      case "current": {
+        if (query.peak) return { ok: true, answer: mkAns3("current", d.I0, d.n.I0, "A", query.label) };
+        return { ok: true, answer: mkAns3("current", d.I, d.n.I, "A", query.label) };
+      }
+      case "voltage": {
+        const scale4 = query.peak ? scalarToPi(SQRT2) : scalarToPi(rat(1n));
+        const sc = query.peak ? Math.SQRT2 : 1;
+        if (query.of === "source") {
+          const base = query.peak ? m.U0 : m.U;
+          const baseN = query.peak ? m.n.U0 : m.n.U;
+          return { ok: true, answer: mkAns3("voltage", scalarToPi(base), baseN, "V", query.label) };
+        }
+        const zEl = query.of === "R" ? Rp : query.of === "L" ? m.ZL : m.ZC;
+        const zElN = query.of === "R" ? m.n.R : query.of === "L" ? m.n.ZL : m.n.ZC;
+        const u = mulP(mulP(d.I, zEl), scale4);
+        const uN = d.n.I * zElN * sc;
+        return { ok: true, answer: mkAns3("voltage", u, uN, "V", query.label) };
+      }
+      case "power":
+        return { ok: true, answer: mkAns3("power", d.P, d.n.P, "W", query.label) };
+      case "power_factor":
+        return { ok: true, answer: mkAns3("power_factor", d.cosphi, d.n.cosphi, "", query.label) };
+      case "phase_diff": {
+        if (d.phiNice) {
+          const cert = certifyPiScalar(d.phi, d.phiN);
+          return { ok: true, answer: { label: query.label, kind: "phase_diff", text: normalizeMinus(cert.text), approx: cert.approx, unit: "rad", approximate: cert.approximate } };
+        }
+        return { ok: true, answer: { label: query.label, kind: "phase_diff", text: normalizeMinus(fmtNum11(d.phiN)), approx: d.phiN, unit: "rad", approximate: true } };
+      }
+      case "resonance_frequency":
+        return { ok: true, answer: mkAns3("resonance_frequency", resonanceFreq(m), resonanceFreqN(m), "Hz", query.label) };
+      case "is_resonance": {
+        const ratio = divP(m.ZL, m.ZC);
+        const ratioN = m.n.ZL / m.n.ZC;
+        const verdict = isResonant(d) ? "cong_huong" : d.signDZ > 0 ? "tinh_cam_khang" : "tinh_dung_khang";
+        return { ok: true, answer: mkAns3("is_resonance", ratio, ratioN, "", query.label, verdict) };
+      }
+      case "solve_resonance": {
+        const unit = query.target === "C" ? "F" : query.target === "L" ? "H" : "Hz";
+        const sol = solveResonance(m, query.target);
+        return { ok: true, answer: mkAns3("solve_resonance", sol.pi, sol.n, unit, query.label) };
+      }
+      case "write_current": {
+        const ans2 = writeExpr("i", "A", d.I0, d.n.I0, m.omega, d.phiI);
+        return { ok: true, answer: { ...ans2, label: query.label } };
+      }
+      case "write_voltage": {
+        if (query.of === "source") {
+          const ans3 = writeExpr("u", "V", scalarToPi(m.U0), m.n.U0, m.omega, m.phiU);
+          return { ok: true, answer: { ...ans3, label: query.label } };
+        }
+        const zEl = query.of === "R" ? Rp : query.of === "L" ? m.ZL : m.ZC;
+        const zElN = query.of === "R" ? m.n.R : query.of === "L" ? m.n.ZL : m.n.ZC;
+        const amp = mulP(mulP(d.I0, zEl), scalarToPi(rat(1n)));
+        const ampN = d.n.I0 * zElN;
+        const half = piOf(1n, 2n);
+        const phase = query.of === "R" ? d.phiI : query.of === "L" ? addP(d.phiI, half) : subP(d.phiI, half);
+        const ans2 = writeExpr("u", "V", amp, ampN, m.omega, phase);
+        return { ok: true, answer: { ...ans2, label: query.label } };
+      }
+      default: {
+        query;
+        return { ok: false, problem: `query kind kh\xF4ng h\u1ED7 tr\u1EE3: ${query.kind}` };
+      }
+    }
+  } catch (e) {
+    return { ok: false, problem: e.message };
+  }
+}
+
+// api/_lib/kernel/physics/acCheck.ts
+var EPS_SELF7 = 1e-6;
+function mk(kind, detail, resid, scale4) {
+  const exactZero = isZeroPi(resid);
+  const approx = approxP(resid);
+  const pass = exactZero || Math.abs(approx) <= EPS_SELF7 * Math.max(1, scale4);
+  return { kind, detail, residual: exactZero ? 0 : approx, pass };
+}
+var hasKind = (plan, k) => plan.queries.some((q) => q.kind === k) || plan.asserts.some((a) => a.query.kind === k);
+function selfChecks2(m, d, plan) {
+  const checks = [];
+  const Rp = scalarToPi(m.R);
+  const Up = scalarToPi(m.U);
+  const UR = mulP(d.I, Rp);
+  const UL = mulP(d.I, m.ZL);
+  const UC = mulP(d.I, m.ZC);
+  const uSrc = subP(UL, UC);
+  const k1 = subP(addP(mulP(UR, UR), mulP(uSrc, uSrc)), mulP(Up, Up));
+  checks.push(mk("K1", "gi\u1EA3n \u0111\u1ED3 vect\u01A1 U_R\xB2+(U_L\u2212U_C)\xB2=U\xB2", k1, Math.max(1, m.n.U * m.n.U)));
+  const k2 = subP(mulP(mulP(d.I, d.I), Rp), mulP(mulP(Up, d.I), d.cosphi));
+  checks.push(mk("K2", "c\xF4ng su\u1EA5t P = I\xB2R = U\xB7I\xB7cos\u03C6", k2, Math.max(1, d.n.P)));
+  const k4a = subP(Up, mulP(d.I, d.Z));
+  checks.push(mk("K4", "\u0111\u1ECBnh lu\u1EADt \xD4m U = I\xB7Z", k4a, Math.max(1, m.n.U)));
+  const k4b = subP(addP(mulP(d.cosphi, d.cosphi), mulP(d.sinphi, d.sinphi)), scalarToPi(rat(1n)));
+  checks.push(mk("K4", "cos\u03C6\xB2 + sin\u03C6\xB2 = 1", k4b, 1));
+  const wantsRes = hasKind(plan, "is_resonance") || hasKind(plan, "resonance_frequency");
+  if (wantsRes && isResonant(d)) {
+    const k3 = subP(d.Z, Rp);
+    checks.push(mk("K3", "c\u1ED9ng h\u01B0\u1EDFng Z = R", k3, Math.max(1, m.n.R)));
+  }
+  if (hasKind(plan, "resonance_frequency") && m.hasL && m.hasC) {
+    const f0 = solveResonance(m, "f").pi;
+    const w0 = mulP(TWO_PI, f0);
+    const ZL0 = mulP(w0, toLC(m.L));
+    const ZC0 = divP(scalarToPi(rat(1n)), mulP(w0, toLC(m.C)));
+    checks.push(mk("K3", "Z_L(f\u2080) = Z_C(f\u2080)", subP(ZL0, ZC0), Math.max(1, m.n.ZL)));
+  }
+  for (const q of plan.queries) {
+    if (q.kind !== "solve_resonance") continue;
+    const sol = solveResonance(m, q.target).pi;
+    let resid;
+    if (q.target === "f") {
+      const w0 = mulP(TWO_PI, sol);
+      resid = subP(mulP(w0, toLC(m.L)), divP(scalarToPi(rat(1n)), mulP(w0, toLC(m.C))));
+    } else if (q.target === "C") {
+      const ZCp = divP(scalarToPi(rat(1n)), mulP(m.omega, sol));
+      resid = subP(m.ZL, ZCp);
+    } else {
+      const ZLp = mulP(m.omega, sol);
+      resid = subP(ZLp, m.ZC);
+    }
+    checks.push(mk("K5", `solve_resonance{${q.target}} thay-ng\u01B0\u1EE3c Z_L=Z_C`, resid, Math.max(1, m.n.ZL || 1)));
+  }
+  return checks;
+}
+
+// api/_lib/kernel/physics/acLayout.ts
+var CHART_SAMPLES = 129;
+function ans(kind, p2, floatRef, unit) {
+  const cert = certifyPiScalar(p2, floatRef);
+  return { kind, text: normalizeMinus(cert.text), approx: cert.approx, unit, approximate: cert.approximate };
+}
+function buildPhasor(m, d) {
+  const URn = d.n.I * m.n.R;
+  const ULn = d.n.I * m.n.ZL;
+  const UCn = d.n.I * m.n.ZC;
+  const vectors = [
+    { name: "U_R", x: URn, y: 0 },
+    { name: "U_L", x: 0, y: ULn },
+    { name: "U_C", x: 0, y: -UCn },
+    { name: "U", x: URn, y: ULn - UCn }
+  ];
+  const valueText = [{ name: "U_source", text: normalizeMinus(certifyPiScalar(scalarToPi(m.U), m.n.U).text) }];
+  return { vectors, valueText };
+}
+function buildCharts2(m, d) {
+  const w = m.n.omega;
+  const phiU = m.n.phiU;
+  const phiI = phiU - d.phiN;
+  const U0 = m.n.U0;
+  const I0 = d.n.I0;
+  if (!Number.isFinite(w) || w <= 0) return [];
+  const T = 2 * Math.PI / w;
+  const tEnd = 2 * T;
+  const uSamples = [];
+  const iSamples = [];
+  for (let k = 0; k < CHART_SAMPLES; k++) {
+    const t = tEnd * k / (CHART_SAMPLES - 1);
+    uSamples.push([t, U0 * Math.cos(w * t + phiU)]);
+    iSamples.push([t, I0 * Math.cos(w * t + phiI)]);
+  }
+  return [
+    { kind: "u_t", tUnit: "s", vUnit: "V", series: [{ name: "u", samples: uSamples }] },
+    { kind: "i_t", tUnit: "s", vUnit: "A", series: [{ name: "i", samples: iSamples }] }
+  ];
+}
+function buildTable2(m, d) {
+  const one = scalarToPi(rat(1n));
+  const rows = [];
+  const Ians = ans("current", d.I, d.n.I, "A");
+  if (m.hasL || m.hasC || m.n.R > 0) {
+    if (m.n.R > 0) {
+      const Rp = scalarToPi(m.R);
+      rows.push({
+        name: "R",
+        Z: ans("impedance", Rp, m.n.R, "\u03A9"),
+        U: ans("voltage", mulP(d.I, Rp), d.n.I * m.n.R, "V"),
+        I: Ians,
+        P: ans("power", mulP(mulP(d.I, d.I), Rp), d.n.P, "W")
+      });
+    }
+    if (m.hasL) rows.push({ name: "L", Z: ans("impedance", m.ZL, m.n.ZL, "\u03A9"), U: ans("voltage", mulP(d.I, m.ZL), d.n.I * m.n.ZL, "V"), I: Ians });
+    if (m.hasC) rows.push({ name: "C", Z: ans("impedance", m.ZC, m.n.ZC, "\u03A9"), U: ans("voltage", mulP(d.I, m.ZC), d.n.I * m.n.ZC, "V"), I: Ians });
+  }
+  rows.push({ name: "source", U: ans("voltage", scalarToPi(m.U), m.n.U, "V"), I: Ians });
+  rows.push({
+    name: "total",
+    Z: ans("impedance", d.Z, d.n.Z, "\u03A9"),
+    U: ans("voltage", mulP(scalarToPi(m.U), one), m.n.U, "V"),
+    I: Ians,
+    P: ans("power", d.P, d.n.P, "W")
+  });
+  return rows;
+}
+
+// api/_lib/kernel/physics/runAcCircuit.ts
+var TOL_ASSERT7 = 1e-3;
+var ZERO_META3 = {
+  omega: { text: "0", approx: 0 },
+  Z: { text: "0", approx: 0 },
+  I: { text: "0", approx: 0 },
+  cosphi: { text: "0", approx: 0 },
+  resonance: false,
+  unitsNote: "SI"
+};
+function runAcCircuit(raw) {
+  const parsed = AcPlanSchema.safeParse(raw);
+  if (!parsed.success) {
+    const iss = parsed.error.issues[0];
+    const detail = iss ? `${iss.path.length ? `${iss.path.join(".")}: ` : ""}${iss.message}` : "schema";
+    return {
+      ok: false,
+      answers: [],
+      checks: [],
+      violations: [],
+      errors: [{ message: `Invalid AC plan: ${detail}` }],
+      geometry: null,
+      table: [],
+      phasor: null,
+      charts: [],
+      meta: ZERO_META3
+    };
+  }
+  const plan = parsed.data;
+  const geometry = { name: plan.problemName, points: [], lines: [], tags: ["physics", "ac-circuit"] };
+  const errors = [];
+  const violations = [];
+  const answers = [];
+  let checks = [];
+  let model = null;
+  let derived = null;
+  let phasor = null;
+  let charts = [];
+  let table = [];
+  try {
+    model = resolveModel2(plan);
+    derived = deriveAc(model);
+    for (const [qi, q] of plan.queries.entries()) {
+      const r2 = computeAcQuery(model, derived, q);
+      if (r2.ok === false) {
+        errors.push({ message: `query ${q.kind}: ${r2.problem}` });
+        continue;
+      }
+      answers.push({ ...r2.answer, queryIndex: qi });
+    }
+    checks = selfChecks2(model, derived, plan);
+    for (const c of checks) if (!c.pass) errors.push({ message: `t\u1EF1 ki\u1EC3m FAIL: ${c.detail} (residual ${c.residual.toExponential(2)})` });
+    for (const a of plan.asserts) {
+      const r2 = computeAcQuery(model, derived, a.query);
+      if (r2.ok === false) {
+        errors.push({ message: `assert ${a.query.kind}: ${r2.problem}` });
+        continue;
+      }
+      const tol = (a.tol ?? TOL_ASSERT7) * Math.max(1, Math.abs(a.equals));
+      const delta = Math.abs(r2.answer.approx - a.equals);
+      if (delta > tol) violations.push({ assert: a.query.kind, expected: a.equals, got: r2.answer.approx, delta });
+    }
+    if (violations.length === 0 && errors.length === 0) {
+      phasor = buildPhasor(model, derived);
+      charts = buildCharts2(model, derived);
+      table = buildTable2(model, derived);
+    }
+  } catch (err) {
+    errors.push({ message: `l\u1ED7i engine \u0111i\u1EC7n xoay chi\u1EC1u: ${err instanceof Error ? err.message : String(err)}` });
+  }
+  const ok = violations.length === 0 && errors.length === 0 && answers.length === plan.queries.length && answers.every((a) => Number.isFinite(a.approx));
+  const info2 = (p2, n) => {
+    const c = certifyPiScalar(p2, n);
+    return { text: normalizeMinus(c.text), approx: c.approx };
+  };
+  const meta = model && derived ? {
+    omega: info2(model.omega, model.n.omega),
+    Z: info2(derived.Z, derived.n.Z),
+    I: info2(derived.I, derived.n.I),
+    cosphi: info2(derived.cosphi, derived.n.cosphi),
+    resonance: isResonant(derived),
+    unitsNote: "SI"
+  } : ZERO_META3;
+  return { ok, answers, checks, violations, errors, geometry, table, phasor, charts, meta };
+}
+
 // api/_lib/kernel/chem/index.ts
 var chem_exports = {};
 __export(chem_exports, {
@@ -14925,11 +15514,11 @@ function serializeLedger(rows) {
 function answerQueries(queries, ctx) {
   const answers = [];
   for (const q of queries) {
-    const ans = answerOne(q, ctx);
-    if (ans) {
-      answers.push(ans);
-      if (ans.exact && ans.exact.replace("-", "").split("/").some((part) => part.length > 15)) {
-        ctx.trace.push(`c\u1EA3nh b\xE1o: ph\xE2n s\u1ED1 d\xE0i b\u1EA5t th\u01B0\u1EDDng trong \u0111\xE1p (${ans.exact}) \u2014 ki\u1EC3m tra d\u1EEF ki\u1EC7n \u0111\u1EC1`);
+    const ans2 = answerOne(q, ctx);
+    if (ans2) {
+      answers.push(ans2);
+      if (ans2.exact && ans2.exact.replace("-", "").split("/").some((part) => part.length > 15)) {
+        ctx.trace.push(`c\u1EA3nh b\xE1o: ph\xE2n s\u1ED1 d\xE0i b\u1EA5t th\u01B0\u1EDDng trong \u0111\xE1p (${ans2.exact}) \u2014 ki\u1EC3m tra d\u1EEF ki\u1EC7n \u0111\u1EC1`);
       }
     }
   }
@@ -15165,6 +15754,7 @@ function runPlan(rawPlan) {
   return { plan, symtab, geometry, verify, trace };
 }
 export {
+  AcPlanSchema,
   AnalysisPlanSchema,
   AssertOpSchema,
   BaseOpSchema,
@@ -15217,6 +15807,7 @@ export {
   revolutionVolumeDisk,
   revolutionVolumeShellOy,
   run,
+  runAcCircuit,
   runAnalysis,
   runAny,
   runCircuit,
