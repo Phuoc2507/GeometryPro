@@ -264,6 +264,34 @@ Pipeline: spec (3 agent) → phản biện thiết kế (2 agent) → sửa spec
   đồng nhất mọi chương Lý/Hóa hiện có) khi nối AC — trừ khi sáng mai bạn muốn AC (đỉnh đề thi
   ĐH) thành nội dung tính phí riêng. F1 có thể là ý của agent viết spec, chưa biết D22. Chờ bạn.
 
+- **D37 · [TỰ QUYẾT] MỞ định tuyến sóng cơ + điện trường (6 chương Lý end-to-end).** 2 bộ dịch
+  waves/efield tự-kiểm xong (7/7, 9/9 qua engine). Nối registry + chapterClassifier (lexicon sóng/
+  điện-trường) + subjectClassifier (thêm từ khóa). QUAN TRỌNG: GỠ "điện trường"/"điện tích" khỏi
+  stop-words vì efield ĐÃ phục vụ — đề điện-trường ngoài phạm vi engine sẽ TỰ ABSTAIN (an toàn),
+  đổi 1 test cũ (ion-trong-điện-trường kỳ vọng geometry → nay physics, có chú thích). GIỮ stop-words
+  từ trường/cảm ứng từ/hạt nhân/phóng xạ/điện phân (chưa có engine). Nguyên tắc: mở dần từng chương
+  KHI bộ dịch chương đó tự-kiểm xong — không mở non.
+
+## ═══ TRẠNG THÁI SÁNG 22/08 (đọc trước) ═══
+
+**Đã làm xong đêm nay (đã commit + push nhánh `claude/edu-tech-ecosystem-if51pn`):**
+- **Nối route đa chương Lý (trả nợ D32):** dispatch đề Lý theo CHƯƠNG (classifier tất định + auto-nhận
+  từ plan). **6 chương Lý DÙNG ĐƯỢC end-to-end:** động học, mạch điện, động lực học, dao động, **sóng cơ**,
+  **điện trường**. Dán đề vào ô Toán → nhận diện → /simulate → đáp đã kiểm chứng (ngoài phạm vi thì abstain).
+- **Code + phản biện 5 chương mới:** sóng cơ (35 test), điện trường (50, C6=300000√3 exact), điện xoay
+  chiều RLC (60, π-triệt-tiêu exact), khí+nhiệt (32, self-check chống cộng-thừa latent), + đang code Hóa hữu cơ.
+  Mỗi chương: spec → phản biện "tin số" → code TDD → (đang) phản biện code vòng 2.
+- **Mỗi bộ dịch mọi ví dụ TỰ KIỂM qua engine thật** (ok:true) trước khi nhận.
+- Toàn suite Lý 534 test xanh; bridge/route/classifier xanh; 0 hồi quy Toán/Hóa.
+
+**Còn dở (đang chạy agent / kế tiếp):**
+- Nối route điện-xoay-chiều + khí-nhiệt (bộ dịch đang viết) → thêm 2 chương → 8 chương Lý.
+- Hóa hữu cơ: đang code (áp finding phản biện atom-map + guard độc lập), rồi nối route (chương Hóa thứ 2).
+- Phản biện code vòng 2 các chương mới + full suite + build production.
+
+**CẦN BẠN QUYẾT (D36):** spec điện-xoay-chiều nói route phải TÍNH PHÍ (quota), ngược D22 (Lý/Hóa ẩn,
+không trừ credit). Tôi tạm theo D22. Nếu muốn AC (đỉnh đề thi ĐH) thành nội dung tính phí → báo.
+
 ## Quyết định chờ ghi tiếp (sẽ bổ sung trong đêm)
 
 - Phân xử 5 điểm lệch giữa spec kiến trúc và spec Lý (theo khuyến nghị phản biện).
