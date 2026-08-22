@@ -1,0 +1,11 @@
+# Vercel Hobby giới hạn 12 Serverless Functions/deploy. Ta có 13 file api/*.js.
+#
+# analyze-geometry-v2 là route KERNEL hình học (deterministic) chạy SONG SONG, dùng làm
+# dry-run cho test + dev qua server.js. Nó CHƯA được nối vào frontend production:
+#   - frontend Toán gọi /api/analyze-geometry (route gốc), KHÔNG gọi v2;
+#   - nhánh dry-run {plan} của v2 vốn đã trả 404 khi NODE_ENV=production.
+# ⇒ Loại v2 khỏi bản deploy để nhường slot cho /api/analyze-problem (Lý/Hóa).
+#
+# File VẪN nằm trong repo: `npm test` và dev-server (server.js) vẫn chạy v2 bình thường.
+# Khi nâng lên Vercel Pro hoặc nối v2 vào production, chỉ cần XOÁ dòng cuối.
+api/analyze-geometry-v2.js
