@@ -43,6 +43,16 @@ function relSphereLine(s: SphereE, l: LineE): RelPosAnswer {
   const c = cmpScalar(dSq, s.r2);
   return rel(c < 0 ? 'cắt nhau' : c === 0 ? 'tiếp xúc' : 'rời nhau');
 }
+// Điểm ∈ đường ⇔ (P−A) cùng phương dir ⇔ (P−A)×dir = 0.
+function relPointLine(pt: PointE, l: LineE): RelPosAnswer {
+  return isZeroVec(crossV(subV(pt.p, l.p), l.dir))
+    ? rel('điểm nằm trên đường') : rel('điểm nằm ngoài đường');
+}
+// Điểm ∈ mặt ⇔ n·P + d = 0.
+function relPointPlane(pt: PointE, pl: PlaneE): RelPosAnswer {
+  return isZeroS(planeSigned(pl, pt.p))
+    ? rel('điểm nằm trên mặt') : rel('điểm nằm ngoài mặt');
+}
 
 export function computeRelativePosition(a: Entity, b: Entity): ComputeOutcome<RelPosAnswer> {
   const deg = firstDegenerate([a, b]);
@@ -59,6 +69,10 @@ export function computeRelativePosition(a: Entity, b: Entity): ComputeOutcome<Re
     case 'sphere-point': return { ok: true, answer: relPointSphere(b as PointE, a as SphereE) };
     case 'sphere-line': return { ok: true, answer: relSphereLine(a as SphereE, b as LineE) };
     case 'line-sphere': return { ok: true, answer: relSphereLine(b as SphereE, a as LineE) };
+    case 'point-line': return { ok: true, answer: relPointLine(a as PointE, b as LineE) };
+    case 'line-point': return { ok: true, answer: relPointLine(b as PointE, a as LineE) };
+    case 'point-plane': return { ok: true, answer: relPointPlane(a as PointE, b as PlaneE) };
+    case 'plane-point': return { ok: true, answer: relPointPlane(b as PointE, a as PlaneE) };
     default: return { ok: false, problem: `relative position not supported for ${key}` };
   }
 }
