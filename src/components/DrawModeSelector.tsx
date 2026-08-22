@@ -1,12 +1,13 @@
-import { Zap, Layers, Sparkles, Lock, HelpCircle, Coins, Check } from 'lucide-react';
-import { toast } from 'sonner';
+import { Zap, Layers, Sparkles, HelpCircle, Coins, Check } from 'lucide-react';
 import { cn, formatCredits } from '@/lib/utils';
 import { useAuth } from '@/context/AuthContext';
 import { getGuestQuotaRemaining } from '@/lib/quota';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useEffect, useState } from 'react';
 
-export type DrawMode = 'quick' | 'detailed' | 'advance';
+// Chỉ còn 2 chế độ: Vẽ nhanh & Vẽ kỹ. "Advance" cũ đã GỘP vào Vẽ kỹ (Vẽ kỹ tự bóc lớp đề đa-câu
+// + dựng khối tròn xoay/thiết diện, cho cả đề chữ lẫn ảnh) nên không còn là lựa chọn riêng.
+export type DrawMode = 'quick' | 'detailed';
 
 interface DrawModeSelectorProps {
   value: DrawMode;
@@ -29,16 +30,8 @@ const modes = [
     label: 'Vẽ kỹ',
     icon: Layers,
     tag: 'Kỹ · chi tiết',
-    desc: 'Chi tiết & chính xác hơn',
+    desc: 'Chi tiết, bóc lớp đa-câu',
     credits: 20, // khớp CREDIT_COST.draw_detailed
-  },
-  {
-    id: 'advance' as DrawMode,
-    label: 'Advance',
-    icon: Sparkles,
-    tag: 'Nâng cao',
-    desc: 'Đa-câu / động',
-    credits: 30, // khớp CREDIT_COST.draw_advance
   },
 ];
 
@@ -62,13 +55,17 @@ const compareModes = [
     accent: 'text-primary',
     ring: 'border-primary/30 bg-primary/5',
     meta: '20 credit',
-    points: ['Phân loại đề trước rồi mới vẽ', 'Chi tiết hơn, có thể có chuyển động'],
-    bestFor: 'Bài phức tạp, cần chính xác & trình bày kỹ',
+    points: [
+      'Engine tất định — toạ độ chính xác, tự kiểm',
+      'Tự bóc lớp theo từng câu (đề a/b/c…)',
+      'Dựng khối tròn xoay / thiết diện; nhận cả đề ảnh',
+    ],
+    bestFor: 'Bài phức tạp, nhiều câu, cần chính xác & trình bày kỹ',
   },
 ];
 
 export function DrawModeSelector({ value, onChange }: DrawModeSelectorProps) {
-  const { tier, credits, user, drawQuotaRemaining, isAdmin } = useAuth();
+  const { tier, credits, user, drawQuotaRemaining } = useAuth();
   const [, setQuotaVersion] = useState(0);
   useEffect(() => {
     const refresh = () => setQuotaVersion((version) => version + 1);
@@ -144,29 +141,17 @@ export function DrawModeSelector({ value, onChange }: DrawModeSelectorProps) {
       </div>
       <div className="flex gap-1.5 w-full">
         {modes.map((mode) => {
-          // Advance đang nâng cấp → KHOÁ cho mọi người trừ quản trị viên (khách cũng không phải admin).
-          const advanceLocked = mode.id === 'advance' && !isAdmin;
-          const Icon = advanceLocked ? Lock : mode.icon;
+          const Icon = mode.icon;
           const isActive = value === mode.id;
           return (
             <button
               key={mode.id}
-              onClick={() => {
-                if (advanceLocked) {
-                  toast.info('Chế độ Advance đang được nâng cấp', {
-                    description: 'Tính năng tạm thời chỉ dành cho quản trị viên. Bạn hãy dùng Vẽ nhanh hoặc Vẽ kỹ nhé.',
-                  });
-                  return;
-                }
-                onChange(mode.id);
-              }}
-              aria-disabled={advanceLocked}
+              onClick={() => onChange(mode.id)}
               className={cn(
                 "flex-1 flex flex-col items-center gap-0.5 py-2 px-1 rounded-xl text-xs transition-all duration-200 border",
                 isActive
                   ? "bg-primary/15 border-primary/40 text-primary"
-                  : "bg-secondary/30 border-transparent text-muted-foreground hover:bg-secondary/50",
-                advanceLocked && "opacity-60"
+                  : "bg-secondary/30 border-transparent text-muted-foreground hover:bg-secondary/50"
               )}
             >
               <Icon className="w-3.5 h-3.5" />
@@ -183,18 +168,11 @@ export function DrawModeSelector({ value, onChange }: DrawModeSelectorProps) {
       </div>
       {/* Giá + số dư (gói trả phí) hoặc thời gian ước tính (free) */}
       <p className="text-[11px] text-muted-foreground/70 text-center flex items-center justify-center gap-1">
-        {selected.id === 'advance' && !isAdmin ? (
-          <span className="text-primary flex items-center gap-1">
-            <Lock className="w-3 h-3" />
-            Advance đang nâng cấp — chỉ dành cho quản trị viên
-          </span>
-        ) : isPaid ? (
+        {isPaid ? (
           <>
             <Sparkles className="w-3 h-3 text-primary" />
             Tốn <strong className="text-primary">{selected.credits} credit</strong> · còn {formatCredits(credits)}
           </>
-        ) : !user && selected.id === 'advance' ? (
-          <span className="text-primary">Đăng nhập tài khoản Free để dùng Advance</span>
         ) : freeRemaining != null ? (
           freeRemaining > 0 ? (
             <>Miễn phí · <strong>còn {freeRemaining}</strong> lượt vẽ hôm nay</>

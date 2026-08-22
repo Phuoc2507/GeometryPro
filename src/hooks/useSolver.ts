@@ -10,8 +10,11 @@ import { GeometryData } from '@/types/geometry';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/context/AuthContext';
 import { cacheQuotaFromResponse } from '@/lib/quota';
+import { fetchWithTimeout } from '@/lib/fetchWithTimeout';
 import type { ConstructSpec } from '@/lib/solveReveal';
 import type { SafetyClassification } from '@/lib/safetyTier';
+
+const NEEDS_UPGRADE_CODES = ['insufficient', 'quota_exceeded', 'blocked'];
 
 export interface SolveStep {
   id: string;
@@ -19,7 +22,6 @@ export interface SolveStep {
   explanation: string;
   formula?: string | null;
   highlight: string[];
-  view_mode: '3d' | '2d';
   /** Điểm mới bước này giới thiệu (luật dựng; toạ độ do frontend tính từ hình). */
   construct?: ConstructSpec[];
 }
@@ -40,7 +42,7 @@ export function useSolver() {
   const [error, setError]             = useState<string | null>(null);
   const [currentStep, setCurrentStep] = useState(0);
   
-  const { openAuthModal } = useAuth();
+  const { openAuthModal, openUpgradeModal } = useAuth();
 
   const solve = useCallback(async (problem: string, geometry: GeometryData, tags?: string[]) => {
     setLoading(true);
@@ -55,12 +57,12 @@ export function useSolver() {
       const headers: Record<string, string> = { 'Content-Type': 'application/json' };
       if (token) headers['Authorization'] = `Bearer ${token}`;
 
-      const res = await fetch('/api/solve', {
+      const res = await fetchWithTimeout('/api/solve', {
         method: 'POST',
         headers,
         credentials: 'same-origin',
         body: JSON.stringify({ problem, geometry, tags }),
-      });
+      }, 150000);
 
       const data = await res.json();
       cacheQuotaFromResponse(res, data);
@@ -68,6 +70,8 @@ export function useSolver() {
       if (!res.ok) {
         if (res.status === 429 || data.code === 'guest_quota_exceeded' || data.code === 'guest_ip_quota_exceeded') {
           openAuthModal('quota');
+        } else if (res.status === 402 || NEEDS_UPGRADE_CODES.includes(data.code)) {
+          openUpgradeModal();
         }
         throw new Error(data.error || `HTTP ${res.status}`);
       }
@@ -86,7 +90,7 @@ export function useSolver() {
     } finally {
       setLoading(false);
     }
-  }, [openAuthModal]);
+  }, [openAuthModal, openUpgradeModal]);
 
   const reset = useCallback(() => {
     setResult(null);

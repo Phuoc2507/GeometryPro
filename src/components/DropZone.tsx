@@ -15,6 +15,9 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { demoQuestions } from '@/data/demoQuestions';
 import { demoResults } from '@/data/demoResults';
+import { toast } from '@/hooks/use-toast';
+
+const MAX_IMAGE_BYTES = 15 * 1024 * 1024; // 15MB — ảnh chụp điện thoại thường < 8MB
 
 export function DropZone() {
   const context = useGeometryOptional();
@@ -27,15 +30,27 @@ export function DropZone() {
   const [drawMode, setDrawMode] = useState<DrawMode>('quick');
 
   const handleFileSelect = useCallback(async (file: File) => {
-    if (!file.type.startsWith('image/') || !context) {
+    if (!context) return;
+    if (!file.type.startsWith('image/')) {
+      toast({ title: 'Chỉ nhận ảnh', description: 'Hãy chụp hoặc tải ảnh đề bài (PNG/JPG).', variant: 'destructive' });
+      return;
+    }
+    if (file.size > MAX_IMAGE_BYTES) {
+      toast({ title: 'Ảnh quá lớn', description: 'Vui lòng dùng ảnh dưới 15MB (chụp gọn khung đề).', variant: 'destructive' });
       return;
     }
 
     const reader = new FileReader();
+    reader.onerror = () => {
+      toast({ title: 'Không đọc được tệp', description: 'Thử lại hoặc chọn ảnh khác.', variant: 'destructive' });
+    };
     reader.onload = async (e) => {
       const base64 = e.target?.result as string;
-      
+
       const img = new window.Image();
+      img.onerror = () => {
+        toast({ title: 'Không đọc được ảnh', description: 'Ảnh có thể bị hỏng hoặc sai định dạng. Thử ảnh khác nhé.', variant: 'destructive' });
+      };
       img.onload = () => {
         const canvas = document.createElement('canvas');
         let width = img.width;
@@ -58,12 +73,10 @@ export function DropZone() {
         if (ctx) {
           ctx.drawImage(img, 0, 0, width, height);
           const compressedBase64 = canvas.toDataURL('image/jpeg', 0.8);
-          // Advance + ảnh → analyzeAdvance (Pass -1 chép đề ra chữ); còn lại → luồng ảnh thường.
-          if (drawMode === 'advance') context.analyzeAdvance('', compressedBase64);
-          else context.queueAnalyzeImage(compressedBase64, drawMode);
+          // 2 chế độ (Nhanh/Kỹ) đi chung luồng ảnh; Vẽ kỹ tự định tuyến nâng cao (kể cả đề ảnh) ở server.
+          context.queueAnalyzeImage(compressedBase64, drawMode);
         } else {
-          if (drawMode === 'advance') context.analyzeAdvance('', base64);
-          else context.queueAnalyzeImage(base64, drawMode);
+          context.queueAnalyzeImage(base64, drawMode);
         }
       };
       img.src = base64;
@@ -148,12 +161,8 @@ export function DropZone() {
       return;
     }
 
-    // Instead of opening modal, directly call context
-    if (drawMode === 'advance') {
-      context.analyzeAdvance(trimmed);
-    } else {
-      context.queueAnalyzeText(trimmed, drawMode);
-    }
+    // 2 chế độ (Nhanh/Kỹ) đi chung luồng chữ; Vẽ kỹ tự định tuyến nâng cao (đa-câu/tròn xoay) ở server.
+    context.queueAnalyzeText(trimmed, drawMode);
     setTextPrompt('');
   }, [textPrompt, context, drawMode, navigate]);
 

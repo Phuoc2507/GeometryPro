@@ -1,10 +1,14 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Check, Minus, ChevronLeft, ShieldCheck, Loader2 } from 'lucide-react';
+import { Check, Minus, ChevronLeft, ShieldCheck, Loader2, Ticket } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useCheckout } from '@/hooks/useCheckout';
+import { supabase } from '@/integrations/supabase/client';
+import { authUrlWithRedirect } from '@/lib/authRedirect';
+import { fetchWithTimeout } from '@/lib/fetchWithTimeout';
 import { fmtVnd } from '@/lib/plans';
 import { cn } from '@/lib/utils';
+import { toast } from 'sonner';
 
 type Aud = 'student' | 'teacher';
 type Bill = 'month' | 'year';
@@ -64,11 +68,44 @@ const segBtn = (active: boolean) =>
 
 export default function Pricing() {
   const navigate = useNavigate();
-  const { tier, lockedRole, isRoleLocked } = useAuth();
+  const { user, tier, lockedRole, isRoleLocked } = useAuth();
   const { plans, buying, startCheckout } = useCheckout();
 
   const [aud, setAud] = useState<Aud>(lockedRole ?? 'student');
   const [bill, setBill] = useState<Bill>('month');
+
+  // Mã mời — giảm 10% cho người được mời.
+  const [refInput, setRefInput] = useState(() => { try { return localStorage.getItem('geo3d:ref') || ''; } catch { return ''; } });
+  const [refApplied, setRefApplied] = useState<string | null>(null);
+  const [refStatus, setRefStatus] = useState<'idle' | 'checking' | 'valid' | 'invalid'>('idle');
+  const [refMsg, setRefMsg] = useState('');
+
+  const applyRef = async (codeArg?: string) => {
+    const code = (codeArg ?? refInput).trim().toUpperCase();
+    if (!code) return;
+    const { data: sd } = await supabase.auth.getSession();
+    const token = sd.session?.access_token;
+    // Chưa đăng nhập → đưa đi đăng nhập rồi quay lại đây (mã tự áp sau khi đăng nhập).
+    if (!token) { navigate(authUrlWithRedirect('/bang-gia')); return; }
+    setRefStatus('checking'); setRefMsg('');
+    try {
+      const res = await fetchWithTimeout(`/api/referral?validate=${encodeURIComponent(code)}`, { headers: { Authorization: `Bearer ${token}` } });
+      const j = await res.json();
+      if (j.valid) { setRefApplied(code); setRefStatus('valid'); setRefMsg(j.referrerName ? `Hợp lệ · được giới thiệu bởi ${j.referrerName}` : 'Mã hợp lệ · giảm 10%'); }
+      else {
+        setRefApplied(null); setRefStatus('invalid'); setRefMsg(j.message || 'Mã không hợp lệ');
+        // Mã hỏng "vĩnh viễn" (không tồn tại / mã của mình / đã mua rồi) → xoá để lần sau khỏi bị nhắc lại.
+        if (['not_found', 'self', 'not_first'].includes(j.reason)) { try { localStorage.removeItem('geo3d:ref'); } catch { /* bỏ qua */ } }
+      }
+    } catch { setRefApplied(null); setRefStatus('invalid'); setRefMsg('Không kiểm tra được mã, thử lại.'); }
+  };
+  const clearRef = () => { setRefApplied(null); setRefInput(''); setRefStatus('idle'); setRefMsg(''); try { localStorage.removeItem('geo3d:ref'); } catch { /* bỏ qua */ } };
+
+  // Tự động áp mã đã lưu (từ link ?ref) khi người dùng đã đăng nhập — tránh mất giảm giá vì quên bấm "Áp dụng".
+  useEffect(() => {
+    if (user && refInput.trim() && refStatus === 'idle' && !refApplied) applyRef(refInput);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user]);
 
   const byCode = new Map(plans.map((p) => [p.code, p]));
   const codeFor = (c: CardDef) => (c.yearOnly ? c.codes?.year : (bill === 'month' ? c.codes?.month : c.codes?.year));
@@ -86,25 +123,43 @@ export default function Pricing() {
     if (c.contact) { window.location.href = 'mailto:hotro@geo3d.vn?subject=Gói%20Trường%20geo3d'; return; }
     const code = codeFor(c);
     if (!code) return;
+    // Đang kiểm tra mã mời → đợi kết quả, đừng mua vội kẻo mất giảm 10%.
+    if (refStatus === 'checking') {
+      toast.message('Đang kiểm tra mã mời…', { description: 'Đợi một chút để được giảm 10% rồi hãy mua nhé.' });
+      return;
+    }
     try { localStorage.setItem('geo3d:last-mode', aud); } catch { /* bỏ qua */ }
-    startCheckout({ planCode: code }, code);
+    startCheckout({ planCode: code, referralCode: refApplied || undefined }, code);
   };
 
   // Số tiền LUÔN một dòng (nowrap); kỳ hạn + ghi chú xuống dòng phụ → mọi thẻ cao bằng nhau.
   const priceBlock = (c: CardDef) => {
     let amount = '', sub = '';
+    let paidValue = 0;
     if (c.contact) { amount = 'Liên hệ'; sub = 'Báo giá theo quy mô trường'; }
     else if (priceOf(c) === 0) { amount = '0đ'; sub = 'Miễn phí mãi mãi'; }
     else {
       const v = byCode.get(codeFor(c) ?? '')?.price_vnd ?? 0;
+      paidValue = v;
       amount = fmtVnd(v);
       if (c.yearOnly) sub = '/năm học · trọn năm';
       else if (bill === 'month') sub = '/tháng · gia hạn hằng tháng';
       else sub = `/năm · ≈ ${fmtVnd(Math.round(v / 12 / 1000) * 1000)}/tháng`;
     }
+    // Chưa đăng nhập nhưng đã có mã (từ link ?ref) → xem TRƯỚC giá sau giảm để thấy lợi ích ngay
+    // tại lúc quyết định; mã sẽ được áp thật sau khi đăng nhập.
+    const previewDiscount = !user && !!refInput.trim();
+    const showDiscount = (!!refApplied || previewDiscount) && paidValue > 0;
     return (
       <div className="min-h-[60px]">
-        <div className="text-[30px] font-extrabold leading-none tracking-tight whitespace-nowrap">{amount}</div>
+        {showDiscount ? (
+          <div className="flex items-end gap-x-2 gap-y-0.5 flex-wrap">
+            <span className="text-[26px] sm:text-[30px] font-extrabold leading-none tracking-tight text-emerald-400">{fmtVnd(Math.round(paidValue * 0.9))}</span>
+            <span className="text-[15px] line-through text-[#6B7E99]">{amount}</span>
+          </div>
+        ) : (
+          <div className="text-[26px] sm:text-[30px] font-extrabold leading-none tracking-tight whitespace-nowrap">{amount}</div>
+        )}
         <div className="text-[#6B7E99] text-[12.5px] mt-2">{sub}</div>
       </div>
     );
@@ -127,6 +182,41 @@ export default function Pricing() {
           <div className="text-[#4C8DFF] font-bold tracking-[3px] text-[13px] uppercase">Bảng giá geo3d</div>
           <h1 className="text-[40px] max-[520px]:text-[30px] font-extrabold my-2 tracking-tight">Hình học không gian <span className="text-[#4C8DFF]">bằng mắt</span></h1>
           <div className="text-[#9FB2CC] text-[17px]">Chọn gói phù hợp — huỷ bất cứ lúc nào.</div>
+        </div>
+
+        {/* Mã mời — giảm 10% cho người được mời */}
+        <div className="max-w-[520px] mx-auto mb-7 rounded-2xl border border-[#22344F] bg-[#0E1A2C]/60 p-4">
+          <div className="flex items-center gap-2 text-[14px] font-semibold text-[#EAF2FF] mb-2.5">
+            <Ticket className="w-4 h-4 text-[#4C8DFF]" /> Mã mời
+            <span className="text-[12px] font-normal text-[#6B7E99]">(nếu có — giảm 10%)</span>
+          </div>
+          <div className="flex gap-2">
+            <input
+              value={refInput}
+              onChange={(e) => { setRefInput(e.target.value.toUpperCase()); if (refStatus !== 'idle') { setRefStatus('idle'); setRefMsg(''); } }}
+              placeholder="VD: GEO7X9A"
+              maxLength={16}
+              disabled={refStatus === 'valid'}
+              className="flex-1 h-10 rounded-lg bg-[#0A121F] border border-[#22344F] px-3 text-[15px] font-mono tracking-wider uppercase text-white placeholder:text-[#4A5A72] focus:outline-none focus:border-[#4C8DFF] disabled:opacity-70"
+            />
+            {refApplied ? (
+              <button type="button" onClick={clearRef} className="px-4 rounded-lg border border-[#22344F] text-[#9FB2CC] hover:text-white text-sm font-medium">Bỏ</button>
+            ) : (
+              <button type="button" onClick={() => applyRef()} disabled={refStatus === 'checking' || !refInput.trim()} className="px-4 rounded-lg bg-[#2E6BF2] text-white text-sm font-semibold disabled:opacity-40 inline-flex items-center justify-center min-w-[84px]">
+                {refStatus === 'checking' ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Áp dụng'}
+              </button>
+            )}
+          </div>
+          {refMsg && (
+            <div className={cn('text-[13px] mt-2 flex items-center gap-1', refStatus === 'valid' ? 'text-emerald-400' : 'text-red-400')}>
+              {refStatus === 'valid' && <Check className="w-3.5 h-3.5" />}{refMsg}
+            </div>
+          )}
+          {!user && !!refInput.trim() && !refMsg && (
+            <div className="text-[13px] mt-2 text-[#4C8DFF]">
+              Đăng nhập để áp mã — giảm 10% cho đơn đầu tiên (giá dưới đây là giá dự kiến sau giảm).
+            </div>
+          )}
         </div>
 
         {/* Controls — cả 2 toggle CĂN GIỮA độc lập; badge tiết kiệm là DÒNG RIÊNG (không đẩy lệch) */}

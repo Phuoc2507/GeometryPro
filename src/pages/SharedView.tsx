@@ -5,9 +5,10 @@
  * Hiện: hình 3D xoay được + đề bài + lời giải (advance: stepper/panel; solve:
  * danh sách bước read-only). Đọc qua RLS "Public can read public geometries".
  */
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { Loader2, ArrowLeft, CheckCircle2, AlertTriangle, Save, Check } from 'lucide-react';
+import { Loader2, ArrowLeft, CheckCircle2, AlertTriangle, Save, Check, RefreshCcw } from 'lucide-react';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
 import 'katex/dist/katex.min.css';
 import { BlockMath } from 'react-katex';
 import { supabase } from '@/integrations/supabase/client';
@@ -154,9 +155,11 @@ function SharedViewInner({ row }: { row: SharedRow }) {
         <div className="flex-1 flex flex-col lg:flex-row">
           {/* Hình 3D */}
           <div className="relative w-full lg:flex-1 h-[46vh] lg:h-auto lg:min-h-[calc(100vh-57px)]">
-            <GeometryCanvas />
-            <AdvanceStepper />
-            <AdvanceSolutionPanel />
+            <ErrorBoundary>
+              <GeometryCanvas />
+              <AdvanceStepper />
+              <AdvanceSolutionPanel />
+            </ErrorBoundary>
           </div>
 
           {/* Đề + lời giải */}
@@ -200,39 +203,44 @@ function SharedViewInner({ row }: { row: SharedRow }) {
 export default function SharedView() {
   const { id } = useParams<{ id: string }>();
   const [row, setRow] = useState<SharedRow | null>(null);
-  const [status, setStatus] = useState<'loading' | 'ready' | 'notfound'>('loading');
+  const [status, setStatus] = useState<'loading' | 'ready' | 'notfound' | 'error'>('loading');
 
-  useEffect(() => {
-    let cancelled = false;
-    if (!id) {
-      setStatus('notfound');
-      return;
-    }
-    (async () => {
-      const { data, error } = await supabase
-        .from('saved_geometries')
-        .select('name, prompt, geometry_data')
-        .eq('id', id)
-        .eq('is_public', true)
-        .maybeSingle();
-
-      if (cancelled) return;
-      if (error || !data) {
-        setStatus('notfound');
-        return;
-      }
-      setRow(data as unknown as SharedRow);
-      setStatus('ready');
-    })();
-    return () => {
-      cancelled = true;
-    };
+  const load = useCallback(async () => {
+    if (!id) { setStatus('notfound'); return; }
+    setStatus('loading');
+    const { data, error } = await supabase
+      .from('saved_geometries')
+      .select('name, prompt, geometry_data')
+      .eq('id', id)
+      .eq('is_public', true)
+      .maybeSingle();
+    if (error) { setStatus('error'); return; }   // lỗi mạng tạm thời → cho thử lại (đừng nói "không tồn tại")
+    if (!data) { setStatus('notfound'); return; }  // thật sự không có / đã gỡ công khai
+    setRow(data as unknown as SharedRow);
+    setStatus('ready');
   }, [id]);
+
+  useEffect(() => { load(); }, [load]);
 
   if (status === 'loading') {
     return (
       <div className="min-h-screen radial-gradient-bg flex items-center justify-center">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (status === 'error') {
+    return (
+      <div className="min-h-screen radial-gradient-bg flex flex-col items-center justify-center gap-4 p-6 text-center">
+        <AlertTriangle className="w-10 h-10 text-muted-foreground" />
+        <div>
+          <h1 className="text-lg font-semibold">Không tải được bài</h1>
+          <p className="text-sm text-muted-foreground">Mạng chậm hoặc lỗi tạm thời. Vui lòng thử lại.</p>
+        </div>
+        <Button variant="outline" className="gap-2" onClick={load}>
+          <RefreshCcw className="w-4 h-4" /> Thử lại
+        </Button>
       </div>
     );
   }

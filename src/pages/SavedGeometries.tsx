@@ -1,5 +1,9 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription,
+  AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { ArrowLeft, Globe, Lock, Trash2, Clock, MoreHorizontal, FolderPlus, Folder, Download } from 'lucide-react';
 import { Mark } from '@/components/Brand';
 import { authUrlWithRedirect } from '@/lib/authRedirect';
@@ -22,7 +26,7 @@ import { vi } from 'date-fns/locale';
 const SavedGeometries = () => {
   const navigate = useNavigate();
   const { user, isLoading: authLoading } = useAuth();
-  const { savedGeometries, isLoading, fetchGeometries, deleteGeometry, moveToProject } = useSavedGeometries();
+  const { savedGeometries, isLoading, fetchGeometries, deleteGeometry, moveToProject, updateGeometry } = useSavedGeometries();
   const { projects } = useProjects();
 
   useEffect(() => {
@@ -43,11 +47,10 @@ const SavedGeometries = () => {
     navigate(`/${lastMode}`, { state: { loadGeometry: geometry.geometry_data } });
   };
 
-  const handleDelete = async (e: React.MouseEvent, id: string) => {
+  const [pendingDelete, setPendingDelete] = useState<SavedGeometry | null>(null);
+  const askDelete = (e: React.MouseEvent, g: SavedGeometry) => {
     e.stopPropagation();
-    if (confirm('Bạn có chắc muốn xóa hình này?')) {
-      await deleteGeometry(id);
-    }
+    setPendingDelete(g);
   };
 
   if (authLoading) {
@@ -114,10 +117,13 @@ const SavedGeometries = () => {
           <ScrollArea className="h-[calc(100vh-200px)]">
             <div className="grid gap-4 md:grid-cols-2">
               {savedGeometries.map((geometry) => (
-                <button
+                <div
                   key={geometry.id}
+                  role="button"
+                  tabIndex={0}
                   onClick={() => handleLoadGeometry(geometry)}
-                  className="glass p-4 rounded-xl text-left hover:bg-secondary/50 transition-colors group border border-border/50"
+                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleLoadGeometry(geometry); } }}
+                  className="glass p-4 rounded-xl text-left hover:bg-secondary/50 transition-colors group border border-border/50 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                 >
                   <div className="flex items-start justify-between mb-3">
                     <div className="flex items-center gap-2">
@@ -154,7 +160,7 @@ const SavedGeometries = () => {
                     <p className="text-sm text-muted-foreground">
                       {geometry.geometry_data.points?.length || 0} điểm • {geometry.geometry_data.lines?.length || 0} đường
                     </p>
-                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <div className="flex items-center gap-1 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <button
@@ -190,6 +196,13 @@ const SavedGeometries = () => {
                             </DropdownMenuPortal>
                           </DropdownMenuSub>
                           <DropdownMenuItem
+                            onClick={(e) => { e.stopPropagation(); updateGeometry(geometry.id, { is_public: !geometry.is_public }); }}
+                          >
+                            {geometry.is_public
+                              ? (<><Lock className="w-4 h-4 mr-2" /> Gỡ công khai (tắt link)</>)
+                              : (<><Globe className="w-4 h-4 mr-2" /> Công khai (tạo link)</>)}
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
                             onClick={(e) => { e.stopPropagation(); exportProblemFile(geometry.geometry_data); }}
                           >
                             <Download className="w-4 h-4 mr-2" /> Tải tệp bài (.json)
@@ -202,18 +215,38 @@ const SavedGeometries = () => {
                         size="icon"
                         aria-label="Xoá"
                         className="text-destructive hover:text-destructive hover:bg-destructive/10 h-8 w-8"
-                        onClick={(e) => handleDelete(e, geometry.id)}
+                        onClick={(e) => askDelete(e, geometry)}
                       >
                         <Trash2 className="w-4 h-4" />
                       </Button>
                     </div>
                   </div>
-                </button>
+                </div>
               ))}
             </div>
           </ScrollArea>
         )}
       </div>
+
+      <AlertDialog open={!!pendingDelete} onOpenChange={(o) => { if (!o) setPendingDelete(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Xoá hình đã lưu?</AlertDialogTitle>
+            <AlertDialogDescription>
+              <strong>{pendingDelete?.name ?? 'Hình này'}</strong> sẽ bị xoá vĩnh viễn và không khôi phục được.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Huỷ</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => { const g = pendingDelete; setPendingDelete(null); if (g) deleteGeometry(g.id); }}
+            >
+              Xoá
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

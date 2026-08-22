@@ -46,6 +46,8 @@ export function WithdrawalsTab() {
 
   const resolve = async (w: AdminWithdrawal, actionType: 'paid' | 'rejected') => {
     if (actionType === 'rejected' && !window.confirm(`Từ chối và HOÀN ${fmtVnd(w.amount)} về ví người mời?`)) return;
+    // "Đã chuyển" là thao tác tiền thật, không hoàn tác được → xác nhận kèm số tiền + số tài khoản.
+    if (actionType === 'paid' && !window.confirm(`Xác nhận ĐÃ CHUYỂN ${fmtVnd(w.amount)} tới ${w.account_number ?? 'tài khoản của người mời'}?`)) return;
     setBusy(w.id);
     try {
       await resolveWithdrawal(w.id, actionType, refInputs[w.id]?.trim() || undefined);
@@ -105,7 +107,7 @@ export function WithdrawalsTab() {
                     </TableCell>
                     <TableCell className="text-right font-mono tabular-nums font-semibold">{fmtVnd(w.amount)}</TableCell>
                     <TableCell>
-                      <span className={`inline-block rounded px-2 py-0.5 text-xs font-medium ${STATUS[w.status].cls}`}>{STATUS[w.status].label}</span>
+                      <span className={`inline-block rounded px-2 py-0.5 text-xs font-medium ${(STATUS[w.status] ?? { cls: 'bg-muted text-muted-foreground' }).cls}`}>{(STATUS[w.status] ?? { label: w.status }).label}</span>
                     </TableCell>
                     <TableCell>
                       {w.status === 'requested' ? (

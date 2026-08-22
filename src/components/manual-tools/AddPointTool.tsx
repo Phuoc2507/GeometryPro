@@ -24,9 +24,10 @@ export function AddPointTool({ onAdd, existingLabels }: AddPointToolProps) {
     return `P${existingLabels.length + 1}`;
   };
 
+  const num = (s: string) => { const n = parseFloat(s); return Number.isFinite(n) ? n : 0; };
   const handleAdd = () => {
     const l = label.trim() || nextLabel();
-    onAdd(l, parseFloat(x) || 0, parseFloat(y) || 0, parseFloat(z) || 0);
+    onAdd(l, num(x), num(y), num(z));
     setLabel('');
     setX('0');
     setY('0');
@@ -35,30 +36,32 @@ export function AddPointTool({ onAdd, existingLabels }: AddPointToolProps) {
 
   return (
     <div className="space-y-2">
-      <div className="grid grid-cols-4 gap-1.5">
-        <div>
-          <Label className="text-[10px] text-muted-foreground">Tên</Label>
-          <Input
-            value={label}
-            onChange={e => setLabel(e.target.value)}
-            placeholder={nextLabel()}
-            className="h-7 text-xs px-1.5"
-          />
-        </div>
+      {/* Tên riêng một hàng + X/Y/Z 3 cột → rộng rãi, dễ chạm trên điện thoại. */}
+      <div>
+        <Label className="text-[10px] text-muted-foreground">Tên điểm</Label>
+        <Input
+          value={label}
+          onChange={e => setLabel(e.target.value)}
+          onKeyDown={e => e.key === 'Enter' && handleAdd()}
+          placeholder={nextLabel()}
+          className="h-9 sm:h-7 text-sm sm:text-xs px-2"
+        />
+      </div>
+      <div className="grid grid-cols-3 gap-1.5">
         <div>
           <Label className="text-[10px] text-muted-foreground">X</Label>
-          <Input value={x} onChange={e => setX(e.target.value)} className="h-7 text-xs px-1.5" type="number" step="0.5" />
+          <Input value={x} onChange={e => setX(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleAdd()} className="h-9 sm:h-7 text-sm sm:text-xs px-2" type="number" step="0.5" inputMode="decimal" />
         </div>
         <div>
           <Label className="text-[10px] text-muted-foreground">Y</Label>
-          <Input value={y} onChange={e => setY(e.target.value)} className="h-7 text-xs px-1.5" type="number" step="0.5" />
+          <Input value={y} onChange={e => setY(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleAdd()} className="h-9 sm:h-7 text-sm sm:text-xs px-2" type="number" step="0.5" inputMode="decimal" />
         </div>
         <div>
           <Label className="text-[10px] text-muted-foreground">Z</Label>
-          <Input value={z} onChange={e => setZ(e.target.value)} className="h-7 text-xs px-1.5" type="number" step="0.5" />
+          <Input value={z} onChange={e => setZ(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleAdd()} className="h-9 sm:h-7 text-sm sm:text-xs px-2" type="number" step="0.5" inputMode="decimal" />
         </div>
       </div>
-      <Button size="sm" className="w-full h-7 text-xs" onClick={handleAdd}>
+      <Button size="sm" className="w-full h-9 sm:h-7 text-xs" onClick={handleAdd}>
         <Plus className="w-3 h-3 mr-1" /> Thêm điểm
       </Button>
     </div>

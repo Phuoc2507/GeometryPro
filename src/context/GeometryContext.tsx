@@ -7,6 +7,7 @@ import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/context/AuthContext';
 import { cacheQuotaFromResponse } from '@/lib/quota';
+import { fetchWithTimeout } from '@/lib/fetchWithTimeout';
 import { collectPlanePointIds, planeReferencesPoint } from '@/lib/geometry/planeReferences';
 import { normalizePlanarPolygon } from '@/lib/geometry/planeGeometry';
 const LOCAL_API = import.meta.env.VITE_LOCAL_API_URL ?? '';
@@ -47,12 +48,12 @@ async function invokeLocalApi(endpoint: string, body: Record<string, unknown>): 
     const headers: Record<string, string> = { 'Content-Type': 'application/json' };
     if (token) headers['Authorization'] = `Bearer ${token}`;
 
-    const res = await fetch(`${LOCAL_API}${endpoint}`, {
+    const res = await fetchWithTimeout(`${LOCAL_API}${endpoint}`, {
       method: 'POST',
       headers,
       credentials: 'same-origin',
       body: JSON.stringify(body),
-    });
+    }, 130000);  // chặn treo vô hạn nếu hàm máy chủ đơ (server tự cap ~120s)
     // Đọc thân dạng CHỮ trước rồi mới thử parse JSON. Khi hàm máy chủ crash/quá giờ, Vercel trả về
     // TRANG LỖI (không phải JSON, vd "An error occurred…") — gọi res.json() thẳng sẽ ném
     // "Unexpected token 'A'…" khó hiểu. Tách ra để báo lỗi gọn gàng cho người dùng.
@@ -87,14 +88,22 @@ async function invokeLocalApiStream(
     const headers: Record<string, string> = { 'Content-Type': 'application/json' };
     if (token) headers['Authorization'] = `Bearer ${token}`;
 
+    // Idle-timeout: chỉ huỷ khi luồng NGƯNG chảy (đơ) — bài vẽ lâu nhưng vẫn báo tiến độ thì không bị cắt.
+    const controller = new AbortController();
+    const IDLE_MS = 90000;
+    let idleTimer = setTimeout(() => controller.abort(), IDLE_MS);
+    const bumpIdle = () => { clearTimeout(idleTimer); idleTimer = setTimeout(() => controller.abort(), IDLE_MS); };
+
     const res = await fetch(`${LOCAL_API}${endpoint}?stream=true`, {
       method: 'POST',
       headers,
       credentials: 'same-origin',
       body: JSON.stringify(body),
+      signal: controller.signal,
     });
 
     if (!res.ok) {
+      clearTimeout(idleTimer);
       const data = await res.json().catch(() => null) as LocalApiData | null;
       cacheQuotaFromResponse(res, data);
       return { data: null, error: { message: data?.error || `HTTP ${res.status}`, code: data?.code, status: res.status } };
@@ -110,6 +119,7 @@ async function invokeLocalApiStream(
     while (true) {
       const { done, value } = await reader.read();
       if (done) break;
+      bumpIdle();  // vừa nhận dữ liệu → gia hạn đồng hồ đơ
       buffer += decoder.decode(value, { stream: true });
       const chunks = buffer.split('\n\n');
       buffer = chunks.pop() || ""; 
@@ -126,6 +136,7 @@ async function invokeLocalApiStream(
               chunk?: string;
             };
             if (parsed.error) {
+              clearTimeout(idleTimer);
               return { data: null, error: { message: parsed.error, code: parsed.code } };
             }
             if (parsed.status === 'done') {
@@ -142,10 +153,15 @@ async function invokeLocalApiStream(
       }
     }
     
+    clearTimeout(idleTimer);
     cacheQuotaFromResponse(res, finalData);
     return { data: finalData, error: null };
   } catch (err: unknown) {
-    return { data: null, error: { message: err instanceof Error ? err.message : 'Network error' } };
+    const aborted = err instanceof Error && err.name === 'AbortError';
+    const message = aborted
+      ? 'Máy chủ phản hồi quá lâu, vui lòng thử lại (nếu gửi ảnh, thử chụp gọn/đề ngắn hơn).'
+      : (err instanceof Error ? err.message : 'Network error');
+    return { data: null, error: { message } };
   }
 }
 
@@ -439,7 +455,6 @@ export interface GeometryContextType {
   startDemo: (type?: 'pyramid' | 'satellite' | 'lod4' | GeometryData) => void;
   analyzeImage: (imageBase64: string) => Promise<void>;
   analyzeText: (prompt: string, mode?: DrawMode) => Promise<void>;
-  analyzeAdvance: (prompt: string, imageBase64?: string) => Promise<void>;
   setStep: (i: number) => void;
   setAdvanceT: (t: number) => void;
   queueAnalyzeText: (prompt: string, mode?: DrawMode, tags?: string[], detailLevel?: import('@/types/geometry').DetailLevel, offset?: [number, number, number]) => void;
@@ -507,6 +522,7 @@ export function GeometryProvider({ children }: { children: React.ReactNode }) {
   // Cờ giúp phân biệt "người dùng SỬA hình" với "nạp hình lúc load / AI sinh" → chỉ lưu ngược khi thật sự sửa.
   const pendingPersistRef = useRef(false);
   const persistTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const seedingRef = useRef(false);  // đang tạo mục lịch sử đầu tiên cho hình vẽ tay (chống tạo trùng)
   const requestPersist = useCallback(() => { pendingPersistRef.current = true; }, []);
 
   // Auto-lưu bản đã sửa vào ĐÚNG mục lịch sử theo ?id (localStorage cho khách, Supabase cho user).
@@ -520,13 +536,52 @@ export function GeometryProvider({ children }: { children: React.ReactNode }) {
     // phẳng ở đây sẽ xóa sạch cảnh khi mở lại — nên bỏ qua, giống guard trong SolverPanel.
     if (state.advanceScene) return;
     const id = new URLSearchParams(window.location.search).get('id');
-    if (!id) return; // chưa từng lưu vào lịch sử ⇒ không có mục nào để cập nhật
+    if (!id) {
+      // Hình VẼ TAY chưa có mục lịch sử ⇒ trước đây reload là mất trắng. Tạo MỚI một mục (1 lần)
+      // rồi gắn ?id để mọi thao tác sau tự lưu như hình AI. Bỏ qua khi AI đang dựng (luồng AI tự
+      // tạo ?id riêng) và khi hình còn rỗng (chưa có điểm nào).
+      if (seedingRef.current) return;
+      if (state.isScanning || state.isBuilding || state.activeQueueId) return;
+      if (!Array.isArray(geometry.points) || geometry.points.length === 0) return;
+      seedingRef.current = true;
+      void (async () => {
+        try {
+          const newId = await addToHistory(geometry, geometry.name || 'Bản vẽ thủ công');
+          if (newId) {
+            const url = new URL(window.location.href);
+            url.searchParams.set('id', newId);
+            window.history.replaceState({}, '', url.toString());
+            // Trong lúc CHỜ tạo mục (addToHistory là 1 vòng mạng), người dùng có thể đã thêm điểm
+            // khác — các sửa đó bị bỏ qua vì seedingRef đang bật. Lưu NGAY trạng thái mới nhất để
+            // không mất (mục vừa tạo chỉ chứa trạng thái lúc bắt đầu seed).
+            const latest = stateRef.current.geometry;
+            if (latest && latest !== geometry) void updateGeometryData(newId, latest);
+          }
+        } finally {
+          seedingRef.current = false;
+        }
+      })();
+      return;
+    }
     if (persistTimerRef.current) clearTimeout(persistTimerRef.current);
     // Gộp nhiều thao tác liên tiếp thành 1 lần ghi.
     persistTimerRef.current = setTimeout(() => { void updateGeometryData(id, geometry); }, 500);
-  }, [state.geometry, state.advanceScene, updateGeometryData]);
+  }, [state.geometry, state.advanceScene, state.isScanning, state.isBuilding, state.activeQueueId, addToHistory, updateGeometryData]);
 
   useEffect(() => () => { if (persistTimerRef.current) clearTimeout(persistTimerRef.current); }, []);
+
+  // Cảnh báo "còn thay đổi chưa lưu" nếu đóng tab/reload ngay khi bản lưu còn đang chờ ghi
+  // (đang gộp thao tác trong 500ms) hoặc đang tạo mục lịch sử đầu tiên cho hình vẽ tay.
+  useEffect(() => {
+    const onBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (persistTimerRef.current || seedingRef.current) {
+        e.preventDefault();
+        e.returnValue = '';
+      }
+    };
+    window.addEventListener('beforeunload', onBeforeUnload);
+    return () => window.removeEventListener('beforeunload', onBeforeUnload);
+  }, []);
 
   // Lưu ngăn HOÀN TÁC/LÀM LẠI theo ?id để mở lại hình (đổi bài / tải lại / hôm sau) vẫn undo/redo được.
   // Bỏ qua phiên Advance (undo/redo không áp dụng cho stepper nhiều câu).
@@ -688,13 +743,15 @@ export function GeometryProvider({ children }: { children: React.ReactNode }) {
       if (step2?.geometry && step2.geometry.points?.length > 0) {
         finishWithGeometry(step2.geometry);
       } else {
-        finishWithGeometry(PYRAMID_MOCK_DATA);
+        dispatch({ type: 'CLEAR_GEOMETRY' });
+        refreshProfile();
+        toast({ title: 'Chưa vẽ được từ ảnh', description: 'Chưa dựng được hình từ ảnh này. Thử chụp rõ hơn hoặc gõ đề bằng chữ.', variant: 'destructive', duration: 8000 });
       }
     } catch (error) {
       toast({ title: "Lỗi", description: "Không thể xử lý hình ảnh", variant: "destructive" });
       dispatch({ type: 'CLEAR_GEOMETRY' });
     }
-  }, [finishWithGeometry, openAuthModal, openUpgradeModal]);
+  }, [finishWithGeometry, openAuthModal, openUpgradeModal, refreshProfile]);
 
   const analyzeText = useCallback(async (prompt: string, mode: DrawMode = 'quick') => {
     const sessionId = ++scanSessionRef.current;
@@ -768,140 +825,16 @@ export function GeometryProvider({ children }: { children: React.ReactNode }) {
         if (step2.llmPrompt) geomToSave.llmPrompt = step2.llmPrompt;
         finishWithGeometry(geomToSave);
       } else {
-        finishWithGeometry(PYRAMID_MOCK_DATA);
+        dispatch({ type: 'CLEAR_GEOMETRY' });
+        refreshProfile();
+        toast({ title: 'Chưa vẽ được hình', description: 'Đề này AI chưa dựng được. Thử “Vẽ kỹ” hoặc gõ đề rõ hơn.', variant: 'destructive', duration: 8000 });
       }
     } catch (error) {
       if (scanSessionRef.current !== sessionId) return;
       toast({ title: "Lỗi", description: "Không thể xử lý đề bài", variant: "destructive" });
       dispatch({ type: 'CLEAR_GEOMETRY' });
     }
-  }, [finishWithGeometry, openAuthModal, openUpgradeModal]);
-
-  const analyzeAdvance = useCallback(async (prompt: string, imageBase64?: string) => {
-    // CHẠY NỀN như Vẽ nhanh/Vẽ kỹ (queueAnalyzeText): KHÔNG bật isScanning/scan-session nữa. Chỉ đẩy 1
-    // item hàng đợi 'processing' — overlay hiện qua đường isViewingProcessing của ScanningOverlay
-    // (activeQueueId do QUEUE_ADD tự trỏ tới item đang xử lý). Nút "Vẽ hình mới" trên overlay khi đó chỉ
-    // ẨN overlay (clearActiveQueue) chứ KHÔNG huỷ việc giải. Nhờ vậy Advance đồng nhất 3 điểm với 2 chế
-    // độ kia: (1) hiện đề ở left panel lúc giải, (2) không chặn thao tác canvas, (3) chạy song song nhiều
-    // bài. Kết quả: done → toast + lưu Recents (item done bị lọc khỏi "Đang xử lý" y như Vẽ nhanh/Vẽ kỹ).
-    const streamSeed = imageBase64 ? '📷 Đang đọc đề từ ảnh…\n' : `📝 ${prompt}\n`;
-    const queueId = `q_${Date.now()}_${++queueIdCounter}`;
-    dispatch({
-      type: 'QUEUE_ADD',
-      item: {
-        id: queueId,
-        prompt: imageBase64 ? '📷 Đang đọc đề từ ảnh…' : prompt,
-        mode: 'advance',
-        status: 'processing',
-        progress: 0,
-        statusText: SCAN_STATUSES[0],
-        streamingText: streamSeed,
-        geometry: null,
-        createdAt: Date.now(),
-      },
-    });
-    // Advance gọi 1 lần (KHÔNG stream) ~30-40s → mô phỏng progress feed thẳng vào item để overlay không
-    // đứng hình. Interval dọn ở finally (mỗi lượt có interval + queueId riêng nên chạy song song vô hại).
-    let progress = 0;
-    let statusIndex = 0;
-    const totalStatuses = SCAN_STATUSES.length;
-    const progressInterval = setInterval(() => {
-      // Advance chậm hơn vẽ thường (×0.4) cho khớp thời lượng thực (nhiều câu + lời giải).
-      const increment = (progress < 30 ? 5 : progress < 60 ? 3 : progress < 85 ? 1 : 0.5) * 0.4;
-      progress = Math.min(progress + increment, 95);
-      if (progress < 15) statusIndex = 0;
-      else if (progress < 30) statusIndex = 1;
-      else if (progress < 50) statusIndex = 2;
-      else if (progress < 75) statusIndex = 3;
-      else if (progress < 90) statusIndex = 4;
-      else statusIndex = 5;
-      const status = SCAN_STATUSES[Math.min(statusIndex, totalStatuses - 1)];
-      dispatch({ type: 'QUEUE_UPDATE', id: queueId, updates: { progress, statusText: status } });
-    }, 500);
-    // Chỉ đưa kết quả LÊN CANVAS khi người dùng đang xem chính item này (activeQueueId===queueId) hoặc
-    // canvas đang trống (idle) — không giật hình nếu user đã chuyển sang bài khác. (Cùng tinh thần "chỉ
-    // auto-load khi idle" của Vẽ nhanh/Vẽ kỹ, nới thêm "đang xem item này" cho hợp trực giác.)
-    const maybeShow = (loader: () => void) => {
-      const st = stateRef.current;
-      if (st.activeQueueId === queueId || (!st.geometry && !st.isScanning)) {
-        loader();
-        dispatch({ type: 'QUEUE_SET_ACTIVE', id: queueId });
-        dispatch({ type: 'START_BUILDING' });
-        setTimeout(() => dispatch({ type: 'FINISH_BUILDING' }), 1000);
-      }
-    };
-    try {
-      const { data, error } = await invokeLocalApi('/api/analyze-advance', imageBase64 ? { imageBase64, prompt: prompt || undefined } : { prompt });
-      if (error) throw new Error(error.message || String(error));
-      if (data?.mode === 'advance' && data.scene) {
-        // LƯU vào lịch sử để xem lại. Nhúng cả cảnh vào geometry_data ⇒ mở lại khôi phục nguyên stepper +
-        // lời giải (xem loadGeometry). Chỉ nhúng scene MỘT lần (không spread base ra top-level) — khi mở
-        // lại loadGeometry dùng advanceScene.base; base ở top-level là thừa (gấp đôi cỡ).
-        const label = (prompt && prompt.trim()) || data.scene.base?.name || '📷 Đề Advance (từ ảnh)';
-        const geometryForHistory: GeometryData = {
-          name: data.scene.base?.name || label,
-          points: [],
-          lines: [],
-          advanceScene: data.scene,
-          drawMode: 'advance',
-        };
-        const historyId = await addToHistory(geometryForHistory, label);
-        if (historyId) {
-          const url = new URL(window.location.href);
-          url.searchParams.set('id', historyId);
-          window.history.replaceState({}, '', url.toString());
-        }
-        // Đánh dấu item done (lưu cả scene vào geometry) — mirror queueAnalyzeText. Item done bị lọc khỏi
-        // "Đang xử lý" nên card tự biến mất, kết quả sống ở canvas (nếu maybeShow) + Recents.
-        dispatch({
-          type: 'QUEUE_UPDATE',
-          id: queueId,
-          updates: { status: 'done', progress: 100, statusText: 'Hoàn thành!', geometry: geometryForHistory, completedAt: Date.now() },
-        });
-        refreshProfile?.();   // Advance tốn credit (server đã trừ) → cập nhật số dư hiển thị
-        toast({ title: '✅ Giải xong!', description: `${geometryForHistory.name} (Advance) — Nhấn để xem`, duration: 8000 });
-        maybeShow(() => dispatch({ type: 'SET_ADVANCE_SCENE', scene: data.scene }));
-      } else if (data?.revUnsupported) {
-        // Đề tròn xoay KHÔNG dựng được ⇒ KHÔNG vẽ hình lạ; báo thẳng, giữ nguyên canvas cũ. Server đã hoàn
-        // TOÀN BỘ credit. Đánh dấu item 'error' (bị lọc khỏi "Đang xử lý" như lỗi Vẽ nhanh/Vẽ kỹ) + toast.
-        // `imageReadFailed` = đọc ẢNH hỏng (không chắc là đề tròn xoay) → tiêu đề nói về đọc ảnh cho đúng.
-        const msg = data.error || 'Bạn thử gõ lại đề bằng chữ, hoặc chụp rõ hơn nhé.';
-        dispatch({ type: 'QUEUE_UPDATE', id: queueId, updates: { status: 'error', progress: 0, statusText: msg, error: msg } });
-        toast({
-          title: data.imageReadFailed ? 'Chưa đọc được đề trong ảnh' : 'Chưa vẽ được đề tròn xoay này',
-          description: msg,
-        });
-        refreshProfile?.();
-      } else if (data?.geometry) {
-        // Nhánh tụt-hạng vẫn ra 1 hình → lưu lịch sử như Vẽ kỹ để xem lại (nhãn "Vẽ kỹ" cho đúng mức server tính).
-        const label = (prompt && prompt.trim()) || data.geometry.name || '📷 Đề (từ ảnh)';
-        const geo: GeometryData = { ...data.geometry, drawMode: 'detailed' };
-        const historyId = await addToHistory(geo, label);
-        if (historyId) {
-          const url = new URL(window.location.href);
-          url.searchParams.set('id', historyId);
-          window.history.replaceState({}, '', url.toString());
-        }
-        dispatch({
-          type: 'QUEUE_UPDATE',
-          id: queueId,
-          updates: { status: 'done', progress: 100, statusText: 'Hoàn thành!', geometry: geo, completedAt: Date.now() },
-        });
-        refreshProfile?.();   // nhánh tụt-hạng vẫn tốn credit (đã hoàn về mức Vẽ kỹ ở server)
-        toast({ title: '✅ Vẽ xong!', description: `${geo.name || 'Hình'} (Vẽ kỹ) — Nhấn để xem`, duration: 8000 });
-        maybeShow(() => dispatch({ type: 'SET_GEOMETRY', geometry: geo }));
-      } else {
-        dispatch({ type: 'QUEUE_UPDATE', id: queueId, updates: { status: 'error', progress: 0, statusText: 'Chưa dựng được hình', error: 'Chưa dựng được hình cho đề này' } });
-        toast({ title: 'Chưa dựng được hình cho đề này', variant: 'destructive' });
-      }
-    } catch (e) {
-      const msg = String((e as Error).message);
-      dispatch({ type: 'QUEUE_UPDATE', id: queueId, updates: { status: 'error', progress: 0, statusText: msg || 'Lỗi Advance', error: msg || 'Lỗi Advance' } });
-      toast({ title: 'Lỗi Advance', description: msg, variant: 'destructive' });
-    } finally {
-      clearInterval(progressInterval);
-    }
-  }, [refreshProfile, addToHistory]);
+  }, [finishWithGeometry, openAuthModal, openUpgradeModal, refreshProfile]);
 
   const queueAnalyzeText = useCallback((prompt: string, mode: DrawMode = 'detailed') => {
     const id = `q_${Date.now()}_${++queueIdCounter}`;
@@ -954,7 +887,7 @@ export function GeometryProvider({ children }: { children: React.ReactNode }) {
         }
 
         // Vẽ kỹ định tuyến sang Nâng cao (vật thật tròn xoay/thiết diện/thể tích): server trả scene advance.
-        // Xử như analyzeAdvance — nhúng scene vào geometry lịch sử (mở lại khôi phục stepper), SET_ADVANCE_SCENE.
+        // Nhúng scene vào geometry lịch sử (mở lại khôi phục stepper), SET_ADVANCE_SCENE.
         if (data?.mode === 'advance' && data.scene) {
           const label = (prompt && prompt.trim()) || data.scene.base?.name || 'Vật thể nâng cao';
           const geometryForHistory: GeometryData = {
@@ -984,15 +917,23 @@ export function GeometryProvider({ children }: { children: React.ReactNode }) {
         }
 
         const step2 = data?.step2;
-        let geometry: GeometryData;
 
-        if (step2?.geometry && step2.geometry.points?.length > 0) {
-          geometry = { ...step2.geometry };
-          geometry.llmPrompt = step2.llmPrompt || prompt;
-        } else {
-          geometry = PYRAMID_MOCK_DATA;
-          geometry.llmPrompt = prompt;
+        // AI KHÔNG dựng được hình (không có điểm nào) → KHÔNG hiện hình chóp giả kèm "Vẽ xong".
+        // Trước đây rơi về PYRAMID_MOCK_DATA làm người dùng tưởng đã vẽ đúng — mất niềm tin.
+        if (!step2?.geometry || !(step2.geometry.points && step2.geometry.points.length > 0)) {
+          dispatch({ type: 'QUEUE_UPDATE', id, updates: { status: 'error', progress: 0, statusText: 'Chưa vẽ được', error: 'Chưa vẽ được hình từ đề này' } });
+          refreshProfile();  // đồng bộ số dư (server hoàn credit khi không dựng được hình)
+          toast({
+            title: 'Chưa vẽ được hình',
+            description: 'Đề này AI chưa dựng được. Thử chế độ “Vẽ kỹ”, hoặc gõ đề rõ hơn (đủ dữ kiện, mỗi lần một hình).',
+            variant: 'destructive',
+            duration: 8000,
+          });
+          return;
         }
+
+        let geometry: GeometryData = { ...step2.geometry };
+        geometry.llmPrompt = step2.llmPrompt || prompt;
 
         if (!geometry.latexCode) {
           geometry = { ...geometry, latexCode: generateLatexCode(geometry) };
@@ -1094,21 +1035,59 @@ export function GeometryProvider({ children }: { children: React.ReactNode }) {
           return;
         }
 
-        const step2 = data?.step2;
-        let geometry: GeometryData;
-
-        if (step2?.geometry && step2.geometry.points?.length > 0) {
-          geometry = { ...step2.geometry };
-          geometry.llmPrompt = data?.step1?.text || step2.llmPrompt || "Đề bài từ ảnh";
-        } else {
-          geometry = PYRAMID_MOCK_DATA;
-          geometry.llmPrompt = data?.step1?.text || "Đề bài từ ảnh";
+        // Vẽ kỹ định tuyến sang Nâng cao cho đề ẢNH (Phase 2: splitProblem đọc ảnh + phân loại 1 lượt):
+        // server trả scene advance → nhúng vào geometry lịch sử (mở lại khôi phục stepper), SET_ADVANCE_SCENE.
+        // (mirror queueAnalyzeText — thiếu nhánh này thì đề ảnh nâng cao rơi về PYRAMID_MOCK_DATA.)
+        if (data?.mode === 'advance' && data.scene) {
+          const label = data.scene.base?.name || '📷 Đề nâng cao (từ ảnh)';
+          const geometryForHistory: GeometryData = {
+            name: label,
+            points: [], lines: [],
+            advanceScene: data.scene,
+            drawMode: 'advance',
+          };
+          dispatch({
+            type: 'QUEUE_UPDATE', id,
+            updates: { status: 'done', progress: 100, statusText: 'Hoàn thành!', geometry: geometryForHistory, completedAt: Date.now() },
+          });
+          const historyId = await addToHistory(geometryForHistory, label);
+          if (historyId) {
+            const url = new URL(window.location.href);
+            url.searchParams.set('id', historyId);
+            window.history.replaceState({}, '', url.toString());
+          }
+          refreshProfile();
+          toast({ title: '✅ Vẽ xong!', description: `${geometryForHistory.name} — Nhấn để xem`, duration: 8000 });
+          const st = stateRef.current;
+          if (!st.geometry && !st.isScanning) {
+            dispatch({ type: 'SET_ADVANCE_SCENE', scene: data.scene });
+            dispatch({ type: 'QUEUE_SET_ACTIVE', id });
+          }
+          return;
         }
+
+        const step2 = data?.step2;
+
+        // Đọc ảnh nhưng KHÔNG dựng được hình → báo rõ + hoàn credit, đừng hiện hình chóp giả.
+        if (!step2?.geometry || !(step2.geometry.points && step2.geometry.points.length > 0)) {
+          dispatch({ type: 'QUEUE_UPDATE', id, updates: { status: 'error', progress: 0, statusText: 'Chưa vẽ được', error: 'Chưa dựng được hình từ ảnh' } });
+          refreshProfile();
+          toast({
+            title: 'Chưa vẽ được từ ảnh',
+            description: 'Chưa đọc/dựng được hình từ ảnh này. Thử chụp rõ hơn, cắt sát khung đề, hoặc gõ đề bằng chữ.',
+            variant: 'destructive',
+            duration: 8000,
+          });
+          return;
+        }
+
+        let geometry: GeometryData = { ...step2.geometry };
+        geometry.llmPrompt = data?.step1?.text || step2.llmPrompt || "Đề bài từ ảnh";
 
         if (!geometry.latexCode) {
           geometry = { ...geometry, latexCode: generateLatexCode(geometry) };
         }
-        
+
         if (data.step1?.tags) {
           geometry = { ...geometry, tags: data.step1.tags };
         }
@@ -1152,7 +1131,7 @@ export function GeometryProvider({ children }: { children: React.ReactNode }) {
         toast({ title: "❌ Lỗi", description: "Không thể xử lý ảnh đề bài", variant: "destructive" });
       }
     })();
-  }, [addToHistory, openAuthModal, openUpgradeModal]);
+  }, [addToHistory, openAuthModal, openUpgradeModal, refreshProfile]);
 
   const viewQueueItem = useCallback((id: string) => {
     const item = stateRef.current.queue.find(q => q.id === id);
@@ -1247,6 +1226,12 @@ export function GeometryProvider({ children }: { children: React.ReactNode }) {
 
   const clearGeometry = useCallback(() => {
     dispatch({ type: 'CLEAR_GEOMETRY' });
+    // Bỏ ?id cũ để hình MỚI (vẽ tay hoặc AI) không ghi đè lên bài trước đó — tạo mục lịch sử riêng.
+    const url = new URL(window.location.href);
+    if (url.searchParams.has('id')) {
+      url.searchParams.delete('id');
+      window.history.replaceState({}, '', url.toString());
+    }
     window.dispatchEvent(new Event('geometryCleared'));
   }, []);
 
@@ -1287,12 +1272,27 @@ export function GeometryProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const addPoint = useCallback((label: string, x: number, y: number, z: number) => {
-    const id = label.toUpperCase();
+    const id = label.trim().toUpperCase();
+    if (!id) return;
+    // Chống TRÙNG tên: id trùng → 2 điểm cùng id ⇒ xoá 1 xoá cả 2 + cảnh báo React key. Chặn sớm.
+    const pts = stateRef.current.geometry?.points || [];
+    if (pts.some((p) => p.id === id)) {
+      toast({ title: 'Trùng tên điểm', description: `Đã có điểm "${id}". Hãy đặt tên khác.`, variant: 'destructive' });
+      return;
+    }
+    // label = id để tên hiển thị và id luôn khớp (tránh lệch làm hỏng đường nối & xuất TikZ).
     requestPersist();
-    dispatch({ type: 'ADD_POINT', point: { id, label, x, y, z } });
+    dispatch({ type: 'ADD_POINT', point: { id, label: id, x, y, z } });
   }, [requestPersist]);
 
   const addLine = useCallback((fromId: string, toId: string, style: 'solid' | 'dashed') => {
+    if (fromId === toId) return;  // không nối điểm với chính nó
+    // Chống TRÙNG đường (kể cả đảo đầu-cuối) → tránh key trùng và cạnh chồng.
+    const lines = stateRef.current.geometry?.lines || [];
+    if (lines.some((l) => (l.from === fromId && l.to === toId) || (l.from === toId && l.to === fromId))) {
+      toast({ title: 'Đường đã có', description: `Đã nối ${fromId}${toId}.` });
+      return;
+    }
     const id = `line_${fromId}_${toId}`;
     requestPersist();
     dispatch({ type: 'ADD_LINE', line: { id, from: fromId, to: toId, style } });
@@ -1345,6 +1345,10 @@ export function GeometryProvider({ children }: { children: React.ReactNode }) {
     const orderedPoints = polygon.sourceIndices.map((index) => pts[index]);
     const id = `plane_${orderedPointIds.join('_')}`;
     const label = `(${orderedPoints.map(p => p.label).join('')})`;
+    // Chống TRÙNG mặt phẳng: cùng tập điểm (không kể thứ tự) → bỏ qua, tránh key trùng.
+    const wanted = [...orderedPointIds].sort().join('|');
+    const dup = (geo.planes || []).some((pl) => [...(pl.pointIds || [])].sort().join('|') === wanted);
+    if (dup) { toast({ title: 'Mặt phẳng đã có', description: `Đã có mặt ${label}.` }); return false; }
     requestPersist();
     dispatch({
       type: 'ADD_PLANE',
@@ -1450,7 +1454,7 @@ export function GeometryProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <GeometryContext.Provider value={{
-      state, startDemo, analyzeImage, analyzeText, analyzeAdvance, setStep, setAdvanceT, queueAnalyzeText, queueAnalyzeImage,
+      state, startDemo, analyzeImage, analyzeText, setStep, setAdvanceT, queueAnalyzeText, queueAnalyzeImage,
       modifyGeometry, loadGeometry, clearGeometry, stopScanning, viewQueueItem, removeQueueItem, clearActiveQueue,
       updateDynamicPoint, addPoint, addLine, addMidpoint, addPlane, addPlaneFromEquation, removeElement,
       updatePoint, setManualMode, setManualTool, setVideoMode, toggleVideoMode, setSelectedIds, setAutoRotate, togglePoints, toggleAutoColor, toggleCoordinateGrid, toggleRecenterToSphere, toggleRecenterToBase,

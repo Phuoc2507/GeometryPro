@@ -30,7 +30,8 @@ export function useSavedGeometries() {
         .select('*')
         .eq('user_id', user.id)
         .eq('is_history', false)
-        .order('updated_at', { ascending: false });
+        .order('updated_at', { ascending: false })
+        .limit(200);  // chặn tải vô hạn khi có rất nhiều hình (lấy 200 bản mới nhất)
 
       if (error) throw error;
       
@@ -168,10 +169,15 @@ export function useSavedGeometries() {
         
       if (error) throw error;
       
-      setSavedGeometries(prev => prev.map(item => 
+      setSavedGeometries(prev => prev.map(item =>
         item.id === id ? { ...item, project_id } : item
       ));
-      
+
+      toast({
+        title: project_id ? "Đã thêm vào dự án!" : "Đã bỏ khỏi dự án",
+        description: project_id ? "Hình đã được thêm vào dự án." : undefined,
+      });
+
       return true;
     } catch (error) {
       console.error('Error moving to project:', error);

@@ -22,7 +22,6 @@ function normalizeSteps(steps) {
     formula: s.formula || null,
     highlight: Array.isArray(s.highlight) ? s.highlight : [],
     construct: sanitizeConstruct(s.construct),
-    view_mode: s.view_mode === '2d' ? '2d' : '3d',
   }));
 }
 

@@ -55,7 +55,7 @@ function StudentPanelContent({ compact }: { compact?: boolean } = {}) {
   if (compact) {
     return (
       <div className="h-full flex flex-col min-h-0">
-        <SolverContent compact />
+        <SolverContent compact creditNote="Mỗi lượt giải dùng 20 credit · gói Miễn phí: 3 lượt/tháng" />
       </div>
     );
   }
@@ -88,7 +88,7 @@ function StudentPanelContent({ compact }: { compact?: boolean } = {}) {
         </TabsList>
 
         <TabsContent value="problem" className="flex-1 p-0 m-0 min-h-0 data-[state=active]:flex flex-col">
-          <SolverContent compact={compact} />
+          <SolverContent compact={compact} creditNote="Mỗi lượt giải dùng 20 credit · gói Miễn phí: 3 lượt/tháng" />
         </TabsContent>
 
         <TabsContent value="properties" className="flex-1 overflow-hidden p-0 min-h-0 data-[state=active]:flex flex-col">

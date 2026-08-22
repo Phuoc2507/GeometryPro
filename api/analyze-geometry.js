@@ -26,6 +26,7 @@ import { withSentry, reportServerError } from './_lib/sentry.js';
 import { logBrokenProblem } from './_lib/brokenProblemLog.js';
 import { logKernelMiss } from './_lib/kernelMissLog.js';
 import { recordDrawStat } from './_lib/drawStats.js';
+import { recordAdvanceTiming } from './_lib/advanceTiming.js';
 import { findGolden } from './_lib/goldenStore.js';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -86,7 +87,9 @@ async function handler(req, res) {
       return res.status(400).json({ error: errMsg });
     }
 
-    const trimmedPrompt = prompt.trim();
+    // `let` (không `const`): nhánh Vẽ kỹ có thể GÁN LẠI = bản chép đề từ ảnh (transcription) để chạy
+    // tiếp engine/LLM trên CHỮ — đọc ảnh đúng MỘT lần (xem [detailed→advance] Phase 2).
+    let trimmedPrompt = prompt.trim();
     const validModes = ['quick', 'detailed'];
     const drawMode = validModes.includes(mode) ? mode : 'quick';
     dbgPrompt = trimmedPrompt; dbgMode = drawMode; dbgModel = aiModel || null; dbgImage = !!imageBase64;
@@ -228,6 +231,9 @@ async function handler(req, res) {
           // Lưu TRỌN kết quả engine để /api/solve tái dùng — KHỎI dịch lại (bỏ 1 lượt LLM),
           // kể cả bài THANG CHỮ (approx=null) mà engineAnswer ở trên không bắt.
           geometry.engineSolve = { ok: !!k.ok, answers: k.answers || [], violations: k.violations || [], tier: k.tier || null };
+          // Đóng dấu ĐỀ đã sinh ra đáp engine này → /api/solve chỉ tái dùng khi đề khớp (chống dùng
+          // đáp cũ cho đề đã bị SỬA trên cùng một hình — xem guard trong solve.js).
+          geometry.engineProblem = trimmedPrompt;
           const answersLog = (k.answers || [])
             .map((a) => `${a.kind}: ${a.text}${a.approximate ? ' (xấp xỉ)' : ''}`)
             .join('; ');
@@ -321,31 +327,97 @@ Hãy:
       result._userMsgUsed = userMsg;
 
     } else if (drawMode === 'detailed') {
-      // ===== VẼ KỸ ⊇ VẼ NÂNG CAO: định tuyến bài VẬT THẬT tròn xoay / thiết diện / thể tích sang engine
-      // Nâng cao. CHỈ áp cho 'detailed' (Vẽ nhanh KHÔNG đụng — giữ nhẹ). Regex-gated (rẻ) nên chỉ tốn 1
-      // lượt Nâng cao khi đề đúng dạng; hỏng/không dựng được ⇒ rơi êm về luồng Vẽ kỹ thường bên dưới.
-      // Trả THẲNG scene advance (frontend queueAnalyzeText nhận diện mode:'advance'). Ảnh → bỏ qua (regex text).
-      if (!imageBase64 && trimmedPrompt && process.env.KERNEL_MODE !== 'off') {
+      // ===== VẼ KỸ ⊇ VẼ NÂNG CAO: định tuyến sang engine Nâng cao cho HAI dạng —
+      //   (1) calculus/khối tất định (tròn xoay / bình-lu / thiết diện / diện tích), và
+      //   (2) đề ĐA-CÂU (nhiều ý a/b/c…) → bóc lớp theo từng câu (buildAdvanceScene).
+      // CHỈ áp cho 'detailed' (Vẽ nhanh KHÔNG đụng — giữ nhẹ). Gate REGEX rẻ quyết định có ĐÁNG chạy
+      // pipeline nâng cao không (tránh tốn 1 lượt split-LLM cho MỌI đề Vẽ kỹ); runAdvance → assembleAdvance
+      // tự lo phần còn lại + fallback. Hỏng/không dựng được ⇒ rơi êm về luồng Vẽ kỹ thường bên dưới.
+      // Trả THẲNG scene advance (frontend queueAnalyzeText nhận diện mode:'advance'). Cờ ENV
+      // DETAILED_ADVANCE=off tắt hẳn nhánh này (đường lui khi p95 xấu, không cần revert code).
+      //
+      // ẢNH (Phase 2 — "đọc ảnh 1 lần, tái dùng bản chép"): NGUYÊN TẮC SỐNG CÒN là đọc ảnh bằng AI
+      // (vision) TỐI ĐA MỘT lần trong 1 request (~60s Vercel) — chạy vision 2 lần ⇒ 504. splitProblem
+      // (trong runAdvance) đã đọc ảnh + phân loại + CHÉP đề trong 1 lượt vision. Do đó với đề ẢNH:
+      //   • dựng được scene nâng cao      → phục vụ advance;
+      //   • không phải nâng cao NHƯNG có bản chép (adv.split.setup) → GÁN trimmedPrompt = bản chép,
+      //     BỎ imageBase64 → luồng Vẽ kỹ dưới chạy trên CHỮ (kernel/LLM), KHÔNG đọc ảnh lần 2;
+      //   • không dựng được & KHÔNG có bản chép (đọc ảnh hỏng / chạm deadline) → HOÀN credit + báo sạch,
+      //     TUYỆT ĐỐI không rơi xuống LLM-vision (sẽ là lượt vision thứ 2 → 504).
+      const advanceOff = process.env.DETAILED_ADVANCE === 'off';
+      if (!advanceOff && (imageBase64 || trimmedPrompt) && process.env.KERNEL_MODE !== 'off') {
         try {
           const advMod = await import('./analyze-advance.js');
-          const isAdvance = advMod.looksLikeVessel(trimmedPrompt) || advMod.looksLikeRevolution(trimmedPrompt)
+          // CHỮ: gate regex rẻ (tránh split-LLM cho mọi đề). ẢNH: luôn thử (vision của splitProblem
+          // vừa đọc-ảnh vừa phân loại; kết quả CÒN được tái dùng cho luồng dưới nên không phí).
+          const textGate = advMod.looksLikeVessel(trimmedPrompt) || advMod.looksLikeRevolution(trimmedPrompt)
             || advMod.looksLikeCrossSection(trimmedPrompt) || advMod.looksLikeArea(trimmedPrompt)
-            || advMod.looksLikeSection(trimmedPrompt);
-          if (isAdvance) {
+            || advMod.looksLikeSection(trimmedPrompt) || advMod.looksLikeMultiQuestion(trimmedPrompt);
+          const shouldTry = imageBase64 ? true : textGate;
+          if (shouldTry) {
             sendEvent('Đang thử engine nâng cao...', 30);
             const { runAdvance } = await import('./_lib/advance/runAdvance.js');
-            const adv = await runAdvance(trimmedPrompt, {});
-            if (adv && adv.mode === 'advance' && adv.scene && adv.scene.base
-                && Array.isArray(adv.scene.base.points)) {
-              console.log('[detailed→advance] phục vụ:', trimmedPrompt.substring(0, 60));
-              logEngineDecision({ mode: 'detailed', served: true, reason: 'advance-from-detailed', ms: 0, promptLen: trimmedPrompt.length });
+            // Deadline nội bộ: pipeline nâng cao (split + dịch base 1 lần + giải từng câu) có thể ~30-40s.
+            // Chạm mốc ⇒ (chữ) rơi về Vẽ kỹ thường; (ảnh) hoàn credit + báo sạch. 52s mặc định (chừa lằn 60s).
+            const DEADLINE_MS = Number(process.env.ADVANCE_DEADLINE_MS) || 52000;
+            let _advTimer;
+            const _advDeadline = new Promise((r) => { _advTimer = setTimeout(() => r({ __deadline: true }), DEADLINE_MS); });
+            // ẢNH: đẩy ảnh xuống (problem='' → splitProblem tự đọc ảnh). CHỮ: đẩy chữ, không ảnh.
+            // Đo thời gian THẬT của pipeline nâng cao → logEngineDecision.ms để tính p95 từ log production
+            // (Phase 6). Trước đây log ms:0 ⇒ không quan sát được độ trễ nhánh này.
+            const _advT0 = Date.now();
+            const adv = await Promise.race([
+              runAdvance(imageBase64 ? '' : trimmedPrompt, imageBase64 ? { imageBase64 } : {}),
+              _advDeadline,
+            ]);
+            clearTimeout(_advTimer);
+            const _advMs = Date.now() - _advT0;
+
+            const usableScene = adv && adv.mode === 'advance' && adv.scene && adv.scene.base
+              && Array.isArray(adv.scene.base.points) && adv.scene.base.points.length > 0;
+
+            if (usableScene) {
+              console.log(`[detailed→advance] phục vụ (${_advMs}ms):`, (trimmedPrompt || '📷 ảnh').substring(0, 60));
+              logEngineDecision({ mode: 'detailed', served: true, reason: imageBase64 ? 'advance-from-detailed-image' : 'advance-from-detailed', ms: _advMs, promptLen: trimmedPrompt.length });
+              await recordAdvanceTiming({ reason: imageBase64 ? 'advance-from-detailed-image' : 'advance-from-detailed', ms: _advMs, served: true, imageProvided: !!imageBase64 });
               sendEvent('Hoàn tất (nâng cao)!', 100);
               const advPayload = withQuota({ mode: 'advance', scene: adv.scene, engine: 'advance' }, access);
               if (isStream) { res.write(`data: ${JSON.stringify({ status: 'done', data: advPayload })}\n\n`); return res.end(); }
               return res.json(advPayload);
             }
-            // adv.revUnsupported / degraded ⇒ engine Nâng cao chưa dựng được ⇒ rơi về Vẽ kỹ thường (thử vẽ hình).
-            console.log('[detailed→advance] không dùng được → Vẽ kỹ thường');
+
+            // Không dựng được scene nâng cao:
+            const transcript = imageBase64 && !(adv && adv.__deadline) ? String(adv?.split?.setup || '').trim() : '';
+            if (imageBase64 && transcript) {
+              // ẢNH có bản chép → tái dùng: chạy tiếp luồng Vẽ kỹ trên CHỮ (kernel bật được), KHÔNG đọc ảnh lần 2.
+              console.log(`[detailed→advance] ảnh không phải nâng cao (${_advMs}ms) → tái dùng bản chép, chạy Vẽ kỹ trên chữ`);
+              logEngineDecision({ mode: 'detailed', served: false, reason: 'image-transcript-reuse', ms: _advMs, promptLen: transcript.length });
+              await recordAdvanceTiming({ reason: 'image-transcript-reuse', ms: _advMs, served: false, imageProvided: true });
+              trimmedPrompt = transcript;
+              imageBase64 = null;
+              // rơi xuống luồng Vẽ kỹ thường (giờ là bài CHỮ).
+            } else if (imageBase64) {
+              // ẢNH nhưng KHÔNG có bản chép (đọc ảnh hỏng / chạm deadline). KHÔNG chạy vision lần 2.
+              // Hoàn credit + quota rồi báo sạch (mô phỏng route Advance: ảnh khó → mời gõ chữ).
+              console.warn(`[detailed→advance] ảnh không đọc/không dựng được (${_advMs}ms) → báo sạch, KHÔNG LLM-vision lần 2`);
+              logEngineDecision({ mode: 'detailed', served: false, reason: adv?.__deadline ? 'advance-image-deadline' : 'advance-image-fail', ms: _advMs, promptLen: 0 });
+              await recordAdvanceTiming({ reason: adv?.__deadline ? 'advance-image-deadline' : 'advance-image-fail', ms: _advMs, served: false, imageProvided: true });
+              if (creditCharge && userId) {
+                try { await refund(userId, creditCharge.cost, creditCharge.reqId); } catch (e) { console.warn('refund (advance-image-fail) lỗi:', e?.message); }
+                creditCharge = null;
+              }
+              await refundAiUsage(access);
+              const msg = adv?.imageReadFailed
+                ? 'Mình chưa đọc được đề trong ảnh (có thể ảnh hơi mờ hoặc chữ nhỏ). Bạn thử chụp rõ/gần hơn, hoặc gõ đề bằng chữ giúp mình nhé.'
+                : 'Đề trong ảnh xử lý lâu quá mức. Bạn thử gõ đề bằng chữ (rút gọn) hoặc chụp rõ/gần hơn nhé.';
+              if (isStream) { res.write(`data: ${JSON.stringify({ error: msg })}\n\n`); return res.end(); }
+              return res.status(200).json({ error: msg });
+            } else {
+              // CHỮ: engine nâng cao chưa dựng được ⇒ rơi về Vẽ kỹ thường (không có vision, an toàn).
+              console.log(`[detailed→advance] không dùng được (${_advMs}ms) → Vẽ kỹ thường`);
+              logEngineDecision({ mode: 'detailed', served: false, reason: adv?.__deadline ? 'advance-deadline' : 'advance-miss', ms: _advMs, promptLen: trimmedPrompt.length });
+              await recordAdvanceTiming({ reason: adv?.__deadline ? 'advance-deadline' : 'advance-miss', ms: _advMs, served: false, imageProvided: false });
+            }
           }
         } catch (e) {
           console.warn('[detailed→advance] lỗi → Vẽ kỹ thường:', e?.message);
@@ -393,6 +465,8 @@ Hãy:
               geometry.engineAnswer = { text: _ea.text, approx: _ea.approx, verified: true }; // engine đã tự kiểm ở nhánh phục vụ này
             }
             geometry.engineSolve = { ok: !!k.ok, answers: k.answers || [], violations: k.violations || [], tier: k.tier || null };
+            // Đóng dấu ĐỀ đã sinh ra đáp engine này → /api/solve chỉ tái dùng khi đề khớp (xem solve.js).
+            geometry.engineProblem = trimmedPrompt;
             const answersLog = (k.answers || [])
               .map((a) => `${a.kind}: ${a.text}${a.approximate ? ' (xấp xỉ)' : ''}`).join('; ');
             const enginePayload = {

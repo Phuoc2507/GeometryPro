@@ -1,7 +1,7 @@
 
 import { useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { User, LogOut, Save, Settings, Sparkles, Crown, ListChecks, GraduationCap, Presentation, ShieldCheck, Lock, Tag, Users, Gift, ChevronDown } from 'lucide-react';
+import { User, LogOut, Save, Settings, Sparkles, Crown, ListChecks, GraduationCap, Presentation, ShieldCheck, Lock, Users, Gift, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -27,7 +27,7 @@ const PLAN_LABEL: Record<string, string> = {
 export function UserMenu() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user, profile, isPro, isAdmin, tier, credits, signOut, openUpgradeModal, isRoleLocked, lockedRole } = useAuth();
+  const { user, profile, isPro, isAdmin, tier, credits, signOut, isRoleLocked, lockedRole } = useAuth();
 
   // Người dùng có gói trả phí còn hiệu lực (tier hạ về 'free' khi hết hạn).
   const hasPlan = tier !== 'free';
@@ -152,7 +152,7 @@ export function UserMenu() {
         <DropdownMenuSeparator />
 
         {!hasPlan && (
-          <DropdownMenuItem onClick={() => openUpgradeModal()} className="text-primary font-medium focus:text-primary focus:bg-primary/10">
+          <DropdownMenuItem onClick={() => navigate('/bang-gia')} className="text-primary font-medium focus:text-primary focus:bg-primary/10">
             <Sparkles className="w-4 h-4 mr-2" />
             Nâng cấp Pro
           </DropdownMenuItem>
@@ -160,7 +160,7 @@ export function UserMenu() {
 
         {hasPlan && (
           <DropdownMenuItem
-            onClick={() => openUpgradeModal()}
+            onClick={() => navigate('/bang-gia')}
             className={expiringSoon ? 'text-amber-500 font-medium focus:text-amber-500 focus:bg-amber-500/10' : undefined}
           >
             <Crown className="w-4 h-4 mr-2 text-amber-500" />
@@ -194,10 +194,6 @@ export function UserMenu() {
             Quản lý tổ
           </DropdownMenuItem>
         )}
-        <DropdownMenuItem onClick={() => navigate('/bang-gia')}>
-          <Tag className="w-4 h-4 mr-2" />
-          Bảng giá
-        </DropdownMenuItem>
         <DropdownMenuItem onClick={() => navigate('/gioi-thieu')}>
           <Gift className="w-4 h-4 mr-2" />
           Giới thiệu bạn
@@ -216,8 +212,9 @@ export function UserMenu() {
             Quản trị
           </DropdownMenuItem>
         )}
-        {/* Mở theo "có gói trả phí" (dùng chung cho cả 2 mode) chứ không khoá theo vai trò tier. */}
-        {hasPlan && (
+        {/* Trang này nằm trong chế độ Giáo viên (RoleGuard=teacher). Người khoá vai trò Học sinh
+            bấm vào sẽ bị đá về /student → ẩn đi để không gây khó hiểu. */}
+        {hasPlan && lockedRole !== 'student' && (
           <DropdownMenuItem onClick={() => navigate('/teacher/dang-bai')}>
             <ListChecks className="w-4 h-4 mr-2" />
             Bảng dạng bài

@@ -7,6 +7,7 @@ import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Loader2, Crown, CheckCircle2, Sparkles, GraduationCap, Presentation, Ticket, Check, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { fetchWithTimeout } from "@/lib/fetchWithTimeout";
 import { FALLBACK_PLANS, fmtVnd, type Plan } from "@/lib/plans";
 
 interface UpgradeModalProps {
@@ -52,15 +53,18 @@ export function UpgradeModal({ open, onOpenChange }: UpgradeModalProps) {
     })();
   }, [open]);
 
-  // Tự điền mã mời đã bắt từ link chia sẻ (?ref=) khi mở modal.
+  // Tự điền + tự áp mã mời đã bắt từ link chia sẻ (?ref=) khi mở modal (nếu đã đăng nhập).
   useEffect(() => {
     if (!open || refApplied) return;
-    try { const c = localStorage.getItem('geo3d:ref'); if (c) setRefInput(c); } catch { /* bỏ qua */ }
+    let c = '';
+    try { c = localStorage.getItem('geo3d:ref') || ''; } catch { /* bỏ qua */ }
+    if (c) setRefInput(c);
+    if (c && user && refStatus === 'idle') applyRef(c);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open]);
+  }, [open, user]);
 
-  const applyRef = async () => {
-    const code = refInput.trim().toUpperCase();
+  const applyRef = async (codeArg?: string) => {
+    const code = (codeArg ?? refInput).trim().toUpperCase();
     if (!code) return;
     if (!user) {
       toast({ title: "Vui lòng đăng nhập", description: "Đăng nhập để dùng mã mời.", variant: "destructive" });
@@ -70,7 +74,7 @@ export function UpgradeModal({ open, onOpenChange }: UpgradeModalProps) {
     try {
       const { data: sd } = await supabase.auth.getSession();
       const token = sd.session?.access_token;
-      const res = await fetch(`/api/referral?validate=${encodeURIComponent(code)}`, {
+      const res = await fetchWithTimeout(`/api/referral?validate=${encodeURIComponent(code)}`, {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
       const j = await res.json();
@@ -79,6 +83,7 @@ export function UpgradeModal({ open, onOpenChange }: UpgradeModalProps) {
         setRefMsg(j.referrerName ? `Hợp lệ · được giới thiệu bởi ${j.referrerName}` : 'Mã hợp lệ · giảm 10%');
       } else {
         setRefApplied(null); setRefStatus('invalid'); setRefMsg(j.message || 'Mã không hợp lệ');
+        if (['not_found', 'self', 'not_first'].includes(j.reason)) { try { localStorage.removeItem('geo3d:ref'); } catch { /* bỏ qua */ } }
       }
     } catch {
       setRefApplied(null); setRefStatus('invalid'); setRefMsg('Không kiểm tra được mã, thử lại.');
@@ -100,7 +105,7 @@ export function UpgradeModal({ open, onOpenChange }: UpgradeModalProps) {
       const token = sessionData.session?.access_token;
       if (!token) throw new Error("Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.");
 
-      const response = await fetch("/api/checkout", {
+      const response = await fetchWithTimeout("/api/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({
@@ -119,6 +124,11 @@ export function UpgradeModal({ open, onOpenChange }: UpgradeModalProps) {
     }
   };
   const handleBuy = (planCode: string) => {
+    // Đang kiểm tra mã mời → đợi kết quả, đừng mua vội kẻo mất giảm 10%.
+    if (refStatus === 'checking') {
+      toast({ title: 'Đang kiểm tra mã mời…', description: 'Đợi một chút để được giảm 10% rồi hãy mua nhé.' });
+      return;
+    }
     // Nhớ mode để khi từ trang thanh toán quay lại, vào đúng vai trò của gói vừa mua.
     try { localStorage.setItem('geo3d:last-mode', mode); } catch { /* bỏ qua */ }
     startCheckout({ planCode, referralCode: refApplied || undefined }, planCode);
@@ -167,7 +177,7 @@ export function UpgradeModal({ open, onOpenChange }: UpgradeModalProps) {
                 <X className="w-4 h-4 mr-1" /> Bỏ
               </Button>
             ) : (
-              <Button type="button" variant="outline" size="sm" onClick={applyRef} disabled={refStatus === 'checking' || !refInput.trim()}>
+              <Button type="button" variant="outline" size="sm" onClick={() => applyRef()} disabled={refStatus === 'checking' || !refInput.trim()}>
                 {refStatus === 'checking' ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Áp dụng'}
               </Button>
             )}

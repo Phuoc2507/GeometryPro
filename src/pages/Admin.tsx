@@ -100,6 +100,13 @@ function groupCount(values: (string | null | undefined)[], topN: number): { key:
     .slice(0, topN);
 }
 
+// Phân vị (nearest-rank) trên mảng ĐÃ SẮP TĂNG. p ∈ [0,100].
+function percentile(sortedAsc: number[], p: number): number {
+  if (sortedAsc.length === 0) return 0;
+  const idx = Math.max(0, Math.min(sortedAsc.length - 1, Math.ceil((p / 100) * sortedAsc.length) - 1));
+  return sortedAsc[idx];
+}
+
 async function copyText(text: string) {
   try { await navigator.clipboard.writeText(text); toast.success('Đã copy'); }
   catch { toast.error('Không copy được'); }
@@ -110,6 +117,47 @@ function CopyBtn({ text }: { text: string }) {
   return (
     <Button variant="ghost" size="sm" className="h-6 gap-1 px-1.5 text-[11px] text-muted-foreground" onClick={() => copyText(text)}>
       <Copy className="h-3 w-3" /> Copy
+    </Button>
+  );
+}
+
+// ── "Copy tất cả": gom cả danh sách (theo bộ lọc đang xem) thành TEXT gọn để dán đi phân tích ──
+// Chỉ lấy các trường hữu ích cho gom nhóm lỗi; cắt bớt prompt/message dài để text không phình.
+function reportsToText(rows: ProblemReport[]): string {
+  const stamp = new Date().toISOString().slice(0, 16);
+  const head = `### BÀI LỖI — ${rows.length} mục (mới nhất trước) · copy ${stamp}`;
+  const body = rows.map((r, i) => {
+    const when = (r.created_at || '').slice(0, 16);
+    const prompt = (r.prompt || '(không có chữ — có thể đề bằng ảnh)').slice(0, 500);
+    const err = (r.error_message || '—').slice(0, 300);
+    return `[${i + 1}] ${when} | ${r.endpoint} | mode=${r.mode ?? '-'} | stage=${r.error_stage ?? '-'} | ảnh=${r.image_provided ? 'có' : 'không'} | status=${r.status}\nĐề: ${prompt}\nLỗi: ${err}`;
+  }).join('\n\n');
+  return `${head}\n\n${body}`;
+}
+
+function feedbackToText(rows: UserFeedback[]): string {
+  const stamp = new Date().toISOString().slice(0, 16);
+  const head = `### FEEDBACK — ${rows.length} mục (mới nhất trước) · copy ${stamp}`;
+  const body = rows.map((f, i) => {
+    const when = (f.created_at || '').slice(0, 16);
+    const msg = (f.message || '').slice(0, 800);
+    const p = f.prompt ? `\nĐề kèm: ${f.prompt.slice(0, 300)}` : '';
+    const page = f.page_path ? ` | page=${f.page_path}` : '';
+    return `[${i + 1}] ${when} | kind=${f.kind} | status=${f.status}${page}\nNội dung: ${msg}${p}`;
+  }).join('\n\n');
+  return `${head}\n\n${body}`;
+}
+
+// Nút gom-và-copy cả danh sách. Dựng text LÚC bấm (không serialize mỗi lần render).
+function CopyAllButton({ count, getText }: { count: number; getText: () => string }) {
+  const onClick = async () => {
+    if (count === 0) return;
+    try { await navigator.clipboard.writeText(getText()); toast.success(`Đã copy ${count} mục`); }
+    catch { toast.error('Không copy được (trình duyệt chặn clipboard)'); }
+  };
+  return (
+    <Button variant="outline" size="sm" className="gap-1.5" disabled={count === 0} onClick={onClick}>
+      <Copy className="h-3.5 w-3.5" /> Copy tất cả ({count})
     </Button>
   );
 }
@@ -198,6 +246,7 @@ const Admin = () => {
   const [reportFilter, setReportFilter] = useState<'all' | Status>('all');
   const [feedbackFilter, setFeedbackFilter] = useState<'all' | Status>('all');
   const [drawStats, setDrawStats] = useState<{ endpoint: string; attempts: number; fails: number }[]>([]);
+  const [advTimings, setAdvTimings] = useState<{ reason: string; ms: number }[]>([]);
 
   // Chặn truy cập: chưa đăng nhập hoặc không phải admin → về trang chủ.
   // Bảo mật thật nằm ở RLS phía Supabase; đây chỉ là lớp điều hướng cho UI.
@@ -245,13 +294,25 @@ const Admin = () => {
     setDrawStats(Object.entries(agg).map(([endpoint, v]) => ({ endpoint, ...v })));
   }, []);
 
+  // Timing nhánh "advance-from-detailed" (Vẽ kỹ → nâng cao) để đo p95/p50. Bảng chưa migrate → bỏ qua êm.
+  const fetchAdvTimings = useCallback(async () => {
+    const { data, error } = await supabase
+      .from('advance_timings')
+      .select('reason, ms')
+      .order('created_at', { ascending: false })
+      .limit(2000);
+    if (error || !data) return; // bảng chưa có / RLS chặn → coi như chưa có dữ liệu
+    setAdvTimings(data);
+  }, []);
+
   useEffect(() => {
     if (!authLoading && user && isAdmin) {
       fetchReports();
       fetchFeedback();
       fetchDrawStats();
+      fetchAdvTimings();
     }
-  }, [authLoading, user, isAdmin, fetchReports, fetchFeedback, fetchDrawStats]);
+  }, [authLoading, user, isAdmin, fetchReports, fetchFeedback, fetchDrawStats, fetchAdvTimings]);
 
   const updateStatus = useCallback(async (
     table: 'problem_reports' | 'user_feedback', id: string, status: Status,
@@ -298,6 +359,21 @@ const Admin = () => {
     if (attempts === 0) return null;
     return { attempts, fails, pct: Math.round((1 - fails / attempts) * 100) };
   }, [drawStats]);
+  // p95/p50 nhánh advance-from-detailed. Hàng đầu = GỘP 2 nhánh PHỤC VỤ (chữ+ảnh) — con số headline;
+  // các hàng sau tách theo từng `reason` (miss/deadline/tái-dùng-bản-chép…) để soi chi tiết.
+  const advStats = useMemo(() => {
+    const groups: Record<string, number[]> = {};
+    for (const t of advTimings) (groups[t.reason] ||= []).push(t.ms);
+    const served = [...(groups['advance-from-detailed'] ?? []), ...(groups['advance-from-detailed-image'] ?? [])];
+    const mk = (label: string, arr: number[]) => {
+      const s = [...arr].sort((a, b) => a - b);
+      return { label, n: s.length, p50: percentile(s, 50), p95: percentile(s, 95), max: s.length ? s[s.length - 1] : 0 };
+    };
+    const rows: { label: string; n: number; p50: number; p95: number; max: number }[] = [];
+    if (served.length) rows.push(mk('▶ phục vụ (chữ+ảnh)', served));
+    for (const [reason, arr] of Object.entries(groups).sort((a, b) => b[1].length - a[1].length)) rows.push(mk(reason, arr));
+    return rows;
+  }, [advTimings]);
   const topPrompts = useMemo(() => groupCount(reports.map((r) => r.prompt), 8), [reports]);
   const topErrors = useMemo(() => groupCount(reports.map((r) => r.error_message), 8), [reports]);
 
@@ -381,6 +457,7 @@ const Admin = () => {
                 </div>
                 <div className="flex shrink-0 items-center gap-2">
                   <StatusFilter value={reportFilter} onChange={setReportFilter} />
+                  <CopyAllButton count={shownReports.length} getText={() => reportsToText(shownReports)} />
                   <Button variant="outline" size="sm" onClick={fetchReports} disabled={loadingReports} className="gap-1.5">
                     <RefreshCw className={`h-3.5 w-3.5 ${loadingReports ? 'animate-spin' : ''}`} /> Làm mới
                   </Button>
@@ -443,6 +520,7 @@ const Admin = () => {
                 </div>
                 <div className="flex shrink-0 items-center gap-2">
                   <StatusFilter value={feedbackFilter} onChange={setFeedbackFilter} />
+                  <CopyAllButton count={shownFeedback.length} getText={() => feedbackToText(shownFeedback)} />
                   <Button variant="outline" size="sm" onClick={fetchFeedback} disabled={loadingFeedback} className="gap-1.5">
                     <RefreshCw className={`h-3.5 w-3.5 ${loadingFeedback ? 'animate-spin' : ''}`} /> Làm mới
                   </Button>
@@ -573,6 +651,37 @@ const Admin = () => {
                     </div>
                   );
                 })}
+              </CardContent>
+            </Card>
+
+            {/* Độ trễ nhánh "advance-from-detailed" (Vẽ kỹ → nâng cao) — p95/p50 từ bảng advance_timings */}
+            <Card className="mt-4 border-border/50 bg-background/50 backdrop-blur-sm">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base">Độ trễ nhánh nâng cao (advance-from-detailed)</CardTitle>
+                <CardDescription>p95 / p50 (ms) theo từng nhánh — hàng "▶ phục vụ" là con số headline. Cần chạy migration + có lưu lượng thật.</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-1">
+                {advStats.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">Chưa có dữ liệu — cần chạy migration advance_timings và vài lượt Vẽ kỹ đề nâng cao.</p>
+                ) : (
+                  <>
+                    <div className="flex items-center justify-between text-[11px] font-medium text-muted-foreground/70 px-0.5">
+                      <span>nhánh</span>
+                      <span className="flex gap-4"><span className="w-14 text-right">p95</span><span className="w-14 text-right">p50</span><span className="w-14 text-right">max</span><span className="w-10 text-right">n</span></span>
+                    </div>
+                    {advStats.map((s) => (
+                      <div key={s.label} className="flex items-center justify-between text-sm">
+                        <span className={`truncate ${s.label.startsWith('▶') ? 'font-semibold text-primary' : 'text-muted-foreground'}`}>{s.label}</span>
+                        <span className="flex gap-4 tabular-nums">
+                          <span className="w-14 text-right font-semibold">{(s.p95 / 1000).toFixed(1)}s</span>
+                          <span className="w-14 text-right text-muted-foreground">{(s.p50 / 1000).toFixed(1)}s</span>
+                          <span className="w-14 text-right text-muted-foreground">{(s.max / 1000).toFixed(1)}s</span>
+                          <span className="w-10 text-right text-muted-foreground">{s.n}</span>
+                        </span>
+                      </div>
+                    ))}
+                  </>
+                )}
               </CardContent>
             </Card>
 

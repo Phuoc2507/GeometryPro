@@ -10,8 +10,9 @@ import { ToolModeProvider } from "@/context/ToolModeContext";
 import { ToolSlider } from "@/components/ui/ToolSlider";
 import { AuthModal } from "@/components/AuthModal";
 import { UpgradeModal } from "@/components/UpgradeModal";
+import { ReferralAnnouncement } from "@/components/ReferralAnnouncement";
 import { useAuth } from "@/context/AuthContext";
-import React, { Suspense, useEffect } from 'react';
+import React, { Suspense, useEffect, useRef } from 'react';
 import { Loader2 } from 'lucide-react';
 
 const Landing = React.lazy(() => import('./pages/Landing'));
@@ -57,20 +58,70 @@ function GlobalUpgradeModal() {
   return <UpgradeModal open={isUpgradeModalOpen} onOpenChange={(o) => { if (!o) closeUpgradeModal(); }} />;
 }
 
-// Sau khi thanh toán PayOS quay về ?payment=success: báo thành công + refresh credit (webhook cộng async).
+// Sau khi thanh toán PayOS quay về ?payment=success: webhook cộng credit/gói KHÔNG tức thì,
+// nên ta POLL hồ sơ tới khi credit/gói thực sự đổi rồi mới báo "thành công". Tránh cảnh
+// "đã trả tiền mà chưa thấy gì" khi webhook về trễ.
 function PaymentSuccessHandler() {
   const [params, setParams] = useSearchParams();
-  const { refreshProfile } = useAuth();
+  const { refreshProfile, credits, tier, profile, isLoading } = useAuth();
+  // Ref soi giá trị mới nhất trong vòng lặp async (state không cập nhật giữa các lần lặp).
+  const sigRef = useRef({ credits, tier, exp: profile?.plan_expires_at ?? null });
   useEffect(() => {
-    if (params.get('payment') !== 'success') return;
-    toast.success('Thanh toán thành công!', { description: 'Credit đang được cộng vào tài khoản...', duration: 6000 });
-    refreshProfile();
-    const t = setTimeout(() => refreshProfile(), 4000); // chờ webhook cộng credit rồi refresh lại
-    params.delete('payment');
-    setParams(params, { replace: true });
-    return () => clearTimeout(t);
+    sigRef.current = { credits, tier, exp: profile?.plan_expires_at ?? null };
+  }, [credits, tier, profile?.plan_expires_at]);
+
+  // Nhớ "đây là lượt quay về sau thanh toán" NGAY lúc mount rồi dọn param, để refresh không kích lại.
+  const isPaymentReturn = useRef(params.get('payment') === 'success');
+  const startedRef = useRef(false);
+  useEffect(() => {
+    if (!isPaymentReturn.current) return;
+    try { localStorage.removeItem('geo3d:ref'); } catch { /* bỏ qua */ }
+    if (params.get('payment')) { params.delete('payment'); setParams(params, { replace: true }); }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // CHỜ hồ sơ tải xong rồi mới chốt mốc so sánh. Nếu chốt lúc profile còn null (credits=0, tier=free),
+  // khi hồ sơ trước-thanh-toán tải lên (vd đã có 20 credit) sẽ bị hiểu nhầm là "đã cộng" → báo nhầm.
+  const profileLoaded = !isLoading && !!profile;
+  useEffect(() => {
+    if (!isPaymentReturn.current || startedRef.current || !profileLoaded) return;
+    startedRef.current = true;
+
+    const before = { ...sigRef.current };  // mốc = trạng thái TRƯỚC khi webhook cộng
+    const changed = () => {
+      const s = sigRef.current;
+      return s.credits > before.credits || s.tier !== before.tier || s.exp !== before.exp;
+    };
+
+    const toastId = 'pay-confirm';
+    toast.loading('Đang xác nhận thanh toán…', { id: toastId, description: 'Đang cộng credit/gói vào tài khoản.' });
+
+    let cancelled = false;
+    const timers: ReturnType<typeof setTimeout>[] = [];
+    // Backoff ~ tổng 60s: webhook thường về trong vài giây, nhưng có thể trễ.
+    const delays = [1500, 2000, 3000, 4000, 5000, 6000, 8000, 10000, 10000, 10000];
+    const poll = async (i: number) => {
+      if (cancelled) return;
+      await refreshProfile();
+      if (cancelled) return;
+      if (changed()) {
+        toast.success('Thanh toán thành công!', { id: toastId, description: 'Đã cộng vào tài khoản.', duration: 6000 });
+        return;
+      }
+      if (i >= delays.length) {
+        toast.info('Đã nhận thanh toán', {
+          id: toastId,
+          description: 'Hệ thống đang xử lý — credit/gói sẽ tự cập nhật trong ít phút. Tải lại trang nếu cần.',
+          duration: 8000,
+        });
+        return;
+      }
+      timers.push(setTimeout(() => poll(i + 1), delays[i]));
+    };
+    poll(0);
+
+    return () => { cancelled = true; timers.forEach(clearTimeout); };
+  }, [profileLoaded, refreshProfile]);
   return null;
 }
 
@@ -105,6 +156,7 @@ function App() {
                 <GlobalUpgradeModal />
                 <PaymentSuccessHandler />
                 <ReferralCapture />
+                <ReferralAnnouncement />
                 <ToolSlider />
                 <Suspense fallback={<PageLoader />}>
                   <Routes>

@@ -40,12 +40,15 @@ export async function validateReferral(admin, rawCode, buyerUserId) {
   if (!ref) return { ok: false, reason: 'not_found' };
   if (ref.user_id === buyerUserId) return { ok: false, reason: 'self' };
 
-  // "Đơn đầu tiên": người mua chưa từng có đơn đã thanh toán.
+  // "Đơn đầu tiên": người mua chưa từng thanh toán một đơn MUA GÓI nào.
+  // Chỉ tính đơn có plan_code (mua gói) — nạp credit lẻ (plan_code = null) KHÔNG làm
+  // mất ưu đãi, vì giảm 10% vốn chỉ áp cho gói. Tránh bẫy "mua credit trước → hết ưu đãi".
   const { count, error: cntErr } = await admin
     .from('orders')
     .select('order_code', { count: 'exact', head: true })
     .eq('user_id', buyerUserId)
-    .eq('status', 'paid');
+    .eq('status', 'paid')
+    .not('plan_code', 'is', null);
   if (cntErr) return { ok: false, reason: 'error' };
   if ((count || 0) > 0) return { ok: false, reason: 'not_first' };
 

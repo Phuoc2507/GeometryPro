@@ -24,7 +24,7 @@ const Auth = () => {
   const redirectTo = sanitizeRedirect(searchParams.get('redirect'));
 
   const [isSignUp, setIsSignUp] = useState(false);
-  const [isReset, setIsReset] = useState(false);
+  const [isReset, setIsReset] = useState(searchParams.get('mode') === 'reset');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -32,7 +32,7 @@ const Auth = () => {
   const [displayName, setDisplayName] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [errors, setErrors] = useState<{ email?: string; password?: string; general?: string }>({});
+  const [errors, setErrors] = useState<{ email?: string; password?: string; general?: string; success?: boolean }>({});
 
   // Redirect if already logged in — nhưng KHÔNG đá đi khi đang ở phiên đặt lại mật khẩu.
   useEffect(() => {
@@ -40,6 +40,17 @@ const Auth = () => {
       navigate(redirectTo);
     }
   }, [user, isLoading, isRecovery, redirectTo, navigate]);
+
+  // OAuth (Google) bị huỷ/ từ chối → Supabase quay về /auth?error=access_denied. Không có phiên,
+  // nên báo rõ tiếng Việt thay vì im lặng, và dọn cờ pending để lần đăng nhập sau không toast nhầm.
+  useEffect(() => {
+    const oauthErr = searchParams.get('error') || searchParams.get('error_description');
+    if (oauthErr) {
+      try { sessionStorage.removeItem('geo3d:pending-signin'); } catch { /* bỏ qua */ }
+      setErrors({ general: 'Đăng nhập Google chưa hoàn tất (bạn đã huỷ hoặc từ chối). Bạn thử lại nhé.' });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const validateForm = () => {
     const newErrors: typeof errors = {};
@@ -74,7 +85,7 @@ const Auth = () => {
       if (isReset) {
         result = await resetPassword(email);
         if (!result.error) {
-          setErrors({ general: 'Vui lòng kiểm tra email để đặt lại mật khẩu.' });
+          setErrors({ general: 'Vui lòng kiểm tra email để đặt lại mật khẩu.', success: true });
           setIsSubmitting(false);
           return;
         }
@@ -94,11 +105,18 @@ const Auth = () => {
           errorMessage = 'Email này đã được đăng ký';
         } else if (errorMessage.includes('Email not confirmed')) {
           errorMessage = 'Vui lòng xác nhận email trước khi đăng nhập';
+        } else if (/rate limit/i.test(errorMessage)) {
+          errorMessage = 'Bạn thao tác hơi nhanh. Vui lòng đợi một lát rồi thử lại.';
+        } else if (/failed to fetch|network|load failed/i.test(errorMessage)) {
+          errorMessage = 'Mất kết nối mạng. Vui lòng kiểm tra internet và thử lại.';
+        } else if (/[A-Za-z]/.test(errorMessage) && !/[àáâãèéêìíòóôõùúăđĩũơưạảấầẩẫậắằẳẵặẹẻẽếềểễệỉịọỏốồổỗộớờởỡợụủứừửữựỳỵỷỹ]/i.test(errorMessage)) {
+          // Thông báo lỗi còn bằng tiếng Anh (chưa map) → thay bằng câu chung tiếng Việt.
+          errorMessage = 'Đã có lỗi xảy ra. Vui lòng thử lại.';
         }
 
         setErrors({ general: errorMessage });
       } else if (isSignUp) {
-        setErrors({ general: 'Vui lòng kiểm tra email để xác nhận tài khoản!' });
+        setErrors({ general: 'Vui lòng kiểm tra email để xác nhận tài khoản!', success: true });
       }
     } catch {
       setErrors({ general: 'Đã có lỗi xảy ra. Vui lòng thử lại.' });
@@ -123,7 +141,11 @@ const Auth = () => {
     const { error } = await updatePassword(newPassword);
     setIsSubmitting(false);
     if (error) {
-      setErrors({ general: error.message });
+      // Link reset hết hạn / đã dùng / mở trực tiếp → không có phiên khôi phục.
+      const msg = /session|Auth session|not authenticated|JWT/i.test(error.message)
+        ? 'Link đặt lại mật khẩu đã hết hạn hoặc không hợp lệ. Hãy yêu cầu gửi lại link mới bên dưới.'
+        : error.message;
+      setErrors({ general: msg });
     } else {
       toast.success('Đổi mật khẩu thành công', { description: 'Bạn có thể tiếp tục dùng geo3d.' });
       navigate('/');
@@ -163,6 +185,7 @@ const Auth = () => {
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
                     className="pl-10 pr-10"
+                    autoComplete="new-password"
                     required
                   />
                   <button
@@ -186,14 +209,22 @@ const Auth = () => {
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     className="pl-10"
+                    autoComplete="new-password"
                     required
                   />
                 </div>
               </div>
 
               {errors.general && (
-                <div className="p-3 rounded-lg text-sm bg-destructive/10 text-destructive border border-destructive/20">
-                  {errors.general}
+                <div className="p-3 rounded-lg text-sm bg-destructive/10 text-destructive border border-destructive/20 space-y-2">
+                  <p>{errors.general}</p>
+                  <button
+                    type="button"
+                    onClick={() => navigate('/auth?mode=reset')}
+                    className="underline font-medium hover:opacity-80"
+                  >
+                    Gửi lại link đặt lại mật khẩu
+                  </button>
                 </div>
               )}
 
@@ -267,6 +298,7 @@ const Auth = () => {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="pl-10"
+                  autoComplete="email"
                   required
                 />
               </div>
@@ -299,6 +331,7 @@ const Auth = () => {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     className="pl-10 pr-10"
+                    autoComplete={isSignUp ? 'new-password' : 'current-password'}
                     required
                   />
                   <button
@@ -318,7 +351,7 @@ const Auth = () => {
             {/* Error Message */}
             {errors.general && (
               <div className={`p-3 rounded-lg text-sm ${
-                errors.general.includes('xác nhận')
+                errors.success
                   ? 'bg-primary/10 text-primary border border-primary/20'
                   : 'bg-destructive/10 text-destructive border border-destructive/20'
               }`}>
@@ -357,6 +390,7 @@ const Auth = () => {
             <Button
               type="button"
               variant="outline"
+              disabled={isSubmitting}
               className="w-full mt-6 bg-white/5 hover:bg-white/10 border-border/50 text-foreground"
               onClick={() => signInWithGoogle(redirectTo)}
             >

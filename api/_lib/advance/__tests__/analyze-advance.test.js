@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { assembleAdvance, looksLikeRevolution } from '../../../analyze-advance.js';
+import { assembleAdvance, looksLikeRevolution, looksLikeMultiQuestion } from '../../../analyze-advance.js';
 
 // Lõi thuần deps-injected: test các nhánh KHÔNG cần mạng (mirror splitProblem/buildAdvanceScene tests).
 // GỘP đọc-ảnh + tách-đề: có ẢNH → đẩy THẲNG ảnh xuống splitProblem (1 lượt vision vừa chép đề vào
@@ -89,6 +89,78 @@ describe('looksLikeRevolution (nhận diện đề tròn xoay tất định)', (
     expect(looksLikeRevolution('Cho hình chóp S.ABCD có SA vuông góc đáy')).toBe(false);
     expect(looksLikeRevolution('Tính khoảng cách từ A đến mặt phẳng (SBC)')).toBe(false);
     expect(looksLikeRevolution('')).toBe(false);
+  });
+});
+
+describe('looksLikeMultiQuestion (gate rẻ cho luồng Vẽ kỹ → bóc lớp đa-câu)', () => {
+  it('bắt đúng đề nhiều ý con (a/b/c, 1/2/3, câu a/1)', () => {
+    expect(looksLikeMultiQuestion('Cho chóp S.ABCD. a) Tính thể tích. b) Tính khoảng cách từ A đến (SBC).')).toBe(true);
+    expect(looksLikeMultiQuestion('1) Chứng minh AB ⟂ CD.\n2) Tính góc giữa SC và đáy.')).toBe(true);
+    expect(looksLikeMultiQuestion('Câu 1: dựng thiết diện. Câu 2: tính diện tích.')).toBe(true);
+    expect(looksLikeMultiQuestion('Câu a) tính V; câu b) tính d(A,(SBC))')).toBe(true);
+  });
+  it('KHÔNG bắt nhầm đề một câu / toạ độ / công thức', () => {
+    expect(looksLikeMultiQuestion('Cho hình chóp S.ABCD có SA vuông góc đáy, tính thể tích')).toBe(false);
+    expect(looksLikeMultiQuestion('Trong không gian Oxyz cho A(1;2;3), B(4;5;6). Tính AB.')).toBe(false);
+    expect(looksLikeMultiQuestion('Tính thể tích khối tròn xoay khi quay quanh Ox')).toBe(false);
+    expect(looksLikeMultiQuestion('')).toBe(false);
+    expect(looksLikeMultiQuestion(null)).toBe(false);
+  });
+  it('CHỈ 1 nhãn câu con ⇒ chưa coi là đa-câu (cần ≥2, để splitProblem là lưới chốt)', () => {
+    expect(looksLikeMultiQuestion('a) Tính thể tích khối chóp S.ABCD')).toBe(false);
+  });
+});
+
+describe('assembleAdvance — đề ĐA-CÂU (multi_question) → bóc lớp theo câu (mode advance)', () => {
+  it('multi_question dựng được base ⇒ mode advance, KHÔNG fallback bài đơn', async () => {
+    const split = {
+      type: 'multi_question', setup: 'Cho chóp S.ABCD, SA⟂đáy, SA=2a',
+      parts: [{ label: 'a', hoi: 'Tính V', phan_tu_moi: [] }, { label: 'b', hoi: 'Tính d(A,(SBC))', phan_tu_moi: ['M'] }],
+    };
+    const splitProblem = vi.fn().mockResolvedValue(split);
+    const buildAdvanceScene = vi.fn().mockResolvedValue({ base: { points: [{ id: 'S' }] }, steps: [{ id: 'a' }, { id: 'b' }] });
+    const solveProblem = vi.fn();
+
+    const out = await assembleAdvance('Cho chóp S.ABCD. a) Tính V. b) Tính d(A,(SBC)).',
+      { splitProblem, buildAdvanceScene, solveProblem }, {});
+
+    expect(out.mode).toBe('advance');
+    expect(buildAdvanceScene).toHaveBeenCalledTimes(1);
+    expect(solveProblem).not.toHaveBeenCalled();   // dựng được scene → KHÔNG rơi fallback bài đơn
+  });
+
+  it('multi_question nhưng base dựng HỎNG (scene=null) ⇒ rơi fallback bài đơn (degraded)', async () => {
+    const splitProblem = vi.fn().mockResolvedValue({
+      type: 'multi_question', setup: 'Cho chóp S.ABCD',
+      parts: [{ label: 'a', hoi: 'V', phan_tu_moi: [] }, { label: 'b', hoi: 'd', phan_tu_moi: [] }],
+    });
+    const buildAdvanceScene = vi.fn().mockResolvedValue(null);   // base fail
+    const solveProblem = vi.fn().mockResolvedValue({ ok: true, geometry: { points: [{ id: 'A' }] } });
+
+    const out = await assembleAdvance('Cho chóp S.ABCD. a) V. b) d.',
+      { splitProblem, buildAdvanceScene, solveProblem }, {});
+
+    expect(out.mode).toBe('kernel');
+    expect(out.degraded).toBe(true);
+    expect(solveProblem).toHaveBeenCalledTimes(1);   // fallback bài đơn vẫn vẽ được
+  });
+});
+
+// Phase 2 ("đọc ảnh 1 lần, tái dùng bản chép"): với đề ẢNH KHÔNG phải nâng cao, route [detailed→advance]
+// lấy adv.split.setup (bản chép do splitProblem vision tạo) gán trimmedPrompt rồi chạy Vẽ kỹ trên CHỮ —
+// đọc ảnh đúng MỘT lần. Test này khoá HỢP ĐỒNG tại ranh giới assembleAdvance: bản chép phải còn để tái dùng.
+describe('assembleAdvance — Phase 2: ảnh đề thường (1 câu) GIỮ bản chép cho route tái dùng', () => {
+  it('ảnh single không-template → degraded KÈM split.setup (bản chép) không rỗng', async () => {
+    const split = { type: 'single', setup: 'Cho hình chóp S.ABCD đáy vuông cạnh a, SA⟂đáy, SA=a. Tính thể tích.' };
+    const splitProblem = vi.fn().mockResolvedValue(split);
+    const solveProblem = vi.fn().mockResolvedValue({ ok: true, geometry: { points: [{ id: 'S' }] } });
+
+    const out = await assembleAdvance('', { splitProblem, solveProblem }, { imageBase64: 'x' });
+
+    expect(out.mode).toBe('kernel');
+    expect(out.degraded).toBe(true);
+    expect(out.split.setup).toContain('hình chóp');          // route gán trimmedPrompt = bản chép này
+    expect(out.split.setup.trim().length).toBeGreaterThan(0); // có bản chép ⇒ tái dùng được (không đọc ảnh lần 2)
   });
 });
 

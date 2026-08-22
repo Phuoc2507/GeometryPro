@@ -9,8 +9,7 @@
 import { createClient } from '@supabase/supabase-js';
 import { ruleFor, creditCostFor } from './entitlements.js';
 
-// Re-export để các route tính chênh lệch phí (vd: fallback tụt-hạng Advance→Vẽ kỹ hoàn
-// creditCostFor('draw_advance') - creditCostFor('draw_detailed')) mà chỉ cần import 1 module credit.
+// Re-export để các route tính phí theo action mà chỉ cần import 1 module credit.
 export { creditCostFor };
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.VITE_SUPABASE_URL;

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   Copy,
   Check,
@@ -76,17 +76,18 @@ export function ShareSheet({ open, onOpenChange, geometry, onSaveImage, shareUrl
   const { user, openAuthModal } = useAuth();
   const { saveGeometry } = useSavedGeometries();
 
-  // Link mới tạo chỉ hợp lệ cho đúng bài đang mở ⇒ reset khi đóng sheet.
+  // Link đã tạo gắn với ĐÚNG bài đang mở (so theo tham chiếu object). Mở/đóng sheet lại
+  // trên cùng một bài thì tái dùng link cũ — không tạo thêm bản công khai trùng.
+  const sharedGeoRef = useRef<GeometryData | null>(null);
   useEffect(() => {
-    if (!open) {
-      setCopied(false);
-      setCreatedUrl(null);
-    }
-  }, [open]);
+    if (!open) { setCopied(false); return; }
+    // Mở lại trên một bài KHÁC → xoá link cũ để tạo mới cho bài mới.
+    if (geometry !== sharedGeoRef.current) setCreatedUrl(null);
+  }, [open, geometry]);
 
   const effectiveUrl = shareUrl || createdUrl;
   const title = geometry?.name || 'Bài hình học';
-  const shareText = `${title} — GeometryPro`;
+  const shareText = `${title} — geo3d`;
 
   const handleCreateLink = async () => {
     if (!geometry) return;
@@ -95,10 +96,13 @@ export function ShareSheet({ open, onOpenChange, geometry, onSaveImage, shareUrl
       openAuthModal('save');
       return;
     }
+    // Đã tạo link cho đúng bài này rồi → dùng lại, đừng lưu bản công khai mới.
+    if (createdUrl && sharedGeoRef.current === geometry) return;
     setCreating(true);
     try {
       const saved = await saveGeometry(title, geometry, true);
       if (saved?.id) {
+        sharedGeoRef.current = geometry;
         setCreatedUrl(`${window.location.origin}/s/${saved.id}`);
       }
     } finally {

@@ -2,6 +2,7 @@
 // Gọi endpoint quản trị /api/admin kèm Bearer token (giống lối /api/delete-account).
 // Server tự kiểm role='admin' — client chỉ là lớp tiện ích, không nắm bảo mật.
 import { supabase } from '@/integrations/supabase/client';
+import { fetchWithTimeout } from '@/lib/fetchWithTimeout';
 
 export interface AdminUser {
   id: string;
@@ -163,17 +164,17 @@ export const redrawProblem = async (prompt: string, maxAttempts = 1): Promise<Re
   const token = data.session?.access_token;
   if (!token) throw new Error('Bạn cần đăng nhập lại');
 
-  const res = await fetch('/api/admin-redraw', {
+  const res = await fetchWithTimeout('/api/admin-redraw', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
     body: JSON.stringify({ prompt, maxAttempts }),
-  });
+  }, 120000);  // vẽ lại bằng AI có thể lâu; vẫn cần trần để không kẹt spinner mãi
   const body = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(body?.error || 'Lỗi máy chủ khi vẽ lại');
   return body.candidate as RedrawCandidate;
 };
 
-// ── Test API Key (endpoint riêng /api/test-apikey) ───────────────────────────
+// ── Test API Key (gộp vào /api/admin, action test-apikey-*) ──────────────────
 export interface TestKeyMeta { id: string; name: string; model: string }
 export interface TestKeyResult {
   keyId: string;
@@ -189,11 +190,13 @@ export interface TestKeyResult {
   renderGeometry?: unknown | null;  // đã chuẩn hoá, render an toàn (cho "Mở bài")
 }
 
+// Tab "Test API Key" nay dùng chung endpoint /api/admin (gộp để giảm số serverless function
+// — trần 12 của Vercel Hobby). Action đổi thành 'test-apikey-list' / 'test-apikey-run'.
 async function testApi<T>(payload: Record<string, unknown>): Promise<T> {
   const { data } = await supabase.auth.getSession();
   const token = data.session?.access_token;
   if (!token) throw new Error('Bạn cần đăng nhập lại');
-  const res = await fetch('/api/test-apikey', {
+  const res = await fetch('/api/admin', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
     body: JSON.stringify(payload),
@@ -204,7 +207,7 @@ async function testApi<T>(payload: Record<string, unknown>): Promise<T> {
 }
 
 export const testApiListKeys = () =>
-  testApi<{ keys: TestKeyMeta[] }>({ action: 'list-keys' }).then((r) => r.keys);
+  testApi<{ keys: TestKeyMeta[] }>({ action: 'test-apikey-list' }).then((r) => r.keys);
 
 export const testApiSend = (problem: string, keyIds: string[], image?: string | null) =>
-  testApi<{ results: TestKeyResult[] }>({ problem, keyIds, image: image ?? null }).then((r) => r.results);
+  testApi<{ results: TestKeyResult[] }>({ action: 'test-apikey-run', problem, keyIds, image: image ?? null }).then((r) => r.results);

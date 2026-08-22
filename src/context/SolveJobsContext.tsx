@@ -14,7 +14,11 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/context/AuthContext';
 import { cacheQuotaFromResponse } from '@/lib/quota';
 import { markSolving, clearSolving } from '@/lib/solvingMarker';
+import { fetchWithTimeout } from '@/lib/fetchWithTimeout';
 import type { SolveResult } from '@/hooks/useSolver';
+
+// Hết credit / vượt hạn mức trả phí → mở popup nâng cấp (giống luồng vẽ hình).
+const NEEDS_UPGRADE_CODES = ['insufficient', 'quota_exceeded', 'blocked'];
 
 export interface SolveJob {
   status: 'solving' | 'done' | 'error';
@@ -42,13 +46,16 @@ export function SolveJobsProvider({ children }: { children: ReactNode }) {
   const jobsRef = useRef(jobs);
   jobsRef.current = jobs;
   const savedRef = useRef<Set<string>>(new Set());
-  const { openAuthModal } = useAuth();
+  const inFlightRef = useRef<Set<string>>(new Set());  // chặn double-click ĐỒNG BỘ (state chưa kịp cập nhật)
+  const { openAuthModal, openUpgradeModal } = useAuth();
 
   const getJob = useCallback((key: string) => jobs[key], [jobs]);
 
   const startJob = useCallback<SolveJobsContextType['startJob']>((key, { id, problem, geometry, tags }) => {
-    // Đang giải rồi thì không giải lại (bấm 2 lần / 2 panel cùng bấm).
-    if (jobsRef.current[key]?.status === 'solving') return;
+    // Đang giải rồi thì không giải lại (bấm 2 lần / 2 panel cùng bấm). Kiểm tra ĐỒNG BỘ bằng ref
+    // (setJobs bất đồng bộ nên 2 click liên tiếp có thể lọt qua nếu chỉ dựa vào state).
+    if (inFlightRef.current.has(key) || jobsRef.current[key]?.status === 'solving') return;
+    inFlightRef.current.add(key);
     setJobs((prev) => ({ ...prev, [key]: { status: 'solving', id, problem, geometry, result: null, error: null } }));
     markSolving(id, problem);   // để reload giữa chừng biết mà chờ kết quả server lưu
 
@@ -59,18 +66,20 @@ export function SolveJobsProvider({ children }: { children: ReactNode }) {
         const headers: Record<string, string> = { 'Content-Type': 'application/json' };
         if (token) headers['Authorization'] = `Bearer ${token}`;
 
-        const res = await fetch('/api/solve', {
+        const res = await fetchWithTimeout('/api/solve', {
           method: 'POST',
           headers,
           credentials: 'same-origin',
           body: JSON.stringify({ problem, geometry, tags, id }),  // id: để server LƯU lời giải kèm bài (chống mất khi F5)
-        });
+        }, 150000);  // giải bài có thể lâu (~2 phút) — cho timeout rộng để không kẹt mãi
         const data = await res.json();
         cacheQuotaFromResponse(res, data);
 
         if (!res.ok) {
           if (res.status === 429 || data.code === 'guest_quota_exceeded' || data.code === 'guest_ip_quota_exceeded') {
             openAuthModal('quota');
+          } else if (res.status === 402 || NEEDS_UPGRADE_CODES.includes(data.code)) {
+            openUpgradeModal();  // hết credit → mở popup nâng cấp thay vì báo lỗi cụt
           }
           throw new Error(data.error || `HTTP ${res.status}`);
         }
@@ -90,12 +99,15 @@ export function SolveJobsProvider({ children }: { children: ReactNode }) {
         const msg = err instanceof Error ? err.message : String(err);
         setJobs((prev) => (prev[key] ? { ...prev, [key]: { ...prev[key], status: 'error', error: msg } } : prev));
         clearSolving(id);
+      } finally {
+        inFlightRef.current.delete(key);
       }
     })();
-  }, [openAuthModal]);
+  }, [openAuthModal, openUpgradeModal]);
 
   const clearJob = useCallback((key: string) => {
     savedRef.current.delete(key);
+    inFlightRef.current.delete(key);
     setJobs((prev) => {
       if (!prev[key]) return prev;
       const next = { ...prev };

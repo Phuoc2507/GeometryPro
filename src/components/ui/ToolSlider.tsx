@@ -22,13 +22,15 @@ export function ToolSlider() {
       
       <div className="flex items-center gap-4">
         <span className="text-xs font-mono w-8">{sliderValue}%</span>
-        <input 
-          type="range" 
-          min="0" 
-          max="100" 
+        <input
+          type="range"
+          min="0"
+          max="100"
           value={sliderValue}
           onChange={(e) => setSliderValue(parseInt(e.target.value))}
-          className="flex-1 accent-primary"
+          aria-label={mode === 'cut' ? 'Vị trí mặt phẳng cắt (%)' : 'Mức trải phẳng khối hình (%)'}
+          aria-valuetext={`${sliderValue}%`}
+          className="flex-1 accent-primary h-2 cursor-pointer"
         />
       </div>
       <p className="text-[10px] text-muted-foreground mt-2 text-center">

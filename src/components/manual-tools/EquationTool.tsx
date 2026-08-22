@@ -13,29 +13,50 @@ export function EquationTool({ onAdd }: EquationToolProps) {
   const [error, setError] = useState('');
 
   const parseEquation = (eq: string): { a: number; b: number; c: number; d: number } | null => {
-    // Parse "ax + by + cz = d" format
-    const cleaned = eq.replace(/\s/g, '');
-    const match = cleaned.match(/^([+-]?\d*\.?\d*)x([+-]\d*\.?\d*)y([+-]\d*\.?\d*)z=([+-]?\d*\.?\d+)$/);
-    if (match) {
-      const parseCoeff = (s: string) => {
-        if (s === '' || s === '+') return 1;
-        if (s === '-') return -1;
-        return parseFloat(s);
-      };
-      return {
-        a: parseCoeff(match[1]),
-        b: parseCoeff(match[2]),
-        c: parseCoeff(match[3]),
-        d: parseFloat(match[4]),
-      };
+    // Parse mặt phẳng linh hoạt: cho phép thiếu số hạng và MỌI thứ tự — z=3, x=2, 2x-y=6,
+    // y+x+z=3… (trước đây bắt buộc đủ x,y,z đúng thứ tự nên gõ z=3 là báo sai).
+    const cleaned = eq.replace(/\s/g, '').toLowerCase();
+    // Chỉ chấp nhận ký tự hợp lệ (x,y,z, số, dấu). Ký tự lạ → sai định dạng (không "nuốt" âm thầm).
+    if (!/^[xyz0-9+\-.=]+$/.test(cleaned)) return null;
+    const eqIdx = cleaned.indexOf('=');
+    if (eqIdx < 0 || cleaned.indexOf('=', eqIdx + 1) >= 0) return null;  // phải có đúng 1 dấu '='
+    const lhs = cleaned.slice(0, eqIdx);
+    const rhs = cleaned.slice(eqIdx + 1);
+    if (/[xyz]/.test(rhs)) return null;  // vế phải phải là hằng số (vd x=3z chưa hỗ trợ)
+    const rhsVal = parseFloat(rhs);
+    if (!lhs || !Number.isFinite(rhsVal)) return null;
+
+    const coeff: Record<'x' | 'y' | 'z', number> = { x: 0, y: 0, z: 0 };
+    let constLhs = 0;
+    let matchedAny = false;
+    const tokenRe = /([+-]?)(\d*\.?\d*)([xyz]?)/g;
+    let m: RegExpExecArray | null;
+    while ((m = tokenRe.exec(lhs)) !== null) {
+      if (m[0] === '') { tokenRe.lastIndex++; continue; }  // tránh lặp vô hạn ở khớp rỗng
+      const sign = m[1] === '-' ? -1 : 1;
+      const numStr = m[2];
+      const v = m[3] as 'x' | 'y' | 'z' | '';
+      if (v) {
+        const num = numStr === '' || numStr === '.' ? 1 : parseFloat(numStr);
+        if (!Number.isFinite(num)) return null;
+        coeff[v] += sign * num;
+        matchedAny = true;
+      } else if (numStr !== '' && numStr !== '.') {
+        const num = parseFloat(numStr);
+        if (!Number.isFinite(num)) return null;
+        constLhs += sign * num;  // hằng số bên trái → chuyển sang phải
+        matchedAny = true;
+      }
     }
-    return null;
+    if (!matchedAny) return null;
+    if (coeff.x === 0 && coeff.y === 0 && coeff.z === 0) return null;  // không có biến ⇒ không phải mặt phẳng
+    return { a: coeff.x, b: coeff.y, c: coeff.z, d: rhsVal - constLhs };
   };
 
   const handleAdd = () => {
     const parsed = parseEquation(equation);
     if (!parsed) {
-      setError('Sai định dạng. VD: x+y+z=3 hoặc 2x-y+3z=6');
+      setError('Sai định dạng. VD: x+y+z=3, 2x-y+3z=6, hoặc z=3');
       return;
     }
     setError('');
