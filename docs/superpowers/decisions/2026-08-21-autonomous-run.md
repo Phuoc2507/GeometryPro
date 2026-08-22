@@ -235,6 +235,22 @@ Pipeline: spec (3 agent) → phản biện thiết kế (2 agent) → sửa spec
   khi code — H1 hữu cơ (match muối bằng atom-map) và H2 (ester sai SỐ âm thầm) là lỗi
   đúng loại dự án thề chặn, phải bịt ở spec trước.
 
+- **D34 · [TỰ QUYẾT] Chốt điểm phân vân §14 khí-nhiệt + cách vá gas-heat/hữu cơ.**
+  Phản biện gas-heat nêu 6 điểm §14 cần điều phối quyết + 1 CAO(H1)/2 VỪA/3 THẤP.
+  CHỐT §14 (để code agent theo): (a) geometry CẮT HẲN v1 (giữ chỗ `tags`, không dựng
+  cảnh) — nhiệt không có chuỗi thời gian; (b) hiển thị lũy thừa 10 theo chuẩn efield
+  (khoa học hoá text, giữ cả approx+exact); (c) MỘT process/plan cho v1; (d) ΔU/công
+  khí → v1.1 (v1 chưa); (e) `plan.R` optional default 831/100; (f) +273 CỨNG (phép
+  cộng hữu tỉ). CÁCH VÁ: KHÔNG sửa spec .md riêng rồi mới code (H1/H2/H3 chủ yếu là
+  việc CODE: thêm self-check chống cộng-thừa latent, vị-từ pha tường minh, thêm 4 ca
+  heat + ca abstain, công thức T0). Thay vào đó GIAO CODE AGENT (spec + review + chốt
+  §14 này), áp toàn bộ finding NGAY TRONG lúc code TDD. H4 (THẤP): DẶN agent BỎ QUA
+  lệnh "thêm gasHeat vào tsconfig.kernel.json" của §4 — glob `physics/**/*.ts` đã phủ,
+  chạm config dùng chung là bẫy merge khi nhiều agent song song. Tương tự HỮU CƠ: gấp
+  finding vào code agent (H1 match muối bằng ATOM-MAP; H2 guard ĐỘC LẬP chống ester
+  đọc nhầm; H4 guard nO≥0; H5 liệt-kê đa nghiệm không bail). AC-CIRCUIT (0 CAO, đủ
+  chín): 2 VỪA (is_resonance đòi cả L,C; chốt ký tự minus U+2212) áp trong lúc code.
+
 ## Quyết định chờ ghi tiếp (sẽ bổ sung trong đêm)
 
 - Phân xử 5 điểm lệch giữa spec kiến trúc và spec Lý (theo khuyến nghị phản biện).
