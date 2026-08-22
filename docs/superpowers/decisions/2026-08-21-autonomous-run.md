@@ -334,3 +334,27 @@ không trừ credit). Tôi tạm theo D22. Nếu muốn AC (đỉnh đề thi Đ
 - ~09:26Z — 3 phản biện + fix sóng/điện-trường về hết; commit 78b9f48 (fix spec) +
   8a10ed3 (3 review). Thả 3 agent viết bộ dịch + 1 agent code sóng cơ (D33).
 - (ghi tiếp theo tiến độ)
+
+## D40 — Vercel deploy fail (13 > 12 functions Hobby) → loại analyze-geometry-v2 khỏi deploy
+
+**Bối cảnh:** PR #34 deploy Vercel FAIL. Nguyên nhân: thêm route `/api/analyze-problem`
+(Lý/Hóa) làm `api/*.js` lên **13 file = 13 Serverless Functions**, vượt trần **12 của gói Hobby**.
+
+**Bạn đã chọn (AskUserQuestion):** "Kiểm + bỏ route thừa (nếu có)".
+
+**Điều tra (kết luận: analyze-geometry-v2 là route CHẾT ở production):**
+- Frontend `src/` chỉ gọi `/api/analyze-geometry` (route Toán gốc), `/api/analyze-advance`,
+  và `/api/analyze-problem` (route Lý/Hóa mới). **KHÔNG chỗ nào gọi v2.**
+- Nhánh `{plan}` dry-run của v2 vốn đã trả **404 khi NODE_ENV=production** (v2 line 18).
+- v2 chỉ được nhắc ở: `server.js` (Express dev — Vercel KHÔNG chạy file này), 1 test, và docs.
+- Không `api/*.js` nào import v2 (chỉ 1 comment trong analyze-problem.js).
+
+**Quyết định (D40):** KHÔNG xoá file (tránh phá test + dev-server + code có sẵn). Thay vào đó
+thêm `.vercelignore` loại đúng `api/analyze-geometry-v2.js` khỏi bản upload Vercel ⇒ về **12 functions**.
+- Đảo ngược 1 dòng khi lên Pro hoặc khi nối v2 vào production.
+- `npm run build` production SẠCH sau khi thêm. Test + server.js không đổi (file vẫn trong repo).
+- Commit `179143a`, đã push. Vercel đang redeploy (pending). Đặt check-in 16:42Z để xác nhận xanh.
+
+**Vì sao chọn cách này (thay vì xoá / nâng Pro):** tối thiểu, đảo ngược được, không mất test/dev,
+không xoá code người khác tạo. Đúng tinh thần "bỏ route thừa NẾU CÓ" — v2 thừa Ở PRODUCTION nhưng
+vẫn hữu ích cho dev/test nên chỉ loại khỏi deploy, không xoá hẳn.
