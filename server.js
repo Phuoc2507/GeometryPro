@@ -6,6 +6,7 @@ import { pathToFileURL } from 'url';
 
 // We need to dynamically import the handlers because they use ES modules
 import analyzeGeometryHandler from './api/analyze-geometry.js';
+import analyzeProblemHandler from './api/analyze-problem.js';
 import modifyGeometryHandler from './api/modify-geometry.js';
 import solveHandler from './api/solve.js';
 import checkoutHandler from './api/checkout.js';
@@ -29,6 +30,18 @@ app.post('/api/analyze-geometry', async (req, res) => {
     await analyzeGeometryHandler(req, res);
   } catch (error) {
     console.error('Error in /api/analyze-geometry:', error);
+    if (!res.headersSent) {
+      res.status(500).json({ error: error.message || 'Internal Server Error' });
+    }
+  }
+});
+
+// Đa môn (mới): tự nhận diện Lý/Hóa (prefilter từ khóa) → engine tất định; đề Toán trả delegate.
+app.post('/api/analyze-problem', async (req, res) => {
+  try {
+    await analyzeProblemHandler(req, res);
+  } catch (error) {
+    console.error('Error in /api/analyze-problem:', error);
     if (!res.headersSent) {
       res.status(500).json({ error: error.message || 'Internal Server Error' });
     }

@@ -30,7 +30,14 @@ export default tseslint.config(
     },
   },
   {
-    files: ["src/components/ui/**/*.tsx", "src/context/**/*.tsx", "src/components/3d/ClickToPlacePoint.tsx"],
+    files: [
+      "src/components/ui/**/*.tsx",
+      "src/context/**/*.tsx",
+      "src/components/3d/ClickToPlacePoint.tsx",
+      // View mô phỏng Lý/Hóa cố tình đặt hàm thuần (selector/model) cạnh component — như ui/** & context/**.
+      "src/components/simulate/**/*.tsx",
+      "src/components/chem/**/*.tsx",
+    ],
     rules: {
       "react-refresh/only-export-components": "off",
     },

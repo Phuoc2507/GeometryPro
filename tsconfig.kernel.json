@@ -1,0 +1,16 @@
+{
+  // Gate typecheck kernel (F9 — phản biện phiên 1): `npx tsc --noEmit -p tsconfig.kernel.json`.
+  // GHI CHÚ PHẠM VI: include đang THU HẸP về physics/** vì kernel CŨ có lỗi type sẵn
+  // (đã kiểm 21/08/2026: analysis/__tests__/areaRegion.test.ts (readonly coeffs),
+  // analysis/analysisFigure.ts, dialects/oxyz.ts, compute/__tests__ (narrowing `.problem`
+  // dưới strictNullChecks:false), run.ts, verify.ts, verifyE.ts — tổng ~20 lỗi có sẵn,
+  // ngoài phạm vi pack physics). Khi dọn xong kernel cũ, mở lại "api/_lib/kernel/**/*.ts".
+  "extends": "./tsconfig.app.json",
+  "compilerOptions": {
+    "noEmit": true,
+    // "vite/client" vì scene.ts `import type` src/types/geometry kéo theo chuỗi src/** dùng
+    // import.meta.env — include hẹp không chứa src/vite-env.d.ts nên khai types tường minh.
+    "types": ["vitest/globals", "vite/client"]
+  },
+  "include": ["api/_lib/kernel/physics/**/*.ts"]
+}
