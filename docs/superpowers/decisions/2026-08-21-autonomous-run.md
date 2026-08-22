@@ -155,6 +155,22 @@ Pipeline: spec (3 agent) → phản biện thiết kế (2 agent) → sửa spec
 - **D24 · Thứ tự code chương lớp 11-12 (người dùng duyệt theo đề xuất):**
   mạch điện → động lực học → dao động. R51-R58 và opus 4.8: người dùng OK.
 
+- **D25 · Cầu LLM + route XONG (bc13a8d), toàn suite 1428 xanh.** Điểm cần lưu:
+  (a) auth — agent KHÔNG dùng resolveAiAccess thẳng (nó LUÔN consume quota/credit,
+  mâu thuẫn "không trừ") mà chép nửa xác thực thành `resolveAuthNoCharge` (Bearer
+  → supabase getUser, dừng trước bước tiêu). Đúng kỹ thuật; rủi ro: lệch nếu
+  resolveAiAccess đổi sau — cần phản biện. (b) 6 điểm rủi ro prompt engine KHÔNG
+  bắt được (self-check chỉ cứu khi đề có dữ kiện dư): Lý — km/h vừa-đổi-vừa-khai-
+  unit (đổi 2 lần), quên axis:y hỏi độ cao, dấu a/v0; Hóa — đktc(22,4)↔đkc(24,79)
+  hai cụm tiếng Việt cực giống, gán excess sai, variant loãng/đặc. → PHẢI phản
+  biện cầu LLM + test đề thật bằng curl trước khi nối frontend.
+- **D26 · Chương mạch điện XONG (18be29a), physics 161 test.** 10 bài C1-C10 khớp
+  exact, approximate:false 100%, Kirchhoff K1-K4 pass. Tiếp theo D24: động lực
+  học → dao động (chờ, vì cùng đụng physics/ — không chạy song song agent code).
+- **D27 · Renderer ChemScene XONG (002b3fe, 8 test).** 4 ghi chú giới hạn hợp
+  đồng scene (contents không cập nhật sản phẩm; color_change chỉ nhạt dần không
+  đổi sang màu sản phẩm) — việc nâng engine scene sau, không chặn demo.
+
 ## Quyết định chờ ghi tiếp (sẽ bổ sung trong đêm)
 
 - Phân xử 5 điểm lệch giữa spec kiến trúc và spec Lý (theo khuyến nghị phản biện).
