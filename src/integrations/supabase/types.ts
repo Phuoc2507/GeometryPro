@@ -14,6 +14,12 @@ export type Database = {
   }
   public: {
     Tables: {
+      advance_timings: {
+        Row: { id: string; reason: string; ms: number; served: boolean; image_provided: boolean; created_at: string }
+        Insert: { id?: string; reason: string; ms: number; served?: boolean; image_provided?: boolean; created_at?: string }
+        Update: { id?: string; reason?: string; ms?: number; served?: boolean; image_provided?: boolean; created_at?: string }
+        Relationships: []
+      }
       projects: {
         Row: {
           created_at: string

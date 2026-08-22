@@ -26,6 +26,7 @@ import { withSentry, reportServerError } from './_lib/sentry.js';
 import { logBrokenProblem } from './_lib/brokenProblemLog.js';
 import { logKernelMiss } from './_lib/kernelMissLog.js';
 import { recordDrawStat } from './_lib/drawStats.js';
+import { recordAdvanceTiming } from './_lib/advanceTiming.js';
 import { findGolden } from './_lib/goldenStore.js';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -378,6 +379,7 @@ Hãy:
             if (usableScene) {
               console.log(`[detailed→advance] phục vụ (${_advMs}ms):`, (trimmedPrompt || '📷 ảnh').substring(0, 60));
               logEngineDecision({ mode: 'detailed', served: true, reason: imageBase64 ? 'advance-from-detailed-image' : 'advance-from-detailed', ms: _advMs, promptLen: trimmedPrompt.length });
+              await recordAdvanceTiming({ reason: imageBase64 ? 'advance-from-detailed-image' : 'advance-from-detailed', ms: _advMs, served: true, imageProvided: !!imageBase64 });
               sendEvent('Hoàn tất (nâng cao)!', 100);
               const advPayload = withQuota({ mode: 'advance', scene: adv.scene, engine: 'advance' }, access);
               if (isStream) { res.write(`data: ${JSON.stringify({ status: 'done', data: advPayload })}\n\n`); return res.end(); }
@@ -390,6 +392,7 @@ Hãy:
               // ẢNH có bản chép → tái dùng: chạy tiếp luồng Vẽ kỹ trên CHỮ (kernel bật được), KHÔNG đọc ảnh lần 2.
               console.log(`[detailed→advance] ảnh không phải nâng cao (${_advMs}ms) → tái dùng bản chép, chạy Vẽ kỹ trên chữ`);
               logEngineDecision({ mode: 'detailed', served: false, reason: 'image-transcript-reuse', ms: _advMs, promptLen: transcript.length });
+              await recordAdvanceTiming({ reason: 'image-transcript-reuse', ms: _advMs, served: false, imageProvided: true });
               trimmedPrompt = transcript;
               imageBase64 = null;
               // rơi xuống luồng Vẽ kỹ thường (giờ là bài CHỮ).
@@ -398,6 +401,7 @@ Hãy:
               // Hoàn credit + quota rồi báo sạch (mô phỏng route Advance: ảnh khó → mời gõ chữ).
               console.warn(`[detailed→advance] ảnh không đọc/không dựng được (${_advMs}ms) → báo sạch, KHÔNG LLM-vision lần 2`);
               logEngineDecision({ mode: 'detailed', served: false, reason: adv?.__deadline ? 'advance-image-deadline' : 'advance-image-fail', ms: _advMs, promptLen: 0 });
+              await recordAdvanceTiming({ reason: adv?.__deadline ? 'advance-image-deadline' : 'advance-image-fail', ms: _advMs, served: false, imageProvided: true });
               if (creditCharge && userId) {
                 try { await refund(userId, creditCharge.cost, creditCharge.reqId); } catch (e) { console.warn('refund (advance-image-fail) lỗi:', e?.message); }
                 creditCharge = null;
@@ -412,6 +416,7 @@ Hãy:
               // CHỮ: engine nâng cao chưa dựng được ⇒ rơi về Vẽ kỹ thường (không có vision, an toàn).
               console.log(`[detailed→advance] không dùng được (${_advMs}ms) → Vẽ kỹ thường`);
               logEngineDecision({ mode: 'detailed', served: false, reason: adv?.__deadline ? 'advance-deadline' : 'advance-miss', ms: _advMs, promptLen: trimmedPrompt.length });
+              await recordAdvanceTiming({ reason: adv?.__deadline ? 'advance-deadline' : 'advance-miss', ms: _advMs, served: false, imageProvided: false });
             }
           }
         } catch (e) {
