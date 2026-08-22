@@ -281,6 +281,17 @@ Pipeline: spec (3 agent) → phản biện thiết kế (2 agent) → sửa spec
   (2) hữu cơ CAO — guard este thủng khi acid vắng → làm acid BẮT BUỘC (guard độc lập luôn chạy). Nguyên tắc
   giữ vững: engine TỪ CHỐI khi không chắc, KHÔNG serve số sai âm thầm — đúng giá trị cốt lõi dự án.
 
+- **D39 · [NGƯỜI DÙNG duyệt] Smoke test lộ bug điện trường "sai âm thầm" → thêm hậu-kiểm đơn vị.**
+  Không gọi được API vilao từ session web (egress chặn api.vilao.ai). Thay vào đó CLAUDE đóng vai bộ
+  dịch: tự dịch 10 đề Lý/Hóa → plan → chạy engine thật. 9/10 đúng; câu điện trường lộ vấn đề: tọa độ
+  mặc định đơn vị 'm', đề "cách 3 cm" mà plan quên khai units.length='cm' → engine hiểu 3 m → E=40 thay
+  vì 4·10⁵ V/m mà vẫn ok:true (đúng loại "sai âm thầm"). GỐC: chính Claude dịch ẩu, KHÔNG phải engine sai;
+  nhưng nếu model production cũng quên thì sẽ sai. User duyệt sửa: thêm `postcheckEfield` (đề cm/mm mà plan
+  hệ nền khác ⇒ REJECT; chỉ áp khi tọa độ tham gia — field_at/coulomb_force, không oan field_symmetric/
+  "V/cm") + prompt điện trường nhấn BẮT BUỘC khai đơn vị. +7 test, full suite 1964 xanh. Bổ sung 2 script
+  smoke (offline không cần key + live cần key) để verify về sau. LƯU Ý: test LIVE với gemini-flash vẫn CHƯA
+  chạy (cần mở egress api.vilao.ai ở session web mới, hoặc chạy local với VILAO_API_KEY).
+
 ## ═══ TRẠNG THÁI SÁNG 22/08 (đọc trước) ═══
 
 **Đã làm xong đêm nay (đã commit + push nhánh `claude/edu-tech-ecosystem-if51pn`):**
