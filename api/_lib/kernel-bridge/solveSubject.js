@@ -29,7 +29,7 @@ import { EFIELD_TRANSLATOR_PROMPT } from './efieldTranslatorPrompt.js';
 import { AC_TRANSLATOR_PROMPT } from './acTranslatorPrompt.js';
 import { GASHEAT_TRANSLATOR_PROMPT } from './gasHeatTranslatorPrompt.js';
 import { CHEM_TRANSLATOR_PROMPT } from './chemTranslatorPrompt.js';
-import { postcheckPhysics, postcheckChem } from './planPostcheck.js';
+import { postcheckPhysics, postcheckChem, postcheckEfield } from './planPostcheck.js';
 
 const { runChem, ChemPlanSchema } = chem; // chem là namespace export của bundle
 
@@ -124,7 +124,7 @@ const PHYSICS_CHAPTERS = {
   circuit: { label: 'mạch điện', schema: CircuitPlanSchema, run: runCircuit, prompt: CIRCUIT_TRANSLATOR_PROMPT, scene: sceneCircuit, postcheck: NO_POSTCHECK },
   oscillation: { label: 'dao động', schema: OscillationPlanSchema, run: runOscillation, prompt: OSCILLATION_TRANSLATOR_PROMPT, scene: sceneMotion, postcheck: NO_POSTCHECK },
   waves: { label: 'sóng cơ', schema: WavePlanSchema, run: runWaves, prompt: WAVES_TRANSLATOR_PROMPT, scene: sceneMotion, postcheck: NO_POSTCHECK },
-  efield: { label: 'điện trường', schema: EFieldPlanSchema, run: runEfield, prompt: EFIELD_TRANSLATOR_PROMPT, scene: sceneMotion, postcheck: NO_POSTCHECK },
+  efield: { label: 'điện trường', schema: EFieldPlanSchema, run: runEfield, prompt: EFIELD_TRANSLATOR_PROMPT, scene: sceneMotion, postcheck: postcheckEfield },
   ac: { label: 'điện xoay chiều', schema: AcPlanSchema, run: runAcCircuit, prompt: AC_TRANSLATOR_PROMPT, scene: sceneMotion, postcheck: NO_POSTCHECK },
   gasHeat: { label: 'khí & nhiệt', schema: GasHeatPlanSchema, run: runGasHeat, prompt: GASHEAT_TRANSLATOR_PROMPT, scene: sceneMotion, postcheck: NO_POSTCHECK },
 };

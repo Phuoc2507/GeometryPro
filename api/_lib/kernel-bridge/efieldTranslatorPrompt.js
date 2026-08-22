@@ -14,7 +14,7 @@ export const EFIELD_TRANSLATOR_PROMPT = `Bạn là bộ DỊCH đề ĐIỆN TR�
     · q = 4·10⁻⁹ C ⇒ { "value": 4, "unit": "nC" }
     · q = 4·10⁻⁸ C ⇒ { "value": 40, "unit": "nC" }   (= 40·10⁻⁹; KHÔNG khai { "value": 4e-8, "unit": "C" })
     · q = −6·10⁻⁹ C ⇒ { "value": -6, "unit": "nC" }   (điện tích ÂM ⇒ value MANG DẤU trừ)
-- KHOẢNG CÁCH & TOẠ ĐỘ: đặt "units":{"length":<cm|mm|m>} theo đơn vị đề dùng nhiều nhất, rồi khai toạ độ / khoảng cách bằng CON SỐ theo đơn vị đó (đề "cách nhau 3 cm" ⇒ units cm, đặt hai điện tích tại [0,0] và [3,0]). Engine tự đổi ra mét EXACT. Chỉ cần khai TOẠ ĐỘ điểm — engine tự tính r² = Δx² + Δy²; ĐỪNG tự tính khoảng cách.
+- ⚠️ KHOẢNG CÁCH & TOẠ ĐỘ — BẮT BUỘC khai đúng (đề "cm" ⇒ units "cm"; BỎ TRỐNG = mặc định "m" → tọa độ sai ~10⁴ lần, hậu-kiểm sẽ TỪ CHỐI): đặt "units":{"length":<cm|mm|m>} theo đơn vị đề dùng nhiều nhất, rồi khai toạ độ / khoảng cách bằng CON SỐ theo đơn vị đó (đề "cách nhau 3 cm" ⇒ units cm, đặt hai điện tích tại [0,0] và [3,0]). Engine tự đổi ra mét EXACT. Chỉ cần khai TOẠ ĐỘ điểm — engine tự tính r² = Δx² + Δy²; ĐỪNG tự tính khoảng cách.
 - Hằng số k, môi trường: k mặc định 9·10⁹ (không khai). Chân không / không khí ⇒ bỏ "epsilon" (mặc định 1). Đề nói "trong dầu ε = 2" ⇒ "epsilon": 2 (engine dùng k/ε).
 - g (bài cân bằng): chép từ đề ("g = 10" ⇒ g:10; "g = 9,8" ⇒ g:9.8). Mặc định 10 nếu đề không ghi.
 

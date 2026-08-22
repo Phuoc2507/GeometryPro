@@ -167,6 +167,32 @@ export function postcheckPhysics(problemText, plan) {
   return { ok: true, warnings };
 }
 
+// ── ĐIỆN TRƯỜNG — đối chiếu ĐƠN VỊ TỌA ĐỘ (phát hiện qua smoke test 22/08) ─────────
+// Tọa độ điện trường (point_charge.at, field_at.at, coulomb_force giữa 2 điện tích) tính theo
+// plan.units.length (mặc định 'm'). Đề Lý 11 điện trường ở VN gần như luôn CM → nếu bộ dịch QUÊN
+// khai units.length='cm', engine hiểu tọa độ theo MÉT → đáp SAI ~10⁴ lần mà vẫn ok:true (đúng loại
+// "sai âm thầm" dự án thề chặn). Hậu-kiểm: đề có khoảng cách cm/mm mà plan để hệ nền khác ⇒ REJECT.
+// CHỈ áp khi tọa độ THỰC SỰ tham gia (query dùng `at`, hoặc coulomb_force dùng vị trí 2 điện tích).
+// KHÔNG áp cho field_symmetric (dùng r = Dist có đơn vị RIÊNG, không đọc tọa độ) — tránh từ chối oan.
+const EF_CM_RE = /\d[\d.,]*\s*cm\b/i;  // "3 cm" | "3cm" | "0,5 cm" — số ĐỨNG NGAY trước cm (không dính "V/cm")
+const EF_MM_RE = /\d[\d.,]*\s*mm\b/i;
+export function postcheckEfield(problemText, plan) {
+  const t = norm(problemText);
+  const lenU = (plan && plan.units && plan.units.length) || 'm';
+  const queries = (plan && plan.queries) || [];
+  const coordsInPlay = queries.some(
+    (q) => q && (Object.prototype.hasOwnProperty.call(q, 'at') || q.kind === 'coulomb_force'),
+  );
+  if (!coordsInPlay) return { ok: true, warnings: [] };
+  if (EF_MM_RE.test(t) && lenU !== 'mm') {
+    return { ok: false, reason: `Đề dùng mm cho khoảng cách nhưng plan để hệ nền '${lenU}' — tọa độ điện tích bị hiểu sai đơn vị. Khai units.length='mm'.` };
+  }
+  if (EF_CM_RE.test(t) && lenU !== 'cm') {
+    return { ok: false, reason: `Đề dùng cm cho khoảng cách nhưng plan để hệ nền '${lenU}' — tọa độ điện tích bị hiểu sai đơn vị (~10⁴ lần). Khai units.length='cm'.` };
+  }
+  return { ok: true, warnings: [] };
+}
+
 // Điểm vào chung theo môn (tiện cho solveSubject nối 1 chỗ).
 export function postcheckPlan(subject, problemText, plan) {
   if (subject === 'physics') return postcheckPhysics(problemText, plan);
