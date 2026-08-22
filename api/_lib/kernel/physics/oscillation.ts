@@ -13,7 +13,7 @@ import {
 import { scalarFromNumber } from './kinematics';
 import { recognizeConstant } from '../analysis/recognize';
 import {
-  type PiScalar, approxP, isZeroPi, mulP, divP, addP, subP, sqrtP, negP, scalarToPi, TWO_PI, cosP, sinP,
+  type PiScalar, type PiRatInput, approxP, isZeroPi, mulP, divP, addP, subP, sqrtP, negP, scalarToPi, TWO_PI, cosP, sinP,
   displayPiScalar, certifyPiScalar, toPiScalar,
 } from './piScalar';
 import type { OscillatorOpT, OscQuery } from './oscillationSchema';
@@ -482,13 +482,16 @@ export function computeOscQuery(solved: Solved, q: OscQuery, base: BaseLen): Que
     case 'energy_potential_at':
     case 'energy_kinetic_at': {
       const A = reqA(); if (A === null) return { ok: false, problem: `cần biên độ A của "${m.name}"` };
-      // li độ x tại điểm khai (x trực tiếp hoặc từ t)
+      // li độ x tại điểm khai (x trực tiếp hoặc từ t). Union {x}|{t} — dưới strictNullChecks:false, `in`
+      // KHÔNG narrow (cả hai nhánh optional ⇒ {}); cast tường minh rồi phân nhánh theo undefined.
+      const at = q.at as { x?: number; t?: PiRatInput };
       let xLen: Scalar; let xn: number;
-      if ('x' in q.at) { xLen = scalarFromNumber(q.at.x); xn = q.at.x; }
+      if (at.x !== undefined) { xLen = scalarFromNumber(at.x); xn = at.x; }
       else {
         const e = needAW() || needPhase(); if (e) return { ok: false, problem: e };
-        const pha = phaseAt(m, toPiScalar(q.at.t));
-        xLen = mul(A, cosP(pha)); xn = evalXn(A.approx, approxP(m.omega as PiScalar), approxP(m.phi as PiScalar), approxP(toPiScalar(q.at.t)));
+        const tPi = toPiScalar(at.t as PiRatInput);
+        const pha = phaseAt(m, tPi);
+        xLen = mul(A, cosP(pha)); xn = evalXn(A.approx, approxP(m.omega as PiScalar), approxP(m.phi as PiScalar), approxP(tPi));
       }
       if (Math.abs(xn) > A.approx * (1 + 1e-9)) return { ok: false, problem: `|x| = ${Math.abs(xn)} > A = ${fmtNum(A.approx)}` };
       const Am = mul(A, cmToM(base));
