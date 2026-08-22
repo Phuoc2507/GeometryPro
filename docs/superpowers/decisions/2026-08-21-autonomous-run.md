@@ -140,6 +140,21 @@ Pipeline: spec (3 agent) → phản biện thiết kế (2 agent) → sửa spec
   trước khi code — xếp lịch sau khi chốt v0. Có 1 việc cần xác nhận đánh số
   R51-R58 giữa 2 đợt (agent tự ghi là giả định).
 
+- **D22 · [NGƯỜI DÙNG, sáng 22/08] Nối 2 engine vào app — KHÔNG trừ credit.**
+  Tính năng Lý/Hóa chạy ẩn (chỉ người dùng biết cách kích hoạt bằng cách dán đề
+  Lý/Hóa). Chấp nhận rủi ro F1 (thiếu quota) CÓ CHỦ ĐÍCH. Cơ chế tôi chọn để an
+  toàn tối thiểu mà vẫn miễn phí: route mới YÊU CẦU đăng nhập (auth) nhưng KHÔNG
+  charge credit/quota — chặn spam ẩn danh, miễn phí cho người đăng nhập. (Nêu
+  lại với người dùng; đổi được nếu họ muốn mở cả cho khách.)
+- **D23 · Tự nhận diện môn, KHÔNG làm UI chọn.** Vẫn ô gửi đề như hiện tại;
+  prefilter từ khóa tất định (Hóa: "phản ứng/dung dịch/mol/gam/..."; Lý:
+  "vận tốc/gia tốc/m/s/ném/...") bắt đề Lý/Hóa TRƯỚC — chỉ khi bắt được mới đi
+  route mới, còn lại luồng Toán y nguyên (không thêm độ trễ, theo F17). Đề Lý/
+  Hóa → "chỗ mô phỏng khác": Lý tái dùng canvas + timeline (agents đã render
+  được); Hóa cần renderer ChemScene mới (2D overlay, phán quyết C9).
+- **D24 · Thứ tự code chương lớp 11-12 (người dùng duyệt theo đề xuất):**
+  mạch điện → động lực học → dao động. R51-R58 và opus 4.8: người dùng OK.
+
 ## Quyết định chờ ghi tiếp (sẽ bổ sung trong đêm)
 
 - Phân xử 5 điểm lệch giữa spec kiến trúc và spec Lý (theo khuyến nghị phản biện).
