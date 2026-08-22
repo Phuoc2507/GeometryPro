@@ -358,3 +358,30 @@ thêm `.vercelignore` loại đúng `api/analyze-geometry-v2.js` khỏi bản up
 **Vì sao chọn cách này (thay vì xoá / nâng Pro):** tối thiểu, đảo ngược được, không mất test/dev,
 không xoá code người khác tạo. Đúng tinh thần "bỏ route thừa NẾU CÓ" — v2 thừa Ở PRODUCTION nhưng
 vẫn hữu ích cho dev/test nên chỉ loại khỏi deploy, không xoá hẳn.
+
+## D41 — main chạy trước 27 commit → xung đột merge PR #34, đã giải + hợp nhất
+
+**Bối cảnh:** Trong lúc theo dõi, PR #34 chuyển `mergeable_state: dirty` (XUNG ĐỘT) vì
+`main` đã tiến 27 commit kể từ merge-base (UX wave 2–4, gộp Advance vào Vẽ kỹ, referral,
+kernel `relative_position` điểm–đường/điểm–mặt, admin, và **tự giảm 15→12 functions**).
+
+**Việc đã làm (tự quyết — đúng luật "PR mình mở thì mình lo tới xanh/mergeable"):**
+- Merge `origin/main` vào nhánh. Chỉ 2 xung đột:
+  1. `src/components/DropZone.tsx` — xung đột NGỮ NGHĨA: nhánh thêm nhận diện môn Lý/Hóa
+     (→ `/simulate`) VÀ dùng `drawMode==='advance'`; main đã BỎ hẳn chế độ advance
+     (`DrawMode = quick|detailed`, `context.analyzeAdvance` bị gỡ). Giải: GIỮ nhận diện
+     môn, ĐỒNG THỜI theo main bỏ nhánh advance → chỉ `queueAnalyzeText(trimmed, drawMode)`.
+     (Không giữ advance vì sẽ lỗi biên dịch TS — literal & method không còn tồn tại.)
+  2. `server.js` — bỏ route/import `analyze-geometry-v2` (main đã xoá file), GIỮ
+     `analyze-problem` (Lý/Hóa).
+- Xoá `.vercelignore` (thừa): main tự xoá `analyze-geometry-v2.js` + gộp `test-apikey`
+  vào `/api/admin` ⇒ còn **11 functions ≤ 12**, không cần loại trừ thủ công nữa.
+- Regenerate `kernel-dist/index.mjs` bằng `build:kernel` để bundle phản ánh CẢ engine
+  Lý/Hóa (nhánh) LẪN `relative_position` mới (main) — không sửa tay bundle.
+
+**Nghiệm thu:** `npm run build` sạch; **1974/1974 test xanh (226 file)** — tăng từ 1964
+(test `relative` của main cộng vào, 0 hồi quy). Merge commit `206119d`, đã push.
+PR `dirty → unstable` (hết xung đột; chỉ còn chờ Vercel deploy lại trên commit merge).
+
+**Vì sao đáng ghi:** đây là lần đầu nhánh nuốt trọn các thay đổi lớn của main giữa chừng;
+tính năng Lý/Hóa vẫn nguyên vẹn sau khi main gỡ chế độ advance — cần biết khi review sáng.
