@@ -204,6 +204,37 @@ Pipeline: spec (3 agent) → phản biện thiết kế (2 agent) → sửa spec
   Sau phản biện waves/efield → code chúng. Nhắc: mạch điện/động lực/dao động
   vẫn CHƯA nối route (task nối-app còn nợ, làm sau khi phủ thêm).
 
+- **D32 · [TỰ QUYẾT] TRẢ NỢ nối engine vào route — dispatch theo CHƯƠNG (3bf7eba).**
+  Lý do tự quyết: 3 engine (mạch điện/động lực/dao động) đã build+test nhưng route
+  chỉ tới kinematics → "thế mạnh" build ra mà KHÔNG dùng được = làm thừa (đúng thứ
+  bạn dặn tránh). Nên nối trước khi code thêm chương. Kiến trúc chọn:
+  (1) `physicsChapterClassifier.js` — prefilter TẤT ĐỊNH cấp 2 (đề physics → chương
+      nào), MẶC ĐỊNH an toàn 'kinematics'; nhận nhầm chương ⇒ engine chương kia
+      ABSTAIN (không bịa), sai lầm tệ nhất chỉ "từ chối bài giải được".
+  (2) `solveSubject.js` — đăng ký chương {schema, run, prompt, scene, postcheck};
+      `solvePhysicsPlan` AUTO-NHẬN chương từ hình dạng plan (4 schema rời nhau) rồi
+      dispatch đúng engine; scene chuẩn hoá theo chương (motion vs circuit-có-bảng).
+  (3) kernel/index.ts export 3 run + 3 schema; rebuild bundle. Toàn suite 1718 XANH.
+  QUYẾT ĐỊNH AN TOÀN: commit này KHÔNG đổi định tuyến người dùng — subjectClassifier
+  GIỮ NGUYÊN (circuit/dao động/động lực vẫn rơi geometry→Toán), prompt 3 chương = null
+  (ABSTAIN rõ). Chỉ khi bộ dịch (prompt) từng chương viết + tự-kiểm xong tôi mới MỞ
+  từ khóa vào subjectClassifier — tránh trạng thái nửa-vời (route sang physics rồi
+  abstain, tệ hơn để Toán LLM trả lời). Frontend KHÔNG cần sửa: SimulationView luôn
+  hiện AnswerPanel; dynamics/oscillation phát GeometryData nên PhysicsSceneView vẽ
+  được; circuit xuống nhẹ (đáp số + sơ đồ điểm/đường thô), renderer sơ đồ điện là
+  đánh bóng sau.
+
+- **D33 · [TỰ QUYẾT] Batch phủ thế mạnh vòng 2 (song song ≤5 agent).** Sau khi 3
+  phản biện spec mới về (khí-nhiệt 10/10 1CAO, hữu cơ 11/11 1CAO+4VỪA, điện xoay
+  chiều 10/10 0CAO — π-triệt-tiêu XÁC NHẬN đúng) và fix sóng/điện-trường xong (commit
+  78b9f48): thả (a) 3 agent viết BỘ DỊCH circuit/dynamics/oscillation (mọi ví dụ
+  BẮT BUỘC tự-kiểm qua `solvePhysicsPlan(plan,'<chương>')` = ok:true — hoàn tất D32
+  để người dùng dùng được); (b) 1 agent code SÓNG CƠ (spec chín nhất, đã fix) theo
+  TDD pack riêng. Kế tiếp: code điện trường + điện xoay chiều (đều đủ chín); còn
+  gas-heat + hữu cơ cần 1 vòng SỬA SPEC (mỗi cái 1 CAO + vài VỪA từ phản biện) TRƯỚC
+  khi code — H1 hữu cơ (match muối bằng atom-map) và H2 (ester sai SỐ âm thầm) là lỗi
+  đúng loại dự án thề chặn, phải bịt ở spec trước.
+
 ## Quyết định chờ ghi tiếp (sẽ bổ sung trong đêm)
 
 - Phân xử 5 điểm lệch giữa spec kiến trúc và spec Lý (theo khuyến nghị phản biện).
@@ -216,4 +247,10 @@ Pipeline: spec (3 agent) → phản biện thiết kế (2 agent) → sửa spec
 - 16:10–16:30Z — 6 tài liệu spec/plan hoàn thành, 4 commit (b483dab, 6ff6556,
   9652d3f, 45f868e), đã push.
 - 16:25Z — 2 agent phản biện thiết kế + 1 agent bộ đề vàng khởi chạy.
+- (22/08) ~09:10Z — vào phiên tiếp: 3 agent phản biện spec mới (khí-nhiệt/hữu cơ/
+  điện xoay chiều) + 1 agent fix spec sóng/điện-trường chạy song song.
+- ~09:19Z — TỰ LÀM D32: nối engine vào route (chapter classifier + dispatch), toàn
+  suite 1718 xanh, commit 3bf7eba.
+- ~09:26Z — 3 phản biện + fix sóng/điện-trường về hết; commit 78b9f48 (fix spec) +
+  8a10ed3 (3 review). Thả 3 agent viết bộ dịch + 1 agent code sóng cơ (D33).
 - (ghi tiếp theo tiến độ)
