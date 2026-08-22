@@ -11491,12 +11491,789 @@ function runOscillation(raw) {
   };
 }
 
+// api/_lib/kernel/physics/waveSchema.ts
+var Num6 = external_exports.number().finite();
+var Obj4 = external_exports.string().min(1);
+var LenUnit2 = external_exports.enum(["m", "cm"]);
+var SpeedUnit = external_exports.enum(["m/s", "cm/s"]);
+var Sci = external_exports.union([
+  Num6,
+  external_exports.object({ n: Num6, d: external_exports.number().int().positive().default(1), exp: external_exports.number().int().default(0) })
+]);
+function piRatPositive2(pr) {
+  return typeof pr === "number" ? pr > 0 : pr.n > 0;
+}
+var WaveOp = external_exports.object({
+  op: external_exports.literal("wave"),
+  name: Obj4,
+  A: Num6.positive().optional(),
+  // biên độ (units.length)
+  // NGUỒN TẦN SỐ (f/T π-tự-do; omega mang π khi đề cho pt "…cos(20πt−…)")
+  f: Num6.positive().optional(),
+  T: Num6.positive().optional(),
+  omega: PiRat.optional(),
+  // NGUỒN BƯỚC SÓNG / TỐC ĐỘ
+  lambda: Num6.positive().optional(),
+  speed: Num6.positive().optional(),
+  speedUnit: SpeedUnit.optional(),
+  spaceCoeff: PiRat.optional(),
+  // HỆ SỐ KHÔNG GIAN của pt = 2π/λ (vd πx/12 → {n:1,d:12,pi:true})
+  // PHA & CHIỀU
+  phi: PiRat.optional(),
+  direction: external_exports.enum(["+x", "-x"]).default("+x")
+  // pt u=Acos(ωt − 2πx/λ + φ) ⇒ '+x'; dấu '+' số hạng x ⇒ '-x'
+});
+var SoundSourceOp = external_exports.object({
+  op: external_exports.literal("sound_source"),
+  name: Obj4,
+  I0: Sci.default({ n: 1, exp: -12 }),
+  // cường độ âm chuẩn (W/m²) — mặc định 10⁻¹²
+  power: Sci.optional(),
+  // công suất P (W) ⇒ nguồn điểm đẳng hướng, I(r) = P/(4πr²)
+  intensity: external_exports.object({ I: Sci, atDistance: Num6.positive().optional(), rUnit: LenUnit2.optional() }).optional(),
+  level: external_exports.object({ L: Num6, atDistance: Num6.positive().optional(), rUnit: LenUnit2.optional() }).optional()
+});
+var WaveQuerySchema = external_exports.discriminatedUnion("kind", [
+  // — đại lượng sóng —
+  external_exports.object({ kind: external_exports.literal("speed"), of: Obj4, unit: SpeedUnit.optional(), label: external_exports.string().optional() }),
+  external_exports.object({ kind: external_exports.literal("wavelength"), of: Obj4, label: external_exports.string().optional() }),
+  external_exports.object({ kind: external_exports.literal("frequency"), of: Obj4, label: external_exports.string().optional() }),
+  external_exports.object({ kind: external_exports.literal("period"), of: Obj4, label: external_exports.string().optional() }),
+  // — phương trình sóng —
+  external_exports.object({ kind: external_exports.literal("displacement_at"), of: Obj4, x: Num6, t: PiRat, label: external_exports.string().optional() }),
+  // — độ lệch pha (d ≥ 0, units.length) —
+  external_exports.object({ kind: external_exports.literal("phase_difference"), of: Obj4, d: Num6.nonnegative(), label: external_exports.string().optional() }),
+  // — giao thoa 2 nguồn cùng pha —
+  external_exports.object({ kind: external_exports.literal("interference_count"), of: Obj4, separation: Num6.positive(), kind2: external_exports.enum(["max", "min"]), label: external_exports.string().optional() }),
+  external_exports.object({ kind: external_exports.literal("interference_point"), of: Obj4, d1: Num6.nonnegative(), d2: Num6.nonnegative(), label: external_exports.string().optional() }),
+  // — sóng dừng (boundary: hai đầu cố định | một đầu tự do) —
+  external_exports.object({ kind: external_exports.literal("standing_antinodes"), of: Obj4, length: Num6.positive(), boundary: external_exports.enum(["two-fixed", "one-free"]).default("two-fixed"), loops: external_exports.number().int().positive().optional(), label: external_exports.string().optional() }),
+  external_exports.object({ kind: external_exports.literal("standing_nodes"), of: Obj4, length: Num6.positive(), boundary: external_exports.enum(["two-fixed", "one-free"]).default("two-fixed"), loops: external_exports.number().int().positive().optional(), label: external_exports.string().optional() }),
+  external_exports.object({ kind: external_exports.literal("standing_wavelength"), of: Obj4, length: Num6.positive(), boundary: external_exports.enum(["two-fixed", "one-free"]).default("two-fixed"), loops: external_exports.number().int().positive(), label: external_exports.string().optional() }),
+  external_exports.object({ kind: external_exports.literal("standing_frequency"), of: Obj4, length: Num6.positive(), boundary: external_exports.enum(["two-fixed", "one-free"]).default("two-fixed"), loops: external_exports.number().int().positive(), label: external_exports.string().optional() }),
+  external_exports.object({ kind: external_exports.literal("standing_min_frequency"), of: Obj4, length: Num6.positive(), boundary: external_exports.enum(["two-fixed", "one-free"]).default("two-fixed"), label: external_exports.string().optional() }),
+  // — sóng âm —
+  external_exports.object({ kind: external_exports.literal("sound_intensity"), of: Obj4, atDistance: Num6.positive().optional(), rUnit: LenUnit2.optional(), label: external_exports.string().optional() }),
+  external_exports.object({ kind: external_exports.literal("sound_level"), of: Obj4, atDistance: Num6.positive().optional(), rUnit: LenUnit2.optional(), label: external_exports.string().optional() }),
+  external_exports.object({ kind: external_exports.literal("sound_level_difference"), of: Obj4, fromDistance: Num6.positive(), toDistance: Num6.positive(), rUnit: LenUnit2.optional(), label: external_exports.string().optional() }),
+  external_exports.object({ kind: external_exports.literal("distance_for_level"), of: Obj4, level: Num6, rUnit: LenUnit2.optional(), label: external_exports.string().optional() })
+]);
+var WaveOpSchema = external_exports.discriminatedUnion("op", [WaveOp, SoundSourceOp]);
+var WavePlanSchema = external_exports.object({
+  problemName: external_exports.string().min(1).default("song"),
+  units: external_exports.object({ length: LenUnit2.default("m"), time: external_exports.literal("s").default("s") }).default({}),
+  ops: external_exports.array(WaveOpSchema).min(1),
+  queries: external_exports.array(WaveQuerySchema).min(1),
+  asserts: external_exports.array(external_exports.object({ query: WaveQuerySchema, equals: Num6, tol: Num6.positive().optional() })).default([]),
+  knowledgeTags: external_exports.array(external_exports.string()).default([])
+}).superRefine((plan, ctx) => {
+  const issue = (message) => ctx.addIssue({ code: external_exports.ZodIssueCode.custom, message });
+  const names = /* @__PURE__ */ new Set();
+  for (const op of plan.ops) {
+    if (names.has(op.name)) issue(`op "${op.name}" khai b\xE1o 2 l\u1EA7n`);
+    names.add(op.name);
+    if (op.op === "wave") {
+      if (op.omega !== void 0 && !piRatPositive2(op.omega)) issue(`t\u1EA7n s\u1ED1 g\xF3c \u03C9 c\u1EE7a "${op.name}" ph\u1EA3i d\u01B0\u01A1ng`);
+      if (op.spaceCoeff !== void 0 && !piRatPositive2(op.spaceCoeff)) issue(`h\u1EC7 s\u1ED1 kh\xF4ng gian (2\u03C0/\u03BB) c\u1EE7a "${op.name}" ph\u1EA3i d\u01B0\u01A1ng`);
+    } else {
+      const n = [op.power, op.intensity, op.level].filter((x) => x !== void 0).length;
+      if (n !== 1) issue(`ngu\u1ED3n \xE2m "${op.name}" c\u1EA7n \u0110\xDANG M\u1ED8T ngu\u1ED3n g\u1ED1c {power | intensity | level} (\u0111ang c\xF3 ${n})`);
+    }
+  }
+  for (const q of plan.queries) {
+    if ("of" in q && q.of !== void 0 && !names.has(q.of)) issue(`query ${q.kind} tr\u1ECF op "${q.of}" kh\xF4ng t\u1ED3n t\u1EA1i`);
+  }
+});
+
+// api/_lib/kernel/physics/waves.ts
+var EPS_SELF5 = 1e-6;
+var EPS0 = 1e-12;
+var PHYSICAL_VIOLATIONS3 = /* @__PURE__ */ new Set(["nguon-du-lech", "khong-song-dung", "lambda-vo-ti"]);
+var piToScalar2 = (p2) => p2.k === 0 ? p2.s : num(approxP(p2));
+var ROOT10 = fromExact(makeExact(1n, 1n, 10));
+function fmtNum9(x) {
+  if (!Number.isFinite(x)) return "(l\u1ED7i)";
+  if (x !== 0 && Math.abs(x) < 1e-3) return parseFloat(x.toPrecision(4)).toString();
+  const digits = Math.abs(x) >= 1e3 ? 2 : 4;
+  return parseFloat(x.toFixed(digits)).toString();
+}
+function mkAnsS2(kind, s, floatRef, unit, label) {
+  const tol = 1e-6 * Math.max(1, Math.abs(floatRef));
+  if (s.exact !== null && Math.abs(exactToApprox(s.exact) - floatRef) <= tol) {
+    return { label, kind, text: displayScalar(s), approx: exactToApprox(s.exact), unit, approximate: false };
+  }
+  const nice = Number.isFinite(floatRef) ? recognizeConstant(floatRef) : null;
+  return { label, kind, text: nice ? nice.text : fmtNum9(floatRef), approx: floatRef, unit, approximate: !nice };
+}
+function mkAnsCert(kind, s, floatRef, unit, label) {
+  const c = certifyScalar(kind, s, floatRef);
+  return { label, kind, text: c.text, approx: c.approx, unit, approximate: c.approximate };
+}
+function mkAnsP2(kind, p2, floatRef, unit, label) {
+  const c = certifyPiScalar(p2, floatRef);
+  return { label, kind, text: c.text, approx: c.approx, unit, approximate: c.approximate };
+}
+function mkAnsInt(kind, n, label) {
+  return { label, kind, text: String(n), approx: n, unit: "", approximate: false };
+}
+function lenFactor2(from, to) {
+  if (from === to) return rat(1n);
+  return from === "cm" && to === "m" ? rat(1n, 100n) : rat(100n);
+}
+function speedToBase(v, unit, base) {
+  const from = unit === "m/s" ? "m" : unit === "cm/s" ? "cm" : base;
+  return mul(scalarFromNumber(v), lenFactor2(from, base));
+}
+function metersOf(value, rUnit, base) {
+  const from = rUnit ?? base;
+  return from === "cm" ? mul(scalarFromNumber(value), rat(1n, 100n)) : scalarFromNumber(value);
+}
+function sciToScalar(sci) {
+  if (typeof sci === "number") return scalarFromNumber(sci);
+  const d = sci.d ?? 1;
+  const exp = sci.exp ?? 0;
+  const base = scalarFromNumber(sci.n);
+  const p10 = pow10Scalar(exp);
+  return div(mul(base, p10), rat(BigInt(d)));
+}
+function pow10Scalar(e) {
+  const p2 = 10n ** BigInt(Math.abs(e));
+  return e >= 0 ? fromExact(makeExact(p2, 1n)) : fromExact(makeExact(1n, p2));
+}
+function pow10Exp(x) {
+  if (x <= 0n) return null;
+  let n = 0n;
+  let v = x;
+  while (v % 10n === 0n) {
+    v /= 10n;
+    n++;
+  }
+  return v === 1n ? n : null;
+}
+function log10Exact(ratio) {
+  const e = ratio.exact;
+  if (e === null) return null;
+  if (e.radicand === 1) {
+    if (e.den === 1n) {
+      const n = pow10Exp(e.num);
+      return n === null ? null : fromExact(makeExact(n, 1n));
+    }
+    if (e.num === 1n) {
+      const n = pow10Exp(e.den);
+      return n === null ? null : fromExact(makeExact(-n, 1n));
+    }
+    return null;
+  }
+  if (e.radicand === 10) {
+    if (e.den === 1n) {
+      const n = pow10Exp(e.num);
+      return n === null ? null : fromExact(makeExact(2n * n + 1n, 2n));
+    }
+    if (e.num === 1n) {
+      const n = pow10Exp(e.den);
+      return n === null ? null : fromExact(makeExact(-2n * n + 1n, 2n));
+    }
+    return null;
+  }
+  return null;
+}
+function intensityFromLevel(L, I0) {
+  const tenth = L / 10;
+  if (Number.isInteger(tenth)) return { I: mul(I0, pow10Scalar(tenth)), exact: true };
+  if (Number.isInteger(L / 5)) {
+    const m = (L - 5) / 10;
+    return { I: mul(mul(I0, pow10Scalar(m)), ROOT10), exact: true };
+  }
+  return { I: num(I0.approx * Math.pow(10, tenth)), exact: false };
+}
+function scaleByPow10(rScal, exp, floatExp) {
+  const e = exp.exact;
+  if (e !== null && e.radicand === 1) {
+    if (e.den === 1n) return { v: mul(rScal, pow10BigScalar(e.num)), exact: true };
+    if (e.den === 2n) {
+      const half = (e.num - 1n) / 2n;
+      return { v: mul(mul(rScal, pow10BigScalar(half)), ROOT10), exact: true };
+    }
+  }
+  return { v: num(rScal.approx * Math.pow(10, floatExp)), exact: false };
+}
+function pow10BigScalar(e) {
+  const p2 = 10n ** (e < 0n ? -e : e);
+  return e >= 0n ? fromExact(makeExact(p2, 1n)) : fromExact(makeExact(1n, p2));
+}
+function floordivBig(a, b) {
+  const q = a / b, r2 = a % b;
+  return r2 !== 0n && a < 0n ? q - 1n : q;
+}
+function ceildivBig(a, b) {
+  const q = a / b, r2 = a % b;
+  return r2 !== 0n && a > 0n ? q + 1n : q;
+}
+function countIntOpen(loN, loD, hiN, hiD) {
+  const smin = floordivBig(loN, loD) + 1n;
+  const smax = ceildivBig(hiN, hiD) - 1n;
+  return smax >= smin ? Number(smax - smin + 1n) : 0;
+}
+function countIntOpenBrute(loN, loD, hiN, hiD) {
+  const smin = floordivBig(loN, loD) + 1n - 2n;
+  const smax = ceildivBig(hiN, hiD) - 1n + 2n;
+  let c = 0;
+  for (let k = smin; k <= smax; k++) if (loN < k * loD && k * hiD < hiN) c++;
+  return c;
+}
+function ratioBig(numer, denom) {
+  const r2 = div(numer, denom).exact;
+  if (r2 === null || r2.radicand !== 1) return null;
+  return { P: r2.num, Q: r2.den };
+}
+function resolveWaveModel(op, base) {
+  const checks = [];
+  const violations = [];
+  const errors = [];
+  const fSrc = [];
+  if (op.f !== void 0) fSrc.push({ name: "f", f: scalarFromNumber(op.f) });
+  if (op.T !== void 0) fSrc.push({ name: "T", f: div(rat(1n), scalarFromNumber(op.T)) });
+  if (op.omega !== void 0) fSrc.push({ name: "omega", f: piToScalar2(divP(toPiScalar(op.omega), TWO_PI)) });
+  let f = fSrc.length ? fSrc[0].f : null;
+  for (let i = 1; i < fSrc.length; i++) redundant(checks, violations, "f", fSrc[i].name, fSrc[0].name, fSrc[i].f.approx, f.approx);
+  const lSrc = [];
+  if (op.lambda !== void 0) lSrc.push({ name: "lambda", l: scalarFromNumber(op.lambda) });
+  if (op.spaceCoeff !== void 0) lSrc.push({ name: "spaceCoeff", l: piToScalar2(divP(TWO_PI, toPiScalar(op.spaceCoeff))) });
+  let lambda = lSrc.length ? lSrc[0].l : null;
+  for (let i = 1; i < lSrc.length; i++) redundant(checks, violations, "\u03BB", lSrc[i].name, lSrc[0].name, lSrc[i].l.approx, lambda.approx);
+  let v = op.speed !== void 0 ? speedToBase(op.speed, op.speedUnit, base) : null;
+  if (f && lambda && v) {
+    const vlf = mul(lambda, f);
+    const d = Math.abs(vlf.approx - v.approx);
+    const pass = d <= EPS_SELF5 * Math.max(1, Math.abs(v.approx));
+    checks.push({ kind: "v_redundant", detail: "ngu\u1ED3n d\u01B0 v = \u03BBf kh\u1EDBp", residual: d, pass });
+    if (!pass) violations.push({ id: "nguon-du-lech", message: `ngu\u1ED3n d\u01B0: v (${v.approx}) \u2260 \u03BBf (${vlf.approx}) \u2014 d\u1ECBch sai \u0111\u1EC1` });
+  }
+  if (f && lambda && !v) v = mul(lambda, f);
+  else if (f && v && !lambda) lambda = div(v, f);
+  else if (lambda && v && !f) f = div(v, lambda);
+  const T = f ? div(rat(1n), f) : op.T !== void 0 ? scalarFromNumber(op.T) : null;
+  const omega = op.omega !== void 0 ? toPiScalar(op.omega) : f ? mulP(TWO_PI, scalarToPi(f)) : null;
+  const spaceK = op.spaceCoeff !== void 0 ? toPiScalar(op.spaceCoeff) : lambda ? divP(TWO_PI, scalarToPi(lambda)) : null;
+  const phi = op.phi !== void 0 ? toPiScalar(op.phi) : null;
+  const dir = op.direction === "-x" ? -1 : 1;
+  const A = op.A !== void 0 ? scalarFromNumber(op.A) : null;
+  return { model: { name: op.name, A, f, T, lambda, v, omega, spaceK, phi, dir, op }, checks, violations, errors };
+}
+function redundant(checks, violations, q, nb, na, vb, va) {
+  const d = Math.abs(vb - va);
+  const pass = d <= EPS_SELF5 * Math.max(1, Math.abs(va));
+  checks.push({ kind: "rate_redundant", detail: `ngu\u1ED3n ${q} d\u01B0 "${nb}" kh\u1EDBp "${na}"`, residual: d, pass });
+  if (!pass) violations.push({ id: "nguon-du-lech", message: `ngu\u1ED3n ${q} "${nb}" (${vb.toFixed(4)}) l\u1EC7ch "${na}" (${va.toFixed(4)}) \u2014 d\u1ECBch sai \u0111\u1EC1` });
+}
+function resolveSoundModel(op, base) {
+  const I0 = sciToScalar(op.I0 ?? { n: 1, exp: -12 });
+  let power = null, Iref = null, rRef = null, levelRef = null;
+  const errors = [];
+  const checks = [];
+  if (op.power !== void 0) {
+    power = sciToScalar(op.power);
+  } else if (op.intensity !== void 0) {
+    Iref = sciToScalar(op.intensity.I);
+    rRef = op.intensity.atDistance !== void 0 ? metersOf(op.intensity.atDistance, op.intensity.rUnit, base) : null;
+    const cand = log10Exact(div(Iref, I0));
+    levelRef = cand ? mul(rat(10n), cand) : num(10 * Math.log10(Iref.approx / I0.approx));
+  } else if (op.level !== void 0) {
+    const r2 = intensityFromLevel(op.level.L, I0);
+    Iref = r2.I;
+    rRef = op.level.atDistance !== void 0 ? metersOf(op.level.atDistance, op.level.rUnit, base) : null;
+    levelRef = scalarFromNumber(op.level.L);
+  }
+  return { model: { name: op.name, I0, power, Iref, rRef, levelRef, op }, checks, violations: [], errors };
+}
+function intensityAt(m, r2) {
+  if (m.power) {
+    if (r2 === null) return { problem: `c\u1EA7n kho\u1EA3ng c\xE1ch (atDistance) cho ngu\u1ED3n c\xF4ng su\u1EA5t "${m.name}"` };
+    if (Math.abs(r2.approx) < EPS0) return { problem: `kho\u1EA3ng c\xE1ch = 0 cho ngu\u1ED3n "${m.name}"` };
+    const fourPi = { s: rat(4n), k: 1 };
+    const r22 = mul(r2, r2);
+    const I = divP(scalarToPi(m.power), mulP(fourPi, scalarToPi(r22)));
+    return { approx: approxP(I), exact: null, pi: I };
+  }
+  if (m.Iref) {
+    if (m.rRef !== null) {
+      const rr = r2 ?? m.rRef;
+      if (Math.abs(rr.approx) < EPS0) return { problem: `kho\u1EA3ng c\xE1ch = 0 cho ngu\u1ED3n "${m.name}"` };
+      const ratioR = div(m.rRef, rr);
+      const I = mul(m.Iref, mul(ratioR, ratioR));
+      return { approx: I.approx, exact: I, pi: null };
+    }
+    return { approx: m.Iref.approx, exact: m.Iref, pi: null };
+  }
+  return { problem: `ngu\u1ED3n \xE2m "${m.name}" thi\u1EBFu d\u1EEF ki\u1EC7n c\u01B0\u1EDDng \u0111\u1ED9/c\xF4ng su\u1EA5t/m\u1EE9c` };
+}
+function levelOf(m, iv, label) {
+  const floatRatio = iv.approx / m.I0.approx;
+  const floatRef = 10 * Math.log10(floatRatio);
+  const checks = [];
+  let L;
+  if (iv.exact !== null) {
+    const ratio = div(iv.exact, m.I0);
+    const cand = log10Exact(ratio);
+    L = cand ? mul(rat(10n), cand) : num(floatRef);
+    checks.push({ kind: "sound_level", detail: cand ? "I/I\u2080 l\u0169y th\u1EEBa \u221A10 \u21D2 L exact" : "I/I\u2080 kh\xF4ng l\u0169y th\u1EEBa 10 \u21D2 L s\u1ED1", residual: 0, pass: true });
+  } else {
+    L = num(floatRef);
+    checks.push({ kind: "sound_level", detail: "ngu\u1ED3n c\xF4ng su\u1EA5t (\u03C0 trong t\u1EC9 s\u1ED1) \u21D2 L s\u1ED1", residual: 0, pass: true });
+  }
+  const back = Math.pow(10, floatRef / 10);
+  checks.push({ kind: "sound_level_inverse", detail: "10^(L/10) = I/I\u2080", residual: Math.abs(back - floatRatio), pass: Math.abs(back - floatRatio) <= EPS_SELF5 * Math.max(1, floatRatio) });
+  return { ok: true, answer: mkAnsCert("sound_level", L, floatRef, "dB", label), checks };
+}
+function computeWaveQuery(solved, q, base) {
+  const m = solved.model;
+  switch (q.kind) {
+    case "speed": {
+      if (m.v === null) return { ok: false, problem: `c\u1EA7n t\u1ED1c \u0111\u1ED9 v c\u1EE7a "${m.name}" \u2014 \u0111\u1EC1 thi\u1EBFu d\u1EEF ki\u1EC7n ho\u1EB7c d\u1ECBch thi\u1EBFu` };
+      const o = q.unit ? outSpeed(base, q.unit) : { factor: rat(1n), unit: `${base}/s` };
+      const v = mul(m.v, o.factor);
+      const checks = [];
+      if (m.lambda && m.f) {
+        const vlf = mul(m.lambda, m.f);
+        checks.push({ kind: "v_lambda_f", detail: "v = \u03BBf", residual: Math.abs(vlf.approx - m.v.approx), pass: Math.abs(vlf.approx - m.v.approx) <= EPS_SELF5 * Math.max(1, m.v.approx) });
+      }
+      return { ok: true, answer: mkAnsS2("speed", v, v.approx, o.unit, q.label), checks };
+    }
+    case "wavelength": {
+      if (m.lambda === null) return { ok: false, problem: `c\u1EA7n b\u01B0\u1EDBc s\xF3ng \u03BB c\u1EE7a "${m.name}" \u2014 \u0111\u1EC1 thi\u1EBFu d\u1EEF ki\u1EC7n ho\u1EB7c d\u1ECBch thi\u1EBFu` };
+      const checks = [];
+      if (m.v && m.f) {
+        const lvf = div(m.v, m.f);
+        checks.push({ kind: "lambda_v_f", detail: "\u03BB = v/f", residual: Math.abs(lvf.approx - m.lambda.approx), pass: Math.abs(lvf.approx - m.lambda.approx) <= EPS_SELF5 * Math.max(1, m.lambda.approx) });
+      }
+      return { ok: true, answer: mkAnsS2("wavelength", m.lambda, m.lambda.approx, base, q.label), checks };
+    }
+    case "frequency": {
+      if (m.f === null) return { ok: false, problem: `c\u1EA7n t\u1EA7n s\u1ED1 f c\u1EE7a "${m.name}" \u2014 \u0111\u1EC1 thi\u1EBFu d\u1EEF ki\u1EC7n ho\u1EB7c d\u1ECBch thi\u1EBFu` };
+      return { ok: true, answer: mkAnsS2("frequency", m.f, m.f.approx, "Hz", q.label), checks: [] };
+    }
+    case "period": {
+      if (m.T === null) return { ok: false, problem: `c\u1EA7n chu k\u1EF3 T (ho\u1EB7c f) c\u1EE7a "${m.name}"` };
+      const checks = [];
+      if (m.f) {
+        const p2 = mul(m.T, m.f);
+        checks.push({ kind: "period_freq", detail: "T\xB7f = 1", residual: Math.abs(p2.approx - 1), pass: Math.abs(p2.approx - 1) <= EPS_SELF5 });
+      }
+      return { ok: true, answer: mkAnsS2("period", m.T, m.T.approx, "s", q.label), checks, tSolved: m.T.approx };
+    }
+    case "displacement_at": {
+      if (m.A === null) return { ok: false, problem: `c\u1EA7n bi\xEAn \u0111\u1ED9 A c\u1EE7a "${m.name}"` };
+      if (m.omega === null || m.spaceK === null) return { ok: false, problem: `c\u1EA7n \u03C9 v\xE0 h\u1EC7 s\u1ED1 kh\xF4ng gian (\u03BB) c\u1EE7a "${m.name}" \u0111\u1EC3 t\xEDnh li \u0111\u1ED9` };
+      const phi = m.phi ?? { s: rat(0n), k: 0 };
+      const tPi = toPiScalar(q.t);
+      const pha = phaseOf(m, q.x, tPi, phi);
+      const u = mul(m.A, cosP(pha));
+      const An = m.A.approx, phaN = approxP(pha);
+      const un = An * Math.cos(phaN);
+      const checks = [{ kind: "u_bound", detail: "|u| \u2264 A", residual: Math.max(0, Math.abs(un) - An), pass: Math.abs(un) <= An * (1 + 1e-9) }];
+      return { ok: true, answer: mkAnsS2("displacement_at", u, un, base, q.label), checks, tSolved: approxP(tPi) };
+    }
+    case "phase_difference": {
+      if (m.spaceK === null) return { ok: false, problem: `c\u1EA7n b\u01B0\u1EDBc s\xF3ng \u03BB c\u1EE7a "${m.name}" \u0111\u1EC3 t\xEDnh \u0111\u1ED9 l\u1EC7ch pha` };
+      const dphi = mulP(m.spaceK, scalarToPi(scalarFromNumber(q.d)));
+      const checks = [];
+      if (m.lambda) {
+        const ref = 2 * Math.PI * q.d / m.lambda.approx;
+        checks.push({ kind: "phase_diff", detail: "\u0394\u03C6 = 2\u03C0d/\u03BB", residual: Math.abs(approxP(dphi) - ref), pass: Math.abs(approxP(dphi) - ref) <= EPS_SELF5 * Math.max(1, ref) });
+      }
+      return { ok: true, answer: mkAnsP2("phase_difference", dphi, approxP(dphi), "rad", q.label), checks };
+    }
+    case "interference_count": {
+      if (m.lambda === null) return { ok: false, problem: `c\u1EA7n b\u01B0\u1EDBc s\xF3ng \u03BB c\u1EE7a "${m.name}" \u0111\u1EC3 \u0111\u1EBFm giao thoa` };
+      const ab = ratioBig(scalarFromNumber(q.separation), m.lambda);
+      if (ab === null) {
+        solved.violations.push({ id: "lambda-vo-ti", message: `\u03BB v\xF4 t\u1EC9 \u2014 \u0111\u1EBFm giao thoa c\u1EA7n \u03BB h\u1EEFu t\u1EC9 ("${m.name}")` });
+        return { ok: false, problem: `\u03BB v\xF4 t\u1EC9 \u2014 kh\xF4ng \u0111\u1EBFm \u0111\u01B0\u1EE3c giao thoa exact` };
+      }
+      const { P, Q } = ab;
+      let n1, n2, kindTxt;
+      if (q.kind2 === "max") {
+        n1 = countIntOpen(-P, Q, P, Q);
+        n2 = countIntOpenBrute(-P, Q, P, Q);
+        kindTxt = "c\u1EF1c \u0111\u1EA1i";
+      } else {
+        n1 = countIntOpen(-(2n * P + Q), 2n * Q, 2n * P - Q, 2n * Q);
+        n2 = countIntOpenBrute(-(2n * P + Q), 2n * Q, 2n * P - Q, 2n * Q);
+        kindTxt = "c\u1EF1c ti\u1EC3u";
+      }
+      const pass = n1 === n2;
+      const checks = [{ kind: "interference_two_ways", detail: `giao thoa ${kindTxt}: c\xE1ch1=${n1}, c\xE1ch2=${n2}${pass ? ", kh\u1EDBp" : ", L\u1EC6CH"}`, residual: Math.abs(n1 - n2), pass }];
+      if (!pass) {
+        solved.violations.push({ id: "dem-lech", message: `\u0111\u1EBFm giao thoa hai c\xE1ch l\u1EC7ch (${n1} vs ${n2})` });
+        return { ok: false, problem: `\u0111\u1EBFm giao thoa hai c\xE1ch l\u1EC7ch` };
+      }
+      return { ok: true, answer: mkAnsInt("interference_count", n1, q.label), checks };
+    }
+    case "interference_point": {
+      if (m.lambda === null) return { ok: false, problem: `c\u1EA7n b\u01B0\u1EDBc s\xF3ng \u03BB c\u1EE7a "${m.name}"` };
+      const delta = sub2(scalarFromNumber(q.d2), scalarFromNumber(q.d1));
+      const rr = div(delta, m.lambda).exact;
+      const rn = delta.approx / m.lambda.approx;
+      let text;
+      if (rr !== null && rr.radicand === 1) {
+        const numAbs = rr.num < 0n ? -rr.num : rr.num;
+        if (rr.den === 1n) text = `c\u1EF1c \u0111\u1EA1i b\u1EADc ${numAbs}`;
+        else if (rr.den === 2n && numAbs % 2n === 1n) text = `c\u1EF1c ti\u1EC3u (gi\u1EEFa b\u1EADc ${(numAbs - 1n) / 2n} v\xE0 ${(numAbs + 1n) / 2n})`;
+        else text = `kh\xF4ng ph\u1EA3i v\xE2n (r = ${displayScalar(fromExact(rr))})`;
+      } else text = `kh\xF4ng ph\u1EA3i v\xE2n (r \u2248 ${fmtNum9(rn)})`;
+      return { ok: true, answer: { label: q.label, kind: "interference_point", text, approx: Math.abs(rn), unit: "", approximate: rr === null }, checks: [] };
+    }
+    case "standing_antinodes":
+    case "standing_nodes": {
+      const k = standingK(m, q.length, q.boundary, q.loops, solved);
+      if (k === null) return { ok: false, problem: `kh\xF4ng x\xE1c \u0111\u1ECBnh \u0111\u01B0\u1EE3c s\u1ED1 b\xF3 s\xF3ng cho "${m.name}" (thi\u1EBFu \u03BB ho\u1EB7c \u03BB kh\xF4ng t\u1EA1o s\xF3ng d\u1EEBng \u1ED5n \u0111\u1ECBnh)` };
+      const antinodes = k, nodes = q.boundary === "one-free" ? k : k + 1;
+      const val = q.kind === "standing_antinodes" ? antinodes : nodes;
+      return { ok: true, answer: mkAnsInt(q.kind, val, q.label), checks: [{ kind: "standing_k", detail: `k = ${k} (${q.boundary})`, residual: 0, pass: true }] };
+    }
+    case "standing_wavelength": {
+      const l = scalarFromNumber(q.length), k = BigInt(q.loops);
+      const lam = q.boundary === "one-free" ? div(mul(rat(4n), l), fromExact(makeExact(2n * k - 1n, 1n))) : div(mul(rat(2n), l), fromExact(makeExact(k, 1n)));
+      return { ok: true, answer: mkAnsS2("standing_wavelength", lam, lam.approx, base, q.label), checks: [] };
+    }
+    case "standing_frequency": {
+      if (m.v === null) return { ok: false, problem: `c\u1EA7n t\u1ED1c \u0111\u1ED9 v c\u1EE7a "${m.name}" \u0111\u1EC3 t\xEDnh t\u1EA7n s\u1ED1 s\xF3ng d\u1EEBng` };
+      const l = scalarFromNumber(q.length), k = BigInt(q.loops);
+      const lam = q.boundary === "one-free" ? div(mul(rat(4n), l), fromExact(makeExact(2n * k - 1n, 1n))) : div(mul(rat(2n), l), fromExact(makeExact(k, 1n)));
+      const f = div(m.v, lam);
+      return { ok: true, answer: mkAnsS2("standing_frequency", f, f.approx, "Hz", q.label), checks: [{ kind: "standing_fv", detail: "f = v/\u03BB", residual: 0, pass: true }] };
+    }
+    case "standing_min_frequency": {
+      if (m.v === null) return { ok: false, problem: `c\u1EA7n t\u1ED1c \u0111\u1ED9 v c\u1EE7a "${m.name}" \u0111\u1EC3 t\xEDnh t\u1EA7n s\u1ED1 c\u01A1 b\u1EA3n` };
+      const l = scalarFromNumber(q.length);
+      const f1 = q.boundary === "one-free" ? div(m.v, mul(rat(4n), l)) : div(m.v, mul(rat(2n), l));
+      return { ok: true, answer: mkAnsS2("standing_min_frequency", f1, f1.approx, "Hz", q.label), checks: [] };
+    }
+  }
+  return { ok: false, problem: `query ${q.kind} kh\xF4ng \xE1p cho op s\xF3ng c\u01A1` };
+}
+function phaseOf(m, x, tPi, phi) {
+  const wt = mulP(m.omega, tPi);
+  const kx = mulP(m.spaceK, scalarToPi(scalarFromNumber(x)));
+  const dirKx = m.dir === 1 ? kx : negP(kx);
+  return addP(subP(wt, dirKx), phi);
+}
+function standingK(m, length2, boundary, loops, solved) {
+  if (loops !== void 0) return loops;
+  if (m.lambda === null) return null;
+  const l = scalarFromNumber(length2);
+  if (boundary === "two-fixed") {
+    const ratioE2 = div(mul(rat(2n), l), m.lambda).exact;
+    if (ratioE2 === null || ratioE2.radicand !== 1 || ratioE2.den !== 1n || ratioE2.num <= 0n) {
+      solved.violations.push({ id: "khong-song-dung", message: `2l/\u03BB kh\xF4ng nguy\xEAn d\u01B0\u01A1ng \u21D2 kh\xF4ng c\xF3 s\xF3ng d\u1EEBng \u1ED5n \u0111\u1ECBnh ("${m.name}")` });
+      return null;
+    }
+    return Number(ratioE2.num);
+  }
+  const ratioE = div(mul(rat(4n), l), m.lambda).exact;
+  if (ratioE === null || ratioE.radicand !== 1 || ratioE.den !== 1n || ratioE.num <= 0n || ratioE.num % 2n !== 1n) {
+    solved.violations.push({ id: "khong-song-dung", message: `4l/\u03BB kh\xF4ng nguy\xEAn l\u1EBB \u21D2 kh\xF4ng c\xF3 s\xF3ng d\u1EEBng m\u1ED9t-\u0111\u1EA7u-t\u1EF1-do \u1ED5n \u0111\u1ECBnh ("${m.name}")` });
+    return null;
+  }
+  return Number((ratioE.num + 1n) / 2n);
+}
+function outSpeed(base, unit) {
+  const nat = `${base}/s`;
+  if (unit === nat) return { factor: rat(1n), unit: nat };
+  const to = unit === "m/s" ? "m" : "cm";
+  return { factor: lenFactor2(base, to), unit };
+}
+function computeSoundQuery(solved, q, base) {
+  const m = solved.model;
+  switch (q.kind) {
+    case "sound_intensity": {
+      const r2 = q.atDistance !== void 0 ? metersOf(q.atDistance, q.rUnit, base) : null;
+      const iv = intensityAt(m, r2);
+      if ("problem" in iv) return { ok: false, problem: iv.problem };
+      const checks = [];
+      if (iv.pi) return { ok: true, answer: mkAnsP2("sound_intensity", iv.pi, iv.approx, "W/m\xB2", q.label), checks };
+      return { ok: true, answer: mkAnsS2("sound_intensity", iv.exact, iv.approx, "W/m\xB2", q.label), checks };
+    }
+    case "sound_level": {
+      const r2 = q.atDistance !== void 0 ? metersOf(q.atDistance, q.rUnit, base) : null;
+      const iv = intensityAt(m, r2);
+      if ("problem" in iv) return { ok: false, problem: iv.problem };
+      return levelOf(m, iv, q.label);
+    }
+    case "sound_level_difference": {
+      if (m.power === null && m.rRef === null) return { ok: false, problem: `c\u1EA7n ngu\u1ED3n \u0111i\u1EC3m (power ho\u1EB7c m\u1EE9c t\u1EA1i kho\u1EA3ng c\xE1ch) cho "${m.name}"` };
+      const rFrom = metersOf(q.fromDistance, q.rUnit, base), rTo = metersOf(q.toDistance, q.rUnit, base);
+      const ratioR = div(rFrom, rTo);
+      const ratioI = mul(ratioR, ratioR);
+      const cand = log10Exact(ratioI);
+      const floatRef = 10 * Math.log10(ratioI.approx);
+      const dL = cand ? mul(rat(10n), cand) : num(floatRef);
+      const checks = [{ kind: "level_diff", detail: "\u0394L = 20\xB7log\u2081\u2080(r_from/r_to)", residual: 0, pass: true }];
+      return { ok: true, answer: mkAnsCert("sound_level_difference", dL, floatRef, "dB", q.label), checks };
+    }
+    case "distance_for_level": {
+      if (m.levelRef === null || m.rRef === null) {
+        if (m.power !== null) return distanceFromPower(m, q.level, base, q.label);
+        return { ok: false, problem: `c\u1EA7n ngu\u1ED3n \u0111i\u1EC3m c\xF3 m\u1EE9c t\u1EA1i kho\u1EA3ng c\xE1ch cho "${m.name}"` };
+      }
+      const expScal = div(sub2(m.levelRef, scalarFromNumber(q.level)), rat(20n));
+      const floatExp = (m.levelRef.approx - q.level) / 20;
+      const scaled = scaleByPow10(m.rRef, expScal, floatExp);
+      const outFactor = base === "cm" ? rat(100n) : rat(1n);
+      const rOut = mul(scaled.v, outFactor);
+      const checks = [{ kind: "distance_level", detail: "r = rRef\xB710^((L_ref\u2212L)/20)", residual: 0, pass: true }];
+      return { ok: true, answer: mkAnsS2("distance_for_level", rOut, rOut.approx, base, q.label), checks };
+    }
+  }
+  return { ok: false, problem: `query ${q.kind} kh\xF4ng \xE1p cho op s\xF3ng \xE2m` };
+}
+function distanceFromPower(m, L, base, label) {
+  const denom = 4 * Math.PI * m.I0.approx * Math.pow(10, L / 10);
+  const rMeters = Math.sqrt(m.power.approx / denom);
+  const rOut = base === "cm" ? rMeters * 100 : rMeters;
+  return { ok: true, answer: { label, kind: "distance_for_level", text: fmtNum9(rOut), approx: rOut, unit: base, approximate: true }, checks: [{ kind: "distance_power", detail: "r = \u221A(P/(4\u03C0\xB7I\u2080\xB710^(L/10)))", residual: 0, pass: true }] };
+}
+var SOUND_KINDS = /* @__PURE__ */ new Set(["sound_intensity", "sound_level", "sound_level_difference", "distance_for_level"]);
+
+// api/_lib/kernel/physics/waveScene.ts
+var COLORS4 = ["#38BDF8", "#F472B6", "#4ADE80", "#FFA500"];
+var rnd3 = (n) => parseFloat(n.toFixed(6));
+var num92 = (x) => {
+  const s = parseFloat(x.toPrecision(12)).toString();
+  return s.includes("e") || s.includes("E") ? x.toFixed(9) : s;
+};
+function playbackOf4(tPhys, durationSec) {
+  if (durationSec) return { durationSec, timeScale: tPhys / durationSec };
+  if (tPhys >= 3 && tPhys <= 15) return { durationSec: tPhys, timeScale: 1 };
+  return { durationSec: 10, timeScale: tPhys / 10 };
+}
+function cosExpr2(A, wk, phaStatic) {
+  const p2 = num92(Math.abs(phaStatic));
+  const sign = phaStatic < 0 ? "-" : "+";
+  return `${num92(A)}*Math.cos(${num92(wk)}*t ${sign} ${p2})`;
+}
+function animatable(m) {
+  return m.A !== null && m.omega !== null && m.spaceK !== null && Number.isFinite(m.A.approx) && Number.isFinite(approxP(m.omega)) && Number.isFinite(approxP(m.spaceK)) && m.lambda !== null && Number.isFinite(m.lambda.approx) && m.lambda.approx > 0;
+}
+function buildWaveScene(problemName, base, waves, sounds, tPhys, durationSec) {
+  const playback = playbackOf4(tPhys, durationSec);
+  const k = playback.timeScale;
+  const points = [];
+  const lines = [];
+  const curves = [];
+  const agents = [];
+  const tracks = [];
+  let ci = 0;
+  for (const m of waves) {
+    const color = COLORS4[ci % COLORS4.length];
+    if (animatable(m)) {
+      const A = m.A.approx, lam = m.lambda.approx, wn = approxP(m.omega), phin = m.phi ? approxP(m.phi) : 0;
+      const spK = approxP(m.spaceK);
+      const samples = [];
+      for (let i = 0; i <= 64; i++) {
+        const x = 2 * lam * i / 64;
+        samples.push({ x: rnd3(x), y: rnd3(A * Math.cos(-m.dir * spK * x + phin)) });
+      }
+      curves.push({ id: `waveform_${m.name}`, type: "expr", plane: "xz", style: "solid", color, params: {}, samples });
+      const radius = Math.max(0.12, 0.02 * Math.max(1, 2 * A));
+      for (let j = 0; j <= 8; j++) {
+        const xj = rnd3(j * lam / 8);
+        const phaStatic = -m.dir * spK * xj + phin;
+        const z0 = rnd3(A * Math.cos(phaStatic));
+        const id = `p${j}_${m.name}`;
+        agents.push({ id, label: "", initialPosition: [xj, 0, z0], color, radius });
+        const zLand = rnd3(A * Math.cos(wn * tPhys + phaStatic));
+        tracks.push({
+          id: `mv_${id}`,
+          start: 0,
+          end: playback.durationSec,
+          type: "parametric_path",
+          targetId: id,
+          params: { equations: { x: num92(xj), y: "0", z: cosExpr2(A, wn * k, phaStatic) }, path: `phan tu song ${m.name}`, landing_point: [xj, 0, zLand], timeScale: k }
+        });
+      }
+    } else {
+      const span = m.lambda && Number.isFinite(m.lambda.approx) ? Math.max(1, 2 * m.lambda.approx) : 1;
+      points.push({ id: `O_${m.name}`, label: "", x: 0, y: 0, z: 0 });
+      points.push({ id: `E_${m.name}`, label: "", x: rnd3(span), y: 0, z: 0 });
+      lines.push({ id: `truc_${m.name}`, from: `O_${m.name}`, to: `E_${m.name}`, style: "solid", color: "#8B8B8B" });
+    }
+    ci++;
+  }
+  for (const s of sounds) {
+    points.push({ id: `src_${s.name}`, label: "", x: 0, y: 0, z: 0 });
+  }
+  if (points.length === 0 && agents.length === 0 && curves.length === 0) return { geometry: null, playback };
+  const geometry = {
+    name: problemName,
+    axisUnit: base,
+    tags: ["physics", "song", `timeScale:${num92(k)}`],
+    points,
+    lines,
+    curves,
+    agents,
+    timeline: { duration: playback.durationSec, tracks }
+  };
+  return { geometry, playback };
+}
+function buildWaveCharts(base, waves, tPhys) {
+  const ux = [];
+  const ut = [];
+  for (const m of waves) {
+    if (!animatable(m)) continue;
+    const A = m.A.approx, lam = m.lambda.approx, wn = approxP(m.omega), spK = approxP(m.spaceK), phin = m.phi ? approxP(m.phi) : 0;
+    const T = m.T && Number.isFinite(m.T.approx) ? m.T.approx : wn > 0 ? 2 * Math.PI / wn : 1;
+    const sx = [];
+    const st = [];
+    for (let i = 0; i <= 128; i++) {
+      const x = 2 * lam * i / 128;
+      sx.push([rnd3(x), rnd3(A * Math.cos(-m.dir * spK * x + phin))]);
+      const t = 2 * T * i / 128;
+      st.push([rnd3(t), rnd3(A * Math.cos(wn * t + phin))]);
+    }
+    ux.push({ name: m.name, samples: sx });
+    ut.push({ name: m.name, samples: st });
+  }
+  const out = [];
+  if (ux.length) out.push({ kind: "u_x", xUnit: base, yUnit: base, series: ux });
+  if (ut.length) out.push({ kind: "u_t", xUnit: "s", yUnit: base, series: ut });
+  return out;
+}
+
+// api/_lib/kernel/physics/runWaves.ts
+var TOL_ASSERT5 = 1e-3;
+var ZERO_PLAYBACK2 = { durationSec: 0, timeScale: 1 };
+function timeOfQuery2(q) {
+  if (q.kind === "displacement_at") return approxP(toPiScalar(q.t));
+  return null;
+}
+function runWaves(raw) {
+  const parsed = WavePlanSchema.safeParse(raw);
+  if (!parsed.success) {
+    const iss = parsed.error.issues[0];
+    const detail = iss ? `${iss.path.length ? `${iss.path.join(".")}: ` : ""}${iss.message}` : "schema";
+    return {
+      ok: false,
+      answers: [],
+      checks: [],
+      violations: [],
+      errors: [{ message: `Invalid wave plan: ${detail}` }],
+      geometry: null,
+      charts: [],
+      meta: { tPhys: 0, playback: ZERO_PLAYBACK2, unitsNote: "per-quantity", length: "m", models: [] }
+    };
+  }
+  const plan = parsed.data;
+  const base = plan.units.length;
+  const errors = [];
+  const checks = [];
+  const violations = [];
+  const answers = [];
+  let geometry = null;
+  let charts = [];
+  let playback = { ...ZERO_PLAYBACK2 };
+  let tPhys = 0;
+  const waveByName = /* @__PURE__ */ new Map();
+  const soundByName = /* @__PURE__ */ new Map();
+  try {
+    for (const op of plan.ops) {
+      if (op.op === "wave") {
+        const s = resolveWaveModel(op, base);
+        waveByName.set(op.name, s);
+        checks.push(...s.checks);
+        for (const e of s.errors) errors.push({ message: e.message });
+      } else {
+        const s = resolveSoundModel(op, base);
+        soundByName.set(op.name, s);
+        checks.push(...s.checks);
+        for (const e of s.errors) errors.push({ message: e.message });
+      }
+    }
+    for (const [qi, q] of plan.queries.entries()) {
+      const r2 = dispatchQuery(q, waveByName, soundByName, base);
+      if (r2.ok === false) {
+        errors.push({ message: `query ${q.kind}: ${r2.problem}` });
+        continue;
+      }
+      answers.push({ ...r2.answer, queryIndex: qi });
+      checks.push(...r2.checks);
+      for (const c of r2.checks) if (!c.pass) errors.push({ message: `t\u1EF1 ki\u1EC3m FAIL: ${c.detail} (residual ${c.residual.toExponential(2)})` });
+      if (r2.tSolved !== void 0 && Number.isFinite(r2.tSolved)) tPhys = Math.max(tPhys, r2.tSolved);
+    }
+    for (const s of waveByName.values()) if (s.model.T && Number.isFinite(s.model.T.approx)) tPhys = Math.max(tPhys, 2 * s.model.T.approx);
+    for (const q of plan.queries) {
+      const t = timeOfQuery2(q);
+      if (t !== null && Number.isFinite(t)) tPhys = Math.max(tPhys, t);
+    }
+    tPhys = tPhys > 1e-9 ? tPhys : 1;
+    for (const a of plan.asserts) {
+      const r2 = dispatchQuery(a.query, waveByName, soundByName, base);
+      if (r2.ok === false) {
+        errors.push({ message: `assert ${a.query.kind}: ${r2.problem}` });
+        continue;
+      }
+      const tol = (a.tol ?? TOL_ASSERT5) * Math.max(1, Math.abs(a.equals));
+      const delta = Math.abs(r2.answer.approx - a.equals);
+      if (delta > tol) violations.push({ assert: a.query.kind, expected: a.equals, got: r2.answer.approx, delta, message: `assert ${a.query.kind}: k\u1EF3 v\u1ECDng ${a.equals}, engine t\xEDnh ${r2.answer.approx}` });
+    }
+    for (const s of waveByName.values()) for (const v of s.violations) violations.push({ id: v.id, message: v.message });
+    for (const s of soundByName.values()) for (const v of s.violations) violations.push({ id: v.id, message: v.message });
+  } catch (err) {
+    errors.push({ message: `l\u1ED7i engine s\xF3ng: ${err instanceof Error ? err.message : String(err)}` });
+  }
+  const hasPhysicalViolation = violations.some((v) => v.id !== void 0 && PHYSICAL_VIOLATIONS3.has(v.id));
+  const servedAnswers = hasPhysicalViolation ? [] : answers;
+  const okState = violations.length === 0 && errors.length === 0;
+  if (okState) {
+    try {
+      const waves = [...waveByName.values()].map((s) => s.model);
+      const sounds = [...soundByName.values()].map((s) => s.model);
+      const built = buildWaveScene(plan.problemName, base, waves, sounds, tPhys);
+      geometry = built.geometry;
+      playback = built.playback;
+      charts = buildWaveCharts(base, waves, tPhys);
+    } catch (err) {
+      errors.push({ message: `l\u1ED7i d\u1EF1ng c\u1EA3nh s\xF3ng: ${err instanceof Error ? err.message : String(err)}` });
+      geometry = null;
+    }
+  }
+  const models = [];
+  for (const op of plan.ops) {
+    if (op.op === "wave") {
+      const m = waveByName.get(op.name).model;
+      models.push({ name: op.name, kind: "wave", animated: m.A !== null && m.omega !== null && m.spaceK !== null });
+    } else models.push({ name: op.name, kind: "sound", animated: false });
+  }
+  const ok = violations.length === 0 && errors.length === 0 && servedAnswers.length === plan.queries.length && servedAnswers.every((a) => Number.isFinite(a.approx));
+  return {
+    ok,
+    answers: servedAnswers,
+    checks,
+    violations,
+    errors,
+    geometry,
+    charts,
+    meta: { tPhys, playback, unitsNote: "per-quantity", length: base, models }
+  };
+}
+function dispatchQuery(q, waveByName, soundByName, base) {
+  const of = "of" in q ? q.of : void 0;
+  if (SOUND_KINDS.has(q.kind)) {
+    const s2 = soundByName.get(of);
+    if (!s2) return { ok: false, problem: waveByName.has(of) ? `query ${q.kind} tr\u1ECF "${of}" \u2014 sai lo\u1EA1i op (c\u1EA7n sound_source)` : `op "${of}" kh\xF4ng t\u1ED3n t\u1EA1i` };
+    return computeSoundQuery(s2, q, base);
+  }
+  const s = waveByName.get(of);
+  if (!s) return { ok: false, problem: soundByName.has(of) ? `query ${q.kind} tr\u1ECF "${of}" \u2014 sai lo\u1EA1i op (c\u1EA7n wave)` : `op "${of}" kh\xF4ng t\u1ED3n t\u1EA1i` };
+  return computeWaveQuery(s, q, base);
+}
+
 // api/_lib/kernel/chem/index.ts
 var chem_exports = {};
 __export(chem_exports, {
   ACTIVITY_SERIES: () => ACTIVITY_SERIES,
   ATOMIC_MASS: () => ATOMIC_MASS,
-  COLORS: () => COLORS4,
+  COLORS: () => COLORS5,
   ChemPlanSchema: () => ChemPlanSchema,
   IONS: () => IONS,
   MOLAR_VOLUMES: () => MOLAR_VOLUMES,
@@ -12917,7 +13694,7 @@ function react(record, mols, excessSet) {
 }
 
 // api/_lib/kernel/chem/scene.ts
-var COLORS4 = {
+var COLORS5 = {
   // Dung dịch (không có trong bảng ⇒ "không màu")
   solution: {
     // ion Cu²⁺ — xanh lam (dd CuCl2 đặc thực tế ngả xanh lục do phức cloro, đề thi VN ghi "xanh")
@@ -13005,10 +13782,10 @@ var COLORS4 = {
   }
 };
 function colorOf(formula, state) {
-  if (state === "solution") return COLORS4.solution[formula] ?? COLORS4.defaults.solution;
-  if (state === "solid") return COLORS4.solid[formula] ?? COLORS4.defaults.solid;
-  if (state === "gas") return COLORS4.gas[formula] ?? COLORS4.defaults.gas;
-  return COLORS4.defaults.liquid;
+  if (state === "solution") return COLORS5.solution[formula] ?? COLORS5.defaults.solution;
+  if (state === "solid") return COLORS5.solid[formula] ?? COLORS5.defaults.solid;
+  if (state === "gas") return COLORS5.gas[formula] ?? COLORS5.defaults.gas;
+  return COLORS5.defaults.liquid;
 }
 var EMPTY_SCENE = { vessels: [], events: [], captions: [] };
 function buildScene2(input) {
@@ -13068,7 +13845,7 @@ function buildScene2(input) {
   for (const row of ledger) {
     if (row.role !== "reactant" || isZeroR(row.consumed)) continue;
     if (stateOfSpecies.get(row.formula) !== "solution") continue;
-    const c = COLORS4.solution[row.formula];
+    const c = COLORS5.solution[row.formula];
     if (!c) continue;
     const emptied = row.after !== null && cmpR(row.after, R0) === 0;
     events.push({
@@ -13076,7 +13853,7 @@ function buildScene2(input) {
       kind: "color_change",
       vessel: mixId,
       fromColor: c.hex,
-      toColor: COLORS4.defaults.solution.hex,
+      toColor: COLORS5.defaults.solution.hex,
       text: emptied ? `m\xE0u ${c.colorName} c\u1EE7a dung d\u1ECBch ${row.formula} nh\u1EA1t d\u1EA7n r\u1ED3i m\u1EA5t m\xE0u ho\xE0n to\xE0n (${row.formula} h\u1EBFt)` : `m\xE0u ${c.colorName} c\u1EE7a dung d\u1ECBch ${row.formula} nh\u1EA1t d\u1EA7n`
     });
   }
@@ -13818,6 +14595,7 @@ export {
   RunPlanSchema,
   Trace,
   TriangleDimsSchema,
+  WavePlanSchema,
   attemptDeterministicRepair,
   buildAnalysisFigure,
   buildAreaRegion,
@@ -13853,6 +14631,7 @@ export {
   runOscillation,
   runPhysics,
   runPlan,
+  runWaves,
   sampleProfile,
   sampleVesselProfile,
   sectionK,

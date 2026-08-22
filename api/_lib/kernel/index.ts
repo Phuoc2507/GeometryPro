@@ -59,5 +59,7 @@ export { runDynamics, type DynamicsResult } from './physics/runDynamics';      /
 export { DynamicsPlanSchema, type DynamicsPlan } from './physics/dynamicsSchema';
 export { runOscillation, type OscillationResult } from './physics/runOscillation'; // dao động điều hòa lớp 11
 export { OscillationPlanSchema, type OscillationPlan } from './physics/oscillationSchema';
+export { runWaves, type WaveResult } from './physics/runWaves';                  // sóng cơ & sóng âm lớp 11
+export { WavePlanSchema, type WavePlan } from './physics/waveSchema';
 // Hóa vô cơ THPT: dán đề Hóa → phản ứng + hiện tượng + đáp số (namespace tránh trùng tên).
 export * as chem from './chem/index';
